@@ -90,4 +90,30 @@ class User extends Authenticatable
 
         return $this->belongsToHospital($currentTenant);
     }
+
+    /**
+     * Get enrollments for this user in the current tenant context.
+     * Note: Enrollments are stored in single database with tenant_id.
+     */
+    public function enrollments()
+    {
+        $currentTenant = Tenant::current();
+
+        if (! $currentTenant) {
+            return collect();
+        }
+
+        // Query enrollments scoped to current tenant
+        return Enrollment::where('user_id', $this->id)->get();
+    }
+
+    /**
+     * Get courses this user is enrolled in for the current tenant.
+     */
+    public function enrolledCourses()
+    {
+        $enrollmentIds = $this->enrollments()->pluck('course_id');
+
+        return Course::whereIn('id', $enrollmentIds)->get();
+    }
 }

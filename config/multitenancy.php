@@ -38,9 +38,18 @@ return [
      */
     'switch_tenant_tasks' => [
         // \Spatie\Multitenancy\Tasks\PrefixCacheTask::class,
+        // Uncomment when using separate databases per tenant:
         // \Spatie\Multitenancy\Tasks\SwitchTenantDatabaseTask::class,
         // \Spatie\Multitenancy\Tasks\SwitchRouteCacheTask::class,
     ],
+
+    /*
+     * Database strategy: 'single' or 'multi'
+     *
+     * 'single' - All tenants share one database, data is isolated by tenant_id
+     * 'multi'  - Each tenant has its own database
+     */
+    'database_strategy' => env('MULTITENANCY_DATABASE_STRATEGY', 'single'),
 
     /*
      * This class is the model used for storing configuration on tenants.
