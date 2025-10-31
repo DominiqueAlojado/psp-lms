@@ -18,6 +18,7 @@ return new class extends Migration
         if (! Schema::connection('landlord')->hasTable('users')) {
             Schema::connection('landlord')->create('users', function (Blueprint $table) {
                 $table->id();
+                $table->uuid('uuid')->unique();
                 $table->string('name');
                 $table->string('email')->unique();
                 $table->timestamp('email_verified_at')->nullable();

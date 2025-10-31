@@ -31,4 +31,25 @@ class Tenant extends BaseTenant
     {
         return $this->residents()->count();
     }
+
+    /**
+     * Create default roles for this tenant (hospital).
+     */
+    public function createDefaultRoles(): void
+    {
+        $roles = [
+            'admin',
+            'resident',
+            'consultant',
+            'bop',
+        ];
+
+        foreach ($roles as $roleName) {
+            \App\Models\Role::firstOrCreate([
+                'name' => $roleName,
+                'guard_name' => 'web',
+                'tenant_id' => $this->id,
+            ]);
+        }
+    }
 }

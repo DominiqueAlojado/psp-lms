@@ -5,14 +5,16 @@ namespace App\Models;
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Fortify\TwoFactorAuthenticatable;
+use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable, TwoFactorAuthenticatable;
+    use HasFactory, HasRoles, Notifiable, TwoFactorAuthenticatable;
 
     /**
      * Get the connection name for the model.
@@ -21,6 +23,20 @@ class User extends Authenticatable
     public function getConnectionName(): ?string
     {
         return 'landlord';
+    }
+
+    /**
+     * Boot the model.
+     */
+    protected static function boot(): void
+    {
+        parent::boot();
+
+        static::creating(function ($user) {
+            if (empty($user->uuid)) {
+                $user->uuid = (string) \Illuminate\Support\Str::uuid();
+            }
+        });
     }
 
     /**
@@ -54,6 +70,7 @@ class User extends Authenticatable
     protected function casts(): array
     {
         return [
+            'uuid' => 'string',
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'two_factor_confirmed_at' => 'datetime',
@@ -115,5 +132,51 @@ class User extends Authenticatable
         $enrollmentIds = $this->enrollments()->pluck('course_id');
 
         return Course::whereIn('id', $enrollmentIds)->get();
+    }
+
+    /**
+     * Check if user is a system admin (global admin across all tenants).
+     */
+    public function isSystemAdmin(): bool
+    {
+        return $this->hasRole('system admin');
+    }
+
+    /**
+     * Check if user is a tenant admin (admin for current tenant/hospital).
+     */
+    public function isTenantAdmin(): bool
+    {
+        return $this->hasRole('admin');
+    }
+
+    /**
+     * Check if user has system admin role or tenant admin role.
+     */
+    public function hasAdminAccess(): bool
+    {
+        return $this->isSystemAdmin() || $this->isTenantAdmin();
+    }
+
+    /**
+     * Get all resident profiles for this user (one per hospital).
+     */
+    public function residents(): HasMany
+    {
+        return $this->hasMany(Resident::class);
+    }
+
+    /**
+     * Get the resident profile for this user in the current tenant.
+     */
+    public function resident(): ?Resident
+    {
+        $currentTenant = Tenant::current();
+
+        if (! $currentTenant) {
+            return null;
+        }
+
+        return $this->residents()->where('tenant_id', $currentTenant->id)->first();
     }
 }
