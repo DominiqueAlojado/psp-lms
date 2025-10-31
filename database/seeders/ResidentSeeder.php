@@ -14,8 +14,8 @@ class ResidentSeeder extends Seeder
      */
     public function run(): void
     {
-        // Get all tenants (hospitals), excluding localhost/development tenants
-        $tenants = Tenant::whereNotIn('domain', ['localhost', '127.0.0.1'])->get();
+        // Get all tenants (hospitals), excluding localhost/development and main domain
+        $tenants = Tenant::whereNotIn('domain', ['localhost', '127.0.0.1', 'psp-lms.test'])->get();
 
         if ($tenants->isEmpty()) {
             $this->command->warn('No tenants found. Please run TenantSeeder first.');

@@ -8,6 +8,17 @@ use Spatie\Multitenancy\Models\Tenant as BaseTenant;
 class Tenant extends BaseTenant
 {
     /**
+     * The attributes that are mass assignable.
+     *
+     * @var array<int, string>
+     */
+    protected $fillable = [
+        'name',
+        'domain',
+        'database',
+    ];
+
+    /**
      * Get the connection name for the model.
      * Tenants are stored in the landlord database.
      */
