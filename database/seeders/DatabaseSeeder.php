@@ -16,14 +16,29 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         // Ensure landlord migrations have run
+        // This is expected behavior when running migrate:fresh - landlord migrations need to run separately
         if (! Schema::connection('landlord')->hasTable('tenants')) {
-            $this->command->warn('Landlord database tables not found. Running landlord migrations...');
-            Artisan::call('migrate', [
-                '--database' => 'landlord',
-                '--path' => 'database/migrations/landlord',
-                '--force' => true,
-            ]);
-            $this->command->info('Landlord migrations completed.');
+            $this->command->info('Landlord database tables not found. Running landlord migrations automatically...');
+
+            try {
+                $exitCode = Artisan::call('migrate', [
+                    '--database' => 'landlord',
+                    '--path' => 'database/migrations/landlord',
+                    '--force' => true,
+                ]);
+
+                if ($exitCode !== 0) {
+                    $output = Artisan::output();
+                    $this->command->error('Landlord migrations failed:');
+                    $this->command->error($output);
+                    throw new \RuntimeException('Failed to run landlord migrations. Exit code: '.$exitCode);
+                }
+
+                $this->command->info('Landlord migrations completed.');
+            } catch (\Exception $e) {
+                $this->command->error('Error running landlord migrations: '.$e->getMessage());
+                throw $e;
+            }
         }
 
         $this->call([
