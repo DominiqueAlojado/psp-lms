@@ -38,34 +38,54 @@ class TenantSeeder extends Seeder
         ];
 
         foreach ($hospitals as $hospital) {
-            Tenant::firstOrCreate(
+            $tenant = Tenant::firstOrCreate(
                 ['domain' => $hospital['domain']],
                 [
                     'name' => $hospital['name'],
                     'domain' => $hospital['domain'],
                     'database' => $hospital['database'],
                 ]
-            )->createDefaultRoles();
+            );
+
+            // Only create roles if tenant was just created
+            if ($tenant->wasRecentlyCreated) {
+                $tenant->createDefaultRoles();
+            }
         }
 
         // Create a tenant for localhost development (if needed)
-        Tenant::firstOrCreate(
+        // Note: Only create if it doesn't exist to avoid unique constraint violations
+        $localhostTenant = Tenant::firstOrCreate(
             ['domain' => 'localhost'],
             [
                 'name' => 'Local Development',
                 'domain' => 'localhost',
                 'database' => env('DB_DATABASE', 'laravel'),
             ]
-        )->createDefaultRoles();
+        );
+
+        if ($localhostTenant->wasRecentlyCreated) {
+            $localhostTenant->createDefaultRoles();
+        }
 
         // Also create for 127.0.0.1 (if needed)
-        Tenant::firstOrCreate(
-            ['domain' => '127.0.0.1'],
-            [
-                'name' => 'Local Development (IP)',
-                'domain' => '127.0.0.1',
-                'database' => env('DB_DATABASE', 'laravel'),
-            ]
-        )->createDefaultRoles();
+        // Use different database name or skip if localhost already exists with same database
+        $dbName = env('DB_DATABASE', 'laravel');
+        $existingTenant = Tenant::where('database', $dbName)->where('domain', '!=', 'localhost')->first();
+
+        if (! $existingTenant || $existingTenant->domain === '127.0.0.1') {
+            $ipTenant = Tenant::firstOrCreate(
+                ['domain' => '127.0.0.1'],
+                [
+                    'name' => 'Local Development (IP)',
+                    'domain' => '127.0.0.1',
+                    'database' => $dbName.'_ip', // Use different database to avoid unique constraint
+                ]
+            );
+
+            if ($ipTenant->wasRecentlyCreated) {
+                $ipTenant->createDefaultRoles();
+            }
+        }
     }
 }

@@ -69,25 +69,33 @@ class ResidentSeeder extends Seeder
             // Randomly select a tenant
             $tenant = $tenants->random();
 
-            // Create a user without two-factor auth for seeding
+            // Step 1: Create a user account for this resident
+            // Each resident must have a user account to login to the system
             $user = User::factory()->withoutTwoFactor()->create([
                 'name' => fake()->name(),
                 'email' => fake()->unique()->safeEmail(),
             ]);
 
-            // Add user to tenant_user pivot table
+            // Step 2: Link user to tenant (hospital) via pivot table
+            // This establishes which hospital(s) the resident belongs to
             $tenant->residents()->attach($user->id);
 
-            // Assign "resident" role to this user for this tenant
-            $residentRole = \App\Models\Role::where('name', 'resident')
+            // Step 3: Assign "resident" role to this user for this tenant
+            // Permissions will be configured later - for now just assign the role
+            // Use withoutGlobalScopes to bypass tenant scoping
+            $residentRole = \App\Models\Role::withoutGlobalScopes()
+                ->where('name', 'resident')
                 ->where('tenant_id', $tenant->id)
                 ->first();
 
             if ($residentRole) {
                 $user->assignRole($residentRole);
+            } else {
+                $this->command->warn("Resident role not found for tenant {$tenant->name}. Please ensure TenantSeeder runs first to create default roles.");
             }
 
-            // Create resident profile
+            // Step 4: Create resident profile with detailed information
+            // This stores resident-specific data separate from user account
             Resident::create([
                 'user_id' => $user->id,
                 'tenant_id' => $tenant->id,
@@ -97,9 +105,9 @@ class ResidentSeeder extends Seeder
                 'department' => fake()->randomElement($departments),
                 'phone' => fake()->phoneNumber(),
                 'start_date' => fake()->dateTimeBetween('-3 years', 'now')->format('Y-m-d'),
-                'end_date' => fake()->optional(0.3)->dateTimeBetween('now', '+2 years')->format('Y-m-d'),
+                'end_date' => fake()->boolean(30) ? fake()->dateTimeBetween('now', '+2 years')->format('Y-m-d') : null,
                 'status' => fake()->randomElement($statuses),
-                'notes' => fake()->optional(0.4)->sentence(),
+                'notes' => fake()->boolean(40) ? fake()->sentence() : null,
             ]);
 
             if ($i % 10 === 0) {
