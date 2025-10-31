@@ -13,8 +13,12 @@ return new class extends Migration
     {
         Schema::connection('landlord')->create('tenant_user', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('tenant_id')->constrained('tenants')->onDelete('cascade');
-            $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
+            $table->foreignId('tenant_id')
+                ->constrained('tenants')
+                ->onDelete('cascade');
+            $table->foreignId('user_id')
+                ->constrained('users')
+                ->onDelete('cascade');
             $table->timestamps();
 
             // Prevent duplicate entries

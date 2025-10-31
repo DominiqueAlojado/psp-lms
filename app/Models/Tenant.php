@@ -8,6 +8,15 @@ use Spatie\Multitenancy\Models\Tenant as BaseTenant;
 class Tenant extends BaseTenant
 {
     /**
+     * Get the connection name for the model.
+     * Tenants are stored in the landlord database.
+     */
+    public function getConnectionName(): ?string
+    {
+        return config('multitenancy.landlord_database_connection_name', 'landlord');
+    }
+
+    /**
      * Scope a query to only include tenants matching the given domain.
      */
     public function scopeWhereDomain($query, string $domain)
