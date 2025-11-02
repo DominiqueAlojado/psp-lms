@@ -42,6 +42,22 @@ interface Props {
     permissions: Permission[];
 }
 
+// Group permissions by category
+const permissionGroups = {
+    'Course Management': ['view-courses', 'create-courses', 'edit-courses', 'delete-courses', 'publish-courses', 'enroll-residents', 'manage-course-content', 'assign-instructors'],
+    'Resident Management': ['view-residents', 'create-residents', 'edit-residents', 'delete-residents', 'view-resident-progress', 'approve-residents', 'deactivate-residents'],
+    'Learning Materials': ['view-materials', 'upload-materials', 'edit-materials', 'delete-materials', 'download-materials', 'approve-materials'],
+    'Assessments': ['view-assessments', 'create-assessments', 'edit-assessments', 'delete-assessments', 'take-assessments', 'grade-assessments', 'view-assessment-results', 'export-assessment-results'],
+    'Case Studies': ['view-cases', 'submit-cases', 'review-cases', 'approve-cases', 'edit-cases', 'delete-cases'],
+    'Certificates': ['view-certificates', 'issue-certificates', 'revoke-certificates', 'verify-certificates'],
+    'Reports & Analytics': ['view-reports', 'generate-reports', 'export-reports', 'view-analytics', 'view-organization-analytics'],
+    'Organization': ['manage-organization', 'manage-organization-settings', 'manage-training-officers', 'view-organization-members'],
+    'User Management': ['view-users', 'create-users', 'edit-users', 'delete-users', 'assign-roles', 'manage-permissions'],
+    'Announcements': ['view-announcements', 'create-announcements', 'edit-announcements', 'delete-announcements', 'send-notifications'],
+    'Logbook': ['view-logbook', 'create-logbook-entries', 'edit-logbook-entries', 'delete-logbook-entries', 'approve-logbook-entries', 'export-logbook'],
+    'Rotations & Schedules': ['view-rotations', 'create-rotations', 'edit-rotations', 'assign-rotations', 'view-schedules', 'manage-schedules'],
+};
+
 export default function RolesPermissions() {
     const { roles, permissions } = usePage<Props>().props;
     const [editingRole, setEditingRole] = useState<Role | null>(null);
@@ -553,22 +569,71 @@ export default function RolesPermissions() {
                                         </div>
                                     </div>
 
-                                    <div className="space-y-2 max-h-[400px] overflow-y-auto rounded-lg border p-4">
-                                        {permissions.map((permission) => (
-                                            <div key={permission.id} className="flex items-center space-x-2 py-2">
-                                                <Checkbox
-                                                    id={`perm-${permission.id}`}
-                                                    checked={selectedPermissions.includes(permission.id)}
-                                                    onCheckedChange={() => togglePermission(permission.id)}
-                                                />
-                                                <Label
-                                                    htmlFor={`perm-${permission.id}`}
-                                                    className="flex-1 cursor-pointer"
-                                                >
-                                                    {permission.name}
-                                                </Label>
-                                            </div>
-                                        ))}
+                                    <div className="space-y-4 max-h-[500px] overflow-y-auto rounded-lg border p-4">
+                                        {Object.entries(permissionGroups).map(([category, permNames]) => {
+                                            // Filter permissions that belong to this category
+                                            const categoryPermissions = permissions.filter(p => 
+                                                permNames.includes(p.name)
+                                            );
+
+                                            if (categoryPermissions.length === 0) return null;
+
+                                            // Check if all in this category are selected
+                                            const allCategorySelected = categoryPermissions.every(p => 
+                                                selectedPermissions.includes(p.id)
+                                            );
+
+                                            const toggleCategory = () => {
+                                                const categoryIds = categoryPermissions.map(p => p.id);
+                                                if (allCategorySelected) {
+                                                    setSelectedPermissions(prev => 
+                                                        prev.filter(id => !categoryIds.includes(id))
+                                                    );
+                                                } else {
+                                                    setSelectedPermissions(prev => 
+                                                        [...new Set([...prev, ...categoryIds])]
+                                                    );
+                                                }
+                                            };
+
+                                            return (
+                                                <div key={category} className="space-y-2">
+                                                    {/* Category Header */}
+                                                    <div className="flex items-center space-x-2 py-2 border-b">
+                                                        <Checkbox
+                                                            id={`category-${category}`}
+                                                            checked={allCategorySelected}
+                                                            onCheckedChange={toggleCategory}
+                                                        />
+                                                        <Label
+                                                            htmlFor={`category-${category}`}
+                                                            className="flex-1 cursor-pointer font-semibold text-sm"
+                                                        >
+                                                            {category} ({categoryPermissions.length})
+                                                        </Label>
+                                                    </div>
+
+                                                    {/* Permissions in Category */}
+                                                    <div className="ml-6 space-y-1">
+                                                        {categoryPermissions.map((permission) => (
+                                                            <div key={permission.id} className="flex items-center space-x-2 py-1.5">
+                                                                <Checkbox
+                                                                    id={`perm-${permission.id}`}
+                                                                    checked={selectedPermissions.includes(permission.id)}
+                                                                    onCheckedChange={() => togglePermission(permission.id)}
+                                                                />
+                                                                <Label
+                                                                    htmlFor={`perm-${permission.id}`}
+                                                                    className="flex-1 cursor-pointer text-sm"
+                                                                >
+                                                                    {permission.name}
+                                                                </Label>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
                                     </div>
 
                                     <div className="flex justify-end gap-3 pt-4 border-t">
