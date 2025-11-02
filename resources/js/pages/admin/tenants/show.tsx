@@ -40,6 +40,7 @@ interface LocalSetupStatus {
 interface Props {
     tenant: Tenant;
     localSetupStatus: LocalSetupStatus;
+    isLocalWindows: boolean;
     success?: string;
     info?: string;
     setupNeeded?: boolean;
@@ -51,6 +52,7 @@ interface Props {
 export default function Show({
     tenant,
     localSetupStatus,
+    isLocalWindows,
     success,
     info,
     setupNeeded,
@@ -189,8 +191,9 @@ export default function Show({
                     </dl>
                 </div>
 
-                {/* Local Development Settings */}
-                <div className="rounded-lg border border-sidebar-border bg-card p-6">
+                {/* Local Development Settings - Only show on Windows local dev */}
+                {isLocalWindows && (
+                    <div className="rounded-lg border border-sidebar-border bg-card p-6">
                     <div className="flex items-center justify-between">
                         <div>
                             <h3 className="text-lg font-semibold text-foreground">
@@ -285,6 +288,7 @@ export default function Show({
                         </div>
                     )}
                 </div>
+                )}
 
                 {/* Coolify Configuration */}
                 <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 dark:border-blue-900 dark:bg-blue-950">

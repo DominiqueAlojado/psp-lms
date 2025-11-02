@@ -55,38 +55,41 @@ class TenantController extends Controller
         // Create default roles for the tenant
         $tenant->createDefaultRoles();
 
-        // Automatically attempt local development setup (hosts file)
-        // This is for local development only - won't affect production
-        $setupService = new TenantSetupService;
+        $message = "Tenant '{$tenant->name}' created successfully!";
 
-        // Try to add to hosts file (may fail without admin access - that's OK)
-        try {
-            $hostsResult = $setupService->addToHostsFile($tenant->domain);
+        // Only attempt local setup on Windows local development
+        // In production (Coolify/Linux), domains are managed via DNS/Coolify
+        if (config('app.env') === 'local' && PHP_OS_FAMILY === 'Windows') {
+            // Automatically attempt local development setup (hosts file)
+            $setupService = new TenantSetupService;
 
-            // Build success message based on result
-            $message = "Tenant '{$tenant->name}' created successfully!";
+            // Try to add to hosts file (may fail without admin access - that's OK)
+            try {
+                $hostsResult = $setupService->addToHostsFile($tenant->domain);
 
-            if ($hostsResult === true) {
-                $message .= ' ✅ Domain added to hosts file automatically. Just restart Apache in Laragon.';
-            } elseif ($hostsResult === 'exists') {
-                $message .= ' ✅ Domain already in hosts file. Ready to use!';
-            } else {
-                // Hosts file addition failed - show friendly message
+                if ($hostsResult === true) {
+                    $message .= ' ✅ Domain added to hosts file automatically. Just restart Apache in Laragon.';
+                } elseif ($hostsResult === 'exists') {
+                    $message .= ' ✅ Domain already in hosts file. Ready to use!';
+                } else {
+                    // Hosts file addition failed - show friendly message
+                    return redirect()
+                        ->route('admin.tenants.show', $tenant)
+                        ->with('success', $message)
+                        ->with('info', '⚠️ Domain needs to be added to hosts file. Click "Setup Local Environment" below (requires admin access).')
+                        ->with('setupNeeded', true);
+                }
+            } catch (\Exception $e) {
+                // If setup fails silently, just show tenant created message
                 return redirect()
                     ->route('admin.tenants.show', $tenant)
                     ->with('success', $message)
-                    ->with('info', '⚠️ Domain needs to be added to hosts file. Click "Setup Local Environment" below (requires admin access).')
+                    ->with('info', '⚠️ Click "Setup Local Environment" to add domain to hosts file (requires admin access).')
                     ->with('setupNeeded', true);
             }
-        } catch (\Exception $e) {
-            // If setup fails silently, just show tenant created message
-            $message = "Tenant '{$tenant->name}' created successfully!";
-
-            return redirect()
-                ->route('admin.tenants.show', $tenant)
-                ->with('success', $message)
-                ->with('info', '⚠️ Click "Setup Local Environment" to add domain to hosts file (requires admin access).')
-                ->with('setupNeeded', true);
+        } else {
+            // Production: Add domain setup instructions for Coolify
+            $message .= ' Add domain "' . $tenant->domain . '" to Coolify with SSL enabled.';
         }
 
         return redirect()
@@ -105,9 +108,13 @@ class TenantController extends Controller
         $setupService = new TenantSetupService;
         $setupStatus = $setupService->checkLocalSetupStatus($tenant->domain);
 
+        // Only show local setup options on Windows local development
+        $isLocalWindows = config('app.env') === 'local' && PHP_OS_FAMILY === 'Windows';
+
         return Inertia::render('admin/tenants/show', [
             'tenant' => $tenant,
             'localSetupStatus' => $setupStatus,
+            'isLocalWindows' => $isLocalWindows,
             'success' => session('success'),
             'info' => session('info'),
             'setupNeeded' => session('setupNeeded', false),
@@ -193,14 +200,14 @@ class TenantController extends Controller
             if (! $isInertiaRequest && request()->wantsJson()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Setup failed: '.$e->getMessage(),
+                    'message' => 'Setup failed: ' . $e->getMessage(),
                     'error' => $e->getMessage(),
                 ], 500);
             }
 
             return redirect()
                 ->route('admin.tenants.show', $tenant)
-                ->withErrors(['setup' => 'Setup failed: '.$e->getMessage()]);
+                ->withErrors(['setup' => 'Setup failed: ' . $e->getMessage()]);
         }
     }
 

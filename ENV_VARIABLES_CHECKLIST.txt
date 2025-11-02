@@ -1,0 +1,57 @@
+================================================================================
+  PSP LMS - Required Environment Variables for Coolify
+================================================================================
+
+CRITICAL - Must Set:
+--------------------
+APP_KEY=base64:...           # Run: php artisan key:generate --show
+APP_ENV=production
+APP_DEBUG=false
+APP_URL=https://psp-lms.yourdomain.com
+
+DB_CONNECTION=pgsql
+DB_HOST=postgres
+DB_DATABASE=psp_lms
+DB_USERNAME=postgres
+DB_PASSWORD=SECURE_PASSWORD_HERE
+
+
+IMPORTANT - Recommended:
+------------------------
+SESSION_DRIVER=database
+CACHE_STORE=database
+QUEUE_CONNECTION=database
+
+MAIL_MAILER=smtp
+MAIL_HOST=smtp.gmail.com
+MAIL_PORT=587
+MAIL_USERNAME=your-email@gmail.com
+MAIL_PASSWORD=your-app-password
+MAIL_FROM_ADDRESS=noreply@yourdomain.com
+
+LOG_LEVEL=error
+LOG_STACK=daily
+
+
+OPTIONAL - Already Has Defaults:
+---------------------------------
+MULTITENANCY_DATABASE_STRATEGY=single  # Default in config/multitenancy.php
+SESSION_LIFETIME=120
+CACHE_PREFIX=psp_lms
+
+
+NOT NEEDED - Auto-configured:
+------------------------------
+LANDLORD_DB_HOST      # Falls back to DB_HOST
+LANDLORD_DB_DATABASE  # Falls back to DB_DATABASE
+LANDLORD_DB_USERNAME  # Falls back to DB_USERNAME
+LANDLORD_DB_PASSWORD  # Falls back to DB_PASSWORD
+
+
+================================================================================
+Quick Setup in Coolify:
+1. Copy all variables from "CRITICAL" section
+2. Add variables from "IMPORTANT" section
+3. Optionally add variables from "OPTIONAL" section
+4. Deploy!
+================================================================================
