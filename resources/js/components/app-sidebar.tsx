@@ -51,7 +51,7 @@ export function AppSidebar() {
                         </SidebarMenuButton>
                     </SidebarMenuItem>
                     <SidebarMenuItem className="px-2 py-2">
-                        <OrganizationSwitcher />
+                        <OrganizationSwitcher className="w-full" />
                     </SidebarMenuItem>
                 </SidebarMenu>
             </SidebarHeader>
