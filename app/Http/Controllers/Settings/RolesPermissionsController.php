@@ -64,6 +64,9 @@ class RolesPermissionsController extends Controller
             'guard_name' => 'web',
         ]);
 
+        // Clear permission cache
+        app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
+
         return back()->with('success', 'Role created successfully');
     }
 
