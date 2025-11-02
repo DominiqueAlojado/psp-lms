@@ -41,6 +41,8 @@ interface Props {
     tenant: Tenant;
     localSetupStatus: LocalSetupStatus;
     success?: string;
+    info?: string;
+    setupNeeded?: boolean;
     errors?: {
         setup?: string;
     };
@@ -50,17 +52,22 @@ export default function Show({
     tenant,
     localSetupStatus,
     success,
+    info,
+    setupNeeded,
     errors,
 }: Props) {
     // Show success/error messages if present
     useEffect(() => {
         if (success) {
-            alert(`✅ ${success}`);
+            alert(success);
+        }
+        if (info) {
+            alert(info);
         }
         if (errors?.setup) {
             alert(`❌ ${errors.setup}`);
         }
-    }, [success, errors]);
+    }, [success, info, errors]);
     const handleSetupLocal = () => {
         if (
             confirm(
@@ -72,13 +79,11 @@ export default function Show({
                 {},
                 {
                     preserveScroll: true,
-                    onSuccess: () => {
-                        // Reload to show updated status
-                        router.reload({ only: ['localSetupStatus'] });
-                        alert(
-                            '✅ Setup completed! Please restart Apache in Laragon (Right-click icon -> Stop All -> Start All) for changes to take effect.',
-                        );
-                    },
+                           onSuccess: () => {
+                               // Reload to show updated status
+                               router.reload({ only: ['localSetupStatus', 'setupNeeded'] });
+                               // Don't show alert - the page will reload with updated status
+                           },
                     onError: (errors) => {
                         console.error('Setup errors:', errors);
                         const errorMessage =

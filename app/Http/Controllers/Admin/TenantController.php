@@ -55,9 +55,43 @@ class TenantController extends Controller
         // Create default roles for the tenant
         $tenant->createDefaultRoles();
 
+        // Automatically attempt local development setup (hosts file)
+        // This is for local development only - won't affect production
+        $setupService = new TenantSetupService;
+
+        // Try to add to hosts file (may fail without admin access - that's OK)
+        try {
+            $hostsResult = $setupService->addToHostsFile($tenant->domain);
+
+            // Build success message based on result
+            $message = "Tenant '{$tenant->name}' created successfully!";
+
+            if ($hostsResult === true) {
+                $message .= ' ✅ Domain added to hosts file automatically. Just restart Apache in Laragon.';
+            } elseif ($hostsResult === 'exists') {
+                $message .= ' ✅ Domain already in hosts file. Ready to use!';
+            } else {
+                // Hosts file addition failed - show friendly message
+                return redirect()
+                    ->route('admin.tenants.show', $tenant)
+                    ->with('success', $message)
+                    ->with('info', '⚠️ Domain needs to be added to hosts file. Click "Setup Local Environment" below (requires admin access).')
+                    ->with('setupNeeded', true);
+            }
+        } catch (\Exception $e) {
+            // If setup fails silently, just show tenant created message
+            $message = "Tenant '{$tenant->name}' created successfully!";
+
+            return redirect()
+                ->route('admin.tenants.show', $tenant)
+                ->with('success', $message)
+                ->with('info', '⚠️ Click "Setup Local Environment" to add domain to hosts file (requires admin access).')
+                ->with('setupNeeded', true);
+        }
+
         return redirect()
-            ->route('admin.tenants.index')
-            ->with('success', "Tenant '{$tenant->name}' created successfully. Add domain '{$tenant->domain}' to Coolify.");
+            ->route('admin.tenants.show', $tenant)
+            ->with('success', $message);
     }
 
     /**
@@ -75,6 +109,8 @@ class TenantController extends Controller
             'tenant' => $tenant,
             'localSetupStatus' => $setupStatus,
             'success' => session('success'),
+            'info' => session('info'),
+            'setupNeeded' => session('setupNeeded', false),
             'errors' => session('errors'),
         ]);
     }
