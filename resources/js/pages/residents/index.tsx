@@ -1,13 +1,17 @@
+import AlertError from '@/components/alert-error';
 import HeadingSmall from '@/components/heading-small';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
-import { Head, Link, router } from '@inertiajs/react';
-import { Eye, Filter, Search, X } from 'lucide-react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
+import { Edit, Eye, Filter, Search, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -73,6 +77,8 @@ export default function ResidentsIndex({ residents, organizations, filters, year
     const [search, setSearch] = useState(filters.search || '');
     const [showFilters, setShowFilters] = useState(false);
     const [localFilters, setLocalFilters] = useState(filters);
+    const [editingResident, setEditingResident] = useState<Resident | null>(null);
+    const { errors } = usePage<any>().props;
 
     // Debounced search
     useEffect(() => {
@@ -335,11 +341,20 @@ export default function ResidentsIndex({ residents, organizations, filters, year
                                                     </Badge>
                                                 </TableCell>
                                                 <TableCell className="py-4">
-                                                    <Link href={`/residents/${resident.id}`}>
-                                                        <Button variant="ghost" size="sm">
-                                                            <Eye className="h-4 w-4" />
+                                                    <div className="flex gap-2">
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            onClick={() => setEditingResident(resident)}
+                                                        >
+                                                            <Edit className="h-4 w-4" />
                                                         </Button>
-                                                    </Link>
+                                                        <Link href={`/residents/${resident.id}`}>
+                                                            <Button variant="ghost" size="sm">
+                                                                <Eye className="h-4 w-4" />
+                                                            </Button>
+                                                        </Link>
+                                                    </div>
                                                 </TableCell>
                                             </TableRow>
                                         ))
@@ -375,6 +390,184 @@ export default function ResidentsIndex({ residents, organizations, filters, year
                     </CardContent>
                 </Card>
             </div>
+
+            {/* Edit Resident Sheet */}
+            <Sheet open={!!editingResident} onOpenChange={(open) => !open && setEditingResident(null)}>
+                <SheetContent className="sm:max-w-[600px] overflow-y-auto p-0">
+                    {editingResident && (
+                        <div className="p-8">
+                            <SheetHeader className="pb-6">
+                                <SheetTitle>Edit Resident</SheetTitle>
+                                <SheetDescription>
+                                    Update resident information for {editingResident.full_name}
+                                </SheetDescription>
+                            </SheetHeader>
+
+                            <form
+                                onSubmit={(e) => {
+                                    e.preventDefault();
+                                    const formData = new FormData(e.currentTarget);
+                                    router.patch(
+                                        `/residents/${editingResident.id}`,
+                                        Object.fromEntries(formData),
+                                        {
+                                            preserveScroll: true,
+                                            preserveState: true,
+                                            onSuccess: () => setEditingResident(null),
+                                        }
+                                    );
+                                }}
+                            >
+                                <Tabs defaultValue="personal" className="w-full">
+                                    <TabsList className="grid w-full grid-cols-2 mb-6">
+                                        <TabsTrigger value="personal">Personal Data</TabsTrigger>
+                                        <TabsTrigger value="account">Account</TabsTrigger>
+                                    </TabsList>
+
+                                    {/* Personal Data Tab */}
+                                    <TabsContent value="personal" className="space-y-6">
+                                        {Object.keys(errors).length > 0 && (
+                                            <AlertError errors={Object.values(errors)} />
+                                        )}
+
+                                        <div className="space-y-2">
+                                            <Label htmlFor="edit_first_name">First Name</Label>
+                                            <Input
+                                                id="edit_first_name"
+                                                name="first_name"
+                                                defaultValue={editingResident.first_name}
+                                                required
+                                            />
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <Label htmlFor="edit_middle_name">Middle Name</Label>
+                                            <Input
+                                                id="edit_middle_name"
+                                                name="middle_name"
+                                                defaultValue={editingResident.middle_name || ''}
+                                            />
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <Label htmlFor="edit_last_name">Last Name</Label>
+                                            <Input
+                                                id="edit_last_name"
+                                                name="last_name"
+                                                defaultValue={editingResident.last_name}
+                                                required
+                                            />
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <Label htmlFor="edit_email">Email</Label>
+                                            <Input
+                                                id="edit_email"
+                                                name="email"
+                                                type="email"
+                                                defaultValue={editingResident.email}
+                                                required
+                                            />
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <Label htmlFor="edit_contact_number">Contact Number</Label>
+                                            <Input
+                                                id="edit_contact_number"
+                                                name="contact_number"
+                                                defaultValue={editingResident.contact_number || ''}
+                                                required
+                                            />
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <Label htmlFor="edit_course">Course</Label>
+                                            <Input
+                                                id="edit_course"
+                                                name="course"
+                                                defaultValue={editingResident.course}
+                                                required
+                                            />
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <Label htmlFor="edit_year_level">Year Level</Label>
+                                            <select
+                                                id="edit_year_level"
+                                                name="year_level"
+                                                defaultValue={editingResident.year_level}
+                                                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                                required
+                                            >
+                                                {yearLevels.map((level) => (
+                                                    <option key={level} value={level}>
+                                                        {level}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <Label htmlFor="edit_status">Status</Label>
+                                            <select
+                                                id="edit_status"
+                                                name="status"
+                                                defaultValue={editingResident.status}
+                                                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                                required
+                                            >
+                                                {statuses.map((status) => (
+                                                    <option key={status} value={status}>
+                                                        {status.charAt(0).toUpperCase() + status.slice(1)}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                    </TabsContent>
+
+                                    {/* Account Tab */}
+                                    <TabsContent value="account" className="space-y-6">
+                                        {Object.keys(errors).length > 0 && (
+                                            <AlertError errors={Object.values(errors)} />
+                                        )}
+
+                                        <div className="space-y-2">
+                                            <Label htmlFor="edit_password">New Password</Label>
+                                            <Input
+                                                id="edit_password"
+                                                name="password"
+                                                type="password"
+                                                placeholder="Leave blank to keep current password"
+                                            />
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <Label htmlFor="edit_password_confirmation">Confirm Password</Label>
+                                            <Input
+                                                id="edit_password_confirmation"
+                                                name="password_confirmation"
+                                                type="password"
+                                                placeholder="Confirm new password"
+                                            />
+                                        </div>
+                                    </TabsContent>
+                                </Tabs>
+
+                                <div className="flex justify-end gap-3 pt-6 border-t mt-6">
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        onClick={() => setEditingResident(null)}
+                                    >
+                                        Cancel
+                                    </Button>
+                                    <Button type="submit">Save Changes</Button>
+                                </div>
+                            </form>
+                        </div>
+                    )}
+                </SheetContent>
+            </Sheet>
         </AppLayout>
     );
 }

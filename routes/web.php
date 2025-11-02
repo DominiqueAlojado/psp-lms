@@ -20,6 +20,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('residents.index');
     Route::get('residents/{resident}', [App\Http\Controllers\ResidentController::class, 'show'])
         ->name('residents.show');
+    Route::patch('residents/{resident}', [App\Http\Controllers\ResidentController::class, 'update'])
+        ->name('residents.update');
 
     // Organization switching
     Route::post('organization/{organization}/switch', [App\Http\Controllers\OrganizationController::class, 'switch'])

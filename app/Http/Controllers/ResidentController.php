@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Organization;
 use App\Models\Resident;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -102,5 +103,42 @@ class ResidentController extends Controller
                 ],
             ],
         ]);
+    }
+
+    /**
+     * Update the specified resident.
+     */
+    public function update(Request $request, Resident $resident): RedirectResponse
+    {
+        $validated = $request->validate([
+            'first_name' => ['required', 'string', 'max:255'],
+            'middle_name' => ['nullable', 'string', 'max:255'],
+            'last_name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'email', 'max:255', 'unique:residents,email,'.$resident->id],
+            'contact_number' => ['required', 'string', 'max:20'],
+            'course' => ['required', 'string', 'max:255'],
+            'year_level' => ['required', 'string', 'in:Pre Resident,First Year,Second Year,Third Year,Fourth Year,Graduate'],
+            'status' => ['required', 'string', 'in:active,inactive'],
+            'password' => ['nullable', 'string', 'min:8', 'confirmed'],
+        ]);
+
+        $resident->update($validated);
+
+        // Update linked user if exists
+        if ($resident->user) {
+            $resident->user->update([
+                'name' => $resident->full_name,
+                'email' => $validated['email'],
+            ]);
+
+            // Update password if provided
+            if (! empty($validated['password'])) {
+                $resident->user->update([
+                    'password' => bcrypt($validated['password']),
+                ]);
+            }
+        }
+
+        return back()->with('success', 'Resident updated successfully');
     }
 }
