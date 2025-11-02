@@ -13,6 +13,15 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
+        // Seed in correct order
+        $this->call([
+            OrganizationSeeder::class,  // Create organizations
+            RoleSeeder::class,           // Create roles
+            PermissionSeeder::class,     // Create permissions
+            RolePermissionSeeder::class, // Assign permissions to roles
+            // ResidentSeeder::class,    // Uncomment to seed residents
+        ]);
+
         // User::factory(10)->create();
 
         User::firstOrCreate(

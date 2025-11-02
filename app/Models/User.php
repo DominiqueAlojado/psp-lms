@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Str;
 use Laravel\Fortify\TwoFactorAuthenticatable;
 use Spatie\Permission\Traits\HasRoles;
 
@@ -22,6 +23,7 @@ class User extends Authenticatable
      * @var list<string>
      */
     protected $fillable = [
+        'uuid',
         'name',
         'email',
         'password',
@@ -52,6 +54,15 @@ class User extends Authenticatable
             'password' => 'hashed',
             'two_factor_confirmed_at' => 'datetime',
         ];
+    }
+
+    protected static function booted(): void
+    {
+        static::creating(function (User $user) {
+            if (empty($user->uuid)) {
+                $user->uuid = (string) Str::uuid();
+            }
+        });
     }
 
     /**
@@ -99,5 +110,41 @@ class User extends Authenticatable
     public function activeOrganizations(): BelongsToMany
     {
         return $this->organizations()->wherePivot('is_active', true);
+    }
+
+    /**
+     * Get all organizations where this user is a training officer.
+     */
+    public function organizationsAsTrainingOfficer()
+    {
+        return Organization::whereJsonContains('training_officers', $this->id)->get();
+    }
+
+    /**
+     * Check if the user is a training officer in a specific organization.
+     */
+    public function isTrainingOfficerOf(Organization $organization): bool
+    {
+        return $organization->hasTrainingOfficer($this);
+    }
+
+    /**
+     * Check if the user is a training officer in their current organization.
+     */
+    public function isTrainingOfficer(): bool
+    {
+        if (! $this->currentOrganization) {
+            return false;
+        }
+
+        return $this->isTrainingOfficerOf($this->currentOrganization);
+    }
+
+    /**
+     * Get the resident profile associated with this user.
+     */
+    public function resident()
+    {
+        return $this->hasOne(Resident::class);
     }
 }
