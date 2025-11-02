@@ -32,7 +32,7 @@ export function OrganizationSwitcher() {
                 <Button
                     variant="outline"
                     role="combobox"
-                    className="h-9 w-[200px] justify-between"
+                    className="h-9 w-[250px] justify-between"
                 >
                     <div className="flex items-center gap-2 overflow-hidden">
                         <Building2 className="h-4 w-4 shrink-0" />
@@ -43,7 +43,7 @@ export function OrganizationSwitcher() {
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-[200px]" align="start">
+            <DropdownMenuContent className="w-[250px] max-h-[400px] overflow-y-auto" align="start">
                 <DropdownMenuLabel>Your Organizations</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 {organizations.map((organization) => (
