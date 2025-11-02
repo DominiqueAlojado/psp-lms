@@ -15,6 +15,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
         return Inertia::render('dashboard');
     })->name('dashboard');
 
+    // Residents
+    Route::get('residents', [App\Http\Controllers\ResidentController::class, 'index'])
+        ->name('residents.index');
+    Route::get('residents/{resident}', [App\Http\Controllers\ResidentController::class, 'show'])
+        ->name('residents.show');
+
     // Organization switching
     Route::post('organization/{organization}/switch', [App\Http\Controllers\OrganizationController::class, 'switch'])
         ->name('organization.switch');

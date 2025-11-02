@@ -113,4 +113,21 @@ class Resident extends Model
     {
         return $query->where('organization_id', $organizationId);
     }
+
+    /**
+     * Scope to search residents by name, email, or contact number.
+     */
+    public function scopeSearch($query, $search)
+    {
+        if (empty($search)) {
+            return $query;
+        }
+
+        return $query->where(function ($q) use ($search) {
+            $q->where('first_name', 'ilike', "%{$search}%")
+                ->orWhere('last_name', 'ilike', "%{$search}%")
+                ->orWhere('email', 'ilike', "%{$search}%")
+                ->orWhere('contact_number', 'ilike', "%{$search}%");
+        });
+    }
 }

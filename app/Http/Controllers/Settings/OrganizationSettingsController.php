@@ -152,7 +152,7 @@ class OrganizationSettingsController extends Controller
             'email' => ['required', 'email', 'max:255', 'unique:residents,email,'.$resident->id],
             'contact_number' => ['required', 'string', 'max:20'],
             'course' => ['required', 'string', 'max:255'],
-            'year_level' => ['required', 'string', 'in:Pre-Resident,First Year,Second Year,Third Year,Fourth Year,Graduate'],
+            'year_level' => ['required', 'string', 'in:Pre Resident,First Year,Second Year,Third Year,Fourth Year,Graduate'],
             'status' => ['required', 'string', 'in:active,inactive'],
             'password' => ['nullable', 'string', 'min:8', 'confirmed'],
         ]);
