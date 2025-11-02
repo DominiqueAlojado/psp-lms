@@ -23,14 +23,14 @@ const mainNavItems: NavItem[] = [
         href: dashboard(),
         icon: LayoutGrid,
     },
+];
+
+const footerNavItems: NavItem[] = [
     {
         title: 'Residents',
         href: '/residents',
         icon: Users,
     },
-];
-
-const footerNavItems: NavItem[] = [
     {
         title: 'Repository',
         href: 'https://github.com/laravel/react-starter-kit',
