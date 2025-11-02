@@ -35,31 +35,18 @@ interface Permission {
     id: number;
     name: string;
     guard_name: string;
+    category: string;
+    display_order: number;
 }
 
 interface Props {
     roles: Role[];
     permissions: Permission[];
+    groupedPermissions: Record<string, Permission[]>;
 }
 
-// Group permissions by category
-const permissionGroups = {
-    'Course Management': ['view-courses', 'create-courses', 'edit-courses', 'delete-courses', 'publish-courses', 'enroll-residents', 'manage-course-content', 'assign-instructors'],
-    'Resident Management': ['view-residents', 'create-residents', 'edit-residents', 'delete-residents', 'view-resident-progress', 'approve-residents', 'deactivate-residents'],
-    'Learning Materials': ['view-materials', 'upload-materials', 'edit-materials', 'delete-materials', 'download-materials', 'approve-materials'],
-    'Assessments': ['view-assessments', 'create-assessments', 'edit-assessments', 'delete-assessments', 'take-assessments', 'grade-assessments', 'view-assessment-results', 'export-assessment-results'],
-    'Case Studies': ['view-cases', 'submit-cases', 'review-cases', 'approve-cases', 'edit-cases', 'delete-cases'],
-    'Certificates': ['view-certificates', 'issue-certificates', 'revoke-certificates', 'verify-certificates'],
-    'Reports & Analytics': ['view-reports', 'generate-reports', 'export-reports', 'view-analytics', 'view-organization-analytics'],
-    'Organization': ['manage-organization', 'manage-organization-settings', 'manage-training-officers', 'view-organization-members'],
-    'User Management': ['view-users', 'create-users', 'edit-users', 'delete-users', 'assign-roles', 'manage-permissions'],
-    'Announcements': ['view-announcements', 'create-announcements', 'edit-announcements', 'delete-announcements', 'send-notifications'],
-    'Logbook': ['view-logbook', 'create-logbook-entries', 'edit-logbook-entries', 'delete-logbook-entries', 'approve-logbook-entries', 'export-logbook'],
-    'Rotations & Schedules': ['view-rotations', 'create-rotations', 'edit-rotations', 'assign-rotations', 'view-schedules', 'manage-schedules'],
-};
-
 export default function RolesPermissions() {
-    const { roles, permissions } = usePage<Props>().props;
+    const { roles, permissions, groupedPermissions } = usePage<Props>().props;
     const [editingRole, setEditingRole] = useState<Role | null>(null);
     const [addingRole, setAddingRole] = useState(false);
     const [editingPermission, setEditingPermission] = useState<Permission | null>(null);
@@ -430,6 +417,7 @@ export default function RolesPermissions() {
                             >
                                 {(() => {
                                     const { errors } = usePage<any>().props;
+                                    const categories = Object.keys(groupedPermissions);
                                     return (
                                         <div className="space-y-6">
                                             {Object.keys(errors).length > 0 && (
@@ -447,6 +435,21 @@ export default function RolesPermissions() {
                                                 <p className="text-xs text-muted-foreground">
                                                     Use kebab-case (e.g., view-users, edit-courses)
                                                 </p>
+                                            </div>
+
+                                            <div className="space-y-2">
+                                                <Label htmlFor="permission_category">Category</Label>
+                                                <select
+                                                    id="permission_category"
+                                                    name="category"
+                                                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                                    required
+                                                >
+                                                    <option value="">Select category...</option>
+                                                    {categories.map(cat => (
+                                                        <option key={cat} value={cat}>{cat}</option>
+                                                    ))}
+                                                </select>
                                             </div>
 
                                             <div className="flex justify-end gap-3 pt-4 border-t">
@@ -493,6 +496,7 @@ export default function RolesPermissions() {
                                 >
                                     {(() => {
                                         const { errors } = usePage<any>().props;
+                                        const categories = Object.keys(groupedPermissions);
                                         return (
                                             <div className="space-y-6">
                                                 {Object.keys(errors).length > 0 && (
@@ -507,6 +511,22 @@ export default function RolesPermissions() {
                                                         defaultValue={editingPermission.name}
                                                         required
                                                     />
+                                                </div>
+
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="edit_permission_category">Category</Label>
+                                                    <select
+                                                        id="edit_permission_category"
+                                                        name="category"
+                                                        defaultValue={editingPermission.category}
+                                                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                                        required
+                                                    >
+                                                        <option value="">Select category...</option>
+                                                        {categories.map(cat => (
+                                                            <option key={cat} value={cat}>{cat}</option>
+                                                        ))}
+                                                    </select>
                                                 </div>
 
                                                 <div className="flex justify-end gap-3 pt-4 border-t">
@@ -570,12 +590,7 @@ export default function RolesPermissions() {
                                     </div>
 
                                     <div className="space-y-4 max-h-[500px] overflow-y-auto rounded-lg border p-4">
-                                        {Object.entries(permissionGroups).map(([category, permNames]) => {
-                                            // Filter permissions that belong to this category
-                                            const categoryPermissions = permissions.filter(p => 
-                                                permNames.includes(p.name)
-                                            );
-
+                                        {Object.entries(groupedPermissions).map(([category, categoryPermissions]) => {
                                             if (categoryPermissions.length === 0) return null;
 
                                             // Check if all in this category are selected

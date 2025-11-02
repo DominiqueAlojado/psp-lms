@@ -17,107 +17,108 @@ class PermissionSeeder extends Seeder
 
         $permissions = [
             // Course Management
-            'view-courses',
-            'create-courses',
-            'edit-courses',
-            'delete-courses',
-            'publish-courses',
-            'enroll-residents',
-            'manage-course-content',
-            'assign-instructors',
+            ['name' => 'view-courses', 'category' => 'Course Management', 'display_order' => 1],
+            ['name' => 'create-courses', 'category' => 'Course Management', 'display_order' => 2],
+            ['name' => 'edit-courses', 'category' => 'Course Management', 'display_order' => 3],
+            ['name' => 'delete-courses', 'category' => 'Course Management', 'display_order' => 4],
+            ['name' => 'publish-courses', 'category' => 'Course Management', 'display_order' => 5],
+            ['name' => 'enroll-residents', 'category' => 'Course Management', 'display_order' => 6],
+            ['name' => 'manage-course-content', 'category' => 'Course Management', 'display_order' => 7],
+            ['name' => 'assign-instructors', 'category' => 'Course Management', 'display_order' => 8],
 
-            // Resident/Student Management
-            'view-residents',
-            'create-residents',
-            'edit-residents',
-            'delete-residents',
-            'view-resident-progress',
-            'approve-residents',
-            'deactivate-residents',
+            // Resident Management
+            ['name' => 'view-residents', 'category' => 'Resident Management', 'display_order' => 1],
+            ['name' => 'create-residents', 'category' => 'Resident Management', 'display_order' => 2],
+            ['name' => 'edit-residents', 'category' => 'Resident Management', 'display_order' => 3],
+            ['name' => 'delete-residents', 'category' => 'Resident Management', 'display_order' => 4],
+            ['name' => 'view-resident-progress', 'category' => 'Resident Management', 'display_order' => 5],
+            ['name' => 'approve-residents', 'category' => 'Resident Management', 'display_order' => 6],
+            ['name' => 'deactivate-residents', 'category' => 'Resident Management', 'display_order' => 7],
 
-            // Learning Content/Materials
-            'view-materials',
-            'upload-materials',
-            'edit-materials',
-            'delete-materials',
-            'download-materials',
-            'approve-materials',
+            // Learning Materials
+            ['name' => 'view-materials', 'category' => 'Learning Materials', 'display_order' => 1],
+            ['name' => 'upload-materials', 'category' => 'Learning Materials', 'display_order' => 2],
+            ['name' => 'edit-materials', 'category' => 'Learning Materials', 'display_order' => 3],
+            ['name' => 'delete-materials', 'category' => 'Learning Materials', 'display_order' => 4],
+            ['name' => 'download-materials', 'category' => 'Learning Materials', 'display_order' => 5],
+            ['name' => 'approve-materials', 'category' => 'Learning Materials', 'display_order' => 6],
 
-            // Assessments/Examinations
-            'view-assessments',
-            'create-assessments',
-            'edit-assessments',
-            'delete-assessments',
-            'take-assessments',
-            'grade-assessments',
-            'view-assessment-results',
-            'export-assessment-results',
+            // Assessments
+            ['name' => 'view-assessments', 'category' => 'Assessments', 'display_order' => 1],
+            ['name' => 'create-assessments', 'category' => 'Assessments', 'display_order' => 2],
+            ['name' => 'edit-assessments', 'category' => 'Assessments', 'display_order' => 3],
+            ['name' => 'delete-assessments', 'category' => 'Assessments', 'display_order' => 4],
+            ['name' => 'take-assessments', 'category' => 'Assessments', 'display_order' => 5],
+            ['name' => 'grade-assessments', 'category' => 'Assessments', 'display_order' => 6],
+            ['name' => 'view-assessment-results', 'category' => 'Assessments', 'display_order' => 7],
+            ['name' => 'export-assessment-results', 'category' => 'Assessments', 'display_order' => 8],
 
-            // Case Studies/Pathology Cases
-            'view-cases',
-            'submit-cases',
-            'review-cases',
-            'approve-cases',
-            'edit-cases',
-            'delete-cases',
+            // Case Studies
+            ['name' => 'view-cases', 'category' => 'Case Studies', 'display_order' => 1],
+            ['name' => 'submit-cases', 'category' => 'Case Studies', 'display_order' => 2],
+            ['name' => 'review-cases', 'category' => 'Case Studies', 'display_order' => 3],
+            ['name' => 'approve-cases', 'category' => 'Case Studies', 'display_order' => 4],
+            ['name' => 'edit-cases', 'category' => 'Case Studies', 'display_order' => 5],
+            ['name' => 'delete-cases', 'category' => 'Case Studies', 'display_order' => 6],
 
-            // Certifications/Credentials
-            'view-certificates',
-            'issue-certificates',
-            'revoke-certificates',
-            'verify-certificates',
+            // Certificates
+            ['name' => 'view-certificates', 'category' => 'Certificates', 'display_order' => 1],
+            ['name' => 'issue-certificates', 'category' => 'Certificates', 'display_order' => 2],
+            ['name' => 'revoke-certificates', 'category' => 'Certificates', 'display_order' => 3],
+            ['name' => 'verify-certificates', 'category' => 'Certificates', 'display_order' => 4],
 
             // Reports & Analytics
-            'view-reports',
-            'generate-reports',
-            'export-reports',
-            'view-analytics',
-            'view-organization-analytics',
+            ['name' => 'view-reports', 'category' => 'Reports & Analytics', 'display_order' => 1],
+            ['name' => 'generate-reports', 'category' => 'Reports & Analytics', 'display_order' => 2],
+            ['name' => 'export-reports', 'category' => 'Reports & Analytics', 'display_order' => 3],
+            ['name' => 'view-analytics', 'category' => 'Reports & Analytics', 'display_order' => 4],
+            ['name' => 'view-organization-analytics', 'category' => 'Reports & Analytics', 'display_order' => 5],
 
-            // Organization Management
-            'manage-organization',
-            'manage-organization-settings',
-            'manage-training-officers',
-            'view-organization-members',
+            // Organization
+            ['name' => 'manage-organization', 'category' => 'Organization', 'display_order' => 1],
+            ['name' => 'manage-organization-settings', 'category' => 'Organization', 'display_order' => 2],
+            ['name' => 'manage-training-officers', 'category' => 'Organization', 'display_order' => 3],
+            ['name' => 'view-organization-members', 'category' => 'Organization', 'display_order' => 4],
 
             // User Management
-            'view-users',
-            'create-users',
-            'edit-users',
-            'delete-users',
-            'assign-roles',
-            'manage-permissions',
+            ['name' => 'view-users', 'category' => 'User Management', 'display_order' => 1],
+            ['name' => 'create-users', 'category' => 'User Management', 'display_order' => 2],
+            ['name' => 'edit-users', 'category' => 'User Management', 'display_order' => 3],
+            ['name' => 'delete-users', 'category' => 'User Management', 'display_order' => 4],
+            ['name' => 'assign-roles', 'category' => 'User Management', 'display_order' => 5],
+            ['name' => 'manage-permissions', 'category' => 'User Management', 'display_order' => 6],
 
-            // Announcements/Communications
-            'view-announcements',
-            'create-announcements',
-            'edit-announcements',
-            'delete-announcements',
-            'send-notifications',
+            // Announcements
+            ['name' => 'view-announcements', 'category' => 'Announcements', 'display_order' => 1],
+            ['name' => 'create-announcements', 'category' => 'Announcements', 'display_order' => 2],
+            ['name' => 'edit-announcements', 'category' => 'Announcements', 'display_order' => 3],
+            ['name' => 'delete-announcements', 'category' => 'Announcements', 'display_order' => 4],
+            ['name' => 'send-notifications', 'category' => 'Announcements', 'display_order' => 5],
 
-            // Logbook/Clinical Experience
-            'view-logbook',
-            'create-logbook-entries',
-            'edit-logbook-entries',
-            'delete-logbook-entries',
-            'approve-logbook-entries',
-            'export-logbook',
+            // Logbook
+            ['name' => 'view-logbook', 'category' => 'Logbook', 'display_order' => 1],
+            ['name' => 'create-logbook-entries', 'category' => 'Logbook', 'display_order' => 2],
+            ['name' => 'edit-logbook-entries', 'category' => 'Logbook', 'display_order' => 3],
+            ['name' => 'delete-logbook-entries', 'category' => 'Logbook', 'display_order' => 4],
+            ['name' => 'approve-logbook-entries', 'category' => 'Logbook', 'display_order' => 5],
+            ['name' => 'export-logbook', 'category' => 'Logbook', 'display_order' => 6],
 
-            // Rotation/Schedule Management
-            'view-rotations',
-            'create-rotations',
-            'edit-rotations',
-            'assign-rotations',
-            'view-schedules',
-            'manage-schedules',
+            // Rotations & Schedules
+            ['name' => 'view-rotations', 'category' => 'Rotations & Schedules', 'display_order' => 1],
+            ['name' => 'create-rotations', 'category' => 'Rotations & Schedules', 'display_order' => 2],
+            ['name' => 'edit-rotations', 'category' => 'Rotations & Schedules', 'display_order' => 3],
+            ['name' => 'assign-rotations', 'category' => 'Rotations & Schedules', 'display_order' => 4],
+            ['name' => 'view-schedules', 'category' => 'Rotations & Schedules', 'display_order' => 5],
+            ['name' => 'manage-schedules', 'category' => 'Rotations & Schedules', 'display_order' => 6],
         ];
 
         foreach ($permissions as $permission) {
-            Permission::firstOrCreate(
-                ['name' => $permission, 'guard_name' => 'web']
+            Permission::updateOrCreate(
+                ['name' => $permission['name'], 'guard_name' => 'web'],
+                $permission
             );
         }
 
-        $this->command->info('Created '.count($permissions).' permissions');
+        $this->command->info('Created/Updated '.count($permissions).' permissions with categories');
     }
 }

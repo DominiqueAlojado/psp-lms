@@ -27,15 +27,26 @@ class RolesPermissionsController extends Controller
                 'permissions' => $role->permissions->pluck('name'),
             ]);
 
-        $permissions = Permission::all()->map(fn ($permission) => [
-            'id' => $permission->id,
-            'name' => $permission->name,
-            'guard_name' => $permission->guard_name,
-        ]);
+        $permissions = Permission::orderBy('category')
+            ->orderBy('display_order')
+            ->get()
+            ->map(fn ($permission) => [
+                'id' => $permission->id,
+                'name' => $permission->name,
+                'guard_name' => $permission->guard_name,
+                'category' => $permission->category ?? 'Other',
+                'display_order' => $permission->display_order,
+            ]);
+
+        // Group permissions by category
+        $groupedPermissions = $permissions->groupBy('category')->map(function ($perms) {
+            return $perms->values();
+        });
 
         return Inertia::render('settings/roles-permissions', [
             'roles' => $roles,
             'permissions' => $permissions,
+            'groupedPermissions' => $groupedPermissions,
         ]);
     }
 
@@ -92,11 +103,14 @@ class RolesPermissionsController extends Controller
     {
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255', 'unique:permissions,name'],
+            'category' => ['required', 'string', 'max:255'],
         ]);
 
         Permission::create([
             'name' => $validated['name'],
             'guard_name' => 'web',
+            'category' => $validated['category'],
+            'display_order' => 999, // Put new permissions at the end
         ]);
 
         return back()->with('success', 'Permission created successfully');
@@ -109,6 +123,7 @@ class RolesPermissionsController extends Controller
     {
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255', 'unique:permissions,name,'.$permission->id],
+            'category' => ['required', 'string', 'max:255'],
         ]);
 
         $permission->update($validated);
