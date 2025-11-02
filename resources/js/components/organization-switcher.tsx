@@ -19,9 +19,10 @@ export function OrganizationSwitcher() {
         return null;
     }
 
-    const handleSwitch = (organizationId: number) => {
+    const handleSwitch = (organizationId: number, organizationSlug: string) => {
         router.post(`/organization/${organizationId}/switch`, {}, {
             preserveScroll: true,
+            preserveState: true,
         });
     };
 
@@ -48,7 +49,7 @@ export function OrganizationSwitcher() {
                 {organizations.map((organization) => (
                     <DropdownMenuItem
                         key={organization.id}
-                        onClick={() => handleSwitch(organization.id)}
+                        onClick={() => handleSwitch(organization.id, organization.slug)}
                         className="cursor-pointer"
                     >
                         <div className="flex w-full items-center justify-between">

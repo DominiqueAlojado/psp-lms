@@ -23,6 +23,27 @@ class OrganizationController extends Controller
         // Switch to the organization
         $user->switchOrganization($organization);
 
-        return back()->with('success', "Switched to {$organization->name}");
+        // Get the referer URL
+        $referer = $request->header('referer') ?? route('dashboard');
+        $url = parse_url($referer);
+
+        // Get the path, excluding any /organization/* routes
+        $path = $url['path'] ?? '/dashboard';
+
+        // If the path is an organization switch route, redirect to dashboard instead
+        if (str_contains($path, '/organization/')) {
+            $path = '/dashboard';
+        }
+
+        // Parse existing query parameters
+        parse_str($url['query'] ?? '', $queryParams);
+
+        // Add/update the org parameter
+        $queryParams['org'] = $organization->slug;
+
+        // Rebuild the URL with the org parameter
+        $redirectUrl = $path.'?'.http_build_query($queryParams);
+
+        return redirect($redirectUrl)->with('success', "Switched to {$organization->name}");
     }
 }
