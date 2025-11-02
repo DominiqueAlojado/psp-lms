@@ -46,6 +46,7 @@ export default function SettingsLayout({ children }: PropsWithChildren) {
     }
 
     const currentPath = window.location.pathname;
+    const isOrganizationPage = currentPath.includes('/settings/organization');
 
     return (
         <div className="px-4 py-6">
@@ -83,8 +84,14 @@ export default function SettingsLayout({ children }: PropsWithChildren) {
 
                 <Separator className="my-6 lg:hidden" />
 
-                <div className="flex-1 md:max-w-2xl">
-                    <section className="max-w-xl space-y-12">
+                <div className={cn(
+                    "flex-1",
+                    isOrganizationPage ? "md:max-w-7xl" : "md:max-w-2xl"
+                )}>
+                    <section className={cn(
+                        "space-y-12",
+                        isOrganizationPage ? "max-w-full" : "max-w-xl"
+                    )}>
                         {children}
                     </section>
                 </div>
