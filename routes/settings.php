@@ -3,6 +3,7 @@
 use App\Http\Controllers\Settings\OrganizationSettingsController;
 use App\Http\Controllers\Settings\PasswordController;
 use App\Http\Controllers\Settings\ProfileController;
+use App\Http\Controllers\Settings\RolesPermissionsController;
 use App\Http\Controllers\Settings\TwoFactorAuthenticationController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -37,4 +38,28 @@ Route::middleware('auth')->group(function () {
         ->name('organization.logo.delete');
     Route::patch('settings/organization/residents/{resident}', [OrganizationSettingsController::class, 'updateResident'])
         ->name('organization.residents.update');
+
+    // Roles & Permissions Management
+    Route::get('settings/roles-permissions', [RolesPermissionsController::class, 'index'])
+        ->name('roles-permissions.index');
+
+    // Roles
+    Route::post('settings/roles', [RolesPermissionsController::class, 'storeRole'])
+        ->name('roles.store');
+    Route::patch('settings/roles/{role}', [RolesPermissionsController::class, 'updateRole'])
+        ->name('roles.update');
+    Route::delete('settings/roles/{role}', [RolesPermissionsController::class, 'deleteRole'])
+        ->name('roles.delete');
+
+    // Permissions
+    Route::post('settings/permissions', [RolesPermissionsController::class, 'storePermission'])
+        ->name('permissions.store');
+    Route::patch('settings/permissions/{permission}', [RolesPermissionsController::class, 'updatePermission'])
+        ->name('permissions.update');
+    Route::delete('settings/permissions/{permission}', [RolesPermissionsController::class, 'deletePermission'])
+        ->name('permissions.delete');
+
+    // Assign permissions to role
+    Route::post('settings/roles/{role}/permissions', [RolesPermissionsController::class, 'syncRolePermissions'])
+        ->name('roles.permissions.sync');
 });

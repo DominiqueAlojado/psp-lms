@@ -33,6 +33,11 @@ const sidebarNavItems: NavItem[] = [
         icon: null,
     },
     {
+        title: 'Roles & Permissions',
+        href: { url: '/settings/roles-permissions', method: 'get' },
+        icon: null,
+    },
+    {
         title: 'Appearance',
         href: editAppearance(),
         icon: null,
@@ -47,6 +52,8 @@ export default function SettingsLayout({ children }: PropsWithChildren) {
 
     const currentPath = window.location.pathname;
     const isOrganizationPage = currentPath.includes('/settings/organization');
+    const isRolesPermissionsPage = currentPath.includes('/settings/roles-permissions');
+    const isWidePage = isOrganizationPage || isRolesPermissionsPage;
 
     return (
         <div className="px-4 py-6">
@@ -86,11 +93,11 @@ export default function SettingsLayout({ children }: PropsWithChildren) {
 
                 <div className={cn(
                     "flex-1",
-                    isOrganizationPage ? "md:max-w-7xl" : "md:max-w-2xl"
+                    isWidePage ? "md:max-w-7xl" : "md:max-w-2xl"
                 )}>
                     <section className={cn(
                         "space-y-12",
-                        isOrganizationPage ? "max-w-full" : "max-w-xl"
+                        isWidePage ? "max-w-full" : "max-w-xl"
                     )}>
                         {children}
                     </section>
