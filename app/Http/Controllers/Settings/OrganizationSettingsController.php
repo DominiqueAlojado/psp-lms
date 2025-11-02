@@ -149,12 +149,15 @@ class OrganizationSettingsController extends Controller
             'first_name' => ['required', 'string', 'max:255'],
             'middle_name' => ['nullable', 'string', 'max:255'],
             'last_name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', 'max:255', 'unique:residents,email,'.$resident->id],
-            'contact_number' => ['required', 'string', 'max:20'],
+            'email' => ['required', 'email:rfc', 'max:255', 'unique:residents,email,'.$resident->id],
+            'contact_number' => ['required', 'string', 'regex:/^(\+63|0)?9\d{9}$/'],
             'course' => ['required', 'string', 'max:255'],
             'year_level' => ['required', 'string', 'in:Pre Resident,First Year,Second Year,Third Year,Fourth Year,Graduate'],
             'status' => ['required', 'string', 'in:active,inactive'],
             'password' => ['nullable', 'string', 'min:8', 'confirmed'],
+        ], [
+            'email.email' => 'Please enter a valid email address.',
+            'contact_number.regex' => 'Contact number must be a valid Philippine mobile number (e.g., 09123456789 or +639123456789).',
         ]);
 
         $resident->update($validated);

@@ -519,11 +519,18 @@ export default function OrganizationSettings() {
                                                             <Input
                                                                 id="edit_contact_number"
                                                                 name="contact_number"
+                                                                placeholder="09123456789 or +639123456789"
                                                                 defaultValue={
                                                                     editingResident.contact_number
                                                                 }
                                                                 required
                                                             />
+                                                            <p className="text-xs text-muted-foreground">
+                                                                Philippine
+                                                                mobile number
+                                                                format (11
+                                                                digits)
+                                                            </p>
                                                         </div>
 
                                                         <div className="grid gap-4 md:grid-cols-2">

@@ -74,6 +74,70 @@ class ResidentController extends Controller
     }
 
     /**
+     * Store a newly created resident.
+     */
+    public function store(Request $request): RedirectResponse
+    {
+        try {
+            \Log::info('Creating resident with data:', $request->all());
+
+            $validated = $request->validate([
+                'organization_id' => ['required', 'exists:organizations,id'],
+                'first_name' => ['required', 'string', 'max:255'],
+                'middle_name' => ['nullable', 'string', 'max:255'],
+                'last_name' => ['required', 'string', 'max:255'],
+                'email' => ['required', 'email:rfc', 'max:255', 'unique:residents,email'],
+                'contact_number' => ['required', 'string', 'regex:/^(\+63|0)?9\d{9}$/'],
+                'course' => ['required', 'string', 'max:255'],
+                'year_level' => ['required', 'string', 'in:Pre Resident,First Year,Second Year,Third Year,Fourth Year,Graduate'],
+                'status' => ['required', 'string', 'in:active,inactive'],
+                'password' => ['required', 'string', 'min:8', 'confirmed'],
+            ], [
+                'email.email' => 'Please enter a valid email address.',
+                'contact_number.regex' => 'Contact number must be a valid Philippine mobile number (e.g., 09123456789 or +639123456789).',
+            ]);
+
+            \Log::info('Validation passed', $validated);
+
+            // Create the resident (exclude password fields)
+            $residentData = collect($validated)->except(['password', 'password_confirmation'])->toArray();
+            $resident = Resident::create($residentData);
+            \Log::info('Resident created', ['id' => $resident->id]);
+
+            // Create a user account for the resident
+            $user = \App\Models\User::create([
+                'name' => $resident->full_name,
+                'email' => $validated['email'],
+                'password' => bcrypt($validated['password']),
+            ]);
+            \Log::info('User created', ['id' => $user->id]);
+
+            // Link the user to the resident
+            $resident->update(['user_id' => $user->id]);
+
+            // Attach user to organization
+            $user->organizations()->attach($validated['organization_id'], [
+                'joined_at' => now(),
+                'is_active' => true,
+            ]);
+            \Log::info('User attached to organization');
+
+            // Assign "Resident" role to the user (scoped to organization)
+            $user->assignRole('Resident');
+            \Log::info('Role assigned');
+
+            return back()->with('success', 'Resident created successfully');
+        } catch (\Exception $e) {
+            \Log::error('Error creating resident: '.$e->getMessage(), [
+                'exception' => $e,
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return back()->withErrors(['error' => 'Failed to create resident: '.$e->getMessage()]);
+        }
+    }
+
+    /**
      * Display the specified resident.
      */
     public function show(Resident $resident): Response
@@ -114,12 +178,15 @@ class ResidentController extends Controller
             'first_name' => ['required', 'string', 'max:255'],
             'middle_name' => ['nullable', 'string', 'max:255'],
             'last_name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', 'max:255', 'unique:residents,email,'.$resident->id],
-            'contact_number' => ['required', 'string', 'max:20'],
+            'email' => ['required', 'email:rfc', 'max:255', 'unique:residents,email,'.$resident->id],
+            'contact_number' => ['required', 'string', 'regex:/^(\+63|0)?9\d{9}$/'],
             'course' => ['required', 'string', 'max:255'],
             'year_level' => ['required', 'string', 'in:Pre Resident,First Year,Second Year,Third Year,Fourth Year,Graduate'],
             'status' => ['required', 'string', 'in:active,inactive'],
             'password' => ['nullable', 'string', 'min:8', 'confirmed'],
+        ], [
+            'email.email' => 'Please enter a valid email address.',
+            'contact_number.regex' => 'Contact number must be a valid Philippine mobile number (e.g., 09123456789 or +639123456789).',
         ]);
 
         $resident->update($validated);
@@ -140,5 +207,15 @@ class ResidentController extends Controller
         }
 
         return back()->with('success', 'Resident updated successfully');
+    }
+
+    /**
+     * Remove the specified resident.
+     */
+    public function destroy(Resident $resident): RedirectResponse
+    {
+        $resident->delete();
+
+        return back()->with('success', 'Resident deleted successfully');
     }
 }
