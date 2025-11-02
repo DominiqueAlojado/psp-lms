@@ -33,7 +33,6 @@ export function PersonalInformationFields({
                         name="organization_id"
                         defaultValue={defaultValues.organization_id || ''}
                         className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none"
-                        required
                     >
                         <option value="">Select organization...</option>
                         {organizations.map((org) => (
@@ -42,6 +41,11 @@ export function PersonalInformationFields({
                             </option>
                         ))}
                     </select>
+                    {validationErrors.organization_id && (
+                        <p className="text-sm text-destructive">
+                            {validationErrors.organization_id}
+                        </p>
+                    )}
                 </div>
             )}
 
@@ -51,8 +55,12 @@ export function PersonalInformationFields({
                     id="first_name"
                     name="first_name"
                     defaultValue={defaultValues.first_name || ''}
-                    required
                 />
+                {validationErrors.first_name && (
+                    <p className="text-sm text-destructive">
+                        {validationErrors.first_name}
+                    </p>
+                )}
             </div>
 
             <div className="space-y-2">
@@ -62,6 +70,11 @@ export function PersonalInformationFields({
                     name="middle_name"
                     defaultValue={defaultValues.middle_name || ''}
                 />
+                {validationErrors.middle_name && (
+                    <p className="text-sm text-destructive">
+                        {validationErrors.middle_name}
+                    </p>
+                )}
             </div>
 
             <div className="space-y-2">
@@ -70,8 +83,12 @@ export function PersonalInformationFields({
                     id="last_name"
                     name="last_name"
                     defaultValue={defaultValues.last_name || ''}
-                    required
                 />
+                {validationErrors.last_name && (
+                    <p className="text-sm text-destructive">
+                        {validationErrors.last_name}
+                    </p>
+                )}
             </div>
 
             <div className="space-y-2">
@@ -81,7 +98,6 @@ export function PersonalInformationFields({
                     name="email"
                     type="email"
                     defaultValue={defaultValues.email || ''}
-                    required
                 />
                 {validationErrors.email && (
                     <p className="text-sm text-destructive">
@@ -96,14 +112,12 @@ export function PersonalInformationFields({
                     id="contact_number"
                     name="contact_number"
                     type="tel"
-                    pattern="(\+63|0)?9\d{9}"
                     placeholder="09123456789 or +639123456789"
                     defaultValue={defaultValues.contact_number || ''}
                     onInput={(e) => {
                         const input = e.currentTarget;
                         input.value = input.value.replace(/[^\d+]/g, '');
                     }}
-                    required
                 />
                 <p className="text-xs text-muted-foreground">
                     Philippine mobile number format (11 digits)
@@ -121,8 +135,12 @@ export function PersonalInformationFields({
                     id="course"
                     name="course"
                     defaultValue={defaultValues.course || ''}
-                    required
                 />
+                {validationErrors.course && (
+                    <p className="text-sm text-destructive">
+                        {validationErrors.course}
+                    </p>
+                )}
             </div>
 
             <div className="space-y-2">
@@ -132,7 +150,6 @@ export function PersonalInformationFields({
                     name="year_level"
                     defaultValue={defaultValues.year_level || ''}
                     className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none"
-                    required
                 >
                     <option value="">Select year level...</option>
                     {yearLevels.map((level) => (
@@ -141,6 +158,11 @@ export function PersonalInformationFields({
                         </option>
                     ))}
                 </select>
+                {validationErrors.year_level && (
+                    <p className="text-sm text-destructive">
+                        {validationErrors.year_level}
+                    </p>
+                )}
             </div>
 
             <div className="space-y-2">
@@ -150,7 +172,6 @@ export function PersonalInformationFields({
                     name="status"
                     defaultValue={defaultValues.status || 'active'}
                     className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none"
-                    required
                 >
                     {statuses.map((status) => (
                         <option key={status} value={status}>
@@ -158,6 +179,11 @@ export function PersonalInformationFields({
                         </option>
                     ))}
                 </select>
+                {validationErrors.status && (
+                    <p className="text-sm text-destructive">
+                        {validationErrors.status}
+                    </p>
+                )}
             </div>
         </>
     );
@@ -177,14 +203,19 @@ export function AccountInformationFields({
     return (
         <>
             <div className="space-y-2">
-                <Label htmlFor="password">{isOptional ? 'New Password' : 'Password'}</Label>
+                <Label htmlFor="password">
+                    {isOptional ? 'New Password' : 'Password'}
+                </Label>
                 <Input
                     id="password"
                     name="password"
                     type="password"
-                    placeholder={isOptional ? 'Leave blank to keep current password' : undefined}
+                    placeholder={
+                        isOptional
+                            ? 'Leave blank to keep current password'
+                            : undefined
+                    }
                     defaultValue={defaultValues.password || ''}
-                    required={!isOptional}
                 />
                 {validationErrors.password && (
                     <p className="text-sm text-destructive">
@@ -199,9 +230,10 @@ export function AccountInformationFields({
                     id="password_confirmation"
                     name="password_confirmation"
                     type="password"
-                    placeholder={isOptional ? 'Confirm new password' : 'Confirm password'}
+                    placeholder={
+                        isOptional ? 'Confirm new password' : 'Confirm password'
+                    }
                     defaultValue={defaultValues.password_confirmation || ''}
-                    required={!isOptional}
                 />
                 {validationErrors.password_confirmation && (
                     <p className="text-sm text-destructive">
@@ -212,4 +244,3 @@ export function AccountInformationFields({
         </>
     );
 }
-

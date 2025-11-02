@@ -190,7 +190,6 @@ export default function ResidentsIndex({
                 resident={editingResident}
                 yearLevels={yearLevels}
                 statuses={statuses}
-                errors={errors}
                 onClose={() => setEditingResident(null)}
             />
 
@@ -200,7 +199,6 @@ export default function ResidentsIndex({
                 organizations={organizations}
                 yearLevels={yearLevels}
                 statuses={statuses}
-                errors={errors}
                 onClose={() => setAddingResident(false)}
             />
 

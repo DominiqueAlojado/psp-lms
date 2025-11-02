@@ -1,11 +1,19 @@
-import AlertError from '@/components/alert-error';
 import { Button } from '@/components/ui/button';
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import {
+    Sheet,
+    SheetContent,
+    SheetDescription,
+    SheetHeader,
+    SheetTitle,
+} from '@/components/ui/sheet';
 import { router } from '@inertiajs/react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { z } from 'zod';
-import { AccountInformationFields, PersonalInformationFields } from './resident-form-fields';
+import {
+    AccountInformationFields,
+    PersonalInformationFields,
+} from './resident-form-fields';
 import { step1Schema, step2Schema } from './validation-schemas';
 
 interface Organization {
@@ -18,7 +26,6 @@ interface Props {
     organizations: Organization[];
     yearLevels: string[];
     statuses: string[];
-    errors: Record<string, string>;
     onClose: () => void;
 }
 
@@ -27,12 +34,13 @@ export function CreateResidentSheet({
     organizations,
     yearLevels,
     statuses,
-    errors,
     onClose,
 }: Props) {
     const [currentStep, setCurrentStep] = useState(1);
     const [formData, setFormData] = useState<Record<string, string>>({});
-    const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+    const [validationErrors, setValidationErrors] = useState<
+        Record<string, string>
+    >({});
 
     const handleClose = () => {
         setCurrentStep(1);
@@ -98,7 +106,9 @@ export function CreateResidentSheet({
                     handleClose();
                 },
                 onError: () => {
-                    toast.error('Failed to create resident. Please check the form.');
+                    toast.error(
+                        'Failed to create resident. Please check the form.',
+                    );
                 },
             });
         } catch (error) {
@@ -172,18 +182,6 @@ export function CreateResidentSheet({
                                     Step 1: Personal Information
                                 </h3>
 
-                                {(Object.keys(errors).length > 0 ||
-                                    Object.keys(validationErrors).length > 0) && (
-                                    <AlertError
-                                        errors={
-                                            [
-                                                ...Object.values(errors),
-                                                ...Object.values(validationErrors),
-                                            ] as string[]
-                                        }
-                                    />
-                                )}
-
                                 <PersonalInformationFields
                                     organizations={organizations}
                                     yearLevels={yearLevels}
@@ -200,18 +198,6 @@ export function CreateResidentSheet({
                                 <h3 className="text-lg font-semibold">
                                     Step 2: Account Information
                                 </h3>
-
-                                {(Object.keys(errors).length > 0 ||
-                                    Object.keys(validationErrors).length > 0) && (
-                                    <AlertError
-                                        errors={
-                                            [
-                                                ...Object.values(errors),
-                                                ...Object.values(validationErrors),
-                                            ] as string[]
-                                        }
-                                    />
-                                )}
 
                                 <AccountInformationFields
                                     defaultValues={formData}
@@ -235,10 +221,16 @@ export function CreateResidentSheet({
                                 </>
                             ) : (
                                 <>
-                                    <Button type="button" variant="outline" onClick={handleBack}>
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        onClick={handleBack}
+                                    >
                                         Back
                                     </Button>
-                                    <Button type="submit">Create Resident</Button>
+                                    <Button type="submit">
+                                        Create Resident
+                                    </Button>
                                 </>
                             )}
                         </div>
@@ -248,4 +240,3 @@ export function CreateResidentSheet({
         </Sheet>
     );
 }
-

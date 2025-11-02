@@ -26,8 +26,10 @@ export function NavFooter({
             <SidebarGroupContent>
                 <SidebarMenu>
                     {items.map((item) => {
-                        const isExternal = item.href.startsWith('http://') || item.href.startsWith('https://');
-                        
+                        const isExternal =
+                            item.href.startsWith('http://') ||
+                            item.href.startsWith('https://');
+
                         return (
                             <SidebarMenuItem key={item.title}>
                                 <SidebarMenuButton

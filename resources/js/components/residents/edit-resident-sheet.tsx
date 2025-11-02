@@ -1,4 +1,3 @@
-import AlertError from '@/components/alert-error';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -31,7 +30,6 @@ interface Props {
     resident: Resident | null;
     yearLevels: string[];
     statuses: string[];
-    errors: Record<string, string>;
     onClose: () => void;
 }
 
@@ -40,7 +38,6 @@ export function EditResidentSheet({
     resident,
     yearLevels,
     statuses,
-    errors,
     onClose,
 }: Props) {
     if (!resident) return null;
@@ -80,10 +77,6 @@ export function EditResidentSheet({
                             </TabsList>
 
                             <TabsContent value="personal" className="space-y-6">
-                                {Object.keys(errors).length > 0 && (
-                                    <AlertError errors={Object.values(errors)} />
-                                )}
-
                                 <PersonalInformationFields
                                     organizations={[resident.organization]}
                                     yearLevels={yearLevels}
@@ -103,10 +96,6 @@ export function EditResidentSheet({
                             </TabsContent>
 
                             <TabsContent value="account" className="space-y-6">
-                                {Object.keys(errors).length > 0 && (
-                                    <AlertError errors={Object.values(errors)} />
-                                )}
-
                                 <AccountInformationFields isOptional />
                             </TabsContent>
                         </Tabs>
