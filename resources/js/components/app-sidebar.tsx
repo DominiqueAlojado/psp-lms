@@ -1,6 +1,7 @@
 import { NavFooter } from '@/components/nav-footer';
 import { NavMain } from '@/components/nav-main';
 import { NavUser } from '@/components/nav-user';
+import { OrganizationSwitcher } from '@/components/organization-switcher';
 import {
     Sidebar,
     SidebarContent,
@@ -48,6 +49,9 @@ export function AppSidebar() {
                                 <AppLogo />
                             </Link>
                         </SidebarMenuButton>
+                    </SidebarMenuItem>
+                    <SidebarMenuItem className="px-2 py-2">
+                        <OrganizationSwitcher />
                     </SidebarMenuItem>
                 </SidebarMenu>
             </SidebarHeader>

@@ -1,5 +1,6 @@
 import { Breadcrumbs } from '@/components/breadcrumbs';
 import { Icon } from '@/components/icon';
+import { OrganizationSwitcher } from '@/components/organization-switcher';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import {
@@ -185,6 +186,9 @@ export function AppHeader({ breadcrumbs = [] }: AppHeaderProps) {
                     </div>
 
                     <div className="ml-auto flex items-center space-x-2">
+                        {/* Organization Switcher */}
+                        <OrganizationSwitcher />
+                        
                         <div className="relative flex items-center space-x-1">
                             <Button
                                 variant="ghost"

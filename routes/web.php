@@ -14,6 +14,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('dashboard', function () {
         return Inertia::render('dashboard');
     })->name('dashboard');
+
+    // Organization switching
+    Route::post('organization/{organization}/switch', [App\Http\Controllers\OrganizationController::class, 'switch'])
+        ->name('organization.switch');
 });
 
 require __DIR__.'/settings.php';
