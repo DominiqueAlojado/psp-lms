@@ -1,13 +1,42 @@
 import AlertError from '@/components/alert-error';
 import HeadingSmall from '@/components/heading-small';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+} from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import {
+    Sheet,
+    SheetContent,
+    SheetDescription,
+    SheetHeader,
+    SheetTitle,
+} from '@/components/ui/sheet';
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import AppLayout from '@/layouts/app-layout';
 import SettingsLayout from '@/layouts/settings/layout';
@@ -49,52 +78,68 @@ export default function RolesPermissions() {
     const { roles, permissions, groupedPermissions } = usePage<Props>().props;
     const [editingRole, setEditingRole] = useState<Role | null>(null);
     const [addingRole, setAddingRole] = useState(false);
-    const [editingPermission, setEditingPermission] = useState<Permission | null>(null);
+    const [editingPermission, setEditingPermission] =
+        useState<Permission | null>(null);
     const [addingPermission, setAddingPermission] = useState(false);
-    const [assigningPermissions, setAssigningPermissions] = useState<Role | null>(null);
-    const [selectedPermissions, setSelectedPermissions] = useState<number[]>([]);
+    const [assigningPermissions, setAssigningPermissions] =
+        useState<Role | null>(null);
+    const [selectedPermissions, setSelectedPermissions] = useState<number[]>(
+        [],
+    );
+    const [deletingRole, setDeletingRole] = useState<{
+        id: number;
+        name: string;
+    } | null>(null);
+    const [deletingPermission, setDeletingPermission] = useState<{
+        id: number;
+        name: string;
+    } | null>(null);
 
-    const handleDeleteRole = (roleId: number, roleName: string) => {
-        if (confirm(`Are you sure you want to delete the role "${roleName}"?`)) {
-            router.delete(`/settings/roles/${roleId}`, {
-                preserveScroll: true,
-            });
-        }
+    const confirmDeleteRole = () => {
+        if (!deletingRole) return;
+        router.delete(`/settings/roles/${deletingRole.id}`, {
+            preserveScroll: true,
+            onFinish: () => setDeletingRole(null),
+        });
     };
 
-    const handleDeletePermission = (permissionId: number, permissionName: string) => {
-        if (confirm(`Are you sure you want to delete the permission "${permissionName}"?`)) {
-            router.delete(`/settings/permissions/${permissionId}`, {
-                preserveScroll: true,
-            });
-        }
+    const confirmDeletePermission = () => {
+        if (!deletingPermission) return;
+        router.delete(`/settings/permissions/${deletingPermission.id}`, {
+            preserveScroll: true,
+            onFinish: () => setDeletingPermission(null),
+        });
     };
 
     const openAssignPermissions = (role: Role) => {
         setAssigningPermissions(role);
         // Get IDs of permissions the role already has
         const rolePermissionIds = permissions
-            .filter(p => role.permissions.includes(p.name))
-            .map(p => p.id);
+            .filter((p) => role.permissions.includes(p.name))
+            .map((p) => p.id);
         setSelectedPermissions(rolePermissionIds);
     };
 
     const handleAssignPermissions = () => {
         if (!assigningPermissions) return;
 
-        router.post(`/settings/roles/${assigningPermissions.id}/permissions`, {
-            permissions: selectedPermissions,
-        }, {
-            preserveScroll: true,
-            onSuccess: () => setAssigningPermissions(null),
-        });
+        router.post(
+            `/settings/roles/${assigningPermissions.id}/permissions`,
+            {
+                permissions: selectedPermissions,
+            },
+            {
+                preserveScroll: true,
+                onSuccess: () => setAssigningPermissions(null),
+            },
+        );
     };
 
     const togglePermission = (permissionId: number) => {
-        setSelectedPermissions(prev =>
+        setSelectedPermissions((prev) =>
             prev.includes(permissionId)
-                ? prev.filter(id => id !== permissionId)
-                : [...prev, permissionId]
+                ? prev.filter((id) => id !== permissionId)
+                : [...prev, permissionId],
         );
     };
 
@@ -111,9 +156,15 @@ export default function RolesPermissions() {
 
                     <Tabs defaultValue="roles" className="w-full">
                         <TabsList className="grid w-full grid-cols-3">
-                            <TabsTrigger value="roles">Roles ({roles.length})</TabsTrigger>
-                            <TabsTrigger value="permissions">Permissions ({permissions.length})</TabsTrigger>
-                            <TabsTrigger value="assign">Assign Permissions</TabsTrigger>
+                            <TabsTrigger value="roles">
+                                Roles ({roles.length})
+                            </TabsTrigger>
+                            <TabsTrigger value="permissions">
+                                Permissions ({permissions.length})
+                            </TabsTrigger>
+                            <TabsTrigger value="assign">
+                                Assign Permissions
+                            </TabsTrigger>
                         </TabsList>
 
                         {/* Tab 1: Roles */}
@@ -127,7 +178,9 @@ export default function RolesPermissions() {
                                                 Manage system roles
                                             </CardDescription>
                                         </div>
-                                        <Button onClick={() => setAddingRole(true)}>
+                                        <Button
+                                            onClick={() => setAddingRole(true)}
+                                        >
                                             <Plus className="mr-2 h-4 w-4" />
                                             Add Role
                                         </Button>
@@ -138,8 +191,12 @@ export default function RolesPermissions() {
                                         <TableHeader>
                                             <TableRow>
                                                 <TableHead>Role Name</TableHead>
-                                                <TableHead>Permissions</TableHead>
-                                                <TableHead className="w-[150px]">Actions</TableHead>
+                                                <TableHead>
+                                                    Permissions
+                                                </TableHead>
+                                                <TableHead className="w-[150px]">
+                                                    Actions
+                                                </TableHead>
                                             </TableRow>
                                         </TableHeader>
                                         <TableBody>
@@ -153,7 +210,10 @@ export default function RolesPermissions() {
                                                     </TableCell>
                                                     <TableCell>
                                                         <Badge variant="secondary">
-                                                            {role.permissions_count} permissions
+                                                            {
+                                                                role.permissions_count
+                                                            }{' '}
+                                                            permissions
                                                         </Badge>
                                                     </TableCell>
                                                     <TableCell>
@@ -161,14 +221,25 @@ export default function RolesPermissions() {
                                                             <Button
                                                                 variant="ghost"
                                                                 size="sm"
-                                                                onClick={() => setEditingRole(role)}
+                                                                onClick={() =>
+                                                                    setEditingRole(
+                                                                        role,
+                                                                    )
+                                                                }
                                                             >
                                                                 <Edit className="h-4 w-4" />
                                                             </Button>
                                                             <Button
                                                                 variant="ghost"
                                                                 size="sm"
-                                                                onClick={() => handleDeleteRole(role.id, role.name)}
+                                                                onClick={() =>
+                                                                    setDeletingRole(
+                                                                        {
+                                                                            id: role.id,
+                                                                            name: role.name,
+                                                                        },
+                                                                    )
+                                                                }
                                                             >
                                                                 <Trash2 className="h-4 w-4 text-destructive" />
                                                             </Button>
@@ -183,7 +254,10 @@ export default function RolesPermissions() {
                         </TabsContent>
 
                         {/* Tab 2: Permissions */}
-                        <TabsContent value="permissions" className="space-y-4 pt-4">
+                        <TabsContent
+                            value="permissions"
+                            className="space-y-4 pt-4"
+                        >
                             <Card>
                                 <CardHeader>
                                     <div className="flex items-center justify-between">
@@ -193,7 +267,11 @@ export default function RolesPermissions() {
                                                 Manage system permissions
                                             </CardDescription>
                                         </div>
-                                        <Button onClick={() => setAddingPermission(true)}>
+                                        <Button
+                                            onClick={() =>
+                                                setAddingPermission(true)
+                                            }
+                                        >
                                             <Plus className="mr-2 h-4 w-4" />
                                             Add Permission
                                         </Button>
@@ -203,8 +281,12 @@ export default function RolesPermissions() {
                                     <Table>
                                         <TableHeader>
                                             <TableRow>
-                                                <TableHead>Permission Name</TableHead>
-                                                <TableHead className="w-[150px]">Actions</TableHead>
+                                                <TableHead>
+                                                    Permission Name
+                                                </TableHead>
+                                                <TableHead className="w-[150px]">
+                                                    Actions
+                                                </TableHead>
                                             </TableRow>
                                         </TableHeader>
                                         <TableBody>
@@ -218,14 +300,25 @@ export default function RolesPermissions() {
                                                             <Button
                                                                 variant="ghost"
                                                                 size="sm"
-                                                                onClick={() => setEditingPermission(permission)}
+                                                                onClick={() =>
+                                                                    setEditingPermission(
+                                                                        permission,
+                                                                    )
+                                                                }
                                                             >
                                                                 <Edit className="h-4 w-4" />
                                                             </Button>
                                                             <Button
                                                                 variant="ghost"
                                                                 size="sm"
-                                                                onClick={() => handleDeletePermission(permission.id, permission.name)}
+                                                                onClick={() =>
+                                                                    setDeletingPermission(
+                                                                        {
+                                                                            id: permission.id,
+                                                                            name: permission.name,
+                                                                        },
+                                                                    )
+                                                                }
                                                             >
                                                                 <Trash2 className="h-4 w-4 text-destructive" />
                                                             </Button>
@@ -243,7 +336,9 @@ export default function RolesPermissions() {
                         <TabsContent value="assign" className="space-y-4 pt-4">
                             <Card>
                                 <CardHeader>
-                                    <CardTitle>Assign Permissions to Roles</CardTitle>
+                                    <CardTitle>
+                                        Assign Permissions to Roles
+                                    </CardTitle>
                                     <CardDescription>
                                         Select a role to manage its permissions
                                     </CardDescription>
@@ -253,14 +348,21 @@ export default function RolesPermissions() {
                                         {roles.map((role) => (
                                             <div
                                                 key={role.id}
-                                                className="rounded-lg border p-4 hover:bg-muted/50 cursor-pointer transition-colors"
-                                                onClick={() => openAssignPermissions(role)}
+                                                className="cursor-pointer rounded-lg border p-4 transition-colors hover:bg-muted/50"
+                                                onClick={() =>
+                                                    openAssignPermissions(role)
+                                                }
                                             >
                                                 <div className="flex items-center justify-between">
                                                     <div>
-                                                        <h3 className="font-medium">{role.name}</h3>
+                                                        <h3 className="font-medium">
+                                                            {role.name}
+                                                        </h3>
                                                         <p className="text-sm text-muted-foreground">
-                                                            {role.permissions_count} permissions
+                                                            {
+                                                                role.permissions_count
+                                                            }{' '}
+                                                            permissions
                                                         </p>
                                                     </div>
                                                     <Shield className="h-5 w-5 text-muted-foreground" />
@@ -276,7 +378,7 @@ export default function RolesPermissions() {
 
                 {/* Add Role Sheet */}
                 <Sheet open={addingRole} onOpenChange={setAddingRole}>
-                    <SheetContent className="sm:max-w-[500px] p-0">
+                    <SheetContent className="p-0 sm:max-w-[500px]">
                         <div className="p-6">
                             <SheetHeader className="pb-6">
                                 <SheetTitle>Add New Role</SheetTitle>
@@ -288,11 +390,18 @@ export default function RolesPermissions() {
                             <form
                                 onSubmit={(e) => {
                                     e.preventDefault();
-                                    const formData = new FormData(e.currentTarget);
-                                    router.post('/settings/roles', Object.fromEntries(formData), {
-                                        preserveScroll: true,
-                                        onSuccess: () => setAddingRole(false),
-                                    });
+                                    const formData = new FormData(
+                                        e.currentTarget,
+                                    );
+                                    router.post(
+                                        '/settings/roles',
+                                        Object.fromEntries(formData),
+                                        {
+                                            preserveScroll: true,
+                                            onSuccess: () =>
+                                                setAddingRole(false),
+                                        },
+                                    );
                                 }}
                             >
                                 {(() => {
@@ -300,11 +409,17 @@ export default function RolesPermissions() {
                                     return (
                                         <div className="space-y-6">
                                             {Object.keys(errors).length > 0 && (
-                                                <AlertError errors={Object.values(errors)} />
+                                                <AlertError
+                                                    errors={Object.values(
+                                                        errors,
+                                                    )}
+                                                />
                                             )}
 
                                             <div className="space-y-2">
-                                                <Label htmlFor="role_name">Role Name</Label>
+                                                <Label htmlFor="role_name">
+                                                    Role Name
+                                                </Label>
                                                 <Input
                                                     id="role_name"
                                                     name="name"
@@ -313,11 +428,13 @@ export default function RolesPermissions() {
                                                 />
                                             </div>
 
-                                            <div className="flex justify-end gap-3 pt-4 border-t">
+                                            <div className="flex justify-end gap-3 border-t pt-4">
                                                 <Button
                                                     type="button"
                                                     variant="outline"
-                                                    onClick={() => setAddingRole(false)}
+                                                    onClick={() =>
+                                                        setAddingRole(false)
+                                                    }
                                                 >
                                                     Cancel
                                                 </Button>
@@ -334,8 +451,11 @@ export default function RolesPermissions() {
                 </Sheet>
 
                 {/* Edit Role Sheet */}
-                <Sheet open={!!editingRole} onOpenChange={(open) => !open && setEditingRole(null)}>
-                    <SheetContent className="sm:max-w-[500px] p-0">
+                <Sheet
+                    open={!!editingRole}
+                    onOpenChange={(open) => !open && setEditingRole(null)}
+                >
+                    <SheetContent className="p-0 sm:max-w-[500px]">
                         <div className="p-6">
                             <SheetHeader className="pb-6">
                                 <SheetTitle>Edit Role</SheetTitle>
@@ -348,36 +468,54 @@ export default function RolesPermissions() {
                                 <form
                                     onSubmit={(e) => {
                                         e.preventDefault();
-                                        const formData = new FormData(e.currentTarget);
-                                        router.patch(`/settings/roles/${editingRole.id}`, Object.fromEntries(formData), {
-                                            preserveScroll: true,
-                                            onSuccess: () => setEditingRole(null),
-                                        });
+                                        const formData = new FormData(
+                                            e.currentTarget,
+                                        );
+                                        router.patch(
+                                            `/settings/roles/${editingRole.id}`,
+                                            Object.fromEntries(formData),
+                                            {
+                                                preserveScroll: true,
+                                                onSuccess: () =>
+                                                    setEditingRole(null),
+                                            },
+                                        );
                                     }}
                                 >
                                     {(() => {
                                         const { errors } = usePage<any>().props;
                                         return (
                                             <div className="space-y-6">
-                                                {Object.keys(errors).length > 0 && (
-                                                    <AlertError errors={Object.values(errors)} />
+                                                {Object.keys(errors).length >
+                                                    0 && (
+                                                    <AlertError
+                                                        errors={Object.values(
+                                                            errors,
+                                                        )}
+                                                    />
                                                 )}
 
                                                 <div className="space-y-2">
-                                                    <Label htmlFor="edit_role_name">Role Name</Label>
+                                                    <Label htmlFor="edit_role_name">
+                                                        Role Name
+                                                    </Label>
                                                     <Input
                                                         id="edit_role_name"
                                                         name="name"
-                                                        defaultValue={editingRole.name}
+                                                        defaultValue={
+                                                            editingRole.name
+                                                        }
                                                         required
                                                     />
                                                 </div>
 
-                                                <div className="flex justify-end gap-3 pt-4 border-t">
+                                                <div className="flex justify-end gap-3 border-t pt-4">
                                                     <Button
                                                         type="button"
                                                         variant="outline"
-                                                        onClick={() => setEditingRole(null)}
+                                                        onClick={() =>
+                                                            setEditingRole(null)
+                                                        }
                                                     >
                                                         Cancel
                                                     </Button>
@@ -395,8 +533,11 @@ export default function RolesPermissions() {
                 </Sheet>
 
                 {/* Add Permission Sheet */}
-                <Sheet open={addingPermission} onOpenChange={setAddingPermission}>
-                    <SheetContent className="sm:max-w-[500px] p-0">
+                <Sheet
+                    open={addingPermission}
+                    onOpenChange={setAddingPermission}
+                >
+                    <SheetContent className="p-0 sm:max-w-[500px]">
                         <div className="p-6">
                             <SheetHeader className="pb-6">
                                 <SheetTitle>Add New Permission</SheetTitle>
@@ -408,24 +549,38 @@ export default function RolesPermissions() {
                             <form
                                 onSubmit={(e) => {
                                     e.preventDefault();
-                                    const formData = new FormData(e.currentTarget);
-                                    router.post('/settings/permissions', Object.fromEntries(formData), {
-                                        preserveScroll: true,
-                                        onSuccess: () => setAddingPermission(false),
-                                    });
+                                    const formData = new FormData(
+                                        e.currentTarget,
+                                    );
+                                    router.post(
+                                        '/settings/permissions',
+                                        Object.fromEntries(formData),
+                                        {
+                                            preserveScroll: true,
+                                            onSuccess: () =>
+                                                setAddingPermission(false),
+                                        },
+                                    );
                                 }}
                             >
                                 {(() => {
                                     const { errors } = usePage<any>().props;
-                                    const categories = Object.keys(groupedPermissions);
+                                    const categories =
+                                        Object.keys(groupedPermissions);
                                     return (
                                         <div className="space-y-6">
                                             {Object.keys(errors).length > 0 && (
-                                                <AlertError errors={Object.values(errors)} />
+                                                <AlertError
+                                                    errors={Object.values(
+                                                        errors,
+                                                    )}
+                                                />
                                             )}
 
                                             <div className="space-y-2">
-                                                <Label htmlFor="permission_name">Permission Name</Label>
+                                                <Label htmlFor="permission_name">
+                                                    Permission Name
+                                                </Label>
                                                 <Input
                                                     id="permission_name"
                                                     name="name"
@@ -433,30 +588,44 @@ export default function RolesPermissions() {
                                                     required
                                                 />
                                                 <p className="text-xs text-muted-foreground">
-                                                    Use kebab-case (e.g., view-users, edit-courses)
+                                                    Use kebab-case (e.g.,
+                                                    view-users, edit-courses)
                                                 </p>
                                             </div>
 
                                             <div className="space-y-2">
-                                                <Label htmlFor="permission_category">Category</Label>
+                                                <Label htmlFor="permission_category">
+                                                    Category
+                                                </Label>
                                                 <select
                                                     id="permission_category"
                                                     name="category"
-                                                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
                                                     required
                                                 >
-                                                    <option value="">Select category...</option>
-                                                    {categories.map(cat => (
-                                                        <option key={cat} value={cat}>{cat}</option>
+                                                    <option value="">
+                                                        Select category...
+                                                    </option>
+                                                    {categories.map((cat) => (
+                                                        <option
+                                                            key={cat}
+                                                            value={cat}
+                                                        >
+                                                            {cat}
+                                                        </option>
                                                     ))}
                                                 </select>
                                             </div>
 
-                                            <div className="flex justify-end gap-3 pt-4 border-t">
+                                            <div className="flex justify-end gap-3 border-t pt-4">
                                                 <Button
                                                     type="button"
                                                     variant="outline"
-                                                    onClick={() => setAddingPermission(false)}
+                                                    onClick={() =>
+                                                        setAddingPermission(
+                                                            false,
+                                                        )
+                                                    }
                                                 >
                                                     Cancel
                                                 </Button>
@@ -473,8 +642,11 @@ export default function RolesPermissions() {
                 </Sheet>
 
                 {/* Edit Permission Sheet */}
-                <Sheet open={!!editingPermission} onOpenChange={(open) => !open && setEditingPermission(null)}>
-                    <SheetContent className="sm:max-w-[500px] p-0">
+                <Sheet
+                    open={!!editingPermission}
+                    onOpenChange={(open) => !open && setEditingPermission(null)}
+                >
+                    <SheetContent className="p-0 sm:max-w-[500px]">
                         <div className="p-6">
                             <SheetHeader className="pb-6">
                                 <SheetTitle>Edit Permission</SheetTitle>
@@ -487,53 +659,87 @@ export default function RolesPermissions() {
                                 <form
                                     onSubmit={(e) => {
                                         e.preventDefault();
-                                        const formData = new FormData(e.currentTarget);
-                                        router.patch(`/settings/permissions/${editingPermission.id}`, Object.fromEntries(formData), {
-                                            preserveScroll: true,
-                                            onSuccess: () => setEditingPermission(null),
-                                        });
+                                        const formData = new FormData(
+                                            e.currentTarget,
+                                        );
+                                        router.patch(
+                                            `/settings/permissions/${editingPermission.id}`,
+                                            Object.fromEntries(formData),
+                                            {
+                                                preserveScroll: true,
+                                                onSuccess: () =>
+                                                    setEditingPermission(null),
+                                            },
+                                        );
                                     }}
                                 >
                                     {(() => {
                                         const { errors } = usePage<any>().props;
-                                        const categories = Object.keys(groupedPermissions);
+                                        const categories =
+                                            Object.keys(groupedPermissions);
                                         return (
                                             <div className="space-y-6">
-                                                {Object.keys(errors).length > 0 && (
-                                                    <AlertError errors={Object.values(errors)} />
+                                                {Object.keys(errors).length >
+                                                    0 && (
+                                                    <AlertError
+                                                        errors={Object.values(
+                                                            errors,
+                                                        )}
+                                                    />
                                                 )}
 
                                                 <div className="space-y-2">
-                                                    <Label htmlFor="edit_permission_name">Permission Name</Label>
+                                                    <Label htmlFor="edit_permission_name">
+                                                        Permission Name
+                                                    </Label>
                                                     <Input
                                                         id="edit_permission_name"
                                                         name="name"
-                                                        defaultValue={editingPermission.name}
+                                                        defaultValue={
+                                                            editingPermission.name
+                                                        }
                                                         required
                                                     />
                                                 </div>
 
                                                 <div className="space-y-2">
-                                                    <Label htmlFor="edit_permission_category">Category</Label>
+                                                    <Label htmlFor="edit_permission_category">
+                                                        Category
+                                                    </Label>
                                                     <select
                                                         id="edit_permission_category"
                                                         name="category"
-                                                        defaultValue={editingPermission.category}
-                                                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                                        defaultValue={
+                                                            editingPermission.category
+                                                        }
+                                                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
                                                         required
                                                     >
-                                                        <option value="">Select category...</option>
-                                                        {categories.map(cat => (
-                                                            <option key={cat} value={cat}>{cat}</option>
-                                                        ))}
+                                                        <option value="">
+                                                            Select category...
+                                                        </option>
+                                                        {categories.map(
+                                                            (cat) => (
+                                                                <option
+                                                                    key={cat}
+                                                                    value={cat}
+                                                                >
+                                                                    {cat}
+                                                                </option>
+                                                            ),
+                                                        )}
                                                     </select>
                                                 </div>
 
-                                                <div className="flex justify-end gap-3 pt-4 border-t">
+                                                <div className="flex justify-end gap-3 border-t pt-4">
                                                     <Button
                                                         type="button"
                                                         variant="outline"
-                                                        onClick={() => setEditingPermission(null)}
+                                                        onClick={() =>
+                                                            setEditingPermission(
+                                                                null,
+                                                            )
+                                                        }
                                                     >
                                                         Cancel
                                                     </Button>
@@ -551,15 +757,22 @@ export default function RolesPermissions() {
                 </Sheet>
 
                 {/* Assign Permissions Sheet */}
-                <Sheet open={!!assigningPermissions} onOpenChange={(open) => !open && setAssigningPermissions(null)}>
-                    <SheetContent className="sm:max-w-[600px] p-0 overflow-y-auto">
+                <Sheet
+                    open={!!assigningPermissions}
+                    onOpenChange={(open) =>
+                        !open && setAssigningPermissions(null)
+                    }
+                >
+                    <SheetContent className="overflow-y-auto p-0 sm:max-w-[600px]">
                         <div className="p-6">
                             <SheetHeader className="pb-6">
                                 <SheetTitle>
-                                    Assign Permissions to {assigningPermissions?.name}
+                                    Assign Permissions to{' '}
+                                    {assigningPermissions?.name}
                                 </SheetTitle>
                                 <SheetDescription>
-                                    Select which permissions this role should have
+                                    Select which permissions this role should
+                                    have
                                 </SheetDescription>
                             </SheetHeader>
 
@@ -568,98 +781,173 @@ export default function RolesPermissions() {
                                     <div className="rounded-lg border p-4">
                                         <div className="flex items-center justify-between">
                                             <div>
-                                                <p className="font-medium">{assigningPermissions.name}</p>
+                                                <p className="font-medium">
+                                                    {assigningPermissions.name}
+                                                </p>
                                                 <p className="text-sm text-muted-foreground">
-                                                    {selectedPermissions.length} of {permissions.length} permissions selected
+                                                    {selectedPermissions.length}{' '}
+                                                    of {permissions.length}{' '}
+                                                    permissions selected
                                                 </p>
                                             </div>
                                             <Button
                                                 variant="outline"
                                                 size="sm"
                                                 onClick={() => {
-                                                    if (selectedPermissions.length === permissions.length) {
-                                                        setSelectedPermissions([]);
+                                                    if (
+                                                        selectedPermissions.length ===
+                                                        permissions.length
+                                                    ) {
+                                                        setSelectedPermissions(
+                                                            [],
+                                                        );
                                                     } else {
-                                                        setSelectedPermissions(permissions.map(p => p.id));
+                                                        setSelectedPermissions(
+                                                            permissions.map(
+                                                                (p) => p.id,
+                                                            ),
+                                                        );
                                                     }
                                                 }}
                                             >
-                                                {selectedPermissions.length === permissions.length ? 'Deselect All' : 'Select All'}
+                                                {selectedPermissions.length ===
+                                                permissions.length
+                                                    ? 'Deselect All'
+                                                    : 'Select All'}
                                             </Button>
                                         </div>
                                     </div>
 
-                                    <div className="space-y-4 max-h-[500px] overflow-y-auto rounded-lg border p-4">
-                                        {Object.entries(groupedPermissions).map(([category, categoryPermissions]) => {
-                                            if (categoryPermissions.length === 0) return null;
+                                    <div className="max-h-[500px] space-y-4 overflow-y-auto rounded-lg border p-4">
+                                        {Object.entries(groupedPermissions).map(
+                                            ([
+                                                category,
+                                                categoryPermissions,
+                                            ]) => {
+                                                if (
+                                                    categoryPermissions.length ===
+                                                    0
+                                                )
+                                                    return null;
 
-                                            // Check if all in this category are selected
-                                            const allCategorySelected = categoryPermissions.every(p => 
-                                                selectedPermissions.includes(p.id)
-                                            );
-
-                                            const toggleCategory = () => {
-                                                const categoryIds = categoryPermissions.map(p => p.id);
-                                                if (allCategorySelected) {
-                                                    setSelectedPermissions(prev => 
-                                                        prev.filter(id => !categoryIds.includes(id))
+                                                // Check if all in this category are selected
+                                                const allCategorySelected =
+                                                    categoryPermissions.every(
+                                                        (p) =>
+                                                            selectedPermissions.includes(
+                                                                p.id,
+                                                            ),
                                                     );
-                                                } else {
-                                                    setSelectedPermissions(prev => 
-                                                        [...new Set([...prev, ...categoryIds])]
-                                                    );
-                                                }
-                                            };
 
-                                            return (
-                                                <div key={category} className="space-y-2">
-                                                    {/* Category Header */}
-                                                    <div className="flex items-center space-x-2 py-2 border-b">
-                                                        <Checkbox
-                                                            id={`category-${category}`}
-                                                            checked={allCategorySelected}
-                                                            onCheckedChange={toggleCategory}
-                                                        />
-                                                        <Label
-                                                            htmlFor={`category-${category}`}
-                                                            className="flex-1 cursor-pointer font-semibold text-sm"
-                                                        >
-                                                            {category} ({categoryPermissions.length})
-                                                        </Label>
-                                                    </div>
+                                                const toggleCategory = () => {
+                                                    const categoryIds =
+                                                        categoryPermissions.map(
+                                                            (p) => p.id,
+                                                        );
+                                                    if (allCategorySelected) {
+                                                        setSelectedPermissions(
+                                                            (prev) =>
+                                                                prev.filter(
+                                                                    (id) =>
+                                                                        !categoryIds.includes(
+                                                                            id,
+                                                                        ),
+                                                                ),
+                                                        );
+                                                    } else {
+                                                        setSelectedPermissions(
+                                                            (prev) => [
+                                                                ...new Set([
+                                                                    ...prev,
+                                                                    ...categoryIds,
+                                                                ]),
+                                                            ],
+                                                        );
+                                                    }
+                                                };
 
-                                                    {/* Permissions in Category */}
-                                                    <div className="ml-6 space-y-1">
-                                                        {categoryPermissions.map((permission) => (
-                                                            <div key={permission.id} className="flex items-center space-x-2 py-1.5">
-                                                                <Checkbox
-                                                                    id={`perm-${permission.id}`}
-                                                                    checked={selectedPermissions.includes(permission.id)}
-                                                                    onCheckedChange={() => togglePermission(permission.id)}
-                                                                />
-                                                                <Label
-                                                                    htmlFor={`perm-${permission.id}`}
-                                                                    className="flex-1 cursor-pointer text-sm"
-                                                                >
-                                                                    {permission.name}
-                                                                </Label>
-                                                            </div>
-                                                        ))}
+                                                return (
+                                                    <div
+                                                        key={category}
+                                                        className="space-y-2"
+                                                    >
+                                                        {/* Category Header */}
+                                                        <div className="flex items-center space-x-2 border-b py-2">
+                                                            <Checkbox
+                                                                id={`category-${category}`}
+                                                                checked={
+                                                                    allCategorySelected
+                                                                }
+                                                                onCheckedChange={
+                                                                    toggleCategory
+                                                                }
+                                                            />
+                                                            <Label
+                                                                htmlFor={`category-${category}`}
+                                                                className="flex-1 cursor-pointer text-sm font-semibold"
+                                                            >
+                                                                {category} (
+                                                                {
+                                                                    categoryPermissions.length
+                                                                }
+                                                                )
+                                                            </Label>
+                                                        </div>
+
+                                                        {/* Permissions in Category */}
+                                                        <div className="ml-6 space-y-1">
+                                                            {categoryPermissions.map(
+                                                                (
+                                                                    permission,
+                                                                ) => (
+                                                                    <div
+                                                                        key={
+                                                                            permission.id
+                                                                        }
+                                                                        className="flex items-center space-x-2 py-1.5"
+                                                                    >
+                                                                        <Checkbox
+                                                                            id={`perm-${permission.id}`}
+                                                                            checked={selectedPermissions.includes(
+                                                                                permission.id,
+                                                                            )}
+                                                                            onCheckedChange={() =>
+                                                                                togglePermission(
+                                                                                    permission.id,
+                                                                                )
+                                                                            }
+                                                                        />
+                                                                        <Label
+                                                                            htmlFor={`perm-${permission.id}`}
+                                                                            className="flex-1 cursor-pointer text-sm"
+                                                                        >
+                                                                            {
+                                                                                permission.name
+                                                                            }
+                                                                        </Label>
+                                                                    </div>
+                                                                ),
+                                                            )}
+                                                        </div>
                                                     </div>
-                                                </div>
-                                            );
-                                        })}
+                                                );
+                                            },
+                                        )}
                                     </div>
 
-                                    <div className="flex justify-end gap-3 pt-4 border-t">
+                                    <div className="flex justify-end gap-3 border-t pt-4">
                                         <Button
                                             type="button"
                                             variant="outline"
-                                            onClick={() => setAssigningPermissions(null)}
+                                            onClick={() =>
+                                                setAssigningPermissions(null)
+                                            }
                                         >
                                             Cancel
                                         </Button>
-                                        <Button onClick={handleAssignPermissions}>
+                                        <Button
+                                            onClick={handleAssignPermissions}
+                                        >
                                             Save Permissions
                                         </Button>
                                     </div>
@@ -668,8 +956,63 @@ export default function RolesPermissions() {
                         </div>
                     </SheetContent>
                 </Sheet>
+
+                {/* Delete Role Confirmation */}
+                <AlertDialog
+                    open={!!deletingRole}
+                    onOpenChange={(open) => !open && setDeletingRole(null)}
+                >
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                This will permanently delete the role "
+                                {deletingRole?.name}". This action cannot be
+                                undone.
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                                onClick={confirmDeleteRole}
+                                className="bg-destructive text-white hover:bg-destructive/90"
+                            >
+                                <Trash2 className="h-4" />
+                                Delete
+                            </AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
+
+                {/* Delete Permission Confirmation */}
+                <AlertDialog
+                    open={!!deletingPermission}
+                    onOpenChange={(open) =>
+                        !open && setDeletingPermission(null)
+                    }
+                >
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                This will permanently delete the permission "
+                                {deletingPermission?.name}". This action cannot
+                                be undone.
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                                onClick={confirmDeletePermission}
+                                className="bg-destructive text-white hover:bg-destructive/90"
+                            >
+                                <Trash2 className="h-4" />
+                                Delete
+                            </AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
             </SettingsLayout>
         </AppLayout>
     );
 }
-
