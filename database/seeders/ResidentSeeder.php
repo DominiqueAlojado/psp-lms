@@ -76,10 +76,12 @@ class ResidentSeeder extends Seeder
         $this->command->table(
             ['Year Level', 'Count'],
             [
-                ['Year 1', Resident::where('year_level', 1)->count()],
-                ['Year 2', Resident::where('year_level', 2)->count()],
-                ['Year 3', Resident::where('year_level', 3)->count()],
-                ['Year 4', Resident::where('year_level', 4)->count()],
+                ['Pre-Resident', Resident::where('year_level', 'Pre-Resident')->count()],
+                ['First Year', Resident::where('year_level', 'First Year')->count()],
+                ['Second Year', Resident::where('year_level', 'Second Year')->count()],
+                ['Third Year', Resident::where('year_level', 'Third Year')->count()],
+                ['Fourth Year', Resident::where('year_level', 'Fourth Year')->count()],
+                ['Graduate', Resident::where('year_level', 'Graduate')->count()],
             ]
         );
 
@@ -88,7 +90,6 @@ class ResidentSeeder extends Seeder
             [
                 ['Active', Resident::where('status', 'active')->count()],
                 ['Inactive', Resident::where('status', 'inactive')->count()],
-                ['Graduated', Resident::where('status', 'graduated')->count()],
             ]
         );
     }

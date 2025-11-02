@@ -33,6 +33,9 @@ class OrganizationSettingsController extends Controller
             ->map(fn ($resident) => [
                 'id' => $resident->id,
                 'uuid' => $resident->uuid,
+                'first_name' => $resident->first_name,
+                'middle_name' => $resident->middle_name,
+                'last_name' => $resident->last_name,
                 'name' => $resident->full_name,
                 'email' => $resident->email,
                 'contact_number' => $resident->contact_number,
@@ -125,5 +128,52 @@ class OrganizationSettingsController extends Controller
         }
 
         return back()->with('success', 'Logo deleted successfully');
+    }
+
+    /**
+     * Update a resident's information.
+     */
+    public function updateResident(Request $request, $residentId): RedirectResponse
+    {
+        $user = $request->user();
+        $organization = $user->currentOrganization;
+
+        if (! $organization) {
+            abort(404, 'No current organization selected');
+        }
+
+        // Find resident and verify they belong to current organization
+        $resident = $organization->residents()->findOrFail($residentId);
+
+        $validated = $request->validate([
+            'first_name' => ['required', 'string', 'max:255'],
+            'middle_name' => ['nullable', 'string', 'max:255'],
+            'last_name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'email', 'max:255', 'unique:residents,email,'.$resident->id],
+            'contact_number' => ['required', 'string', 'max:20'],
+            'course' => ['required', 'string', 'max:255'],
+            'year_level' => ['required', 'string', 'in:Pre-Resident,First Year,Second Year,Third Year,Fourth Year,Graduate'],
+            'status' => ['required', 'string', 'in:active,inactive'],
+            'password' => ['nullable', 'string', 'min:8', 'confirmed'],
+        ]);
+
+        $resident->update($validated);
+
+        // Update user account if linked
+        if ($resident->user) {
+            $userUpdate = [
+                'email' => $validated['email'],
+                'name' => $resident->full_name,
+            ];
+
+            // Update password if provided
+            if (! empty($validated['password'])) {
+                $userUpdate['password'] = $validated['password'];
+            }
+
+            $resident->user->update($userUpdate);
+        }
+
+        return back()->with('success', 'Resident updated successfully');
     }
 }

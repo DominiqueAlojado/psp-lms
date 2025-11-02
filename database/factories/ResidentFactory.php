@@ -33,8 +33,15 @@ class ResidentFactory extends Factory
                 'Anatomic Pathology',
                 'Clinical Pathology',
             ]),
-            'year_level' => $this->faker->numberBetween(1, 4),
-            'status' => $this->faker->randomElement(['active', 'active', 'active', 'inactive', 'graduated']), // More active residents
+            'year_level' => $this->faker->randomElement([
+                'Pre-Resident',
+                'First Year',
+                'Second Year',
+                'Third Year',
+                'Fourth Year',
+                'Graduate',
+            ]),
+            'status' => $this->faker->randomElement(['active', 'active', 'active', 'inactive']), // More active residents
             'other_info' => [
                 'medical_school' => $this->faker->randomElement([
                     'University of the Philippines College of Medicine',

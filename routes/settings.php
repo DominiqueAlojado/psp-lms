@@ -35,4 +35,6 @@ Route::middleware('auth')->group(function () {
         ->name('organization.logo.upload');
     Route::delete('settings/organization/logo', [OrganizationSettingsController::class, 'deleteLogo'])
         ->name('organization.logo.delete');
+    Route::patch('settings/organization/residents/{resident}', [OrganizationSettingsController::class, 'updateResident'])
+        ->name('organization.residents.update');
 });

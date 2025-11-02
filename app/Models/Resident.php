@@ -31,7 +31,6 @@ class Resident extends Model
     protected function casts(): array
     {
         return [
-            'year_level' => 'integer',
             'other_info' => 'array',
         ];
     }
@@ -102,7 +101,7 @@ class Resident extends Model
     /**
      * Scope to filter by year level.
      */
-    public function scopeYearLevel($query, int $level)
+    public function scopeYearLevel($query, string $level)
     {
         return $query->where('year_level', $level);
     }
