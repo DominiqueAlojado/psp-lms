@@ -22,8 +22,10 @@ class SetOrganizationFromUrl
             return $next($request);
         }
 
-        // Skip organization switch routes and logout
-        if ($request->is('organization/*/switch') || $request->is('logout')) {
+        // Skip organization switch routes, logout, and settings form submissions
+        if ($request->is('organization/*/switch')
+            || $request->is('logout')
+            || $request->is('settings/*') && in_array($request->method(), ['POST', 'PATCH', 'PUT', 'DELETE'])) {
             return $next($request);
         }
 
