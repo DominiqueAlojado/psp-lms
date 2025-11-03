@@ -2,12 +2,15 @@
 
 namespace App\Http\Controllers;
 
+use App\Exports\ResidentsExport;
 use App\Models\Organization;
 use App\Models\Resident;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
+use Maatwebsite\Excel\Facades\Excel;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class ResidentController extends Controller
 {
@@ -229,5 +232,17 @@ class ResidentController extends Controller
         $resident->delete();
 
         return back()->with('success', 'Resident deleted successfully');
+    }
+
+    /**
+     * Export residents to Excel.
+     */
+    public function export(Request $request): BinaryFileResponse
+    {
+        $filters = $request->only(['search', 'organization_id', 'year_level', 'status', 'course']);
+
+        $filename = 'residents_' . now()->format('Y-m-d_His') . '.xlsx';
+
+        return Excel::download(new ResidentsExport($filters), $filename);
     }
 }

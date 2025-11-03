@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, router, usePage } from '@inertiajs/react';
-import { Plus } from 'lucide-react';
+import { Download, Plus } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -143,6 +143,22 @@ export default function ResidentsIndex({
         });
     };
 
+    const handleExport = () => {
+        // Build query string with current filters
+        const params = new URLSearchParams();
+
+        if (filters.search) params.append('search', filters.search);
+        if (filters.organization_id)
+            params.append('organization_id', filters.organization_id.toString());
+        if (filters.year_level) params.append('year_level', filters.year_level);
+        if (filters.status) params.append('status', filters.status);
+        if (filters.course) params.append('course', filters.course);
+
+        // Trigger download
+        window.location.href = `/residents/export?${params.toString()}`;
+        toast.success('Exporting residents...');
+    };
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Residents" />
@@ -153,10 +169,16 @@ export default function ResidentsIndex({
                         title="Residents"
                         description="Search and manage all residents across organizations"
                     />
-                    <Button onClick={() => setAddingResident(true)}>
-                        <Plus className="mr-2 h-4 w-4" />
-                        Add Resident
-                    </Button>
+                    <div className="flex gap-2">
+                        <Button variant="outline" onClick={handleExport}>
+                            <Download className="mr-2 h-4 w-4" />
+                            Export to Excel
+                        </Button>
+                        <Button onClick={() => setAddingResident(true)}>
+                            <Plus className="mr-2 h-4 w-4" />
+                            Add Resident
+                        </Button>
+                    </div>
                 </div>
 
                 {/* Filters */}

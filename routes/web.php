@@ -18,6 +18,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Residents
     Route::get('residents', [App\Http\Controllers\ResidentController::class, 'index'])
         ->name('residents.index');
+    Route::get('residents/export', [App\Http\Controllers\ResidentController::class, 'export'])
+        ->name('residents.export');
     Route::post('residents', [App\Http\Controllers\ResidentController::class, 'store'])
         ->name('residents.store');
     Route::get('residents/{resident}', [App\Http\Controllers\ResidentController::class, 'show'])
@@ -32,4 +34,4 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('organization.switch');
 });
 
-require __DIR__.'/settings.php';
+require __DIR__ . '/settings.php';
