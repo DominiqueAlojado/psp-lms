@@ -22,11 +22,14 @@ class SetOrganizationFromUrl
             return $next($request);
         }
 
-        // Skip organization switch routes, logout, settings and residents form submissions
-        if ($request->is('organization/*/switch')
+        // Skip organization switch routes, logout, settings, residents and institutions form submissions
+        if (
+            $request->is('organization/*/switch')
             || $request->is('logout')
             || ($request->is('settings/*') && in_array($request->method(), ['POST', 'PATCH', 'PUT', 'DELETE']))
-            || ($request->is('residents*') && in_array($request->method(), ['POST', 'PATCH', 'PUT', 'DELETE']))) {
+            || ($request->is('residents*') && in_array($request->method(), ['POST', 'PATCH', 'PUT', 'DELETE']))
+            || ($request->is('institutions*') && in_array($request->method(), ['POST', 'PATCH', 'PUT', 'DELETE']))
+        ) {
             return $next($request);
         }
 
@@ -51,7 +54,7 @@ class SetOrganizationFromUrl
                 $queryParams = $request->query();
                 $queryParams['org'] = $currentOrg->slug;
 
-                return redirect($request->path().'?'.http_build_query($queryParams));
+                return redirect($request->path() . '?' . http_build_query($queryParams));
             }
         }
 

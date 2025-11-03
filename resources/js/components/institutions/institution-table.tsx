@@ -1,0 +1,221 @@
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from '@/components/ui/table';
+import { router } from '@inertiajs/react';
+import { Edit, Trash2, Users } from 'lucide-react';
+
+interface Institution {
+    id: number;
+    name: string;
+    slug: string;
+    description: string | null;
+    type: string;
+    is_active: boolean;
+    residents_count: number;
+    users_count: number;
+    training_officers_count: number;
+    updated_at: string;
+}
+
+interface PaginatedInstitutions {
+    data: Institution[];
+    current_page: number;
+    last_page: number;
+    per_page: number;
+    total: number;
+    from: number;
+    to: number;
+    links: Array<{
+        url: string | null;
+        label: string;
+        active: boolean;
+    }>;
+}
+
+interface Props {
+    institutions: PaginatedInstitutions;
+    filters: Record<string, any>;
+    onEdit: (institution: Institution) => void;
+    onDelete: (id: number, name: string) => void;
+}
+
+export function InstitutionTable({
+    institutions,
+    filters,
+    onEdit,
+    onDelete,
+}: Props) {
+    return (
+        <Card>
+            <CardContent className="p-8">
+                <div className="space-y-6">
+                    {/* Results Count */}
+                    <div className="flex items-center justify-between">
+                        <p className="text-sm text-muted-foreground">
+                            Showing {institutions.from || 0} to{' '}
+                            {institutions.to || 0} of {institutions.total}{' '}
+                            institutions
+                        </p>
+                    </div>
+
+                    {/* Table */}
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead className="py-4">Name</TableHead>
+                                <TableHead className="py-4">Type</TableHead>
+                                <TableHead className="py-4">
+                                    Residents
+                                </TableHead>
+                                <TableHead className="py-4">Users</TableHead>
+                                <TableHead className="py-4">Status</TableHead>
+                                <TableHead className="py-4">Updated</TableHead>
+                                <TableHead className="w-[100px] py-4">
+                                    Actions
+                                </TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {institutions.data.length === 0 ? (
+                                <TableRow>
+                                    <TableCell
+                                        colSpan={7}
+                                        className="py-8 text-center text-muted-foreground"
+                                    >
+                                        No institutions found. Try adjusting your
+                                        filters.
+                                    </TableCell>
+                                </TableRow>
+                            ) : (
+                                institutions.data.map((institution) => (
+                                    <TableRow key={institution.id}>
+                                        <TableCell className="py-4">
+                                            <div>
+                                                <div className="font-medium">
+                                                    {institution.name}
+                                                </div>
+                                                {institution.description && (
+                                                    <div className="text-sm text-muted-foreground">
+                                                        {institution.description.substring(
+                                                            0,
+                                                            60,
+                                                        )}
+                                                        {institution.description
+                                                            .length > 60 &&
+                                                            '...'}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </TableCell>
+                                        <TableCell className="py-4">
+                                            <Badge variant="outline">
+                                                {institution.type.charAt(0).toUpperCase() + institution.type.slice(1)}
+                                            </Badge>
+                                        </TableCell>
+                                        <TableCell className="py-4">
+                                            <div className="flex items-center gap-1">
+                                                <Users className="h-4 w-4 text-muted-foreground" />
+                                                <span>
+                                                    {
+                                                        institution.residents_count
+                                                    }
+                                                </span>
+                                            </div>
+                                        </TableCell>
+                                        <TableCell className="py-4">
+                                            {institution.users_count}
+                                        </TableCell>
+                                        <TableCell className="py-4">
+                                            <Badge
+                                                variant={
+                                                    institution.is_active
+                                                        ? 'default'
+                                                        : 'secondary'
+                                                }
+                                            >
+                                                {institution.is_active
+                                                    ? 'Active'
+                                                    : 'Inactive'}
+                                            </Badge>
+                                        </TableCell>
+                                        <TableCell className="py-4">
+                                            <span className="text-sm text-muted-foreground">
+                                                {institution.updated_at}
+                                            </span>
+                                        </TableCell>
+                                        <TableCell className="py-4">
+                                            <div className="flex gap-2">
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() =>
+                                                        onEdit(institution)
+                                                    }
+                                                >
+                                                    <Edit className="h-4 w-4" />
+                                                </Button>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() =>
+                                                        onDelete(
+                                                            institution.id,
+                                                            institution.name,
+                                                        )
+                                                    }
+                                                >
+                                                    <Trash2 className="h-4 w-4 text-destructive" />
+                                                </Button>
+                                            </div>
+                                        </TableCell>
+                                    </TableRow>
+                                ))
+                            )}
+                        </TableBody>
+                    </Table>
+
+                    {/* Pagination */}
+                    {institutions.last_page > 1 && (
+                        <div className="flex items-center justify-center gap-2">
+                            {institutions.links.map((link, index) => (
+                                <Button
+                                    key={index}
+                                    variant={link.active ? 'default' : 'outline'}
+                                    size="sm"
+                                    disabled={!link.url}
+                                    onClick={() => {
+                                        if (link.url) {
+                                            const url = new URL(link.url);
+                                            const page =
+                                                url.searchParams.get('page');
+                                            router.get(
+                                                '/institutions',
+                                                { ...filters, page },
+                                                {
+                                                    preserveState: true,
+                                                    preserveScroll: true,
+                                                },
+                                            );
+                                        }
+                                    }}
+                                    dangerouslySetInnerHTML={{
+                                        __html: link.label,
+                                    }}
+                                />
+                            ))}
+                        </div>
+                    )}
+                </div>
+            </CardContent>
+        </Card>
+    );
+}
+

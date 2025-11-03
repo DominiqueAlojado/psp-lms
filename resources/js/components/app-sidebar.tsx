@@ -14,7 +14,7 @@ import {
 import { dashboard } from '@/routes';
 import { type NavItem } from '@/types';
 import { Link } from '@inertiajs/react';
-import { BookOpen, Folder, LayoutGrid, Users } from 'lucide-react';
+import { BookOpen, Building2, Folder, LayoutGrid, Users } from 'lucide-react';
 import AppLogo from './app-logo';
 
 const mainNavItems: NavItem[] = [
@@ -30,6 +30,11 @@ const footerNavItems: NavItem[] = [
         title: 'Residents',
         href: '/residents',
         icon: Users,
+    },
+    {
+        title: 'Institutions',
+        href: '/institutions',
+        icon: Building2,
     },
     {
         title: 'Repository',

@@ -29,6 +29,18 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::delete('residents/{resident}', [App\Http\Controllers\ResidentController::class, 'destroy'])
         ->name('residents.destroy');
 
+    // Institutions
+    Route::get('institutions', [App\Http\Controllers\OrganizationController::class, 'index'])
+        ->name('institutions.index');
+    Route::get('institutions/export', [App\Http\Controllers\OrganizationController::class, 'export'])
+        ->name('institutions.export');
+    Route::post('institutions', [App\Http\Controllers\OrganizationController::class, 'store'])
+        ->name('institutions.store');
+    Route::patch('institutions/{organization}', [App\Http\Controllers\OrganizationController::class, 'update'])
+        ->name('institutions.update');
+    Route::delete('institutions/{organization}', [App\Http\Controllers\OrganizationController::class, 'destroy'])
+        ->name('institutions.destroy');
+
     // Organization switching
     Route::post('organization/{organization}/switch', [App\Http\Controllers\OrganizationController::class, 'switch'])
         ->name('organization.switch');
