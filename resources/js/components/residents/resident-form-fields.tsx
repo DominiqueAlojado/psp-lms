@@ -96,7 +96,6 @@ export function PersonalInformationFields({
                 <Input
                     id="email"
                     name="email"
-                    type="email"
                     defaultValue={defaultValues.email || ''}
                 />
                 {validationErrors.email && (

@@ -6,7 +6,7 @@ import {
     SheetHeader,
     SheetTitle,
 } from '@/components/ui/sheet';
-import { router } from '@inertiajs/react';
+import { router, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { z } from 'zod';
@@ -38,14 +38,20 @@ export function CreateResidentSheet({
 }: Props) {
     const [currentStep, setCurrentStep] = useState(1);
     const [formData, setFormData] = useState<Record<string, string>>({});
-    const [validationErrors, setValidationErrors] = useState<
+    const [clientValidationErrors, setClientValidationErrors] = useState<
         Record<string, string>
     >({});
+    const { errors: serverErrors } = usePage<{
+        errors: Record<string, string>;
+    }>().props;
+
+    // Merge client-side and server-side errors
+    const validationErrors = { ...clientValidationErrors, ...serverErrors };
 
     const handleClose = () => {
         setCurrentStep(1);
         setFormData({});
-        setValidationErrors({});
+        setClientValidationErrors({});
         onClose();
     };
 
@@ -62,7 +68,7 @@ export function CreateResidentSheet({
             // Validate step 1 data
             try {
                 step1Schema.parse(currentData);
-                setValidationErrors({});
+                setClientValidationErrors({});
                 // Save step 1 data and move to step 2
                 const dataToSave: Record<string, string> = {};
                 Object.entries(currentData).forEach(([key, value]) => {
@@ -78,7 +84,7 @@ export function CreateResidentSheet({
                             errors[err.path[0].toString()] = err.message;
                         }
                     });
-                    setValidationErrors(errors);
+                    setClientValidationErrors(errors);
                 }
             }
             return;
@@ -95,7 +101,7 @@ export function CreateResidentSheet({
 
         try {
             step2Schema.parse(currentData);
-            setValidationErrors({});
+            setClientValidationErrors({});
 
             console.log('Validation passed, submitting to server...');
 
@@ -120,7 +126,7 @@ export function CreateResidentSheet({
                         errors[err.path[0].toString()] = err.message;
                     }
                 });
-                setValidationErrors(errors);
+                setClientValidationErrors(errors);
             }
         }
     };
@@ -136,7 +142,7 @@ export function CreateResidentSheet({
             });
             setFormData((prev) => ({ ...prev, ...dataToSave }));
         }
-        setValidationErrors({});
+        setClientValidationErrors({});
         setCurrentStep(1);
     };
 

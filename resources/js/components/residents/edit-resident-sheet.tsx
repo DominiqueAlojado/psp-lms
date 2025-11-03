@@ -1,7 +1,7 @@
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { router } from '@inertiajs/react';
+import { router, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { z } from 'zod';
@@ -43,12 +43,18 @@ export function EditResidentSheet({
     statuses,
     onClose,
 }: Props) {
-    const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+    const [clientValidationErrors, setClientValidationErrors] = useState<Record<string, string>>({});
+    const { errors: serverErrors } = usePage<{
+        errors: Record<string, string>;
+    }>().props;
+
+    // Merge client-side and server-side errors
+    const validationErrors = { ...clientValidationErrors, ...serverErrors };
 
     if (!resident) return null;
 
     const handleClose = () => {
-        setValidationErrors({});
+        setClientValidationErrors({});
         onClose();
     };
 
@@ -80,7 +86,7 @@ export function EditResidentSheet({
                                             errors[err.path[0].toString()] = err.message;
                                         }
                                     });
-                                    setValidationErrors(errors);
+                                    setClientValidationErrors(errors);
                                     toast.error('Please check the form for errors');
                                     return;
                                 }
@@ -97,14 +103,14 @@ export function EditResidentSheet({
                                             errors[err.path[0].toString()] = err.message;
                                         }
                                     });
-                                    setValidationErrors(errors);
+                                    setClientValidationErrors(errors);
                                     toast.error('Please check the form for errors');
                                     return;
                                 }
                             }
 
                             // If validation passes, clear errors and submit
-                            setValidationErrors({});
+                            setClientValidationErrors({});
                             router.patch(`/residents/${resident.id}`, data, {
                                 preserveScroll: true,
                                 preserveState: true,

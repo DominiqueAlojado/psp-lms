@@ -82,7 +82,7 @@ class ResidentController extends Controller
             $validated = $request->validate([
                 'organization_id' => ['required', 'exists:organizations,id'],
                 'first_name' => ['required', 'string', 'max:255'],
-                'middle_name' => ['nullable', 'string', 'max:255'],
+                'middle_name' => ['required', 'string', 'max:255'],
                 'last_name' => ['required', 'string', 'max:255'],
                 'email' => ['required', 'email:rfc', 'max:255', 'unique:residents,email'],
                 'contact_number' => ['required', 'string', 'regex:/^(\+63|0)?9\d{9}$/'],
@@ -91,8 +91,19 @@ class ResidentController extends Controller
                 'status' => ['required', 'string', 'in:active,inactive'],
                 'password' => ['required', 'string', 'min:8', 'confirmed'],
             ], [
+                'organization_id.required' => 'Organization is required',
+                'first_name.required' => 'First name is required',
+                'middle_name.required' => 'Middle name is required',
+                'last_name.required' => 'Last name is required',
                 'email.email' => 'Please enter a valid email address.',
+                'email.required' => 'Please enter a valid email address.',
+                'contact_number.required' => 'Contact number is required',
                 'contact_number.regex' => 'Contact number must be a valid Philippine mobile number (e.g., 09123456789 or +639123456789).',
+                'course.required' => 'Course is required',
+                'year_level.required' => 'Year level is required',
+                'password.required' => 'Password is required',
+                'password.min' => 'Password must be at least 8 characters',
+                'password.confirmed' => "Passwords don't match",
             ]);
 
             // Create the resident (exclude password fields)
@@ -168,7 +179,7 @@ class ResidentController extends Controller
     {
         $validated = $request->validate([
             'first_name' => ['required', 'string', 'max:255'],
-            'middle_name' => ['nullable', 'string', 'max:255'],
+            'middle_name' => ['required', 'string', 'max:255'],
             'last_name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email:rfc', 'max:255', 'unique:residents,email,' . $resident->id],
             'contact_number' => ['required', 'string', 'regex:/^(\+63|0)?9\d{9}$/'],
@@ -177,8 +188,17 @@ class ResidentController extends Controller
             'status' => ['required', 'string', 'in:active,inactive'],
             'password' => ['nullable', 'string', 'min:8', 'confirmed'],
         ], [
+            'first_name.required' => 'First name is required',
+            'middle_name.required' => 'Middle name is required',
+            'last_name.required' => 'Last name is required',
             'email.email' => 'Please enter a valid email address.',
+            'email.required' => 'Please enter a valid email address.',
+            'contact_number.required' => 'Contact number is required',
             'contact_number.regex' => 'Contact number must be a valid Philippine mobile number (e.g., 09123456789 or +639123456789).',
+            'course.required' => 'Course is required',
+            'year_level.required' => 'Year level is required',
+            'password.min' => 'Password must be at least 8 characters',
+            'password.confirmed' => "Passwords don't match",
         ]);
 
         $resident->update($validated);
