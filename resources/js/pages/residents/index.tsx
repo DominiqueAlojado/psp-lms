@@ -6,6 +6,7 @@ import { DeleteResidentDialog } from '@/components/residents/delete-resident-dia
 import { EditResidentSheet } from '@/components/residents/edit-resident-sheet';
 import { ResidentFilters } from '@/components/residents/resident-filters';
 import { ResidentTable } from '@/components/residents/resident-table';
+import { ViewResidentSheet } from '@/components/residents/view-resident-sheet';
 import { Button } from '@/components/ui/button';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
@@ -41,6 +42,7 @@ interface Resident {
     year_level: string;
     status: string;
     updated_at: string;
+    organizations_count: number;
     organization: Organization;
 }
 
@@ -87,6 +89,11 @@ export default function ResidentsIndex({
     const [search, setSearch] = useState(filters.search || '');
     const [showFilters, setShowFilters] = useState(false);
     const [localFilters, setLocalFilters] = useState(filters);
+    const [viewingResident, setViewingResident] = useState<Resident | null>(null);
+    const [viewOrganizations, setViewOrganizations] = useState<{
+        current: any[];
+        available: any[];
+    }>({ current: [], available: [] });
     const [editingResident, setEditingResident] = useState<Resident | null>(
         null,
     );
@@ -132,6 +139,32 @@ export default function ResidentsIndex({
                 preserveScroll: true,
             },
         );
+    };
+
+    const fetchResidentOrganizations = async (residentId: number) => {
+        try {
+            const response = await fetch(`/residents/${residentId}`);
+            const data = await response.json();
+            
+            setViewOrganizations({
+                current: data.currentOrganizations || [],
+                available: data.availableOrganizations || [],
+            });
+        } catch (error) {
+            console.error('Error fetching organizations:', error);
+            toast.error('Failed to load organization data');
+        }
+    };
+
+    const handleViewResident = async (resident: Resident) => {
+        setViewingResident(resident);
+        await fetchResidentOrganizations(resident.id);
+    };
+
+    const handleRefreshOrganizations = () => {
+        if (viewingResident) {
+            fetchResidentOrganizations(viewingResident.id);
+        }
     };
 
     const confirmDelete = () => {
@@ -230,10 +263,24 @@ export default function ResidentsIndex({
                 <ResidentTable
                     residents={residents}
                     filters={filters}
+                    onView={handleViewResident}
                     onEdit={setEditingResident}
                     onDelete={(id, name) => setDeletingResident({ id, name })}
                 />
             </div>
+
+            {/* View Sheet */}
+            <ViewResidentSheet
+                open={!!viewingResident}
+                resident={viewingResident}
+                currentOrganizations={viewOrganizations.current}
+                availableOrganizations={viewOrganizations.available}
+                onClose={() => {
+                    setViewingResident(null);
+                    setViewOrganizations({ current: [], available: [] });
+                }}
+                onRefresh={handleRefreshOrganizations}
+            />
 
             {/* Edit Sheet */}
             <EditResidentSheet

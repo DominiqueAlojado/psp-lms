@@ -67,7 +67,7 @@ export function CreateInstitutionSheet({ open, onClose }: Props) {
                 preserveScroll: true,
                 onSuccess: (page) => {
                     console.log('Success! Response:', page);
-                    toast.success('Institution created successfully');
+                    // Toast is shown by global flash handler in app-shell.tsx
                     handleClose();
                 },
                 onError: (errors) => {

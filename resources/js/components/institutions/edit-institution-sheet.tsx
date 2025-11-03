@@ -78,7 +78,7 @@ export function EditInstitutionSheet({ open, institution, onClose }: Props) {
                 preserveScroll: true,
                 preserveState: true,
                 onSuccess: () => {
-                    toast.success('Institution updated successfully');
+                    // Toast is shown by global flash handler in app-shell.tsx
                     handleClose();
                 },
                 onError: (errors) => {

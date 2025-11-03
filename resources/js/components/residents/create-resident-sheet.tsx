@@ -108,7 +108,7 @@ export function CreateResidentSheet({
             router.post('/residents', allData, {
                 preserveScroll: true,
                 onSuccess: () => {
-                    toast.success('Resident created successfully');
+                    // Toast is shown by global flash handler in app-shell.tsx
                     handleClose();
                 },
                 onError: () => {

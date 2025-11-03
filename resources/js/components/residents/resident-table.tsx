@@ -9,8 +9,8 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
-import { Link, router } from '@inertiajs/react';
-import { Edit, Eye, Trash2 } from 'lucide-react';
+import { router } from '@inertiajs/react';
+import { Building2, Edit, Eye, Trash2 } from 'lucide-react';
 
 interface Organization {
     id: number;
@@ -32,6 +32,7 @@ interface Resident {
     year_level: string;
     status: string;
     updated_at: string;
+    organizations_count: number;
     organization: Organization;
 }
 
@@ -53,11 +54,12 @@ interface PaginatedResidents {
 interface Props {
     residents: PaginatedResidents;
     filters: Record<string, any>;
+    onView: (resident: Resident) => void;
     onEdit: (resident: Resident) => void;
     onDelete: (id: number, name: string) => void;
 }
 
-export function ResidentTable({ residents, filters, onEdit, onDelete }: Props) {
+export function ResidentTable({ residents, filters, onView, onEdit, onDelete }: Props) {
     return (
         <Card>
             <CardContent className="p-8">
@@ -76,7 +78,8 @@ export function ResidentTable({ residents, filters, onEdit, onDelete }: Props) {
                             <TableRow>
                                 <TableHead className="py-4">Name</TableHead>
                                 <TableHead className="py-4">Email</TableHead>
-                                <TableHead className="py-4">Organization</TableHead>
+                                <TableHead className="py-4">Home Institution</TableHead>
+                                <TableHead className="py-4">Institutions</TableHead>
                                 <TableHead className="py-4">Year Level</TableHead>
                                 <TableHead className="py-4">Status</TableHead>
                                 <TableHead className="py-4">Updated</TableHead>
@@ -87,7 +90,7 @@ export function ResidentTable({ residents, filters, onEdit, onDelete }: Props) {
                             {residents.data.length === 0 ? (
                                 <TableRow>
                                     <TableCell
-                                        colSpan={7}
+                                        colSpan={8}
                                         className="py-8 text-center text-muted-foreground"
                                     >
                                         No residents found. Try adjusting your filters.
@@ -106,6 +109,14 @@ export function ResidentTable({ residents, filters, onEdit, onDelete }: Props) {
                                             <span className="text-sm text-muted-foreground">
                                                 {resident.organization.name}
                                             </span>
+                                        </TableCell>
+                                        <TableCell className="py-4">
+                                            <div className="flex items-center gap-1">
+                                                <Building2 className="h-4 w-4 text-muted-foreground" />
+                                                <span className="text-sm">
+                                                    {resident.organizations_count}
+                                                </span>
+                                            </div>
                                         </TableCell>
                                         <TableCell className="py-4">
                                             {resident.year_level}
@@ -131,6 +142,13 @@ export function ResidentTable({ residents, filters, onEdit, onDelete }: Props) {
                                                 <Button
                                                     variant="ghost"
                                                     size="sm"
+                                                    onClick={() => onView(resident)}
+                                                >
+                                                    <Eye className="h-4 w-4" />
+                                                </Button>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
                                                     onClick={() => onEdit(resident)}
                                                 >
                                                     <Edit className="h-4 w-4" />
@@ -147,11 +165,6 @@ export function ResidentTable({ residents, filters, onEdit, onDelete }: Props) {
                                                 >
                                                     <Trash2 className="h-4 w-4 text-destructive" />
                                                 </Button>
-                                                <Link href={`/residents/${resident.id}`}>
-                                                    <Button variant="ghost" size="sm">
-                                                        <Eye className="h-4 w-4" />
-                                                    </Button>
-                                                </Link>
                                             </div>
                                         </TableCell>
                                     </TableRow>

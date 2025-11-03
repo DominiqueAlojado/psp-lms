@@ -115,7 +115,7 @@ export function EditResidentSheet({
                                 preserveScroll: true,
                                 preserveState: true,
                                 onSuccess: () => {
-                                    toast.success('Resident updated successfully');
+                                    // Toast is shown by global flash handler in app-shell.tsx
                                     handleClose();
                                 },
                                 onError: () => {

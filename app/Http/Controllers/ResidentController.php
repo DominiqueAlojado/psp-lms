@@ -22,7 +22,7 @@ class ResidentController extends Controller
         $currentOrg = auth()->user()->currentOrganization;
 
         $residents = Resident::query()
-            ->with(['organization', 'user'])
+            ->with(['organization', 'user.organizations'])
             ->when($request->input('search'), function ($query, $search) {
                 $query->search($search);
             })
@@ -55,6 +55,7 @@ class ResidentController extends Controller
                 'year_level' => $resident->year_level,
                 'status' => $resident->status,
                 'updated_at' => $resident->updated_at->diffForHumans(),
+                'organizations_count' => $resident->user ? $resident->user->organizations()->count() : 0,
                 'organization' => [
                     'id' => $resident->organization->id,
                     'name' => $resident->organization->name,
@@ -153,34 +154,43 @@ class ResidentController extends Controller
     }
 
     /**
-     * Display the specified resident.
+     * Get organization data for a resident (AJAX endpoint for sheet).
      */
-    public function show(Resident $resident): Response
+    public function show(Resident $resident): \Illuminate\Http\JsonResponse
     {
-        $resident->load(['organization', 'user']);
+        $resident->load(['organization', 'user.organizations']);
 
-        return Inertia::render('residents/show', [
-            'resident' => [
-                'id' => $resident->id,
-                'uuid' => $resident->uuid,
-                'full_name' => $resident->full_name,
-                'full_name_with_middle_initial' => $resident->full_name_with_middle_initial,
-                'first_name' => $resident->first_name,
-                'middle_name' => $resident->middle_name,
-                'last_name' => $resident->last_name,
-                'email' => $resident->email,
-                'contact_number' => $resident->contact_number,
-                'course' => $resident->course,
-                'year_level' => $resident->year_level,
-                'status' => $resident->status,
-                'other_info' => $resident->other_info,
-                'created_at' => $resident->created_at,
-                'organization' => [
-                    'id' => $resident->organization->id,
-                    'name' => $resident->organization->name,
-                    'slug' => $resident->organization->slug,
+        // Get current organizations through user
+        $currentOrganizations = $resident->user
+            ? $resident->user->organizations->map(fn($org) => [
+                'id' => $org->id,
+                'name' => $org->name,
+                'slug' => $org->slug,
+                'type' => $org->type,
+                'pivot' => [
+                    'joined_at' => $org->pivot->joined_at,
+                    'is_active' => $org->pivot->is_active,
                 ],
-            ],
+            ])
+            : [];
+
+        // Get organizations not yet associated
+        $associatedIds = $currentOrganizations->pluck('id')->toArray();
+        $availableOrganizations = Organization::query()
+            ->whereNotIn('id', $associatedIds)
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get(['id', 'name', 'slug', 'type'])
+            ->map(fn($org) => [
+                'id' => $org->id,
+                'name' => $org->name,
+                'slug' => $org->slug,
+                'type' => $org->type,
+            ]);
+
+        return response()->json([
+            'currentOrganizations' => $currentOrganizations,
+            'availableOrganizations' => $availableOrganizations,
         ]);
     }
 
@@ -253,5 +263,41 @@ class ResidentController extends Controller
         $filename = 'residents_' . now()->format('Y-m-d_His') . '.xlsx';
 
         return Excel::download(new ResidentsExport($filters), $filename);
+    }
+
+    /**
+     * Attach a resident to an organization.
+     */
+    public function attachOrganization(Request $request, Resident $resident): RedirectResponse
+    {
+        $validated = $request->validate([
+            'organization_id' => ['required', 'exists:organizations,id'],
+        ]);
+
+        $organization = Organization::find($validated['organization_id']);
+
+        if ($resident->addToOrganization($organization)) {
+            return back()->with('success', "Resident added to {$organization->name}");
+        }
+
+        return back()->withErrors(['error' => 'Resident is already associated with this organization']);
+    }
+
+    /**
+     * Detach a resident from an organization.
+     */
+    public function detachOrganization(Request $request, Resident $resident): RedirectResponse
+    {
+        $validated = $request->validate([
+            'organization_id' => ['required', 'exists:organizations,id'],
+        ]);
+
+        $organization = Organization::find($validated['organization_id']);
+
+        if ($resident->removeFromOrganization($organization)) {
+            return back()->with('success', "Resident removed from {$organization->name}");
+        }
+
+        return back()->withErrors(['error' => 'Cannot remove resident from their home organization or organization not found']);
     }
 }

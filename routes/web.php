@@ -28,6 +28,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('residents.update');
     Route::delete('residents/{resident}', [App\Http\Controllers\ResidentController::class, 'destroy'])
         ->name('residents.destroy');
+    Route::post('residents/{resident}/organizations', [App\Http\Controllers\ResidentController::class, 'attachOrganization'])
+        ->name('residents.organizations.attach');
+    Route::delete('residents/{resident}/organizations', [App\Http\Controllers\ResidentController::class, 'detachOrganization'])
+        ->name('residents.organizations.detach');
 
     // Institutions
     Route::get('institutions', [App\Http\Controllers\OrganizationController::class, 'index'])

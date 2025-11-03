@@ -61,6 +61,63 @@ class Resident extends Model
     }
 
     /**
+     * Get all organizations the resident is associated with (through their user account).
+     */
+    public function organizations()
+    {
+        return $this->user ? $this->user->organizations() : collect([]);
+    }
+
+    /**
+     * Get active organizations the resident is associated with.
+     */
+    public function activeOrganizations()
+    {
+        return $this->user ? $this->user->organizations()->wherePivot('is_active', true) : collect([]);
+    }
+
+    /**
+     * Add resident to an organization.
+     */
+    public function addToOrganization(Organization $organization, array $pivotData = []): bool
+    {
+        if (! $this->user) {
+            return false;
+        }
+
+        // Check if already associated
+        if ($this->user->organizations->contains($organization->id)) {
+            return false;
+        }
+
+        $this->user->organizations()->attach($organization->id, array_merge([
+            'joined_at' => now(),
+            'is_active' => true,
+        ], $pivotData));
+
+        return true;
+    }
+
+    /**
+     * Remove resident from an organization.
+     */
+    public function removeFromOrganization(Organization $organization): bool
+    {
+        if (! $this->user) {
+            return false;
+        }
+
+        // Cannot remove from home organization
+        if ($this->organization_id === $organization->id) {
+            return false;
+        }
+
+        $this->user->organizations()->detach($organization->id);
+
+        return true;
+    }
+
+    /**
      * Get the resident's full name.
      */
     public function getFullNameAttribute(): string
