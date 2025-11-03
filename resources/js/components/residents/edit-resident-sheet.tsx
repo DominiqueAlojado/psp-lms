@@ -2,8 +2,11 @@ import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { router } from '@inertiajs/react';
+import { useState } from 'react';
 import { toast } from 'sonner';
+import { z } from 'zod';
 import { AccountInformationFields, PersonalInformationFields } from './resident-form-fields';
+import { editAccountSchema, editPersonalSchema } from './validation-schemas';
 
 interface Organization {
     id: number;
@@ -40,10 +43,17 @@ export function EditResidentSheet({
     statuses,
     onClose,
 }: Props) {
+    const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+
     if (!resident) return null;
 
+    const handleClose = () => {
+        setValidationErrors({});
+        onClose();
+    };
+
     return (
-        <Sheet open={open} onOpenChange={(open) => !open && onClose()}>
+        <Sheet open={open} onOpenChange={(open) => !open && handleClose()}>
             <SheetContent className="overflow-y-auto p-0 sm:max-w-[600px]">
                 <div className="p-8">
                     <SheetHeader className="pb-6">
@@ -57,12 +67,50 @@ export function EditResidentSheet({
                         onSubmit={(e) => {
                             e.preventDefault();
                             const formData = new FormData(e.currentTarget);
-                            router.patch(`/residents/${resident.id}`, Object.fromEntries(formData), {
+                            const data = Object.fromEntries(formData);
+
+                            // Validate personal information
+                            try {
+                                editPersonalSchema.parse(data);
+                            } catch (error) {
+                                if (error instanceof z.ZodError) {
+                                    const errors: Record<string, string> = {};
+                                    error.issues.forEach((err) => {
+                                        if (err.path[0]) {
+                                            errors[err.path[0].toString()] = err.message;
+                                        }
+                                    });
+                                    setValidationErrors(errors);
+                                    toast.error('Please check the form for errors');
+                                    return;
+                                }
+                            }
+
+                            // Validate account information (optional password)
+                            try {
+                                editAccountSchema.parse(data);
+                            } catch (error) {
+                                if (error instanceof z.ZodError) {
+                                    const errors: Record<string, string> = {};
+                                    error.issues.forEach((err) => {
+                                        if (err.path[0]) {
+                                            errors[err.path[0].toString()] = err.message;
+                                        }
+                                    });
+                                    setValidationErrors(errors);
+                                    toast.error('Please check the form for errors');
+                                    return;
+                                }
+                            }
+
+                            // If validation passes, clear errors and submit
+                            setValidationErrors({});
+                            router.patch(`/residents/${resident.id}`, data, {
                                 preserveScroll: true,
                                 preserveState: true,
                                 onSuccess: () => {
                                     toast.success('Resident updated successfully');
-                                    onClose();
+                                    handleClose();
                                 },
                                 onError: () => {
                                     toast.error('Failed to update resident');
@@ -91,17 +139,21 @@ export function EditResidentSheet({
                                         year_level: resident.year_level,
                                         status: resident.status,
                                     }}
+                                    validationErrors={validationErrors}
                                     showOrganization={false}
                                 />
                             </TabsContent>
 
                             <TabsContent value="account" className="space-y-6">
-                                <AccountInformationFields isOptional />
+                                <AccountInformationFields
+                                    validationErrors={validationErrors}
+                                    isOptional
+                                />
                             </TabsContent>
                         </Tabs>
 
                         <div className="mt-6 flex justify-end gap-3 border-t pt-6">
-                            <Button type="button" variant="outline" onClick={onClose}>
+                            <Button type="button" variant="outline" onClick={handleClose}>
                                 Cancel
                             </Button>
                             <Button type="submit">Save Changes</Button>
