@@ -52,6 +52,14 @@ class InstitutionsExport extends BaseExport
 
     public function map($institution): array
     {
+        // Format training officers as "Name (Email), Name (Email)"
+        $trainingOfficers = '';
+        if (is_array($institution->training_officers) && count($institution->training_officers) > 0) {
+            $trainingOfficers = collect($institution->training_officers)
+                ->map(fn ($officer) => "{$officer['name']} ({$officer['email']})")
+                ->join(', ');
+        }
+
         return [
             $institution->id,
             $institution->name,
@@ -61,7 +69,7 @@ class InstitutionsExport extends BaseExport
             $institution->is_active ? 'Active' : 'Inactive',
             $institution->residents_count,
             $institution->users_count,
-            $institution->training_officers_count,
+            $trainingOfficers ?: 'N/A',
             $institution->created_at->format('Y-m-d H:i:s'),
         ];
     }

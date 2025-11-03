@@ -1,9 +1,10 @@
 import { Input } from '@/components/ui/input';
 import { Label} from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { TrainingOfficersField } from './training-officers-field';
 
 interface InstitutionFormFieldsProps {
-    defaultValues?: Record<string, string | boolean>;
+    defaultValues?: Record<string, string | boolean | any[]>;
     validationErrors?: Record<string, string>;
 }
 
@@ -77,6 +78,11 @@ export function InstitutionFormFields({
                     Active (Institution is currently operational)
                 </Label>
             </div>
+
+            <TrainingOfficersField
+                defaultOfficers={(defaultValues.training_officers as any[]) || []}
+                validationErrors={validationErrors}
+            />
         </>
     );
 }

@@ -30,6 +30,11 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
 ];
 
+interface TrainingOfficer {
+    name: string;
+    email: string;
+}
+
 interface Institution {
     id: number;
     name: string;
@@ -40,6 +45,7 @@ interface Institution {
     residents_count: number;
     users_count: number;
     training_officers_count: number;
+    training_officers?: TrainingOfficer[];
     updated_at: string;
 }
 

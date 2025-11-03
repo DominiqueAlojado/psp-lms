@@ -47,7 +47,8 @@ class OrganizationController extends Controller
                 'is_active' => $institution->is_active,
                 'residents_count' => $institution->residents_count,
                 'users_count' => $institution->users_count,
-                'training_officers_count' => $institution->training_officers_count,
+                'training_officers' => $institution->training_officers ?? [],
+                'training_officers_count' => is_array($institution->training_officers) ? count($institution->training_officers) : 0,
                 'updated_at' => $institution->updated_at->diffForHumans(),
             ]);
 
@@ -78,27 +79,34 @@ class OrganizationController extends Controller
         \Log::info('Request data', $request->all());
 
         try {
-            $validated = $request->validate([
-                'name' => ['required', 'string', 'max:255', 'unique:organizations,name'],
-                'description' => ['nullable', 'string'],
-                'type' => ['required', 'string', 'in:chapter,institution,main,national'],
-                'is_active' => ['boolean'],
-            ], [
-                'name.required' => 'Institution name is required',
-                'name.unique' => 'An institution with this name already exists',
-                'type.required' => 'Institution type is required',
-                'type.in' => 'Please select a valid institution type',
-            ]);
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255', 'unique:organizations,name'],
+            'description' => ['nullable', 'string'],
+            'type' => ['required', 'string', 'in:chapter,institution,main,national'],
+            'is_active' => ['boolean'],
+            'training_officers' => ['nullable', 'json'],
+        ], [
+            'name.required' => 'Institution name is required',
+            'name.unique' => 'An institution with this name already exists',
+            'type.required' => 'Institution type is required',
+            'type.in' => 'Please select a valid institution type',
+            'training_officers.json' => 'Invalid training officers data',
+        ]);
 
-            \Log::info('Validation passed', $validated);
+        \Log::info('Validation passed', $validated);
 
-            // Generate slug from name
-            $validated['slug'] = Str::slug($validated['name']);
-            $validated['is_active'] = $validated['is_active'] ?? true;
+        // Generate slug from name
+        $validated['slug'] = Str::slug($validated['name']);
+        $validated['is_active'] = $validated['is_active'] ?? true;
 
-            \Log::info('Creating institution with data:', $validated);
+        // Decode training officers JSON if provided
+        if (isset($validated['training_officers'])) {
+            $validated['training_officers'] = json_decode($validated['training_officers'], true);
+        }
 
-            $institution = Organization::create($validated);
+        \Log::info('Creating institution with data:', $validated);
+
+        $institution = Organization::create($validated);
 
             \Log::info('SUCCESS! Institution created:', [
                 'id' => $institution->id,
@@ -124,16 +132,23 @@ class OrganizationController extends Controller
             'description' => ['nullable', 'string'],
             'type' => ['required', 'string', 'in:chapter,institution,main,national'],
             'is_active' => ['boolean'],
+            'training_officers' => ['nullable', 'json'],
         ], [
             'name.required' => 'Institution name is required',
             'name.unique' => 'An institution with this name already exists',
             'type.required' => 'Institution type is required',
             'type.in' => 'Please select a valid institution type',
+            'training_officers.json' => 'Invalid training officers data',
         ]);
 
         // Update slug if name changed
         if ($validated['name'] !== $organization->name) {
             $validated['slug'] = Str::slug($validated['name']);
+        }
+
+        // Decode training officers JSON if provided
+        if (isset($validated['training_officers'])) {
+            $validated['training_officers'] = json_decode($validated['training_officers'], true);
         }
 
         $organization->update($validated);

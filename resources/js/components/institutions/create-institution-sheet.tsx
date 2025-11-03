@@ -40,12 +40,27 @@ export function CreateInstitutionSheet({ open, onClose }: Props) {
 
         const formData = new FormData(e.currentTarget);
         
+        // Extract training officers from form data
+        const trainingOfficers: any[] = [];
+        let index = 0;
+        while (formData.has(`training_officers[${index}][name]`)) {
+            const name = formData.get(`training_officers[${index}][name]`) as string;
+            const email = formData.get(`training_officers[${index}][email]`) as string;
+            
+            // Only add if both name and email are provided
+            if (name && email) {
+                trainingOfficers.push({ name, email });
+            }
+            index++;
+        }
+        
         // Build data object with proper types for Zod validation
         const zodData = {
             name: formData.get('name') as string || '',
             type: formData.get('type') as string || '',
             description: (formData.get('description') as string) || '',
             is_active: formData.get('is_active') === 'on',
+            training_officers: trainingOfficers,
         };
 
         console.log('Form data for validation:', zodData);
@@ -57,10 +72,11 @@ export function CreateInstitutionSheet({ open, onClose }: Props) {
 
             console.log('Validation passed, submitting to server...');
 
-            // Prepare data for Laravel (convert boolean to 1/0)
+            // Prepare data for Laravel (convert boolean to 1/0, keep training_officers as array)
             const serverData = {
                 ...zodData,
                 is_active: zodData.is_active ? 1 : 0,
+                training_officers: JSON.stringify(zodData.training_officers || []),
             };
 
             router.post('/institutions', serverData, {
