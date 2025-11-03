@@ -54,6 +54,7 @@ class ResidentController extends Controller
                 'course' => $resident->course,
                 'year_level' => $resident->year_level,
                 'status' => $resident->status,
+                'updated_at' => $resident->updated_at->diffForHumans(),
                 'organization' => [
                     'id' => $resident->organization->id,
                     'name' => $resident->organization->name,

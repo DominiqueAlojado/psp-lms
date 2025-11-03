@@ -31,6 +31,7 @@ interface Resident {
     course: string;
     year_level: string;
     status: string;
+    updated_at: string;
     organization: Organization;
 }
 
@@ -78,6 +79,7 @@ export function ResidentTable({ residents, filters, onEdit, onDelete }: Props) {
                                 <TableHead className="py-4">Organization</TableHead>
                                 <TableHead className="py-4">Year Level</TableHead>
                                 <TableHead className="py-4">Status</TableHead>
+                                <TableHead className="py-4">Updated</TableHead>
                                 <TableHead className="w-[100px] py-4">Actions</TableHead>
                             </TableRow>
                         </TableHeader>
@@ -85,7 +87,7 @@ export function ResidentTable({ residents, filters, onEdit, onDelete }: Props) {
                             {residents.data.length === 0 ? (
                                 <TableRow>
                                     <TableCell
-                                        colSpan={6}
+                                        colSpan={7}
                                         className="py-8 text-center text-muted-foreground"
                                     >
                                         No residents found. Try adjusting your filters.
@@ -118,6 +120,11 @@ export function ResidentTable({ residents, filters, onEdit, onDelete }: Props) {
                                             >
                                                 {resident.status}
                                             </Badge>
+                                        </TableCell>
+                                        <TableCell className="py-4">
+                                            <span className="text-sm text-muted-foreground">
+                                                {resident.updated_at}
+                                            </span>
                                         </TableCell>
                                         <TableCell className="py-4">
                                             <div className="flex gap-2">

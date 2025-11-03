@@ -40,6 +40,7 @@ interface Resident {
     course: string;
     year_level: string;
     status: string;
+    updated_at: string;
     organization: Organization;
 }
 
