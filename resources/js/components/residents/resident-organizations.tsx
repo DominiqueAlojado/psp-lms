@@ -1,6 +1,22 @@
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+} from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { router } from '@inertiajs/react';
 import { Building2, Plus, X } from 'lucide-react';
@@ -38,6 +54,10 @@ export function ResidentOrganizations({
     const [selectedOrganizationId, setSelectedOrganizationId] = useState<
         number | null
     >(null);
+    const [removingOrganization, setRemovingOrganization] = useState<{
+        id: number;
+        name: string;
+    } | null>(null);
 
     const handleAddOrganization = () => {
         if (!selectedOrganizationId) {
@@ -50,8 +70,9 @@ export function ResidentOrganizations({
             { organization_id: selectedOrganizationId },
             {
                 preserveScroll: true,
+                preserveState: true,
                 onSuccess: () => {
-                    toast.success('Organization added successfully');
+                    // Toast is shown by global flash handler
                     setSelectedOrganizationId(null);
                     // Refresh organization lists
                     onUpdate?.();
@@ -67,33 +88,42 @@ export function ResidentOrganizations({
         );
     };
 
-    const handleRemoveOrganization = (organizationId: number, organizationName: string) => {
+    const handleRemoveClick = (
+        organizationId: number,
+        organizationName: string,
+    ) => {
         if (organizationId === homeOrganizationId) {
             toast.error('Cannot remove resident from their home organization');
             return;
         }
 
-        if (confirm(`Remove ${residentName} from ${organizationName}?`)) {
-            router.delete(
-                `/residents/${residentId}/organizations`,
-                {
-                    data: { organization_id: organizationId },
-                    preserveScroll: true,
-                    onSuccess: () => {
-                        toast.success('Organization removed successfully');
-                        // Refresh organization lists
-                        onUpdate?.();
-                    },
-                    onError: (errors) => {
-                        if (errors.error) {
-                            toast.error(errors.error as string);
-                        } else {
-                            toast.error('Failed to remove organization');
-                        }
-                    },
-                },
-            );
-        }
+        setRemovingOrganization({ id: organizationId, name: organizationName });
+    };
+
+    const confirmRemoveOrganization = () => {
+        if (!removingOrganization) return;
+
+        router.delete(`/residents/${residentId}/organizations`, {
+            data: { organization_id: removingOrganization.id },
+            preserveScroll: true,
+            preserveState: true,
+            onSuccess: () => {
+                // Toast is shown by global flash handler
+                // Sheet stays open, just refresh the lists
+                onUpdate?.();
+            },
+            onError: (errors) => {
+                if (errors.error) {
+                    toast.error(errors.error as string);
+                } else {
+                    toast.error('Failed to remove organization');
+                }
+            },
+            onFinish: () => {
+                // Close only the confirmation dialog, not the sheet
+                setRemovingOrganization(null);
+            },
+        });
     };
 
     return (
@@ -101,13 +131,16 @@ export function ResidentOrganizations({
             <CardHeader>
                 <CardTitle>Associated Institutions</CardTitle>
                 <CardDescription>
-                    Manage the institutions this resident is associated with for training and rotations
+                    Manage the institutions this resident is associated with for
+                    training and rotations
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
                 {/* Current Organizations */}
                 <div className="space-y-3">
-                    <Label>Current Institutions ({currentOrganizations.length})</Label>
+                    <Label>
+                        Current Institutions ({currentOrganizations.length})
+                    </Label>
                     {currentOrganizations.length === 0 ? (
                         <p className="text-sm text-muted-foreground">
                             No institutions associated
@@ -132,7 +165,7 @@ export function ResidentOrganizations({
                                         {!isHome && (
                                             <button
                                                 onClick={() =>
-                                                    handleRemoveOrganization(
+                                                    handleRemoveClick(
                                                         org.id,
                                                         org.name,
                                                     )
@@ -158,12 +191,16 @@ export function ResidentOrganizations({
                                 value={selectedOrganizationId || ''}
                                 onChange={(e) =>
                                     setSelectedOrganizationId(
-                                        e.target.value ? Number(e.target.value) : null,
+                                        e.target.value
+                                            ? Number(e.target.value)
+                                            : null,
                                     )
                                 }
-                                className="flex h-10 flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                className="flex h-10 flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
                             >
-                                <option value="">Select an institution...</option>
+                                <option value="">
+                                    Select an institution...
+                                </option>
                                 {availableOrganizations.map((org) => (
                                     <option key={org.id} value={org.id}>
                                         {org.name} ({org.type})
@@ -182,7 +219,33 @@ export function ResidentOrganizations({
                     </div>
                 )}
             </CardContent>
+
+            {/* Remove Organization Confirmation Dialog */}
+            <AlertDialog
+                open={!!removingOrganization}
+                onOpenChange={(open) => !open && setRemovingOrganization(null)}
+            >
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Remove Institution</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Are you sure you want to remove{' '}
+                            <strong>{residentName}</strong> from{' '}
+                            <strong>{removingOrganization?.name}</strong>? This
+                            will remove their association with this institution.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={confirmRemoveOrganization}
+                            className="bg-destructive text-white hover:bg-destructive/90"
+                        >
+                            Remove
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </Card>
     );
 }
-
