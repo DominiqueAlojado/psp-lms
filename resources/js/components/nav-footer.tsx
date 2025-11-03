@@ -8,7 +8,7 @@ import {
 } from '@/components/ui/sidebar';
 import { resolveUrl } from '@/lib/utils';
 import { type NavItem } from '@/types';
-import { Link } from '@inertiajs/react';
+import { Link, usePage } from '@inertiajs/react';
 import { type ComponentPropsWithoutRef } from 'react';
 
 export function NavFooter({
@@ -18,6 +18,8 @@ export function NavFooter({
 }: ComponentPropsWithoutRef<typeof SidebarGroup> & {
     items: NavItem[];
 }) {
+    const page = usePage();
+
     return (
         <SidebarGroup
             {...props}
@@ -30,10 +32,15 @@ export function NavFooter({
                             item.href.startsWith('http://') ||
                             item.href.startsWith('https://');
 
+                        // Check if current page URL starts with this menu item's href
+                        const isActive = !isExternal && page.url.startsWith(resolveUrl(item.href));
+
                         return (
                             <SidebarMenuItem key={item.title}>
                                 <SidebarMenuButton
                                     asChild
+                                    isActive={isActive}
+                                    tooltip={{ children: item.title }}
                                     className="text-neutral-600 hover:text-neutral-800 dark:text-neutral-300 dark:hover:text-neutral-100"
                                 >
                                     {isExternal ? (
