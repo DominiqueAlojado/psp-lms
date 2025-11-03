@@ -1,4 +1,6 @@
+import { ExportButton } from '@/components/export-button';
 import HeadingSmall from '@/components/heading-small';
+import { StatCard } from '@/components/stat-card';
 import { CreateResidentSheet } from '@/components/residents/create-resident-sheet';
 import { DeleteResidentDialog } from '@/components/residents/delete-resident-dialog';
 import { EditResidentSheet } from '@/components/residents/edit-resident-sheet';
@@ -8,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, router, usePage } from '@inertiajs/react';
-import { Download, Plus } from 'lucide-react';
+import { GraduationCap, Plus, Users } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -69,6 +71,7 @@ interface Props {
     yearLevels: string[];
     statuses: string[];
     courses: string[];
+    yearLevelStats: Record<string, number>;
 }
 
 export default function ResidentsIndex({
@@ -78,6 +81,7 @@ export default function ResidentsIndex({
     yearLevels,
     statuses,
     courses,
+    yearLevelStats,
 }: Props) {
     const [search, setSearch] = useState(filters.search || '');
     const [showFilters, setShowFilters] = useState(false);
@@ -143,22 +147,6 @@ export default function ResidentsIndex({
         });
     };
 
-    const handleExport = () => {
-        // Build query string with current filters
-        const params = new URLSearchParams();
-
-        if (filters.search) params.append('search', filters.search);
-        if (filters.organization_id)
-            params.append('organization_id', filters.organization_id.toString());
-        if (filters.year_level) params.append('year_level', filters.year_level);
-        if (filters.status) params.append('status', filters.status);
-        if (filters.course) params.append('course', filters.course);
-
-        // Trigger download
-        window.location.href = `/residents/export?${params.toString()}`;
-        toast.success('Exporting residents...');
-    };
-
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Residents" />
@@ -170,15 +158,55 @@ export default function ResidentsIndex({
                         description="Search and manage all residents across organizations"
                     />
                     <div className="flex gap-2">
-                        <Button variant="outline" onClick={handleExport}>
-                            <Download className="mr-2 h-4 w-4" />
-                            Export to Excel
-                        </Button>
+                        <ExportButton
+                            exportUrl="/residents/export"
+                            filters={filters}
+                            successMessage="Exporting residents..."
+                        />
                         <Button onClick={() => setAddingResident(true)}>
                             <Plus className="mr-2 h-4 w-4" />
                             Add Resident
                         </Button>
                     </div>
+                </div>
+
+                {/* Statistics Cards */}
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+                    {yearLevels.map((level) => {
+                        const count = yearLevelStats[level] || 0;
+                        const isFiltered = filters.year_level === level;
+
+                        return (
+                            <StatCard
+                                key={level}
+                                title={level}
+                                value={count}
+                                description={`${count === 1 ? 'resident' : 'residents'}`}
+                                icon={
+                                    level === 'Graduate'
+                                        ? GraduationCap
+                                        : Users
+                                }
+                                iconColor={
+                                    isFiltered
+                                        ? 'text-primary'
+                                        : 'text-muted-foreground'
+                                }
+                                className={
+                                    isFiltered ? 'border-primary' : ''
+                                }
+                                onClick={() => {
+                                    if (isFiltered) {
+                                        // Remove filter
+                                        updateFilter('year_level', undefined);
+                                    } else {
+                                        // Apply filter
+                                        updateFilter('year_level', level);
+                                    }
+                                }}
+                            />
+                        );
+                    })}
                 </div>
 
                 {/* Filters */}

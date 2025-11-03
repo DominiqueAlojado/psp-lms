@@ -66,6 +66,13 @@ class ResidentController extends Controller
             ->orderBy('name')
             ->get();
 
+        // Get statistics per year level
+        $yearLevelStats = Resident::query()
+            ->selectRaw('year_level, COUNT(*) as count')
+            ->groupBy('year_level')
+            ->pluck('count', 'year_level')
+            ->toArray();
+
         return Inertia::render('residents/index', [
             'residents' => $residents,
             'organizations' => $organizations,
@@ -73,6 +80,7 @@ class ResidentController extends Controller
             'yearLevels' => ['Pre Resident', 'First Year', 'Second Year', 'Third Year', 'Fourth Year', 'Graduate'],
             'statuses' => ['active', 'inactive'],
             'courses' => Resident::distinct()->pluck('course')->filter()->values(),
+            'yearLevelStats' => $yearLevelStats,
         ]);
     }
 

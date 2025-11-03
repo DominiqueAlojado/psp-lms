@@ -4,44 +4,21 @@ namespace App\Exports;
 
 use App\Models\Resident;
 use Illuminate\Database\Eloquent\Builder;
-use Maatwebsite\Excel\Concerns\FromQuery;
-use Maatwebsite\Excel\Concerns\WithHeadings;
-use Maatwebsite\Excel\Concerns\WithMapping;
 
-class ResidentsExport implements FromQuery, WithHeadings, WithMapping
+class ResidentsExport extends BaseExport
 {
-    protected $filters;
-
-    public function __construct(array $filters = [])
-    {
-        $this->filters = $filters;
-    }
-
     public function query(): Builder
     {
-        $query = Resident::query()
-            ->with(['organization']);
+        $query = Resident::query()->with(['organization']);
 
-        // Apply filters if provided
-        if (! empty($this->filters['search'])) {
-            $query->search($this->filters['search']);
-        }
+        // Apply search filter
+        $this->applySearch($query);
 
-        if (! empty($this->filters['organization_id'])) {
-            $query->where('organization_id', $this->filters['organization_id']);
-        }
-
-        if (! empty($this->filters['year_level'])) {
-            $query->where('year_level', $this->filters['year_level']);
-        }
-
-        if (! empty($this->filters['status'])) {
-            $query->where('status', $this->filters['status']);
-        }
-
-        if (! empty($this->filters['course'])) {
-            $query->where('course', $this->filters['course']);
-        }
+        // Apply other filters
+        $this->applyFilter($query, 'organization_id', 'organization_id');
+        $this->applyFilter($query, 'year_level', 'year_level');
+        $this->applyFilter($query, 'status', 'status');
+        $this->applyFilter($query, 'course', 'course');
 
         return $query->orderBy('last_name', 'asc');
     }
