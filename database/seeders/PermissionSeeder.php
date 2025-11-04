@@ -31,9 +31,21 @@ class PermissionSeeder extends Seeder
             ['name' => 'create-residents', 'category' => 'Resident Management', 'display_order' => 2],
             ['name' => 'edit-residents', 'category' => 'Resident Management', 'display_order' => 3],
             ['name' => 'delete-residents', 'category' => 'Resident Management', 'display_order' => 4],
-            ['name' => 'view-resident-progress', 'category' => 'Resident Management', 'display_order' => 5],
-            ['name' => 'approve-residents', 'category' => 'Resident Management', 'display_order' => 6],
-            ['name' => 'deactivate-residents', 'category' => 'Resident Management', 'display_order' => 7],
+            ['name' => 'export-residents', 'category' => 'Resident Management', 'display_order' => 5],
+
+            // Staff Management
+            ['name' => 'view-staff', 'category' => 'Staff Management', 'display_order' => 1],
+            ['name' => 'create-staff', 'category' => 'Staff Management', 'display_order' => 2],
+            ['name' => 'edit-staff', 'category' => 'Staff Management', 'display_order' => 3],
+            ['name' => 'delete-staff', 'category' => 'Staff Management', 'display_order' => 4],
+            ['name' => 'export-staff', 'category' => 'Staff Management', 'display_order' => 5],
+
+            // Institution Management
+            ['name' => 'view-institutions', 'category' => 'Institution Management', 'display_order' => 1],
+            ['name' => 'create-institutions', 'category' => 'Institution Management', 'display_order' => 2],
+            ['name' => 'edit-institutions', 'category' => 'Institution Management', 'display_order' => 3],
+            ['name' => 'delete-institutions', 'category' => 'Institution Management', 'display_order' => 4],
+            ['name' => 'export-institutions', 'category' => 'Institution Management', 'display_order' => 5],
 
             // Learning Materials
             ['name' => 'view-materials', 'category' => 'Learning Materials', 'display_order' => 1],
