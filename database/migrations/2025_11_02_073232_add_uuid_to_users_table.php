@@ -11,19 +11,22 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('users', function (Blueprint $table) {
-            $table->uuid('uuid')->nullable()->after('id');
-        });
+        // Skip - UUID is now added in the initial users table creation
+        if (!Schema::hasColumn('users', 'uuid')) {
+            Schema::table('users', function (Blueprint $table) {
+                $table->uuid('uuid')->nullable()->after('id');
+            });
 
-        // Generate UUIDs for existing users
-        \App\Models\User::whereNull('uuid')->each(function ($user) {
-            $user->update(['uuid' => (string) \Illuminate\Support\Str::uuid()]);
-        });
+            // Generate UUIDs for existing users
+            \App\Models\User::whereNull('uuid')->each(function ($user) {
+                $user->update(['uuid' => (string) \Illuminate\Support\Str::uuid()]);
+            });
 
-        // Make UUID not nullable
-        Schema::table('users', function (Blueprint $table) {
-            $table->uuid('uuid')->nullable(false)->unique()->change();
-        });
+            // Make UUID not nullable
+            Schema::table('users', function (Blueprint $table) {
+                $table->uuid('uuid')->nullable(false)->unique()->change();
+            });
+        }
     }
 
     /**

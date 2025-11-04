@@ -11,21 +11,31 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // Drop existing unique constraint
-        Schema::table('roles', function (Blueprint $table) {
-            $table->dropUnique(['organization_id', 'name', 'guard_name']);
-            $table->dropIndex('roles_team_foreign_key_index');
-        });
+        // Check if organization_id column exists
+        if (Schema::hasColumn('roles', 'organization_id')) {
+            // Drop existing unique constraint and index using try-catch
+            try {
+                \DB::statement('ALTER TABLE roles DROP CONSTRAINT roles_organization_id_name_guard_name_unique');
+            } catch (\Exception $e) {
+                //
+            }
 
-        // Drop organization_id column
-        Schema::table('roles', function (Blueprint $table) {
-            $table->dropColumn('organization_id');
-        });
+            try {
+                \DB::statement('DROP INDEX roles_team_foreign_key_index');
+            } catch (\Exception $e) {
+                //
+            }
 
-        // Add back unique constraint on just name and guard_name
-        Schema::table('roles', function (Blueprint $table) {
-            $table->unique(['name', 'guard_name']);
-        });
+            // Drop organization_id column
+            Schema::table('roles', function (Blueprint $table) {
+                $table->dropColumn('organization_id');
+            });
+
+            // Add back unique constraint on just name and guard_name
+            Schema::table('roles', function (Blueprint $table) {
+                $table->unique(['name', 'guard_name']);
+            });
+        }
     }
 
     /**

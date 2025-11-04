@@ -29,7 +29,6 @@ class RoleSeeder extends Seeder
                 [
                     'name' => $roleName,
                     'guard_name' => 'web',
-                    'organization_id' => null, // Global roles - not tied to specific organization
                 ]
             );
         }

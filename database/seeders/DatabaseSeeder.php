@@ -19,14 +19,17 @@ class DatabaseSeeder extends Seeder
             RoleSeeder::class,           // Create roles
             PermissionSeeder::class,     // Create permissions
             RolePermissionSeeder::class, // Assign permissions to roles
-            // ResidentSeeder::class,    // Uncomment to seed residents
+            SystemAdminSeeder::class,    // Create system admin user
+            ResidentSeeder::class,       // Seed residents with user accounts
         ]);
 
         // User::factory(10)->create();
 
+        // Create test user if not exists
         User::firstOrCreate(
             ['email' => 'test@example.com'],
             [
+                'uuid' => \Illuminate\Support\Str::uuid(),
                 'name' => 'Test User',
                 'password' => 'password',
                 'email_verified_at' => now(),
