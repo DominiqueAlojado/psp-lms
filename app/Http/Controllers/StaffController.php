@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Exports\StaffExport;
-use App\Http\Controllers\Controller;
 use App\Models\Organization;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
@@ -26,9 +25,18 @@ class StaffController extends Controller
         // Get all roles except 'Resident'
         $staffRoleNames = Role::where('name', '!=', 'Resident')->pluck('name')->toArray();
 
+        // Get organization IDs that the current user belongs to
+        $userOrgIds = auth()->user()->organizations()->pluck('organizations.id')->toArray();
+        $isSystemAdmin = auth()->user()->hasRole('System Admin');
+
         $staff = User::query()
             ->whereHas('roles', function ($query) use ($staffRoleNames) {
                 $query->whereIn('name', $staffRoleNames);
+            })
+            ->when(! $isSystemAdmin, function ($query) use ($userOrgIds) {
+                $query->whereHas('organizations', function ($q) use ($userOrgIds) {
+                    $q->whereIn('organizations.id', $userOrgIds);
+                });
             })
             ->with(['roles', 'currentOrganization'])
             ->when($request->input('search'), function ($query, $search) {
@@ -61,15 +69,23 @@ class StaffController extends Controller
                 'updated_at' => $user->updated_at->diffForHumans(),
             ]);
 
-        // Get role statistics
+        // Get role statistics (only for staff in user's organizations, unless System Admin)
         $roleStats = Role::where('name', '!=', 'Resident')
             ->get()
-            ->map(function ($role) {
+            ->map(function ($role) use ($userOrgIds, $isSystemAdmin) {
+                $query = User::whereHas('roles', function ($q) use ($role) {
+                    $q->where('name', $role->name);
+                });
+
+                if (! $isSystemAdmin) {
+                    $query->whereHas('organizations', function ($q) use ($userOrgIds) {
+                        $q->whereIn('organizations.id', $userOrgIds);
+                    });
+                }
+
                 return [
                     'role' => $role->name,
-                    'count' => User::whereHas('roles', function ($query) use ($role) {
-                        $query->where('name', $role->name);
-                    })->count(),
+                    'count' => $query->count(),
                 ];
             });
 
@@ -78,7 +94,9 @@ class StaffController extends Controller
             'filters' => $request->only(['search', 'role', 'organization', 'sort', 'direction']),
             'roleStats' => $roleStats,
             'roles' => Role::where('name', '!=', 'Resident')->get(['id', 'name']),
-            'organizations' => Organization::where('is_active', true)->get(['id', 'name']),
+            'organizations' => $isSystemAdmin
+                ? Organization::where('is_active', true)->get(['id', 'name'])
+                : auth()->user()->organizations()->where('is_active', true)->get(['id', 'name']),
         ]);
     }
 
@@ -119,7 +137,7 @@ class StaffController extends Controller
         $user->syncRoles($validated['roles']);
 
         // Attach organizations
-        if (!empty($validated['organizations'])) {
+        if (! empty($validated['organizations'])) {
             $organizationData = collect($validated['organizations'])->mapWithKeys(function ($orgId) {
                 return [$orgId => ['joined_at' => now(), 'is_active' => true]];
             })->toArray();
@@ -159,7 +177,7 @@ class StaffController extends Controller
             'current_organization_id' => $validated['current_organization_id'] ?? null,
         ];
 
-        if (!empty($validated['password'])) {
+        if (! empty($validated['password'])) {
             $updateData['password'] = Hash::make($validated['password']);
         }
 

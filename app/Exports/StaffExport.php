@@ -13,9 +13,18 @@ class StaffExport extends BaseExport
         // Get all roles except 'Resident'
         $staffRoleNames = Role::where('name', '!=', 'Resident')->pluck('name')->toArray();
 
+        // Get organization IDs that the current user belongs to
+        $userOrgIds = auth()->user()->organizations()->pluck('organizations.id')->toArray();
+        $isSystemAdmin = auth()->user()->hasRole('System Admin');
+
         $query = User::query()
             ->whereHas('roles', function ($q) use ($staffRoleNames) {
                 $q->whereIn('name', $staffRoleNames);
+            })
+            ->when(! $isSystemAdmin, function ($q) use ($userOrgIds) {
+                $q->whereHas('organizations', function ($query) use ($userOrgIds) {
+                    $query->whereIn('organizations.id', $userOrgIds);
+                });
             })
             ->with(['roles', 'currentOrganization', 'organizations']);
 
@@ -77,4 +86,3 @@ class StaffExport extends BaseExport
         ];
     }
 }
-
