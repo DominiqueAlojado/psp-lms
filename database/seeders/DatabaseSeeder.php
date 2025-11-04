@@ -20,6 +20,7 @@ class DatabaseSeeder extends Seeder
             PermissionSeeder::class,     // Create permissions
             RolePermissionSeeder::class, // Assign permissions to roles
             SystemAdminSeeder::class,    // Create system admin user
+            StaffSeeder::class,          // Create staff members
             ResidentSeeder::class,       // Seed residents with user accounts
         ]);
 
