@@ -9,6 +9,13 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from '@/components/ui/tooltip';
+import { usePermissions } from '@/hooks/use-permissions';
 import { router } from '@inertiajs/react';
 import { Edit, Trash2, Users } from 'lucide-react';
 
@@ -53,6 +60,8 @@ export function InstitutionTable({
     onEdit,
     onDelete,
 }: Props) {
+    const { hasPermission } = usePermissions();
+
     return (
         <Card>
             <CardContent className="p-8">
@@ -153,27 +162,61 @@ export function InstitutionTable({
                                         </TableCell>
                                         <TableCell className="py-4">
                                             <div className="flex gap-2">
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    onClick={() =>
-                                                        onEdit(institution)
-                                                    }
-                                                >
-                                                    <Edit className="h-4 w-4" />
-                                                </Button>
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    onClick={() =>
-                                                        onDelete(
-                                                            institution.id,
-                                                            institution.name,
-                                                        )
-                                                    }
-                                                >
-                                                    <Trash2 className="h-4 w-4 text-destructive" />
-                                                </Button>
+                                                <TooltipProvider>
+                                                    <Tooltip>
+                                                        <TooltipTrigger asChild>
+                                                            <span className="inline-block">
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    onClick={() =>
+                                                                        onEdit(institution)
+                                                                    }
+                                                                    disabled={!hasPermission('edit-institutions')}
+                                                                >
+                                                                    <Edit className="h-4 w-4" />
+                                                                </Button>
+                                                            </span>
+                                                        </TooltipTrigger>
+                                                        {!hasPermission('edit-institutions') && (
+                                                            <TooltipContent>
+                                                                <p>
+                                                                    You don't have permission to edit
+                                                                    institutions
+                                                                </p>
+                                                            </TooltipContent>
+                                                        )}
+                                                    </Tooltip>
+                                                </TooltipProvider>
+                                                <TooltipProvider>
+                                                    <Tooltip>
+                                                        <TooltipTrigger asChild>
+                                                            <span className="inline-block">
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    onClick={() =>
+                                                                        onDelete(
+                                                                            institution.id,
+                                                                            institution.name,
+                                                                        )
+                                                                    }
+                                                                    disabled={!hasPermission('delete-institutions')}
+                                                                >
+                                                                    <Trash2 className="h-4 w-4 text-destructive" />
+                                                                </Button>
+                                                            </span>
+                                                        </TooltipTrigger>
+                                                        {!hasPermission('delete-institutions') && (
+                                                            <TooltipContent>
+                                                                <p>
+                                                                    You don't have permission to delete
+                                                                    institutions
+                                                                </p>
+                                                            </TooltipContent>
+                                                        )}
+                                                    </Tooltip>
+                                                </TooltipProvider>
                                             </div>
                                         </TableCell>
                                     </TableRow>

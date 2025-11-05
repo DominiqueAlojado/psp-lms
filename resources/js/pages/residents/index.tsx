@@ -8,6 +8,13 @@ import { ResidentFilters } from '@/components/residents/resident-filters';
 import { ResidentTable } from '@/components/residents/resident-table';
 import { ViewResidentSheet } from '@/components/residents/view-resident-sheet';
 import { Button } from '@/components/ui/button';
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from '@/components/ui/tooltip';
+import { usePermissions } from '@/hooks/use-permissions';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, router, usePage } from '@inertiajs/react';
@@ -86,6 +93,7 @@ export default function ResidentsIndex({
     courses,
     yearLevelStats,
 }: Props) {
+    const { hasPermission } = usePermissions();
     const [search, setSearch] = useState(filters.search || '');
     const [showFilters, setShowFilters] = useState(false);
     const [localFilters, setLocalFilters] = useState(filters);
@@ -196,11 +204,31 @@ export default function ResidentsIndex({
                             exportUrl="/residents/export"
                             filters={filters}
                             successMessage="Exporting residents..."
+                            disabled={!hasPermission('export-residents')}
                         />
-                        <Button onClick={() => setAddingResident(true)}>
-                            <Plus className="mr-2 h-4 w-4" />
-                            Add Resident
-                        </Button>
+                        <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <span className="inline-block">
+                                        <Button
+                                            onClick={() => setAddingResident(true)}
+                                            disabled={!hasPermission('create-residents')}
+                                        >
+                                            <Plus className="mr-2 h-4 w-4" />
+                                            Add Resident
+                                        </Button>
+                                    </span>
+                                </TooltipTrigger>
+                                {!hasPermission('create-residents') && (
+                                    <TooltipContent>
+                                        <p>
+                                            You don't have permission to create
+                                            residents
+                                        </p>
+                                    </TooltipContent>
+                                )}
+                            </Tooltip>
+                        </TooltipProvider>
                     </div>
                 </div>
 

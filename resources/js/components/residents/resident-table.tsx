@@ -9,6 +9,13 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from '@/components/ui/tooltip';
+import { usePermissions } from '@/hooks/use-permissions';
 import { router } from '@inertiajs/react';
 import { Building2, Edit, Eye, Trash2 } from 'lucide-react';
 
@@ -60,6 +67,8 @@ interface Props {
 }
 
 export function ResidentTable({ residents, filters, onView, onEdit, onDelete }: Props) {
+    const { hasPermission } = usePermissions();
+
     return (
         <Card>
             <CardContent className="p-8">
@@ -139,32 +148,83 @@ export function ResidentTable({ residents, filters, onView, onEdit, onDelete }: 
                                         </TableCell>
                                         <TableCell className="py-4">
                                             <div className="flex gap-2">
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    onClick={() => onView(resident)}
-                                                >
-                                                    <Eye className="h-4 w-4" />
-                                                </Button>
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    onClick={() => onEdit(resident)}
-                                                >
-                                                    <Edit className="h-4 w-4" />
-                                                </Button>
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    onClick={() =>
-                                                        onDelete(
-                                                            resident.id,
-                                                            resident.full_name,
-                                                        )
-                                                    }
-                                                >
-                                                    <Trash2 className="h-4 w-4 text-destructive" />
-                                                </Button>
+                                                <TooltipProvider>
+                                                    <Tooltip>
+                                                        <TooltipTrigger asChild>
+                                                            <span className="inline-block">
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    onClick={() => onView(resident)}
+                                                                    disabled={!hasPermission('view-residents')}
+                                                                >
+                                                                    <Eye className="h-4 w-4" />
+                                                                </Button>
+                                                            </span>
+                                                        </TooltipTrigger>
+                                                        {!hasPermission('view-residents') && (
+                                                            <TooltipContent>
+                                                                <p>
+                                                                    You don't have permission to view
+                                                                    resident details
+                                                                </p>
+                                                            </TooltipContent>
+                                                        )}
+                                                    </Tooltip>
+                                                </TooltipProvider>
+                                                <TooltipProvider>
+                                                    <Tooltip>
+                                                        <TooltipTrigger asChild>
+                                                            <span className="inline-block">
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    onClick={() => onEdit(resident)}
+                                                                    disabled={!hasPermission('edit-residents')}
+                                                                >
+                                                                    <Edit className="h-4 w-4" />
+                                                                </Button>
+                                                            </span>
+                                                        </TooltipTrigger>
+                                                        {!hasPermission('edit-residents') && (
+                                                            <TooltipContent>
+                                                                <p>
+                                                                    You don't have permission to edit
+                                                                    residents
+                                                                </p>
+                                                            </TooltipContent>
+                                                        )}
+                                                    </Tooltip>
+                                                </TooltipProvider>
+                                                <TooltipProvider>
+                                                    <Tooltip>
+                                                        <TooltipTrigger asChild>
+                                                            <span className="inline-block">
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    onClick={() =>
+                                                                        onDelete(
+                                                                            resident.id,
+                                                                            resident.full_name,
+                                                                        )
+                                                                    }
+                                                                    disabled={!hasPermission('delete-residents')}
+                                                                >
+                                                                    <Trash2 className="h-4 w-4 text-destructive" />
+                                                                </Button>
+                                                            </span>
+                                                        </TooltipTrigger>
+                                                        {!hasPermission('delete-residents') && (
+                                                            <TooltipContent>
+                                                                <p>
+                                                                    You don't have permission to delete
+                                                                    residents
+                                                                </p>
+                                                            </TooltipContent>
+                                                        )}
+                                                    </Tooltip>
+                                                </TooltipProvider>
                                             </div>
                                         </TableCell>
                                     </TableRow>

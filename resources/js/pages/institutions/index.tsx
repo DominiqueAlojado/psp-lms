@@ -6,6 +6,13 @@ import { EditInstitutionSheet } from '@/components/institutions/edit-institution
 import { InstitutionTable } from '@/components/institutions/institution-table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from '@/components/ui/tooltip';
+import { usePermissions } from '@/hooks/use-permissions';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, router, usePage } from '@inertiajs/react';
@@ -81,6 +88,7 @@ export default function InstitutionsIndex({
     types,
     typeStats,
 }: Props) {
+    const { hasPermission } = usePermissions();
     const [search, setSearch] = useState(filters.search || '');
     const [localFilters, setLocalFilters] = useState(filters);
     const [editingInstitution, setEditingInstitution] =
@@ -161,11 +169,31 @@ export default function InstitutionsIndex({
                             exportUrl="/institutions/export"
                             filters={filters}
                             successMessage="Exporting institutions..."
+                            disabled={!hasPermission('export-institutions')}
                         />
-                        <Button onClick={() => setAddingInstitution(true)}>
-                            <Plus className="mr-2 h-4 w-4" />
-                            Add Institution
-                        </Button>
+                        <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <span className="inline-block">
+                                        <Button
+                                            onClick={() => setAddingInstitution(true)}
+                                            disabled={!hasPermission('create-institutions')}
+                                        >
+                                            <Plus className="mr-2 h-4 w-4" />
+                                            Add Institution
+                                        </Button>
+                                    </span>
+                                </TooltipTrigger>
+                                {!hasPermission('create-institutions') && (
+                                    <TooltipContent>
+                                        <p>
+                                            You don't have permission to create
+                                            institutions
+                                        </p>
+                                    </TooltipContent>
+                                )}
+                            </Tooltip>
+                        </TooltipProvider>
                     </div>
                 </div>
 
