@@ -1,12 +1,17 @@
 import { RichTextEditor } from '@/components/rich-text-editor';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import {
+    Collapsible,
+    CollapsibleContent,
+    CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import AppLayout from '@/layouts/app-layout';
 import { Head, router, usePage } from '@inertiajs/react';
-import { Trash2, Upload, X } from 'lucide-react';
+import { ChevronDown, ChevronRight, Trash2, Upload, X } from 'lucide-react';
 import { useState } from 'react';
 
 interface QuestionChoice {
@@ -81,6 +86,14 @@ export default function EditAssessment() {
     const [questions, setQuestions] = useState<DraftQuestion[]>(
         assessment.questions || [],
     );
+    const [openQuestions, setOpenQuestions] = useState<Record<number, boolean>>({});
+
+    const toggleQuestion = (index: number) => {
+        setOpenQuestions((prev) => ({
+            ...prev,
+            [index]: !prev[index],
+        }));
+    };
 
     const addQuestion = (type: DraftQuestion['question_type']) => {
         const base = {
@@ -90,6 +103,8 @@ export default function EditAssessment() {
         } as DraftQuestion;
         if (type === 'multiple_choice' || type === 'multiple_select') {
             base.choices = [
+                { choice_text: '', is_correct: true },
+                { choice_text: '', is_correct: false },
                 { choice_text: '', is_correct: false },
                 { choice_text: '', is_correct: false },
             ];
@@ -360,35 +375,71 @@ export default function EditAssessment() {
                 {/* Questions */}
                 <div className="space-y-4 rounded-lg border p-6">
                     <h3 className="text-lg font-semibold">Questions</h3>
-                    <div className="flex gap-2">
-                        <Button
-                            variant="outline"
-                            onClick={() => addQuestion('multiple_choice')}
-                        >
-                            Add Multiple Choice
-                        </Button>
-                        <Button
-                            variant="outline"
-                            onClick={() => addQuestion('multiple_select')}
-                        >
-                            Add Multiple Select
-                        </Button>
-                        <Button
-                            variant="outline"
-                            onClick={() => addQuestion('true_false')}
-                        >
-                            Add True/False
-                        </Button>
+                    <div className="flex items-center justify-between gap-2">
+                        <div className="flex gap-2">
+                            <Button
+                                variant="outline"
+                                onClick={() => addQuestion('multiple_choice')}
+                            >
+                                Add Multiple Choice
+                            </Button>
+                            <Button
+                                variant="outline"
+                                onClick={() => addQuestion('multiple_select')}
+                            >
+                                Add Multiple Select
+                            </Button>
+                            <Button
+                                variant="outline"
+                                onClick={() => addQuestion('true_false')}
+                            >
+                                Add True/False
+                            </Button>
+                        </div>
+                        {questions.length > 0 && (
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                    const allOpen = Object.values(openQuestions).every(Boolean);
+                                    const newState: Record<number, boolean> = {};
+                                    questions.forEach((_, i) => {
+                                        newState[i] = !allOpen;
+                                    });
+                                    setOpenQuestions(newState);
+                                }}
+                            >
+                                {Object.values(openQuestions).every(Boolean) ? 'Collapse All' : 'Expand All'}
+                            </Button>
+                        )}
                     </div>
 
                     <div className="space-y-6">
                         {questions.map((q, qi) => (
-                            <div key={qi} className="rounded border p-4">
-                                <div className="mb-3 flex items-center justify-between">
-                                    <Label>
-                                        Question #{qi + 1} (
-                                        {q.question_type.replace('_', ' ')})
-                                    </Label>
+                            <Collapsible
+                                key={qi}
+                                open={openQuestions[qi] ?? false}
+                                onOpenChange={() => toggleQuestion(qi)}
+                                className="rounded border"
+                            >
+                                <div className="flex items-center justify-between border-b bg-muted/50 p-3">
+                                    <CollapsibleTrigger className="flex flex-1 items-center gap-2 text-left">
+                                        {openQuestions[qi] ? (
+                                            <ChevronDown className="h-4 w-4" />
+                                        ) : (
+                                            <ChevronRight className="h-4 w-4" />
+                                        )}
+                                        <Label className="cursor-pointer font-semibold">
+                                            Question #{qi + 1} (
+                                            {q.question_type.replace('_', ' ')})
+                                            {q.question_text && (
+                                                <span className="ml-2 font-normal text-muted-foreground">
+                                                    - {q.question_text.substring(0, 50).replace(/<[^>]*>/g, '')}
+                                                    {q.question_text.length > 50 ? '...' : ''}
+                                                </span>
+                                            )}
+                                        </Label>
+                                    </CollapsibleTrigger>
                                     <Button
                                         type="button"
                                         variant="ghost"
@@ -402,6 +453,7 @@ export default function EditAssessment() {
                                         <Trash2 className="h-4 w-4 text-destructive" />
                                     </Button>
                                 </div>
+                                <CollapsibleContent className="p-4">
                                 <div className="grid gap-2">
                                     <RichTextEditor
                                         value={q.question_text}
@@ -483,67 +535,66 @@ export default function EditAssessment() {
                                 {(q.question_type === 'multiple_choice' ||
                                     q.question_type === 'multiple_select') && (
                                     <div className="mt-4 space-y-2">
-                                        <Label>Choices</Label>
+                                        <Label>Choices (Choice #1 is the correct answer)</Label>
                                         {(q.choices || []).map((c, ci) => (
                                             <div
                                                 key={ci}
                                                 className="flex items-center gap-2"
                                             >
-                                                <Input
-                                                    value={c.choice_text}
-                                                    onChange={(e) =>
-                                                        updateChoice(
-                                                            qi,
-                                                            ci,
-                                                            'choice_text',
-                                                            e.target.value,
-                                                        )
-                                                    }
-                                                    placeholder={`Choice #${ci + 1}`}
-                                                />
-                                                <label className="flex items-center gap-2 text-sm">
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={!!c.is_correct}
-                                                        onChange={(e) =>
-                                                            updateChoice(
-                                                                qi,
-                                                                ci,
-                                                                'is_correct',
-                                                                e.target
-                                                                    .checked,
-                                                            )
-                                                        }
+                                                <div className="flex w-full items-center gap-2">
+                                                    <span className={`min-w-[80px] text-sm font-medium ${ci === 0 ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'}`}>
+                                                        Choice #{ci + 1}{ci === 0 ? ' ✓' : ''}
+                                                    </span>
+                                                    <Input
+                                                        value={c.choice_text}
+                                                        onChange={(e) => {
+                                                            setQuestions((prev) => {
+                                                                const next = [...prev];
+                                                                const choices = [...(next[qi].choices || [])];
+                                                                choices[ci] = {
+                                                                    ...choices[ci],
+                                                                    choice_text: e.target.value,
+                                                                    is_correct: ci === 0,
+                                                                };
+                                                                next[qi] = { ...next[qi], choices };
+                                                                return next;
+                                                            });
+                                                        }}
+                                                        placeholder={`Enter choice ${ci + 1}`}
+                                                        className={ci === 0 ? 'border-green-500' : ''}
                                                     />
-                                                    Correct
-                                                </label>
+                                                </div>
                                             </div>
                                         ))}
-                                        <div className="flex gap-2">
-                                            <Button
-                                                variant="ghost"
-                                                onClick={() =>
-                                                    setQuestions((prev) => {
-                                                        const next = [...prev];
-                                                        const choices = [
-                                                            ...(next[qi]
-                                                                .choices || []),
-                                                        ];
-                                                        choices.push({
-                                                            choice_text: '',
-                                                            is_correct: false,
-                                                        });
-                                                        next[qi] = {
-                                                            ...next[qi],
-                                                            choices,
-                                                        };
-                                                        return next;
-                                                    })
-                                                }
-                                            >
-                                                Add Choice
-                                            </Button>
-                                        </div>
+                                        {(q.choices?.length || 0) < 4 && (
+                                            <div className="flex gap-2">
+                                                <Button
+                                                    variant="ghost"
+                                                    onClick={() =>
+                                                        setQuestions((prev) => {
+                                                            const next = [...prev];
+                                                            const choices = [
+                                                                ...(next[qi]
+                                                                    .choices || []),
+                                                            ];
+                                                            if (choices.length < 4) {
+                                                                choices.push({
+                                                                    choice_text: '',
+                                                                    is_correct: false,
+                                                                });
+                                                            }
+                                                            next[qi] = {
+                                                                ...next[qi],
+                                                                choices,
+                                                            };
+                                                            return next;
+                                                        })
+                                                    }
+                                                >
+                                                    Add Choice
+                                                </Button>
+                                            </div>
+                                        )}
                                     </div>
                                 )}
 
@@ -587,7 +638,8 @@ export default function EditAssessment() {
                                         </label>
                                     </div>
                                 )}
-                            </div>
+                                </CollapsibleContent>
+                            </Collapsible>
                         ))}
                     </div>
                     <div className="flex gap-3">
