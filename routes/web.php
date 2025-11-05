@@ -79,6 +79,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->middleware('permission:delete-staff')
         ->name('staff.destroy');
 
+    // Topics
+    Route::get('topics', [App\Http\Controllers\TopicController::class, 'index'])
+        ->name('topics.index');
+    Route::post('topics', [App\Http\Controllers\TopicController::class, 'store'])
+        ->name('topics.store');
+
     // Institution Exams
     Route::get('assessments', [App\Http\Controllers\InstitutionExamController::class, 'index'])
         ->middleware('permission:view-assessments')

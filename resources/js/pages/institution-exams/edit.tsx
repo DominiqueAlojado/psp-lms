@@ -8,11 +8,18 @@ import {
 } from '@/components/ui/collapsible';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import AppLayout from '@/layouts/app-layout';
 import { Head, router, usePage } from '@inertiajs/react';
-import { ChevronDown, ChevronRight, Trash2, Upload, X } from 'lucide-react';
-import { useState } from 'react';
+import { ChevronDown, ChevronRight, Plus, Trash2, Upload, X } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 interface QuestionChoice {
     id?: number;
@@ -23,6 +30,7 @@ interface QuestionChoice {
 
 interface DraftQuestion {
     id?: number;
+    topic_id?: number | null;
     question_type: 'multiple_choice' | 'multiple_select' | 'true_false';
     question_text: string;
     points: number;
@@ -51,6 +59,13 @@ interface Assessment {
     questions: DraftQuestion[];
     created_by: string;
     created_at: string;
+}
+
+interface Topic {
+    id: number;
+    name: string;
+    slug: string;
+    is_global: boolean;
 }
 
 interface PageProps {
@@ -87,6 +102,17 @@ export default function EditAssessment() {
         assessment.questions || [],
     );
     const [openQuestions, setOpenQuestions] = useState<Record<number, boolean>>({});
+    const [topics, setTopics] = useState<Topic[]>([]);
+    const [isAddingTopic, setIsAddingTopic] = useState(false);
+    const [newTopicName, setNewTopicName] = useState('');
+
+    // Fetch topics
+    useEffect(() => {
+        fetch('/topics')
+            .then((res) => res.json())
+            .then((data) => setTopics(data))
+            .catch((err) => console.error('Failed to fetch topics:', err));
+    }, []);
 
     const toggleQuestion = (index: number) => {
         setOpenQuestions((prev) => ({
@@ -161,6 +187,36 @@ export default function EditAssessment() {
             };
             return next;
         });
+    };
+
+    const createNewTopic = async () => {
+        if (!newTopicName.trim()) {
+            alert('Please enter a topic name');
+            return;
+        }
+
+        try {
+            const response = await fetch('/topics', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || '',
+                },
+                body: JSON.stringify({ name: newTopicName }),
+            });
+
+            if (response.ok) {
+                const newTopic = await response.json();
+                setTopics((prev) => [...prev, newTopic]);
+                setNewTopicName('');
+                setIsAddingTopic(false);
+            } else {
+                alert('Failed to create topic');
+            }
+        } catch (error) {
+            console.error('Error creating topic:', error);
+            alert('Failed to create topic');
+        }
     };
 
     const updateExam = () => {
@@ -454,21 +510,94 @@ export default function EditAssessment() {
                                     </Button>
                                 </div>
                                 <CollapsibleContent className="p-4">
-                                <div className="grid gap-2">
-                                    <RichTextEditor
-                                        value={q.question_text}
-                                        onChange={(v) => {
-                                            setQuestions((prev) => {
-                                                const next = [...prev];
-                                                next[qi] = {
-                                                    ...next[qi],
-                                                    question_text: v,
-                                                };
-                                                return next;
-                                            });
-                                        }}
-                                        placeholder="Type the question"
-                                    />
+                                <div className="grid gap-4">
+                                    {/* Topic Selection */}
+                                    <div className="space-y-2">
+                                        <Label>Topic (Optional)</Label>
+                                        <div className="flex gap-2">
+                                            <Select
+                                                value={q.topic_id?.toString() || 'none'}
+                                                onValueChange={(value) => {
+                                                    setQuestions((prev) => {
+                                                        const next = [...prev];
+                                                        next[qi] = {
+                                                            ...next[qi],
+                                                            topic_id: value === 'none' ? null : parseInt(value),
+                                                        };
+                                                        return next;
+                                                    });
+                                                }}
+                                            >
+                                                <SelectTrigger>
+                                                    <SelectValue placeholder="Select a topic" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="none">No topic</SelectItem>
+                                                    {topics.map((topic) => (
+                                                        <SelectItem key={topic.id} value={topic.id.toString()}>
+                                                            {topic.name} {topic.is_global && '(Global)'}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => setIsAddingTopic(true)}
+                                            >
+                                                <Plus className="h-4 w-4" />
+                                            </Button>
+                                        </div>
+                                        {isAddingTopic && (
+                                            <div className="flex gap-2 rounded border bg-muted/30 p-3">
+                                                <Input
+                                                    placeholder="New topic name"
+                                                    value={newTopicName}
+                                                    onChange={(e) => setNewTopicName(e.target.value)}
+                                                    onKeyDown={(e) => {
+                                                        if (e.key === 'Enter') {
+                                                            e.preventDefault();
+                                                            createNewTopic();
+                                                        }
+                                                    }}
+                                                />
+                                                <Button type="button" size="sm" onClick={createNewTopic}>
+                                                    Add
+                                                </Button>
+                                                <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() => {
+                                                        setIsAddingTopic(false);
+                                                        setNewTopicName('');
+                                                    }}
+                                                >
+                                                    Cancel
+                                                </Button>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Question Text */}
+                                    <div className="grid gap-2">
+                                        <Label>Question Text</Label>
+                                        <RichTextEditor
+                                            value={q.question_text}
+                                            onChange={(v) => {
+                                                setQuestions((prev) => {
+                                                    const next = [...prev];
+                                                    next[qi] = {
+                                                        ...next[qi],
+                                                        question_text: v,
+                                                    };
+                                                    return next;
+                                                });
+                                            }}
+                                            placeholder="Type the question"
+                                        />
+                                    </div>
                                 </div>
                                 <div className="mt-3 space-y-3">
                                     <Label>Question Image (Optional)</Label>

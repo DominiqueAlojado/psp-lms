@@ -138,6 +138,7 @@ class InstitutionExamController extends Controller
                 'available_until' => $assessment->available_until?->format('Y-m-d\TH:i'),
                 'questions' => $assessment->questions->map(fn ($q) => [
                     'id' => $q->id,
+                    'topic_id' => $q->topic_id,
                     'question_type' => $q->question_type,
                     'question_text' => $q->question_text,
                     'points' => $q->points,
@@ -263,6 +264,7 @@ class InstitutionExamController extends Controller
         $validated = $request->validate([
             'questions' => ['required', 'array', 'min:1'],
             'questions.*.id' => ['nullable', 'integer', 'exists:institution_questions,id'],
+            'questions.*.topic_id' => ['nullable', 'integer', 'exists:topics,id'],
             'questions.*.question_type' => ['required', 'in:multiple_choice,multiple_select,true_false'],
             'questions.*.question_text' => ['required', 'string'],
             'questions.*.points' => ['required', 'integer', 'min:1'],
@@ -304,6 +306,7 @@ class InstitutionExamController extends Controller
 
             $questionData = [
                 'question_type' => $q['question_type'],
+                'topic_id' => $q['topic_id'] ?? null,
                 'question_text' => $q['question_text'],
                 'points' => $q['points'],
                 'order' => $q['order'] ?? 0,

@@ -2,6 +2,7 @@
 
 namespace App\Models\Institution;
 
+use App\Models\Topic;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -14,6 +15,7 @@ class InstitutionQuestion extends Model
 
     protected $fillable = [
         'assessment_id',
+        'topic_id',
         'question_type',
         'question_text',
         'points',
@@ -53,5 +55,10 @@ class InstitutionQuestion extends Model
     public function isAutoGradable(): bool
     {
         return in_array($this->question_type, ['multiple_choice', 'multiple_select', 'true_false', 'fill_blank']);
+    }
+
+    public function topic(): BelongsTo
+    {
+        return $this->belongsTo(Topic::class);
     }
 }

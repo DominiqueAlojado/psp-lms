@@ -2,6 +2,8 @@ import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Image from '@tiptap/extension-image';
 import Link from '@tiptap/extension-link';
+import Superscript from '@tiptap/extension-superscript';
+import Subscript from '@tiptap/extension-subscript';
 import { Button } from '@/components/ui/button';
 import { Bold, Italic, List, ListOrdered, Undo, Redo, Link as LinkIcon } from 'lucide-react';
 
@@ -19,6 +21,8 @@ export function RichTextEditor({ value, onChange, placeholder }: RichTextEditorP
             Link.configure({
                 openOnClick: false,
             }),
+            Superscript,
+            Subscript,
         ],
         content: value || '',
         onUpdate: ({ editor }) => {
@@ -63,6 +67,26 @@ export function RichTextEditor({ value, onChange, placeholder }: RichTextEditorP
                     className={editor.isActive('italic') ? 'bg-muted' : ''}
                 >
                     <Italic className="h-4 w-4" />
+                </Button>
+                <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => editor.chain().focus().toggleSuperscript().run()}
+                    className={editor.isActive('superscript') ? 'bg-muted' : ''}
+                    title="Superscript"
+                >
+                    <span className="text-xs font-semibold">x²</span>
+                </Button>
+                <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => editor.chain().focus().toggleSubscript().run()}
+                    className={editor.isActive('subscript') ? 'bg-muted' : ''}
+                    title="Subscript"
+                >
+                    <span className="text-xs font-semibold">x₂</span>
                 </Button>
                 <Button
                     type="button"
