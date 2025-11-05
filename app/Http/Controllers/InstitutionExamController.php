@@ -8,7 +8,7 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
-class InstitutionAssessmentController extends Controller
+class InstitutionExamController extends Controller
 {
     /**
      * Display a listing of institution assessments.
@@ -66,65 +66,46 @@ class InstitutionAssessmentController extends Controller
      */
     public function store(Request $request): RedirectResponse
     {
-        $validated = $request->validate([
-            'title' => ['required', 'string', 'max:255'],
-            'description' => ['nullable', 'string'],
-            'duration_minutes' => ['nullable', 'integer', 'min:1'],
-            'passing_score' => ['required', 'integer', 'min:0'],
-            'randomize_questions' => ['boolean'],
-            'randomize_choices' => ['boolean'],
-            'show_results_immediately' => ['boolean'],
-            'allow_review' => ['boolean'],
-            'available_from' => ['nullable', 'date'],
-            'available_until' => ['nullable', 'date', 'after:available_from'],
-            'questions' => ['nullable', 'array'],
-        ]);
+        try {
+            $validated = $request->validate([
+                'title' => ['required', 'string', 'max:255'],
+                'description' => ['nullable', 'string'],
+                'duration_minutes' => ['nullable', 'integer', 'min:1'],
+                'passing_score' => ['required', 'integer', 'min:0'],
+                'randomize_questions' => ['boolean'],
+                'randomize_choices' => ['boolean'],
+                'show_results_immediately' => ['boolean'],
+                'allow_review' => ['boolean'],
+                'available_from' => ['nullable', 'date'],
+                'available_until' => ['nullable', 'date', 'after:available_from'],
+            ]);
 
-        $validated['organization_id'] = $request->user()->current_organization_id;
-        $validated['created_by'] = $request->user()->id;
-        $validated['total_points'] = 0;
+            $assessment = InstitutionAssessment::create([
+                'organization_id' => $request->user()->current_organization_id,
+                'created_by' => $request->user()->id,
+                'total_points' => 0,
+                'title' => $validated['title'],
+                'description' => $validated['description'] ?? null,
+                'duration_minutes' => $validated['duration_minutes'] ?? null,
+                'passing_score' => $validated['passing_score'],
+                'randomize_questions' => $validated['randomize_questions'] ?? false,
+                'randomize_choices' => $validated['randomize_choices'] ?? false,
+                'show_results_immediately' => $validated['show_results_immediately'] ?? true,
+                'allow_review' => $validated['allow_review'] ?? true,
+                'available_from' => $validated['available_from'] ?? null,
+                'available_until' => $validated['available_until'] ?? null,
+            ]);
 
-        $assessment = InstitutionAssessment::create($validated);
+            \Log::info('Exam created successfully', ['id' => $assessment->id]);
 
-        // If questions were provided, save them
-        if (! empty($validated['questions'])) {
-            $totalPoints = 0;
+            return redirect("/institution-exams/create?assessment_id={$assessment->id}")->with([
+                'success' => 'Exam created successfully! Now add questions.',
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Error creating exam: '.$e->getMessage());
 
-            foreach ($validated['questions'] as $q) {
-                $question = $assessment->questions()->create([
-                    'question_type' => $q['question_type'],
-                    'question_text' => $q['question_text'],
-                    'points' => $q['points'],
-                    'order' => $q['order'] ?? 0,
-                ]);
-
-                // Handle choices for MCQ and Multiple Select
-                if (in_array($q['question_type'], ['multiple_choice', 'multiple_select'])) {
-                    foreach ($q['choices'] ?? [] as $idx => $c) {
-                        $question->choices()->create([
-                            'choice_text' => $c['choice_text'],
-                            'is_correct' => (bool) ($c['is_correct'] ?? false),
-                            'order' => $idx,
-                        ]);
-                    }
-                }
-
-                // True/False stored as two choices
-                if ($q['question_type'] === 'true_false') {
-                    $answer = filter_var($q['answer'] ?? false, FILTER_VALIDATE_BOOLEAN);
-                    $question->choices()->createMany([
-                        ['choice_text' => 'True', 'is_correct' => $answer === true, 'order' => 0],
-                        ['choice_text' => 'False', 'is_correct' => $answer === false, 'order' => 1],
-                    ]);
-                }
-
-                $totalPoints += $q['points'];
-            }
-
-            $assessment->update(['total_points' => $totalPoints]);
+            return back()->withErrors(['error' => 'Failed to create exam: '.$e->getMessage()]);
         }
-
-        return back()->with('success', 'Assessment created successfully');
     }
 
     /**

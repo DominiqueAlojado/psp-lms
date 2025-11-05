@@ -142,7 +142,10 @@ class NationalAssessmentController extends Controller
             $assessment->update(['total_points' => $totalPoints]);
         }
 
-        return back()->with('success', 'National assessment created successfully');
+        return redirect()->route('in-service.create')->with([
+            'success' => 'National exam created successfully! Now add questions.',
+            'assessment_id' => $assessment->id,
+        ]);
     }
 
     /**

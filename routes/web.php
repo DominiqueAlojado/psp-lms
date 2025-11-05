@@ -1,5 +1,6 @@
 <?php
 
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Laravel\Fortify\Features;
@@ -78,26 +79,28 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->middleware('permission:delete-staff')
         ->name('staff.destroy');
 
-    // Institution Assessments
-    Route::get('assessments', [App\Http\Controllers\InstitutionAssessmentController::class, 'index'])
+    // Institution Exams
+    Route::get('assessments', [App\Http\Controllers\InstitutionExamController::class, 'index'])
         ->middleware('permission:view-assessments')
         ->name('assessments.index');
-    Route::get('institution-exams/create', function () {
-        return Inertia::render('assessments/create');
+    Route::get('institution-exams/create', function (Request $request) {
+        return Inertia::render('institution-exams/create', [
+            'assessmentId' => $request->query('assessment_id'),
+        ]);
     })->middleware('permission:create-assessments')->name('institution-exams.create');
-    Route::post('assessments', [App\Http\Controllers\InstitutionAssessmentController::class, 'store'])
+    Route::post('assessments', [App\Http\Controllers\InstitutionExamController::class, 'store'])
         ->middleware('permission:create-assessments')
         ->name('assessments.store');
-    Route::get('assessments/{assessment}', [App\Http\Controllers\InstitutionAssessmentController::class, 'show'])
+    Route::get('assessments/{assessment}', [App\Http\Controllers\InstitutionExamController::class, 'show'])
         ->middleware('permission:view-assessments')
         ->name('assessments.show');
-    Route::patch('assessments/{assessment}', [App\Http\Controllers\InstitutionAssessmentController::class, 'update'])
+    Route::patch('assessments/{assessment}', [App\Http\Controllers\InstitutionExamController::class, 'update'])
         ->middleware('permission:edit-assessments')
         ->name('assessments.update');
-    Route::delete('assessments/{assessment}', [App\Http\Controllers\InstitutionAssessmentController::class, 'destroy'])
+    Route::delete('assessments/{assessment}', [App\Http\Controllers\InstitutionExamController::class, 'destroy'])
         ->middleware('permission:delete-assessments')
         ->name('assessments.destroy');
-    Route::post('assessments/{assessment}/questions', [App\Http\Controllers\InstitutionAssessmentController::class, 'storeQuestions'])
+    Route::post('assessments/{assessment}/questions', [App\Http\Controllers\InstitutionExamController::class, 'storeQuestions'])
         ->middleware('permission:edit-assessments')
         ->name('assessments.questions.store');
 
@@ -122,11 +125,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('in-service.destroy');
 
     // Institution Exams (frontend pages)
+    Route::redirect('institution-exams', '/institution-exams/active')->name('institution-exams');
     Route::get('institution-exams/active', function () {
         return Inertia::render('institution-exams/active');
     })->middleware('permission:view-assessments')->name('institution-exams.active');
 
     // In-Service Exams (frontend pages)
+    Route::redirect('inservice-exams', '/inservice-exams/active')->name('inservice-exams');
     Route::get('inservice-exams/active', function () {
         return Inertia::render('inservice-exams/active');
     })->middleware('permission:view-assessments')->name('inservice-exams.active');

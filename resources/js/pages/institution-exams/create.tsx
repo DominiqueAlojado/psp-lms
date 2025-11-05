@@ -16,27 +16,30 @@ interface DraftQuestion {
     question_type: 'multiple_choice' | 'multiple_select' | 'true_false';
     question_text: string;
     points: number;
-    difficulty_level?: 'easy' | 'medium' | 'hard';
-    topic?: string;
-    order?: number;
     choices?: QuestionChoice[];
     answer?: boolean;
+    order?: number;
 }
 
-export default function CreateNationalAssessment() {
-    const page = usePage<{ flash: { assessment_id?: number } }>();
+interface PageProps {
+    assessmentId?: number;
+}
+
+export default function CreateAssessment({ assessmentId: propAssessmentId }: PageProps) {
     const [title, setTitle] = useState('');
-    const [examYear, setExamYear] = useState(new Date().getFullYear());
-    const [examPeriod, setExamPeriod] = useState('Annual');
     const [passingScore, setPassingScore] = useState(0);
     const [duration, setDuration] = useState<number | ''>('');
     const [questions, setQuestions] = useState<DraftQuestion[]>([]);
 
-    // Get assessment ID from flash session after creation
-    const assessmentId = page.props.flash?.assessment_id || null;
+    // Get assessment ID from props (passed from backend)
+    const assessmentId = propAssessmentId || null;
 
     const addQuestion = (type: DraftQuestion['question_type']) => {
-        const base = { question_type: type, question_text: '', points: 1, difficulty_level: 'medium' as const } as DraftQuestion;
+        const base = {
+            question_type: type,
+            question_text: '',
+            points: 1,
+        } as DraftQuestion;
         if (type === 'multiple_choice' || type === 'multiple_select') {
             base.choices = [
                 { choice_text: '', is_correct: false },
@@ -49,7 +52,12 @@ export default function CreateNationalAssessment() {
         setQuestions((q) => [...q, base]);
     };
 
-    const updateChoice = (qi: number, ci: number, field: keyof QuestionChoice, value: string | boolean) => {
+    const updateChoice = (
+        qi: number,
+        ci: number,
+        field: keyof QuestionChoice,
+        value: string | boolean,
+    ) => {
         setQuestions((prev) => {
             const next = [...prev];
             const q = next[qi];
@@ -67,29 +75,26 @@ export default function CreateNationalAssessment() {
             return;
         }
 
+        // Step 1: Create exam metadata
         router.post(
-            '/in-service',
+            '/assessments',
             {
                 title,
-                exam_year: examYear,
-                exam_period: examPeriod,
                 passing_score: passingScore,
                 duration_minutes: duration || null,
                 randomize_questions: false,
                 randomize_choices: false,
-                show_results_immediately: false,
-                allow_review: false,
-                national_ranking_enabled: true,
-                institution_comparison_enabled: true,
+                show_results_immediately: true,
+                allow_review: true,
             },
             {
                 preserveScroll: true,
                 onSuccess: () => {
-                    // Assessment ID will be set from flash session
+                    // Assessment ID will be set via useEffect from flash session
                 },
                 onError: (errors) => {
-                    console.error('Error creating national exam:', errors);
-                    alert('Failed to create national exam. Check console for details.');
+                    console.error('Error creating exam:', errors);
+                    alert('Failed to create exam. Check console for details.');
                 },
             },
         );
@@ -106,15 +111,16 @@ export default function CreateNationalAssessment() {
             return;
         }
 
+        // Step 2: Save questions to the created exam
         router.post(
-            `/in-service/${assessmentId}/questions`,
+            `/assessments/${assessmentId}/questions`,
             {
                 questions: questions as never,
             },
             {
                 preserveScroll: true,
                 onSuccess: () => {
-                    router.visit('/inservice-exams/active');
+                    router.visit('/institution-exams/active');
                 },
                 onError: (errors) => {
                     console.error('Error saving questions:', errors);
@@ -125,8 +131,12 @@ export default function CreateNationalAssessment() {
     };
 
     return (
-        <AppLayout breadcrumbs={[{ title: 'Create National Exam', href: '/in-service/create' }]}>
-            <Head title="Create National Exam" />
+        <AppLayout
+            breadcrumbs={[
+                { title: 'Create Exam', href: '/institution-exams/create' },
+            ]}
+        >
+            <Head title="Create Exam" />
 
             <div className="space-y-8 p-6">
                 {/* Step 1: Exam Metadata */}
@@ -134,39 +144,22 @@ export default function CreateNationalAssessment() {
                     <h3 className="text-lg font-semibold">Step 1: Exam Details</h3>
                     <div className="space-y-2">
                         <Label>Title</Label>
-                        <Input 
-                            value={title} 
-                            onChange={(e) => setTitle(e.target.value)} 
-                            placeholder="National exam title"
+                        <Input
+                            value={title}
+                            onChange={(e) => setTitle(e.target.value)}
+                            placeholder="Exam title"
                             disabled={!!assessmentId}
                         />
                     </div>
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
-                        <div className="space-y-2">
-                            <Label>Exam Year</Label>
-                            <Input
-                                type="number"
-                                value={examYear}
-                                onChange={(e) => setExamYear(parseInt(e.target.value || new Date().getFullYear().toString()))}
-                                min={2024}
-                                disabled={!!assessmentId}
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label>Exam Period</Label>
-                            <Input 
-                                value={examPeriod} 
-                                onChange={(e) => setExamPeriod(e.target.value)} 
-                                placeholder="Annual, Q1, Q2..."
-                                disabled={!!assessmentId}
-                            />
-                        </div>
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                         <div className="space-y-2">
                             <Label>Passing Score</Label>
                             <Input
                                 type="number"
                                 value={passingScore}
-                                onChange={(e) => setPassingScore(parseInt(e.target.value || '0'))}
+                                onChange={(e) =>
+                                    setPassingScore(parseInt(e.target.value || '0'))
+                                }
                                 min={0}
                                 disabled={!!assessmentId}
                             />
@@ -176,7 +169,13 @@ export default function CreateNationalAssessment() {
                             <Input
                                 type="number"
                                 value={duration}
-                                onChange={(e) => setDuration(e.target.value ? parseInt(e.target.value) : '')}
+                                onChange={(e) =>
+                                    setDuration(
+                                        e.target.value
+                                            ? parseInt(e.target.value)
+                                            : '',
+                                    )
+                                }
                                 min={1}
                                 disabled={!!assessmentId}
                             />
@@ -196,9 +195,24 @@ export default function CreateNationalAssessment() {
                 {assessmentId && (
                     <div className="space-y-4">
                     <div className="flex gap-2">
-                        <Button variant="outline" onClick={() => addQuestion('multiple_choice')}>Add Multiple Choice</Button>
-                        <Button variant="outline" onClick={() => addQuestion('multiple_select')}>Add Multiple Select</Button>
-                        <Button variant="outline" onClick={() => addQuestion('true_false')}>Add True/False</Button>
+                        <Button
+                            variant="outline"
+                            onClick={() => addQuestion('multiple_choice')}
+                        >
+                            Add Multiple Choice
+                        </Button>
+                        <Button
+                            variant="outline"
+                            onClick={() => addQuestion('multiple_select')}
+                        >
+                            Add Multiple Select
+                        </Button>
+                        <Button
+                            variant="outline"
+                            onClick={() => addQuestion('true_false')}
+                        >
+                            Add True/False
+                        </Button>
                     </div>
 
                     <div className="space-y-6">
@@ -214,7 +228,9 @@ export default function CreateNationalAssessment() {
                                         variant="ghost"
                                         size="sm"
                                         onClick={() => {
-                                            setQuestions((prev) => prev.filter((_, i) => i !== qi));
+                                            setQuestions((prev) =>
+                                                prev.filter((_, i) => i !== qi),
+                                            );
                                         }}
                                     >
                                         <Trash2 className="h-4 w-4 text-destructive" />
@@ -226,79 +242,72 @@ export default function CreateNationalAssessment() {
                                         onChange={(v) => {
                                             setQuestions((prev) => {
                                                 const next = [...prev];
-                                                next[qi] = { ...next[qi], question_text: v };
+                                                next[qi] = {
+                                                    ...next[qi],
+                                                    question_text: v,
+                                                };
                                                 return next;
                                             });
                                         }}
                                         placeholder="Type the question"
                                     />
                                 </div>
-                                <div className="mt-3 grid grid-cols-3 gap-2">
-                                    <div className="space-y-2">
-                                        <Label>Points</Label>
-                                        <Input
-                                            type="number"
-                                            value={q.points}
-                                            min={1}
-                                            onChange={(e) => {
-                                                const v = parseInt(e.target.value || '1');
-                                                setQuestions((prev) => {
-                                                    const next = [...prev];
-                                                    next[qi] = { ...next[qi], points: v };
-                                                    return next;
-                                                });
-                                            }}
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label>Difficulty</Label>
-                                        <select
-                                            value={q.difficulty_level || 'medium'}
-                                            onChange={(e) => {
-                                                setQuestions((prev) => {
-                                                    const next = [...prev];
-                                                    next[qi] = { ...next[qi], difficulty_level: e.target.value as any };
-                                                    return next;
-                                                });
-                                            }}
-                                            className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                                        >
-                                            <option value="easy">Easy</option>
-                                            <option value="medium">Medium</option>
-                                            <option value="hard">Hard</option>
-                                        </select>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label>Topic</Label>
-                                        <Input
-                                            value={q.topic || ''}
-                                            onChange={(e) => {
-                                                setQuestions((prev) => {
-                                                    const next = [...prev];
-                                                    next[qi] = { ...next[qi], topic: e.target.value };
-                                                    return next;
-                                                });
-                                            }}
-                                            placeholder="e.g. Hematology"
-                                        />
-                                    </div>
+                                <div className="mt-3 grid max-w-xs gap-2">
+                                    <Label>Points</Label>
+                                    <Input
+                                        type="number"
+                                        value={q.points}
+                                        min={1}
+                                        onChange={(e) => {
+                                            const v = parseInt(
+                                                e.target.value || '1',
+                                            );
+                                            setQuestions((prev) => {
+                                                const next = [...prev];
+                                                next[qi] = {
+                                                    ...next[qi],
+                                                    points: v,
+                                                };
+                                                return next;
+                                            });
+                                        }}
+                                    />
                                 </div>
 
-                                {(q.question_type === 'multiple_choice' || q.question_type === 'multiple_select') && (
+                                {(q.question_type === 'multiple_choice' ||
+                                    q.question_type === 'multiple_select') && (
                                     <div className="mt-4 space-y-2">
                                         <Label>Choices</Label>
                                         {(q.choices || []).map((c, ci) => (
-                                            <div key={ci} className="flex items-center gap-2">
+                                            <div
+                                                key={ci}
+                                                className="flex items-center gap-2"
+                                            >
                                                 <Input
                                                     value={c.choice_text}
-                                                    onChange={(e) => updateChoice(qi, ci, 'choice_text', e.target.value)}
+                                                    onChange={(e) =>
+                                                        updateChoice(
+                                                            qi,
+                                                            ci,
+                                                            'choice_text',
+                                                            e.target.value,
+                                                        )
+                                                    }
                                                     placeholder={`Choice #${ci + 1}`}
                                                 />
                                                 <label className="flex items-center gap-2 text-sm">
                                                     <input
                                                         type="checkbox"
                                                         checked={!!c.is_correct}
-                                                        onChange={(e) => updateChoice(qi, ci, 'is_correct', e.target.checked)}
+                                                        onChange={(e) =>
+                                                            updateChoice(
+                                                                qi,
+                                                                ci,
+                                                                'is_correct',
+                                                                e.target
+                                                                    .checked,
+                                                            )
+                                                        }
                                                     />
                                                     Correct
                                                 </label>
@@ -310,9 +319,18 @@ export default function CreateNationalAssessment() {
                                                 onClick={() =>
                                                     setQuestions((prev) => {
                                                         const next = [...prev];
-                                                        const choices = [...(next[qi].choices || [])];
-                                                        choices.push({ choice_text: '', is_correct: false });
-                                                        next[qi] = { ...next[qi], choices };
+                                                        const choices = [
+                                                            ...(next[qi]
+                                                                .choices || []),
+                                                        ];
+                                                        choices.push({
+                                                            choice_text: '',
+                                                            is_correct: false,
+                                                        });
+                                                        next[qi] = {
+                                                            ...next[qi],
+                                                            choices,
+                                                        };
                                                         return next;
                                                     })
                                                 }
@@ -333,7 +351,10 @@ export default function CreateNationalAssessment() {
                                                 onChange={() =>
                                                     setQuestions((prev) => {
                                                         const next = [...prev];
-                                                        next[qi] = { ...next[qi], answer: true };
+                                                        next[qi] = {
+                                                            ...next[qi],
+                                                            answer: true,
+                                                        };
                                                         return next;
                                                     })
                                                 }
@@ -348,7 +369,10 @@ export default function CreateNationalAssessment() {
                                                 onChange={() =>
                                                     setQuestions((prev) => {
                                                         const next = [...prev];
-                                                        next[qi] = { ...next[qi], answer: false };
+                                                        next[qi] = {
+                                                            ...next[qi],
+                                                            answer: false,
+                                                        };
                                                         return next;
                                                     })
                                                 }
@@ -369,4 +393,3 @@ export default function CreateNationalAssessment() {
         </AppLayout>
     );
 }
-
