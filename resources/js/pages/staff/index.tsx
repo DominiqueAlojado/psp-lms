@@ -1,11 +1,12 @@
 import { ExportButton } from '@/components/export-button';
 import HeadingSmall from '@/components/heading-small';
-import { StatCard } from '@/components/stat-card';
 import { CreateStaffSheet } from '@/components/staff/create-staff-sheet';
 import { EditStaffSheet } from '@/components/staff/edit-staff-sheet';
 import { StaffTable } from '@/components/staff/staff-table';
+import { StatCard } from '@/components/stat-card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { usePermissions } from '@/hooks/use-permissions';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, router, usePage } from '@inertiajs/react';
@@ -72,6 +73,7 @@ interface PageProps {
 export default function StaffIndex() {
     const { staff, filters, roleStats, roles, organizations } =
         usePage<PageProps>().props;
+    const { hasPermission } = usePermissions();
 
     const [createOpen, setCreateOpen] = useState(false);
     const [editingStaff, setEditingStaff] = useState<Staff | null>(null);
@@ -119,7 +121,10 @@ export default function StaffIndex() {
                             system administrators
                         </p>
                     </div>
-                    <Button onClick={() => setCreateOpen(true)}>
+                    <Button
+                        onClick={() => setCreateOpen(true)}
+                        disabled={!hasPermission('create-staff')}
+                    >
                         <Plus className="mr-2 h-4 w-4" />
                         Add Staff Member
                     </Button>
@@ -146,7 +151,7 @@ export default function StaffIndex() {
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div className="flex flex-1 gap-3">
                         <div className="relative flex-1">
-                            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                            <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                             <Input
                                 placeholder="Search by name or email..."
                                 value={searchQuery}
@@ -162,7 +167,7 @@ export default function StaffIndex() {
                         <select
                             value={roleFilter}
                             onChange={(e) => setRoleFilter(e.target.value)}
-                            className="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                            className="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
                         >
                             <option value="">All Roles</option>
                             {roles.map((role) => (
@@ -174,7 +179,7 @@ export default function StaffIndex() {
                         <select
                             value={orgFilter}
                             onChange={(e) => setOrgFilter(e.target.value)}
-                            className="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                            className="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
                         >
                             <option value="">All Organizations</option>
                             {organizations.map((org) => (
@@ -200,6 +205,7 @@ export default function StaffIndex() {
                             role: roleFilter,
                             organization: orgFilter,
                         }}
+                        disabled={!hasPermission('export-staff')}
                     />
                 </div>
 
@@ -244,4 +250,3 @@ export default function StaffIndex() {
         </AppLayout>
     );
 }
-

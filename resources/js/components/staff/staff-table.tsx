@@ -1,14 +1,4 @@
 import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import {
     AlertDialog,
     AlertDialogAction,
     AlertDialogCancel,
@@ -19,8 +9,19 @@ import {
     AlertDialogTitle,
     AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { Pencil, Trash2, Building2 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from '@/components/ui/table';
+import { usePermissions } from '@/hooks/use-permissions';
 import { router } from '@inertiajs/react';
+import { Building2, Pencil, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface Staff {
@@ -42,7 +43,9 @@ interface StaffTableProps {
 }
 
 export function StaffTable({ staff, onEdit }: StaffTableProps) {
-    const handleDelete = (id: number, name: string) => {
+    const { hasPermission } = usePermissions();
+
+    const handleDelete = (id: number) => {
         router.delete(`/staff/${id}`, {
             preserveScroll: true,
             onError: (errors) => {
@@ -124,6 +127,7 @@ export function StaffTable({ staff, onEdit }: StaffTableProps) {
                                         variant="ghost"
                                         size="sm"
                                         onClick={() => onEdit(member)}
+                                        disabled={!hasPermission('edit-staff')}
                                     >
                                         <Pencil className="h-4 w-4" />
                                     </Button>
@@ -132,6 +136,11 @@ export function StaffTable({ staff, onEdit }: StaffTableProps) {
                                             <Button
                                                 variant="ghost"
                                                 size="sm"
+                                                disabled={
+                                                    !hasPermission(
+                                                        'delete-staff',
+                                                    )
+                                                }
                                             >
                                                 <Trash2 className="h-4 w-4 text-destructive" />
                                             </Button>
@@ -157,10 +166,7 @@ export function StaffTable({ staff, onEdit }: StaffTableProps) {
                                                 </AlertDialogCancel>
                                                 <AlertDialogAction
                                                     onClick={() =>
-                                                        handleDelete(
-                                                            member.id,
-                                                            member.name,
-                                                        )
+                                                        handleDelete(member.id)
                                                     }
                                                     className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                                                 >
@@ -178,4 +184,3 @@ export function StaffTable({ staff, onEdit }: StaffTableProps) {
         </div>
     );
 }
-

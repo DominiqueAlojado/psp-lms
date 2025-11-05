@@ -5,8 +5,15 @@ import { toast } from 'sonner';
 interface ExportButtonProps {
     /**
      * The export route/URL (e.g., '/residents/export')
+     * @alias href
      */
-    exportUrl: string;
+    exportUrl?: string;
+
+    /**
+     * The export route/URL (e.g., '/residents/export')
+     * @alias exportUrl
+     */
+    href?: string;
 
     /**
      * Filters to apply to the export
@@ -23,7 +30,13 @@ interface ExportButtonProps {
      * Button variant
      * @default 'outline'
      */
-    variant?: 'default' | 'outline' | 'secondary' | 'ghost' | 'link' | 'destructive';
+    variant?:
+        | 'default'
+        | 'outline'
+        | 'secondary'
+        | 'ghost'
+        | 'link'
+        | 'destructive';
 
     /**
      * Show icon
@@ -50,10 +63,17 @@ interface ExportButtonProps {
      * Callback after export is triggered
      */
     onExport?: () => void;
+
+    /**
+     * Disable the export button
+     * @default false
+     */
+    disabled?: boolean;
 }
 
 export function ExportButton({
     exportUrl,
+    href,
     filters = {},
     buttonText = 'Export to Excel',
     variant = 'outline',
@@ -62,8 +82,14 @@ export function ExportButton({
     successMessage = 'Exporting data...',
     className,
     onExport,
+    disabled = false,
 }: ExportButtonProps) {
+    // Support both exportUrl and href for backward compatibility
+    const url = href || exportUrl;
+
     const handleExport = () => {
+        if (!url) return;
+
         // Build query string with provided filters
         const params = new URLSearchParams();
 
@@ -75,9 +101,9 @@ export function ExportButton({
 
         // Trigger download
         const queryString = params.toString();
-        const url = queryString ? `${exportUrl}?${queryString}` : exportUrl;
+        const fullUrl = queryString ? `${url}?${queryString}` : url;
 
-        window.location.href = url;
+        window.location.href = fullUrl;
         toast.success(successMessage);
 
         // Call optional callback
@@ -85,10 +111,14 @@ export function ExportButton({
     };
 
     return (
-        <Button variant={variant} onClick={handleExport} className={className}>
+        <Button
+            variant={variant}
+            onClick={handleExport}
+            className={className}
+            disabled={disabled}
+        >
             {showIcon && <Icon className="mr-2 h-4 w-4" />}
             {buttonText}
         </Button>
     );
 }
-
