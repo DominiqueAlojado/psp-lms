@@ -48,6 +48,7 @@ class HandleInertiaRequests extends Middleware
                 'user' => $user,
                 'organizations' => $user?->organizations()->get(['organizations.id', 'organizations.name', 'organizations.slug', 'organizations.type', 'organizations.logo']),
                 'currentOrganization' => $user?->currentOrganization,
+                'permissions' => $user?->getAllPermissions()->pluck('name')->toArray() ?? [],
             ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
             'flash' => [

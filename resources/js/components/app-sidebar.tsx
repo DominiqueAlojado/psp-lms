@@ -11,6 +11,7 @@ import {
     SidebarMenuButton,
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
+import { usePermissions } from '@/hooks/use-permissions';
 import { dashboard } from '@/routes';
 import { type NavItem } from '@/types';
 import { Link } from '@inertiajs/react';
@@ -30,16 +31,19 @@ const footerNavItems: NavItem[] = [
         title: 'Residents',
         href: '/residents',
         icon: Users,
+        permission: 'view-residents',
     },
     {
         title: 'Staff',
         href: '/staff',
         icon: UserCog,
+        permission: 'view-staff',
     },
     {
         title: 'Institutions',
         href: '/institutions',
         icon: Building2,
+        permission: 'view-institutions',
     },
     {
         title: 'Repository',
@@ -54,6 +58,18 @@ const footerNavItems: NavItem[] = [
 ];
 
 export function AppSidebar() {
+    const { hasPermission } = usePermissions();
+
+    // Filter footer nav items based on permissions
+    const filteredFooterNavItems = footerNavItems.filter((item) => {
+        // If no permission is required, show the item
+        if (!item.permission) {
+            return true;
+        }
+        // Otherwise, check if user has the required permission
+        return hasPermission(item.permission);
+    });
+
     return (
         <Sidebar collapsible="icon" variant="inset">
             <SidebarHeader>
@@ -76,7 +92,7 @@ export function AppSidebar() {
             </SidebarContent>
 
             <SidebarFooter>
-                <NavFooter items={footerNavItems} className="mt-auto" />
+                <NavFooter items={filteredFooterNavItems} className="mt-auto" />
                 <NavUser />
             </SidebarFooter>
         </Sidebar>

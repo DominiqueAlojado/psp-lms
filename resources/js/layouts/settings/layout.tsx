@@ -1,6 +1,7 @@
 import Heading from '@/components/heading';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
+import { usePermissions } from '@/hooks/use-permissions';
 import { cn, isSameUrl, resolveUrl } from '@/lib/utils';
 import { edit as editAppearance } from '@/routes/appearance';
 import organization from '@/routes/organization';
@@ -36,6 +37,7 @@ const sidebarNavItems: NavItem[] = [
         title: 'Roles & Permissions',
         href: { url: '/settings/roles-permissions', method: 'get' },
         icon: null,
+        permission: 'manage-permissions',
     },
     {
         title: 'Appearance',
@@ -45,6 +47,8 @@ const sidebarNavItems: NavItem[] = [
 ];
 
 export default function SettingsLayout({ children }: PropsWithChildren) {
+    const { hasPermission } = usePermissions();
+
     // When server-side rendering, we only render the layout on the client...
     if (typeof window === 'undefined') {
         return null;
@@ -54,6 +58,16 @@ export default function SettingsLayout({ children }: PropsWithChildren) {
     const isOrganizationPage = currentPath.includes('/settings/organization');
     const isRolesPermissionsPage = currentPath.includes('/settings/roles-permissions');
     const isWidePage = isOrganizationPage || isRolesPermissionsPage;
+
+    // Filter sidebar nav items based on permissions
+    const filteredSidebarNavItems = sidebarNavItems.filter((item) => {
+        // If no permission is required, show the item
+        if (!item.permission) {
+            return true;
+        }
+        // Otherwise, check if user has the required permission
+        return hasPermission(item.permission);
+    });
 
     return (
         <div className="px-4 py-6">
@@ -65,7 +79,7 @@ export default function SettingsLayout({ children }: PropsWithChildren) {
             <div className="flex flex-col lg:flex-row lg:space-x-12">
                 <aside className="w-full max-w-xl lg:w-48">
                     <nav className="flex flex-col space-y-1 space-x-0">
-                        {sidebarNavItems.map((item, index) => (
+                        {filteredSidebarNavItems.map((item, index) => (
                             <Button
                                 key={`${resolveUrl(item.href)}-${index}`}
                                 size="sm"
