@@ -262,6 +262,7 @@ class InstitutionExamController extends Controller
 
         $validated = $request->validate([
             'questions' => ['required', 'array', 'min:1'],
+            'questions.*.id' => ['nullable', 'integer', 'exists:institution_questions,id'],
             'questions.*.question_type' => ['required', 'in:multiple_choice,multiple_select,true_false'],
             'questions.*.question_text' => ['required', 'string'],
             'questions.*.points' => ['required', 'integer', 'min:1'],
@@ -273,7 +274,8 @@ class InstitutionExamController extends Controller
             'questions.*.answer' => ['nullable'], // for true_false
         ]);
 
-        $totalPointsAdded = 0;
+        $existingQuestionIds = [];
+        $totalPoints = 0;
 
         foreach ($validated['questions'] as $q) {
             $imagePath = null;
@@ -300,13 +302,30 @@ class InstitutionExamController extends Controller
                 }
             }
 
-            $question = $assessment->questions()->create([
+            $questionData = [
                 'question_type' => $q['question_type'],
                 'question_text' => $q['question_text'],
                 'points' => $q['points'],
                 'order' => $q['order'] ?? 0,
-                'image_path' => $imagePath,
-            ]);
+            ];
+
+            if ($imagePath) {
+                $questionData['image_path'] = $imagePath;
+            }
+
+            // Update existing question or create new one
+            if (! empty($q['id'])) {
+                $question = $assessment->questions()->find($q['id']);
+                if ($question) {
+                    $question->update($questionData);
+                    $existingQuestionIds[] = $question->id;
+                    // Delete old choices to recreate them
+                    $question->choices()->delete();
+                }
+            } else {
+                $question = $assessment->questions()->create($questionData);
+                $existingQuestionIds[] = $question->id;
+            }
 
             // Handle choices for MCQ and Multiple Select
             if (in_array($q['question_type'], ['multiple_choice', 'multiple_select'])) {
@@ -328,11 +347,14 @@ class InstitutionExamController extends Controller
                 ]);
             }
 
-            $totalPointsAdded += $q['points'];
+            $totalPoints += $q['points'];
         }
 
+        // Delete questions that are no longer in the list
+        $assessment->questions()->whereNotIn('id', $existingQuestionIds)->delete();
+
         // Update total points on assessment
-        $assessment->increment('total_points', $totalPointsAdded);
+        $assessment->update(['total_points' => $totalPoints]);
 
         return back()->with('success', 'Questions saved successfully');
     }
