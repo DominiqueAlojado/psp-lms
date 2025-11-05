@@ -112,9 +112,19 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->middleware('role:System Admin|BOP')
         ->name('in-service.destroy');
 
+    // Institution Exams (frontend pages)
+    Route::get('institution-exams/active', function () {
+        return Inertia::render('institution-exams/active');
+    })->middleware('permission:view-assessments')->name('institution-exams.active');
+
+    // In-Service Exams (frontend pages)
+    Route::get('inservice-exams/active', function () {
+        return Inertia::render('inservice-exams/active');
+    })->middleware('permission:view-assessments')->name('inservice-exams.active');
+
     // Organization switching
     Route::post('organization/{organization}/switch', [App\Http\Controllers\OrganizationController::class, 'switch'])
         ->name('organization.switch');
 });
 
-require __DIR__.'/settings.php';
+require __DIR__ . '/settings.php';

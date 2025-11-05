@@ -25,15 +25,15 @@ const mainNavItems: NavItem[] = [
         icon: LayoutGrid,
     },
     {
-        title: 'Assessments',
-        href: '/assessments',
-        icon: ClipboardList,
+        title: 'In-Service Exams',
+        href: '/inservice-exams/active',
+        icon: GraduationCap,
         permission: 'view-assessments',
     },
     {
-        title: 'In-Service Exams',
-        href: '/in-service',
-        icon: GraduationCap,
+        title: 'Institution Exams',
+        href: '/institution-exams/active',
+        icon: ClipboardList,
         permission: 'view-assessments',
     },
 ];
