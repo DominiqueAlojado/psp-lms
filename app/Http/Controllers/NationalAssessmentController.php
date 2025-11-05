@@ -94,12 +94,53 @@ class NationalAssessmentController extends Controller
             'institution_comparison_enabled' => ['boolean'],
             'scheduled_date' => ['nullable', 'date'],
             'results_release_date' => ['nullable', 'date', 'after:scheduled_date'],
+            'questions' => ['nullable', 'array'],
         ]);
 
         $validated['created_by'] = $request->user()->id;
-        $validated['total_points'] = 0; // Will be calculated when questions are added
+        $validated['total_points'] = 0;
 
-        NationalAssessment::create($validated);
+        $assessment = NationalAssessment::create($validated);
+
+        // If questions were provided, save them
+        if (! empty($validated['questions'])) {
+            $totalPoints = 0;
+
+            foreach ($validated['questions'] as $q) {
+                $question = $assessment->questions()->create([
+                    'question_type' => $q['question_type'],
+                    'question_text' => $q['question_text'],
+                    'points' => $q['points'],
+                    'difficulty_level' => $q['difficulty_level'] ?? null,
+                    'topic' => $q['topic'] ?? null,
+                    'order' => $q['order'] ?? 0,
+                ]);
+
+                // Handle choices for MCQ and Multiple Select
+                if (in_array($q['question_type'], ['multiple_choice', 'multiple_select'])) {
+                    foreach ($q['choices'] ?? [] as $idx => $c) {
+                        $question->choices()->create([
+                            'choice_text' => $c['choice_text'],
+                            'is_correct' => (bool) ($c['is_correct'] ?? false),
+                            'order' => $idx,
+                        ]);
+                    }
+                }
+
+                // True/False stored as two choices
+                if ($q['question_type'] === 'true_false') {
+                    $answer = filter_var($q['answer'] ?? false, FILTER_VALIDATE_BOOLEAN);
+                    $question->choices()->createMany([
+                        ['choice_text' => 'True', 'is_correct' => $answer === true, 'order' => 0],
+                        ['choice_text' => 'False', 'is_correct' => $answer === false, 'order' => 1],
+                    ]);
+                }
+
+                $totalPoints += $q['points'];
+            }
+
+            $assessment->update(['total_points' => $totalPoints]);
+        }
 
         return back()->with('success', 'National assessment created successfully');
     }

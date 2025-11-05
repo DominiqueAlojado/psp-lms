@@ -82,6 +82,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('assessments', [App\Http\Controllers\InstitutionAssessmentController::class, 'index'])
         ->middleware('permission:view-assessments')
         ->name('assessments.index');
+    Route::get('institution-exams/create', function () {
+        return Inertia::render('assessments/create');
+    })->middleware('permission:create-assessments')->name('institution-exams.create');
     Route::post('assessments', [App\Http\Controllers\InstitutionAssessmentController::class, 'store'])
         ->middleware('permission:create-assessments')
         ->name('assessments.store');
@@ -94,11 +97,17 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::delete('assessments/{assessment}', [App\Http\Controllers\InstitutionAssessmentController::class, 'destroy'])
         ->middleware('permission:delete-assessments')
         ->name('assessments.destroy');
+    Route::post('assessments/{assessment}/questions', [App\Http\Controllers\InstitutionAssessmentController::class, 'storeQuestions'])
+        ->middleware('permission:edit-assessments')
+        ->name('assessments.questions.store');
 
     // National In-Service Exams
     Route::get('in-service', [App\Http\Controllers\NationalAssessmentController::class, 'index'])
         ->middleware('permission:view-assessments')
         ->name('in-service.index');
+    Route::get('in-service/create', function () {
+        return Inertia::render('in-service/create');
+    })->middleware('role:System Admin|BOP')->name('in-service.create');
     Route::post('in-service', [App\Http\Controllers\NationalAssessmentController::class, 'store'])
         ->middleware('role:System Admin|BOP')
         ->name('in-service.store');

@@ -179,9 +179,9 @@ export default function InstitutionsIndex({
                                             onClick={() => setAddingInstitution(true)}
                                             disabled={!hasPermission('create-institutions')}
                                         >
-                                            <Plus className="mr-2 h-4 w-4" />
-                                            Add Institution
-                                        </Button>
+                            <Plus className="mr-2 h-4 w-4" />
+                            Add Institution
+                        </Button>
                                     </span>
                                 </TooltipTrigger>
                                 {!hasPermission('create-institutions') && (

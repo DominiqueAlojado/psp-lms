@@ -77,13 +77,52 @@ class InstitutionAssessmentController extends Controller
             'allow_review' => ['boolean'],
             'available_from' => ['nullable', 'date'],
             'available_until' => ['nullable', 'date', 'after:available_from'],
+            'questions' => ['nullable', 'array'],
         ]);
 
         $validated['organization_id'] = $request->user()->current_organization_id;
         $validated['created_by'] = $request->user()->id;
-        $validated['total_points'] = 0; // Will be calculated when questions are added
+        $validated['total_points'] = 0;
 
-        InstitutionAssessment::create($validated);
+        $assessment = InstitutionAssessment::create($validated);
+
+        // If questions were provided, save them
+        if (! empty($validated['questions'])) {
+            $totalPoints = 0;
+
+            foreach ($validated['questions'] as $q) {
+                $question = $assessment->questions()->create([
+                    'question_type' => $q['question_type'],
+                    'question_text' => $q['question_text'],
+                    'points' => $q['points'],
+                    'order' => $q['order'] ?? 0,
+                ]);
+
+                // Handle choices for MCQ and Multiple Select
+                if (in_array($q['question_type'], ['multiple_choice', 'multiple_select'])) {
+                    foreach ($q['choices'] ?? [] as $idx => $c) {
+                        $question->choices()->create([
+                            'choice_text' => $c['choice_text'],
+                            'is_correct' => (bool) ($c['is_correct'] ?? false),
+                            'order' => $idx,
+                        ]);
+                    }
+                }
+
+                // True/False stored as two choices
+                if ($q['question_type'] === 'true_false') {
+                    $answer = filter_var($q['answer'] ?? false, FILTER_VALIDATE_BOOLEAN);
+                    $question->choices()->createMany([
+                        ['choice_text' => 'True', 'is_correct' => $answer === true, 'order' => 0],
+                        ['choice_text' => 'False', 'is_correct' => $answer === false, 'order' => 1],
+                    ]);
+                }
+
+                $totalPoints += $q['points'];
+            }
+
+            $assessment->update(['total_points' => $totalPoints]);
+        }
 
         return back()->with('success', 'Assessment created successfully');
     }
@@ -178,5 +217,66 @@ class InstitutionAssessmentController extends Controller
         $assessment->delete();
 
         return back()->with('success', 'Assessment deleted successfully');
+    }
+
+    /**
+     * Store questions for an assessment (MCQ, multiple_select, true_false).
+     */
+    public function storeQuestions(Request $request, InstitutionAssessment $assessment): RedirectResponse
+    {
+        // Verify user has access
+        if ($assessment->organization_id !== $request->user()->current_organization_id) {
+            abort(403, 'You do not have access to this assessment.');
+        }
+
+        $validated = $request->validate([
+            'questions' => ['required', 'array', 'min:1'],
+            'questions.*.question_type' => ['required', 'in:multiple_choice,multiple_select,true_false'],
+            'questions.*.question_text' => ['required', 'string'],
+            'questions.*.points' => ['required', 'integer', 'min:1'],
+            'questions.*.order' => ['nullable', 'integer', 'min:0'],
+            'questions.*.choices' => ['nullable', 'array'],
+            'questions.*.choices.*.choice_text' => ['required_with:questions.*.choices', 'string'],
+            'questions.*.choices.*.is_correct' => ['required_with:questions.*.choices', 'boolean'],
+            'questions.*.answer' => ['nullable'], // for true_false
+        ]);
+
+        $totalPointsAdded = 0;
+
+        foreach ($validated['questions'] as $q) {
+            $question = $assessment->questions()->create([
+                'question_type' => $q['question_type'],
+                'question_text' => $q['question_text'],
+                'points' => $q['points'],
+                'order' => $q['order'] ?? 0,
+            ]);
+
+            // Handle choices for MCQ and Multiple Select
+            if (in_array($q['question_type'], ['multiple_choice', 'multiple_select'])) {
+                foreach ($q['choices'] ?? [] as $idx => $c) {
+                    $question->choices()->create([
+                        'choice_text' => $c['choice_text'],
+                        'is_correct' => (bool) ($c['is_correct'] ?? false),
+                        'order' => $idx,
+                    ]);
+                }
+            }
+
+            // True/False stored as two choices for consistency
+            if ($q['question_type'] === 'true_false') {
+                $answer = filter_var($q['answer'] ?? false, FILTER_VALIDATE_BOOLEAN);
+                $question->choices()->createMany([
+                    ['choice_text' => 'True', 'is_correct' => $answer === true, 'order' => 0],
+                    ['choice_text' => 'False', 'is_correct' => $answer === false, 'order' => 1],
+                ]);
+            }
+
+            $totalPointsAdded += $q['points'];
+        }
+
+        // Update total points on assessment
+        $assessment->increment('total_points', $totalPointsAdded);
+
+        return back()->with('success', 'Questions saved successfully');
     }
 }
