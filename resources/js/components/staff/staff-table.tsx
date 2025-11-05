@@ -19,6 +19,12 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { usePermissions } from '@/hooks/use-permissions';
 import { router } from '@inertiajs/react';
 import { Building2, Pencil, Trash2 } from 'lucide-react';
@@ -123,28 +129,72 @@ export function StaffTable({ staff, onEdit }: StaffTableProps) {
                             </TableCell>
                             <TableCell className="text-right">
                                 <div className="flex justify-end gap-2">
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => onEdit(member)}
-                                        disabled={!hasPermission('edit-staff')}
-                                    >
-                                        <Pencil className="h-4 w-4" />
-                                    </Button>
+                                    <TooltipProvider>
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <span className="inline-block">
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        onClick={() =>
+                                                            onEdit(member)
+                                                        }
+                                                        disabled={
+                                                            !hasPermission(
+                                                                'edit-staff',
+                                                            )
+                                                        }
+                                                    >
+                                                        <Pencil className="h-4 w-4" />
+                                                    </Button>
+                                                </span>
+                                            </TooltipTrigger>
+                                            {!hasPermission('edit-staff') && (
+                                                <TooltipContent>
+                                                    <p>
+                                                        You don't have
+                                                        permission to edit staff
+                                                        members
+                                                    </p>
+                                                </TooltipContent>
+                                            )}
+                                        </Tooltip>
+                                    </TooltipProvider>
                                     <AlertDialog>
-                                        <AlertDialogTrigger asChild>
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                disabled={
-                                                    !hasPermission(
-                                                        'delete-staff',
-                                                    )
-                                                }
-                                            >
-                                                <Trash2 className="h-4 w-4 text-destructive" />
-                                            </Button>
-                                        </AlertDialogTrigger>
+                                        <TooltipProvider>
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                    <span className="inline-block">
+                                                        <AlertDialogTrigger
+                                                            asChild
+                                                        >
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                disabled={
+                                                                    !hasPermission(
+                                                                        'delete-staff',
+                                                                    )
+                                                                }
+                                                            >
+                                                                <Trash2 className="h-4 w-4 text-destructive" />
+                                                            </Button>
+                                                        </AlertDialogTrigger>
+                                                    </span>
+                                                </TooltipTrigger>
+                                                {!hasPermission(
+                                                    'delete-staff',
+                                                ) && (
+                                                    <TooltipContent>
+                                                        <p>
+                                                            You don't have
+                                                            permission to delete
+                                                            staff members
+                                                        </p>
+                                                    </TooltipContent>
+                                                )}
+                                            </Tooltip>
+                                        </TooltipProvider>
                                         <AlertDialogContent>
                                             <AlertDialogHeader>
                                                 <AlertDialogTitle>

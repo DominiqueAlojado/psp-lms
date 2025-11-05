@@ -1,4 +1,10 @@
 import { Button } from '@/components/ui/button';
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { Download } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -109,6 +115,31 @@ export function ExportButton({
         // Call optional callback
         onExport?.();
     };
+
+    if (disabled) {
+        return (
+            <TooltipProvider>
+                <Tooltip>
+                    <TooltipTrigger asChild>
+                        <span className="inline-block">
+                            <Button
+                                variant={variant}
+                                onClick={handleExport}
+                                className={className}
+                                disabled={disabled}
+                            >
+                                {showIcon && <Icon className="mr-2 h-4 w-4" />}
+                                {buttonText}
+                            </Button>
+                        </span>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                        <p>You don't have permission to perform this action</p>
+                    </TooltipContent>
+                </Tooltip>
+            </TooltipProvider>
+        );
+    }
 
     return (
         <Button

@@ -6,6 +6,12 @@ import { StaffTable } from '@/components/staff/staff-table';
 import { StatCard } from '@/components/stat-card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { usePermissions } from '@/hooks/use-permissions';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
@@ -121,13 +127,31 @@ export default function StaffIndex() {
                             system administrators
                         </p>
                     </div>
-                    <Button
-                        onClick={() => setCreateOpen(true)}
-                        disabled={!hasPermission('create-staff')}
-                    >
-                        <Plus className="mr-2 h-4 w-4" />
-                        Add Staff Member
-                    </Button>
+                    <TooltipProvider>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <span className="inline-block">
+                                    <Button
+                                        onClick={() => setCreateOpen(true)}
+                                        disabled={
+                                            !hasPermission('create-staff')
+                                        }
+                                    >
+                                        <Plus className="mr-2 h-4 w-4" />
+                                        Add Staff Member
+                                    </Button>
+                                </span>
+                            </TooltipTrigger>
+                            {!hasPermission('create-staff') && (
+                                <TooltipContent>
+                                    <p>
+                                        You don't have permission to create
+                                        staff members
+                                    </p>
+                                </TooltipContent>
+                            )}
+                        </Tooltip>
+                    </TooltipProvider>
                 </div>
 
                 {/* Statistics */}
