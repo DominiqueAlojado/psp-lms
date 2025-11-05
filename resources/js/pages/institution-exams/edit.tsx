@@ -6,8 +6,8 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import AppLayout from '@/layouts/app-layout';
 import { Head, router, usePage } from '@inertiajs/react';
-import { Trash2 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { Trash2, Upload, X } from 'lucide-react';
+import { useState } from 'react';
 
 interface QuestionChoice {
     id?: number;
@@ -24,6 +24,9 @@ interface DraftQuestion {
     choices?: QuestionChoice[];
     answer?: boolean;
     order?: number;
+    image?: string; // base64 encoded image
+    image_url?: string; // for preview
+    image_path?: string; // existing image path
 }
 
 interface Assessment {
@@ -110,6 +113,37 @@ export default function EditAssessment() {
             const choices = [...q.choices];
             choices[ci] = { ...choices[ci], [field]: value };
             next[qi] = { ...q, choices };
+            return next;
+        });
+    };
+
+    const handleImageUpload = (qi: number, file: File) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            const base64String = reader.result as string;
+            setQuestions((prev) => {
+                const next = [...prev];
+                next[qi] = {
+                    ...next[qi],
+                    image: base64String,
+                    image_url: base64String,
+                    image_path: undefined, // Clear old path since we have new image
+                };
+                return next;
+            });
+        };
+        reader.readAsDataURL(file);
+    };
+
+    const removeImage = (qi: number) => {
+        setQuestions((prev) => {
+            const next = [...prev];
+            next[qi] = {
+                ...next[qi],
+                image: undefined,
+                image_url: undefined,
+                image_path: undefined,
+            };
             return next;
         });
     };
@@ -383,6 +417,46 @@ export default function EditAssessment() {
                                         }}
                                         placeholder="Type the question"
                                     />
+                                </div>
+                                <div className="mt-3 space-y-3">
+                                    <Label>Question Image (Optional)</Label>
+                                    {(q.image_url || q.image_path) ? (
+                                        <div className="relative flex">
+                                            <img
+                                                src={q.image_url || q.image_path}
+                                                alt="Question"
+                                                className="h-auto max-h-96 w-full max-w-2xl rounded border object-contain"
+                                            />
+                                            <Button
+                                                type="button"
+                                                variant="destructive"
+                                                size="sm"
+                                                className="absolute right-2 top-2"
+                                                onClick={() => removeImage(qi)}
+                                            >
+                                                <X className="h-4 w-4" />
+                                            </Button>
+                                        </div>
+                                    ) : (
+                                        <div className="flex items-center gap-2">
+                                            <Input
+                                                type="file"
+                                                accept="image/*"
+                                                onChange={(e) => {
+                                                    const file =
+                                                        e.target.files?.[0];
+                                                    if (file) {
+                                                        handleImageUpload(
+                                                            qi,
+                                                            file,
+                                                        );
+                                                    }
+                                                }}
+                                                className="max-w-xs"
+                                            />
+                                            <Upload className="h-4 w-4 text-muted-foreground" />
+                                        </div>
+                                    )}
                                 </div>
                                 <div className="mt-3 grid max-w-xs gap-2">
                                     <Label>Points</Label>

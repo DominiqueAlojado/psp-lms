@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Institution\InstitutionAssessment;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -141,6 +142,8 @@ class InstitutionExamController extends Controller
                     'question_text' => $q->question_text,
                     'points' => $q->points,
                     'explanation' => $q->explanation,
+                    'image_path' => $q->image_path,
+                    'image_url' => $q->image_path ? Storage::disk('public')->url($q->image_path) : null,
                     'order' => $q->order,
                     'choices' => $q->choices->map(fn ($c) => [
                         'id' => $c->id,
@@ -263,6 +266,7 @@ class InstitutionExamController extends Controller
             'questions.*.question_text' => ['required', 'string'],
             'questions.*.points' => ['required', 'integer', 'min:1'],
             'questions.*.order' => ['nullable', 'integer', 'min:0'],
+            'questions.*.image' => ['nullable', 'string'], // base64 encoded image
             'questions.*.choices' => ['nullable', 'array'],
             'questions.*.choices.*.choice_text' => ['required_with:questions.*.choices', 'string'],
             'questions.*.choices.*.is_correct' => ['required_with:questions.*.choices', 'boolean'],
@@ -272,11 +276,36 @@ class InstitutionExamController extends Controller
         $totalPointsAdded = 0;
 
         foreach ($validated['questions'] as $q) {
+            $imagePath = null;
+
+            // Handle base64 image upload if provided
+            if (! empty($q['image'])) {
+                try {
+                    // Extract base64 data
+                    $imageData = $q['image'];
+                    if (preg_match('/^data:image\/(\w+);base64,/', $imageData, $type)) {
+                        $imageData = substr($imageData, strpos($imageData, ',') + 1);
+                        $type = strtolower($type[1]); // jpg, png, gif
+
+                        $imageData = base64_decode($imageData);
+                        if ($imageData !== false) {
+                            $filename = 'question_'.uniqid().'.'.$type;
+                            $path = 'question-images/'.$filename;
+                            Storage::disk('public')->put($path, $imageData);
+                            $imagePath = $path;
+                        }
+                    }
+                } catch (\Exception $e) {
+                    \Log::error('Error uploading question image: '.$e->getMessage());
+                }
+            }
+
             $question = $assessment->questions()->create([
                 'question_type' => $q['question_type'],
                 'question_text' => $q['question_text'],
                 'points' => $q['points'],
                 'order' => $q['order'] ?? 0,
+                'image_path' => $imagePath,
             ]);
 
             // Handle choices for MCQ and Multiple Select
