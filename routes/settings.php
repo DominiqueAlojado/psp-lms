@@ -41,25 +41,33 @@ Route::middleware('auth')->group(function () {
 
     // Roles & Permissions Management
     Route::get('settings/roles-permissions', [RolesPermissionsController::class, 'index'])
+        ->middleware('permission:manage-permissions')
         ->name('roles-permissions.index');
 
     // Roles
     Route::post('settings/roles', [RolesPermissionsController::class, 'storeRole'])
+        ->middleware('permission:manage-permissions')
         ->name('roles.store');
     Route::patch('settings/roles/{role}', [RolesPermissionsController::class, 'updateRole'])
+        ->middleware('permission:manage-permissions')
         ->name('roles.update');
     Route::delete('settings/roles/{role}', [RolesPermissionsController::class, 'deleteRole'])
+        ->middleware('permission:manage-permissions')
         ->name('roles.delete');
 
     // Permissions
     Route::post('settings/permissions', [RolesPermissionsController::class, 'storePermission'])
+        ->middleware('permission:manage-permissions')
         ->name('permissions.store');
     Route::patch('settings/permissions/{permission}', [RolesPermissionsController::class, 'updatePermission'])
+        ->middleware('permission:manage-permissions')
         ->name('permissions.update');
     Route::delete('settings/permissions/{permission}', [RolesPermissionsController::class, 'deletePermission'])
+        ->middleware('permission:manage-permissions')
         ->name('permissions.delete');
 
     // Assign permissions to role
     Route::post('settings/roles/{role}/permissions', [RolesPermissionsController::class, 'syncRolePermissions'])
+        ->middleware('permission:manage-permissions')
         ->name('roles.permissions.sync');
 });
