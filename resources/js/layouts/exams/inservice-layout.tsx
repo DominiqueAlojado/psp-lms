@@ -3,50 +3,24 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { usePermissions } from '@/hooks/use-permissions';
 import { cn, isSameUrl, resolveUrl } from '@/lib/utils';
-import { edit as editAppearance } from '@/routes/appearance';
-import organization from '@/routes/organization';
-import { edit } from '@/routes/profile';
-import { show } from '@/routes/two-factor';
-import { edit as editPassword } from '@/routes/user-password';
 import { type NavItem } from '@/types';
 import { Link } from '@inertiajs/react';
 import { type PropsWithChildren } from 'react';
 
 const sidebarNavItems: NavItem[] = [
     {
-        title: 'Profile',
-        href: edit(),
+        title: 'Active',
+        href: { url: '/inservice-exams/active', method: 'get' },
         icon: null,
     },
     {
-        title: 'Password',
-        href: editPassword(),
-        icon: null,
-    },
-    {
-        title: 'Two-Factor Auth',
-        href: show(),
-        icon: null,
-    },
-    {
-        title: 'Organization',
-        href: organization.edit(),
-        icon: null,
-    },
-    {
-        title: 'Roles & Permissions',
-        href: { url: '/settings/roles-permissions', method: 'get' },
-        icon: null,
-        permission: 'manage-permissions',
-    },
-    {
-        title: 'Appearance',
-        href: editAppearance(),
+        title: 'Drafts',
+        href: { url: '/inservice-exams/drafts', method: 'get' },
         icon: null,
     },
 ];
 
-export default function SettingsLayout({ children }: PropsWithChildren) {
+export default function InServiceExamsLayout({ children }: PropsWithChildren) {
     const { hasPermission } = usePermissions();
 
     // When server-side rendering, we only render the layout on the client...
@@ -55,25 +29,20 @@ export default function SettingsLayout({ children }: PropsWithChildren) {
     }
 
     const currentPath = window.location.pathname;
-    const isOrganizationPage = currentPath.includes('/settings/organization');
-    const isRolesPermissionsPage = currentPath.includes('/settings/roles-permissions');
-    const isWidePage = isOrganizationPage || isRolesPermissionsPage;
 
-    // Filter sidebar nav items based on permissions
+    // Filter sidebar nav items based on permissions (kept for future extensibility)
     const filteredSidebarNavItems = sidebarNavItems.filter((item) => {
-        // If no permission is required, show the item
         if (!item.permission) {
             return true;
         }
-        // Otherwise, check if user has the required permission
         return hasPermission(item.permission);
     });
 
     return (
         <div className="px-4 py-6">
             <Heading
-                title="Settings"
-                description="Manage your profile and account settings"
+                title="In-Service Exams"
+                description="Manage national in-service exams (active and drafts)"
             />
 
             <div className="flex flex-col lg:flex-row lg:space-x-12">
@@ -105,14 +74,8 @@ export default function SettingsLayout({ children }: PropsWithChildren) {
 
                 <Separator className="my-6 lg:hidden" />
 
-                <div className={cn(
-                    "flex-1",
-                    isWidePage ? "md:max-w-7xl" : "md:max-w-2xl"
-                )}>
-                    <section className={cn(
-                        "space-y-12",
-                        isWidePage ? "max-w-full" : "max-w-xl"
-                    )}>
+                <div className={cn('flex-1', 'md:max-w-2xl')}>
+                    <section className={cn('space-y-12', 'max-w-xl')}>
                         {children}
                     </section>
                 </div>
