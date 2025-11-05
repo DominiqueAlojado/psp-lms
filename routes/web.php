@@ -78,9 +78,43 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->middleware('permission:delete-staff')
         ->name('staff.destroy');
 
+    // Institution Assessments
+    Route::get('assessments', [App\Http\Controllers\InstitutionAssessmentController::class, 'index'])
+        ->middleware('permission:view-assessments')
+        ->name('assessments.index');
+    Route::post('assessments', [App\Http\Controllers\InstitutionAssessmentController::class, 'store'])
+        ->middleware('permission:create-assessments')
+        ->name('assessments.store');
+    Route::get('assessments/{assessment}', [App\Http\Controllers\InstitutionAssessmentController::class, 'show'])
+        ->middleware('permission:view-assessments')
+        ->name('assessments.show');
+    Route::patch('assessments/{assessment}', [App\Http\Controllers\InstitutionAssessmentController::class, 'update'])
+        ->middleware('permission:edit-assessments')
+        ->name('assessments.update');
+    Route::delete('assessments/{assessment}', [App\Http\Controllers\InstitutionAssessmentController::class, 'destroy'])
+        ->middleware('permission:delete-assessments')
+        ->name('assessments.destroy');
+
+    // National In-Service Exams
+    Route::get('in-service', [App\Http\Controllers\NationalAssessmentController::class, 'index'])
+        ->middleware('permission:view-assessments')
+        ->name('in-service.index');
+    Route::post('in-service', [App\Http\Controllers\NationalAssessmentController::class, 'store'])
+        ->middleware('role:System Admin|BOP')
+        ->name('in-service.store');
+    Route::get('in-service/{assessment}', [App\Http\Controllers\NationalAssessmentController::class, 'show'])
+        ->middleware('permission:view-assessments')
+        ->name('in-service.show');
+    Route::patch('in-service/{assessment}', [App\Http\Controllers\NationalAssessmentController::class, 'update'])
+        ->middleware('role:System Admin|BOP')
+        ->name('in-service.update');
+    Route::delete('in-service/{assessment}', [App\Http\Controllers\NationalAssessmentController::class, 'destroy'])
+        ->middleware('role:System Admin|BOP')
+        ->name('in-service.destroy');
+
     // Organization switching
     Route::post('organization/{organization}/switch', [App\Http\Controllers\OrganizationController::class, 'switch'])
         ->name('organization.switch');
 });
 
-require __DIR__ . '/settings.php';
+require __DIR__.'/settings.php';

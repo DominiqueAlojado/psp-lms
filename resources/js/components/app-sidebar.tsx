@@ -15,7 +15,7 @@ import { usePermissions } from '@/hooks/use-permissions';
 import { dashboard } from '@/routes';
 import { type NavItem } from '@/types';
 import { Link } from '@inertiajs/react';
-import { BookOpen, Building2, Folder, LayoutGrid, UserCog, Users } from 'lucide-react';
+import { BookOpen, Building2, ClipboardList, Folder, GraduationCap, LayoutGrid, UserCog, Users } from 'lucide-react';
 import AppLogo from './app-logo';
 
 const mainNavItems: NavItem[] = [
@@ -23,6 +23,18 @@ const mainNavItems: NavItem[] = [
         title: 'Dashboard',
         href: dashboard(),
         icon: LayoutGrid,
+    },
+    {
+        title: 'Assessments',
+        href: '/assessments',
+        icon: ClipboardList,
+        permission: 'view-assessments',
+    },
+    {
+        title: 'In-Service Exams',
+        href: '/in-service',
+        icon: GraduationCap,
+        permission: 'view-assessments',
     },
 ];
 
@@ -60,13 +72,19 @@ const footerNavItems: NavItem[] = [
 export function AppSidebar() {
     const { hasPermission } = usePermissions();
 
-    // Filter footer nav items based on permissions
-    const filteredFooterNavItems = footerNavItems.filter((item) => {
-        // If no permission is required, show the item
+    // Filter main nav items based on permissions
+    const filteredMainNavItems = mainNavItems.filter((item) => {
         if (!item.permission) {
             return true;
         }
-        // Otherwise, check if user has the required permission
+        return hasPermission(item.permission);
+    });
+
+    // Filter footer nav items based on permissions
+    const filteredFooterNavItems = footerNavItems.filter((item) => {
+        if (!item.permission) {
+            return true;
+        }
         return hasPermission(item.permission);
     });
 
@@ -88,7 +106,7 @@ export function AppSidebar() {
             </SidebarHeader>
 
             <SidebarContent>
-                <NavMain items={mainNavItems} />
+                <NavMain items={filteredMainNavItems} />
             </SidebarContent>
 
             <SidebarFooter>
