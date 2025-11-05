@@ -55,8 +55,8 @@ class InstitutionExamController extends Controller
                 'updated_at' => $assessment->updated_at->diffForHumans(),
             ]);
 
-        return Inertia::render('assessments/index', [
-            'assessments' => $assessments,
+        return Inertia::render('institution-exams/active', [
+            'exams' => $assessments,
             'filters' => $request->only(['search', 'status']),
         ]);
     }
@@ -106,6 +106,53 @@ class InstitutionExamController extends Controller
 
             return back()->withErrors(['error' => 'Failed to create exam: '.$e->getMessage()]);
         }
+    }
+
+    /**
+     * Show the form for editing the specified assessment.
+     */
+    public function edit(InstitutionAssessment $assessment): Response
+    {
+        // Verify user has access to this assessment
+        if ($assessment->organization_id !== auth()->user()->current_organization_id) {
+            abort(403, 'You do not have access to this assessment.');
+        }
+
+        $assessment->load(['questions.choices', 'creator:id,name']);
+
+        return Inertia::render('institution-exams/edit', [
+            'assessment' => [
+                'id' => $assessment->id,
+                'title' => $assessment->title,
+                'description' => $assessment->description,
+                'duration_minutes' => $assessment->duration_minutes,
+                'total_points' => $assessment->total_points,
+                'passing_score' => $assessment->passing_score,
+                'randomize_questions' => $assessment->randomize_questions,
+                'randomize_choices' => $assessment->randomize_choices,
+                'show_results_immediately' => $assessment->show_results_immediately,
+                'allow_review' => $assessment->allow_review,
+                'is_published' => $assessment->is_published,
+                'available_from' => $assessment->available_from?->format('Y-m-d\TH:i'),
+                'available_until' => $assessment->available_until?->format('Y-m-d\TH:i'),
+                'questions' => $assessment->questions->map(fn ($q) => [
+                    'id' => $q->id,
+                    'question_type' => $q->question_type,
+                    'question_text' => $q->question_text,
+                    'points' => $q->points,
+                    'explanation' => $q->explanation,
+                    'order' => $q->order,
+                    'choices' => $q->choices->map(fn ($c) => [
+                        'id' => $c->id,
+                        'choice_text' => $c->choice_text,
+                        'is_correct' => $c->is_correct,
+                        'order' => $c->order,
+                    ]),
+                ]),
+                'created_by' => $assessment->creator->name,
+                'created_at' => $assessment->created_at->format('Y-m-d'),
+            ],
+        ]);
     }
 
     /**

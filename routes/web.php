@@ -88,6 +88,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
             'assessmentId' => $request->query('assessment_id'),
         ]);
     })->middleware('permission:create-assessments')->name('institution-exams.create');
+    Route::get('institution-exams/{assessment}/edit', [App\Http\Controllers\InstitutionExamController::class, 'edit'])
+        ->middleware('permission:edit-assessments')
+        ->name('institution-exams.edit');
     Route::post('assessments', [App\Http\Controllers\InstitutionExamController::class, 'store'])
         ->middleware('permission:create-assessments')
         ->name('assessments.store');
@@ -126,9 +129,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Institution Exams (frontend pages)
     Route::redirect('institution-exams', '/institution-exams/active')->name('institution-exams');
-    Route::get('institution-exams/active', function () {
-        return Inertia::render('institution-exams/active');
-    })->middleware('permission:view-assessments')->name('institution-exams.active');
+    Route::get('institution-exams/active', [App\Http\Controllers\InstitutionExamController::class, 'index'])
+        ->middleware('permission:view-assessments')
+        ->name('institution-exams.active');
 
     // In-Service Exams (frontend pages)
     Route::redirect('inservice-exams', '/inservice-exams/active')->name('inservice-exams');

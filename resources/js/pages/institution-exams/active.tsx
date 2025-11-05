@@ -1,4 +1,5 @@
 import HeadingSmall from '@/components/heading-small';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
     Tooltip,
@@ -10,8 +11,8 @@ import { usePermissions } from '@/hooks/use-permissions';
 import AppLayout from '@/layouts/app-layout';
 import InstitutionExamsLayout from '@/layouts/exams/institution-layout';
 import { type BreadcrumbItem } from '@/types';
-import { Head, Link } from '@inertiajs/react';
-import { ClipboardList, Plus } from 'lucide-react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
+import { ClipboardList, Pencil, Plus, Trash2 } from 'lucide-react';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -20,8 +21,37 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
 ];
 
+interface Exam {
+    id: number;
+    title: string;
+    description: string | null;
+    questions_count: number;
+    total_points: number;
+    passing_score: number;
+    duration_minutes: number | null;
+    is_published: boolean;
+    is_available: boolean;
+    created_by: string;
+    updated_at: string;
+}
+
+interface PaginatedExams {
+    data: Exam[];
+    total: number;
+}
+
+interface PageProps {
+    exams: PaginatedExams;
+    filters: {
+        search?: string;
+        status?: string;
+    };
+    [key: string]: unknown;
+}
+
 export default function Active() {
     const { hasPermission } = usePermissions();
+    const { exams } = usePage<PageProps>().props;
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -65,19 +95,172 @@ export default function Active() {
                         </TooltipProvider>
                     </div>
 
-                    <div className="rounded-lg border p-6 text-center">
-                        <ClipboardList className="mx-auto h-10 w-10 text-muted-foreground" />
-                        <p className="mt-2 text-sm text-muted-foreground">
-                            No active institution exams at the moment.
-                        </p>
-                        <div className="mt-4">
-                            <Button asChild>
-                                <a href="/assessments">
-                                    View all institution exams
-                                </a>
-                            </Button>
+                    {exams.data.length === 0 ? (
+                        <div className="rounded-lg border p-6 text-center">
+                            <ClipboardList className="mx-auto h-10 w-10 text-muted-foreground" />
+                            <p className="mt-2 text-sm text-muted-foreground">
+                                No institution exams yet. Create your first
+                                exam!
+                            </p>
                         </div>
-                    </div>
+                    ) : (
+                        <div className="space-y-4">
+                            {exams.data.map((exam) => (
+                                <div
+                                    key={exam.id}
+                                    className="rounded-lg border p-4 hover:bg-muted/50"
+                                >
+                                    <div className="flex items-start justify-between">
+                                        <div className="flex-1">
+                                            <h3 className="font-semibold">
+                                                {exam.title}
+                                            </h3>
+                                            {exam.description && (
+                                                <p className="mt-1 text-sm text-muted-foreground">
+                                                    {exam.description}
+                                                </p>
+                                            )}
+                                            <div className="mt-2 flex flex-wrap gap-4 text-sm text-muted-foreground">
+                                                <span>
+                                                    {exam.questions_count}{' '}
+                                                    questions
+                                                </span>
+                                                <span>
+                                                    {exam.total_points} points
+                                                </span>
+                                                {exam.duration_minutes && (
+                                                    <span>
+                                                        {exam.duration_minutes}{' '}
+                                                        min
+                                                    </span>
+                                                )}
+                                                <span>
+                                                    Pass: {exam.passing_score}
+                                                </span>
+                                                <span>
+                                                    By {exam.created_by}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            {exam.is_published ? (
+                                                <Badge className="bg-green-600">
+                                                    Published
+                                                </Badge>
+                                            ) : (
+                                                <Badge variant="secondary">
+                                                    Draft
+                                                </Badge>
+                                            )}
+                                            <TooltipProvider>
+                                                <Tooltip>
+                                                    <TooltipTrigger asChild>
+                                                        <span
+                                                            className={
+                                                                !hasPermission(
+                                                                    'edit-assessments',
+                                                                )
+                                                                    ? 'inline-block'
+                                                                    : ''
+                                                            }
+                                                        >
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                asChild={hasPermission(
+                                                                    'edit-assessments',
+                                                                )}
+                                                                disabled={
+                                                                    !hasPermission(
+                                                                        'edit-assessments',
+                                                                    )
+                                                                }
+                                                            >
+                                                                {hasPermission(
+                                                                    'edit-assessments',
+                                                                ) ? (
+                                                                    <Link
+                                                                        href={`/institution-exams/${exam.id}/edit`}
+                                                                    >
+                                                                        <Pencil className="h-4 w-4" />
+                                                                    </Link>
+                                                                ) : (
+                                                                    <span>
+                                                                        <Pencil className="h-4 w-4" />
+                                                                    </span>
+                                                                )}
+                                                            </Button>
+                                                        </span>
+                                                    </TooltipTrigger>
+                                                    {!hasPermission(
+                                                        'edit-assessments',
+                                                    ) && (
+                                                        <TooltipContent>
+                                                            <p>
+                                                                You don't have
+                                                                permission to
+                                                                edit assessments
+                                                            </p>
+                                                        </TooltipContent>
+                                                    )}
+                                                </Tooltip>
+                                            </TooltipProvider>
+                                            <TooltipProvider>
+                                                <Tooltip>
+                                                    <TooltipTrigger asChild>
+                                                        <span
+                                                            className={
+                                                                !hasPermission(
+                                                                    'delete-assessments',
+                                                                )
+                                                                    ? 'inline-block'
+                                                                    : ''
+                                                            }
+                                                        >
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                disabled={
+                                                                    !hasPermission(
+                                                                        'delete-assessments',
+                                                                    )
+                                                                }
+                                                                onClick={() => {
+                                                                    if (
+                                                                        confirm(
+                                                                            'Are you sure you want to delete this exam?',
+                                                                        )
+                                                                    ) {
+                                                                        router.delete(
+                                                                            `/assessments/${exam.id}`,
+                                                                        );
+                                                                    }
+                                                                }}
+                                                            >
+                                                                <Trash2 className="h-4 w-4 text-destructive" />
+                                                            </Button>
+                                                        </span>
+                                                    </TooltipTrigger>
+                                                    {!hasPermission(
+                                                        'delete-assessments',
+                                                    ) && (
+                                                        <TooltipContent>
+                                                            <p>
+                                                                You don't have
+                                                                permission to
+                                                                delete
+                                                                assessments
+                                                            </p>
+                                                        </TooltipContent>
+                                                    )}
+                                                </Tooltip>
+                                            </TooltipProvider>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
                 </div>
             </InstitutionExamsLayout>
         </AppLayout>
