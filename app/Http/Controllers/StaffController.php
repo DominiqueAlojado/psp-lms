@@ -96,7 +96,7 @@ class StaffController extends Controller
             'roles' => Role::where('name', '!=', 'Resident')->get(['id', 'name']),
             'organizations' => $isSystemAdmin
                 ? Organization::where('is_active', true)->get(['id', 'name'])
-                : auth()->user()->organizations()->where('is_active', true)->get(['id', 'name']),
+                : auth()->user()->organizations()->wherePivot('organization_user.is_active', true)->get(['organizations.id', 'organizations.name']),
         ]);
     }
 

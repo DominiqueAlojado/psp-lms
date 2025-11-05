@@ -46,7 +46,10 @@ class HandleInertiaRequests extends Middleware
             'quote' => ['message' => trim($message), 'author' => trim($author)],
             'auth' => [
                 'user' => $user,
-                'organizations' => $user?->organizations()->get(['organizations.id', 'organizations.name', 'organizations.slug', 'organizations.type', 'organizations.logo']),
+                'organizations' => $user ? $user->organizations()
+                    ->wherePivot('organization_user.is_active', true)
+                    ->get(['organizations.id', 'organizations.name', 'organizations.slug', 'organizations.type', 'organizations.logo'])
+                    : null,
                 'currentOrganization' => $user?->currentOrganization,
                 'permissions' => $user?->getAllPermissions()->pluck('name')->toArray() ?? [],
             ],

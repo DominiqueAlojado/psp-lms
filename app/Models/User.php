@@ -109,7 +109,10 @@ class User extends Authenticatable
      */
     public function activeOrganizations(): BelongsToMany
     {
-        return $this->organizations()->wherePivot('is_active', true);
+        return $this->belongsToMany(Organization::class)
+            ->withPivot(['joined_at', 'is_active'])
+            ->wherePivot('is_active', true)
+            ->withTimestamps();
     }
 
     /**
