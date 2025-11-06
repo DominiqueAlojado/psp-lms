@@ -51,7 +51,7 @@ interface Props {
     institutions: PaginatedInstitutions;
     filters: Record<string, any>;
     onEdit: (institution: Institution) => void;
-    onDelete: (id: number, name: string) => void;
+    onDelete: (institution: Institution) => void;
 }
 
 export function InstitutionTable({
@@ -99,8 +99,8 @@ export function InstitutionTable({
                                         colSpan={7}
                                         className="py-8 text-center text-muted-foreground"
                                     >
-                                        No institutions found. Try adjusting your
-                                        filters.
+                                        No institutions found. Try adjusting
+                                        your filters.
                                     </TableCell>
                                 </TableRow>
                             ) : (
@@ -126,7 +126,10 @@ export function InstitutionTable({
                                         </TableCell>
                                         <TableCell className="py-4">
                                             <Badge variant="outline">
-                                                {institution.type.charAt(0).toUpperCase() + institution.type.slice(1)}
+                                                {institution.type
+                                                    .charAt(0)
+                                                    .toUpperCase() +
+                                                    institution.type.slice(1)}
                                             </Badge>
                                         </TableCell>
                                         <TableCell className="py-4">
@@ -170,18 +173,29 @@ export function InstitutionTable({
                                                                     variant="ghost"
                                                                     size="sm"
                                                                     onClick={() =>
-                                                                        onEdit(institution)
+                                                                        onEdit(
+                                                                            institution,
+                                                                        )
                                                                     }
-                                                                    disabled={!hasPermission('edit-institutions')}
+                                                                    disabled={
+                                                                        !hasPermission(
+                                                                            'edit-institutions',
+                                                                        )
+                                                                    }
                                                                 >
                                                                     <Edit className="h-4 w-4" />
                                                                 </Button>
                                                             </span>
                                                         </TooltipTrigger>
-                                                        {!hasPermission('edit-institutions') && (
+                                                        {!hasPermission(
+                                                            'edit-institutions',
+                                                        ) && (
                                                             <TooltipContent>
                                                                 <p>
-                                                                    You don't have permission to edit
+                                                                    You don't
+                                                                    have
+                                                                    permission
+                                                                    to edit
                                                                     institutions
                                                                 </p>
                                                             </TooltipContent>
@@ -197,20 +211,28 @@ export function InstitutionTable({
                                                                     size="sm"
                                                                     onClick={() =>
                                                                         onDelete(
-                                                                            institution.id,
-                                                                            institution.name,
+                                                                            institution,
                                                                         )
                                                                     }
-                                                                    disabled={!hasPermission('delete-institutions')}
+                                                                    disabled={
+                                                                        !hasPermission(
+                                                                            'delete-institutions',
+                                                                        )
+                                                                    }
                                                                 >
                                                                     <Trash2 className="h-4 w-4 text-destructive" />
                                                                 </Button>
                                                             </span>
                                                         </TooltipTrigger>
-                                                        {!hasPermission('delete-institutions') && (
+                                                        {!hasPermission(
+                                                            'delete-institutions',
+                                                        ) && (
                                                             <TooltipContent>
                                                                 <p>
-                                                                    You don't have permission to delete
+                                                                    You don't
+                                                                    have
+                                                                    permission
+                                                                    to delete
                                                                     institutions
                                                                 </p>
                                                             </TooltipContent>
@@ -231,7 +253,9 @@ export function InstitutionTable({
                             {institutions.links.map((link, index) => (
                                 <Button
                                     key={index}
-                                    variant={link.active ? 'default' : 'outline'}
+                                    variant={
+                                        link.active ? 'default' : 'outline'
+                                    }
                                     size="sm"
                                     disabled={!link.url}
                                     onClick={() => {
@@ -261,4 +285,3 @@ export function InstitutionTable({
         </Card>
     );
 }
-

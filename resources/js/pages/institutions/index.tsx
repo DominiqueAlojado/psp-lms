@@ -1,9 +1,10 @@
+import { DeleteConfirmationDialog } from '@/components/delete-confirmation-dialog';
 import { ExportButton } from '@/components/export-button';
 import HeadingSmall from '@/components/heading-small';
-import { StatCard } from '@/components/stat-card';
 import { CreateInstitutionSheet } from '@/components/institutions/create-institution-sheet';
 import { EditInstitutionSheet } from '@/components/institutions/edit-institution-sheet';
 import { InstitutionTable } from '@/components/institutions/institution-table';
+import { StatCard } from '@/components/stat-card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -16,16 +17,6 @@ import { usePermissions } from '@/hooks/use-permissions';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, router, usePage } from '@inertiajs/react';
-import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
 import { Building2, Plus, Search } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -94,10 +85,8 @@ export default function InstitutionsIndex({
     const [editingInstitution, setEditingInstitution] =
         useState<Institution | null>(null);
     const [addingInstitution, setAddingInstitution] = useState(false);
-    const [deletingInstitution, setDeletingInstitution] = useState<{
-        id: number;
-        name: string;
-    } | null>(null);
+    const [deletingInstitution, setDeletingInstitution] =
+        useState<Institution | null>(null);
     const { errors } = usePage<{ errors: Record<string, string> }>().props;
 
     const applyFilters = useCallback((newFilters: typeof filters) => {
@@ -127,10 +116,14 @@ export default function InstitutionsIndex({
     const clearFilters = () => {
         setSearch('');
         setLocalFilters({});
-        router.get('/institutions', {}, {
-            preserveState: true,
-            preserveScroll: true,
-        });
+        router.get(
+            '/institutions',
+            {},
+            {
+                preserveState: true,
+                preserveScroll: true,
+            },
+        );
     };
 
     const confirmDelete = () => {
@@ -151,8 +144,7 @@ export default function InstitutionsIndex({
         });
     };
 
-    const hasActiveFilters =
-        search || localFilters.type || localFilters.status;
+    const hasActiveFilters = search || localFilters.type || localFilters.status;
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -176,12 +168,18 @@ export default function InstitutionsIndex({
                                 <TooltipTrigger asChild>
                                     <span className="inline-block">
                                         <Button
-                                            onClick={() => setAddingInstitution(true)}
-                                            disabled={!hasPermission('create-institutions')}
+                                            onClick={() =>
+                                                setAddingInstitution(true)
+                                            }
+                                            disabled={
+                                                !hasPermission(
+                                                    'create-institutions',
+                                                )
+                                            }
                                         >
-                            <Plus className="mr-2 h-4 w-4" />
-                            Add Institution
-                        </Button>
+                                            <Plus className="mr-2 h-4 w-4" />
+                                            Add Institution
+                                        </Button>
                                     </span>
                                 </TooltipTrigger>
                                 {!hasPermission('create-institutions') && (
@@ -207,7 +205,10 @@ export default function InstitutionsIndex({
                             return (
                                 <StatCard
                                     key={type}
-                                    title={type.charAt(0).toUpperCase() + type.slice(1)}
+                                    title={
+                                        type.charAt(0).toUpperCase() +
+                                        type.slice(1)
+                                    }
                                     value={count}
                                     description={`${count === 1 ? 'institution' : 'institutions'}`}
                                     icon={Building2}
@@ -235,7 +236,7 @@ export default function InstitutionsIndex({
                 {/* Search and Filters */}
                 <div className="flex flex-col gap-4 md:flex-row md:items-center">
                     <div className="relative flex-1">
-                        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                        <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                         <Input
                             placeholder="Search institutions..."
                             value={search}
@@ -252,17 +253,14 @@ export default function InstitutionsIndex({
                                     e.target.value || undefined,
                                 )
                             }
-                            className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                            className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
                         >
                             <option value="">All Statuses</option>
                             <option value="active">Active</option>
                             <option value="inactive">Inactive</option>
                         </select>
                         {hasActiveFilters && (
-                            <Button
-                                variant="ghost"
-                                onClick={clearFilters}
-                            >
+                            <Button variant="ghost" onClick={clearFilters}>
                                 Clear Filters
                             </Button>
                         )}
@@ -274,7 +272,7 @@ export default function InstitutionsIndex({
                     institutions={institutions}
                     filters={filters}
                     onEdit={setEditingInstitution}
-                    onDelete={(id, name) => setDeletingInstitution({ id, name })}
+                    onDelete={setDeletingInstitution}
                 />
             </div>
 
@@ -292,33 +290,20 @@ export default function InstitutionsIndex({
             />
 
             {/* Delete Dialog */}
-            <AlertDialog
+            <DeleteConfirmationDialog
                 open={!!deletingInstitution}
-                onOpenChange={(open) => !open && setDeletingInstitution(null)}
-            >
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>
-                            Delete Institution
-                        </AlertDialogTitle>
-                        <AlertDialogDescription>
-                            Are you sure you want to delete{' '}
-                            <strong>{deletingInstitution?.name}</strong>? This
-                            action cannot be undone.
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction
-                            onClick={confirmDelete}
-                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                        >
-                            Delete
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
+                title="Delete Institution?"
+                itemName={deletingInstitution?.name}
+                description={
+                    deletingInstitution?.description
+                        ? `${deletingInstitution.description.substring(0, 100)}${deletingInstitution.description.length > 100 ? '...' : ''}`
+                        : undefined
+                }
+                warningMessage="This action cannot be undone. This will permanently delete this institution and all associated data."
+                confirmText="Delete Institution"
+                onConfirm={confirmDelete}
+                onCancel={() => setDeletingInstitution(null)}
+            />
         </AppLayout>
     );
 }
-
