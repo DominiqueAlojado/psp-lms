@@ -1,3 +1,4 @@
+import { DeleteConfirmationDialog } from '@/components/delete-confirmation-dialog';
 import { RichTextEditor } from '@/components/rich-text-editor';
 import { TopicSelector } from '@/components/topic-selector';
 import { Button } from '@/components/ui/button';
@@ -113,6 +114,9 @@ export default function EditAssessment() {
     const [savingQuestion, setSavingQuestion] = useState<number | null>(null);
     const [topics, setTopics] = useState<Topic[]>([]);
     const [questionSearchQuery, setQuestionSearchQuery] = useState('');
+    const [deletingQuestionIndex, setDeletingQuestionIndex] = useState<
+        number | null
+    >(null);
 
     // Fetch topics once on page load
     useEffect(() => {
@@ -290,14 +294,17 @@ export default function EditAssessment() {
     };
 
     const deleteOneQuestion = (qi: number) => {
+        setDeletingQuestionIndex(qi);
+    };
+
+    const confirmDeleteQuestion = () => {
+        if (deletingQuestionIndex === null) return;
+
+        const qi = deletingQuestionIndex;
         const question = questions[qi];
 
         if (question.id) {
             // Delete from database
-            if (!confirm('Are you sure you want to delete this question?')) {
-                return;
-            }
-
             router.delete(
                 `/assessments/${assessment.id}/questions/${question.id}`,
                 {
@@ -311,12 +318,14 @@ export default function EditAssessment() {
                         console.error('Error deleting question:', errors);
                         toast.error('Failed to delete question');
                     },
+                    onFinish: () => setDeletingQuestionIndex(null),
                 },
             );
         } else {
             // Just remove from local state (not saved yet)
             setQuestions((prev) => prev.filter((_, i) => i !== qi));
             toast.success('Question removed');
+            setDeletingQuestionIndex(null);
         }
     };
 
@@ -1007,6 +1016,27 @@ export default function EditAssessment() {
                     )}
                 </div>
             </div>
+
+            <DeleteConfirmationDialog
+                open={deletingQuestionIndex !== null}
+                title="Delete Question?"
+                itemIdentifier={
+                    deletingQuestionIndex !== null
+                        ? `Question #${deletingQuestionIndex + 1}`
+                        : undefined
+                }
+                itemName={
+                    deletingQuestionIndex !== null
+                        ? questions[
+                              deletingQuestionIndex
+                          ]?.question_text?.replace(/<[^>]*>/g, '')
+                        : undefined
+                }
+                warningMessage="This action cannot be undone. This will permanently delete the question and all its associated choices."
+                confirmText="Delete Question"
+                onConfirm={confirmDeleteQuestion}
+                onCancel={() => setDeletingQuestionIndex(null)}
+            />
         </AppLayout>
     );
 }
