@@ -1,8 +1,18 @@
 import { InertiaLinkProps } from '@inertiajs/react';
 import { LucideIcon } from 'lucide-react';
 
+export interface Organization {
+    id: number;
+    name: string;
+    slug: string;
+    type: string;
+    logo?: string;
+}
+
 export interface Auth {
     user: User;
+    organizations: Organization[];
+    currentOrganization: Organization | null;
     permissions: string[];
 }
 

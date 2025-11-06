@@ -13,8 +13,8 @@ import {
 } from '@/components/ui/sidebar';
 import { usePermissions } from '@/hooks/use-permissions';
 import { dashboard } from '@/routes';
-import { type NavItem } from '@/types';
-import { Link } from '@inertiajs/react';
+import { type NavItem, type SharedData } from '@/types';
+import { Link, usePage } from '@inertiajs/react';
 import { BookOpen, Building2, ClipboardList, Folder, GraduationCap, LayoutGrid, UserCog, Users } from 'lucide-react';
 import AppLogo from './app-logo';
 
@@ -71,9 +71,21 @@ const footerNavItems: NavItem[] = [
 
 export function AppSidebar() {
     const { hasPermission } = usePermissions();
+    const { auth } = usePage<SharedData>().props;
+    const currentOrganization = auth.currentOrganization;
 
-    // Filter main nav items based on permissions
+    // Filter main nav items based on permissions and organization type
     const filteredMainNavItems = mainNavItems.filter((item) => {
+        // Hide "In-Service Exams" if organization is not national
+        if (item.title === 'In-Service Exams' && currentOrganization?.type !== 'national') {
+            return false;
+        }
+
+        // Hide "Institution Exams" if organization is national
+        if (item.title === 'Institution Exams' && currentOrganization?.type === 'national') {
+            return false;
+        }
+
         if (!item.permission) {
             return true;
         }
