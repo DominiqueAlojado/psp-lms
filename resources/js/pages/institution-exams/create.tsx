@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import AppLayout from '@/layouts/app-layout';
 import { Head, router, usePage } from '@inertiajs/react';
-import { Check, ChevronDown, ChevronRight, Save, Trash2, Upload, X } from 'lucide-react';
+import { Check, ChevronDown, ChevronRight, Save, Search, Trash2, Upload, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -50,6 +50,7 @@ export default function CreateAssessment({ assessmentId: propAssessmentId }: Pag
     const [openQuestions, setOpenQuestions] = useState<Record<number, boolean>>({});
     const [savingQuestion, setSavingQuestion] = useState<number | null>(null);
     const [topics, setTopics] = useState<Topic[]>([]);
+    const [questionSearchQuery, setQuestionSearchQuery] = useState('');
 
     // Get assessment ID from props (passed from backend)
     const assessmentId = propAssessmentId || null;
@@ -255,6 +256,22 @@ export default function CreateAssessment({ assessmentId: propAssessmentId }: Pag
         }
     };
 
+    // Filter questions based on search query
+    const filteredQuestions = questions.filter((q, qi) => {
+        if (!questionSearchQuery) return true;
+        
+        const query = questionSearchQuery.toLowerCase();
+        const questionText = q.question_text?.toLowerCase() || '';
+        const choicesText = q.choices?.map(c => c.choice_text.toLowerCase()).join(' ') || '';
+        const topicName = topics.find(t => t.id === q.topic_id)?.name.toLowerCase() || '';
+        const questionNumber = `#${qi + 1}`;
+        
+        return questionText.includes(query) || 
+               choicesText.includes(query) || 
+               topicName.includes(query) ||
+               questionNumber.includes(query);
+    });
+
     return (
         <AppLayout
             breadcrumbs={[
@@ -358,8 +375,48 @@ export default function CreateAssessment({ assessmentId: propAssessmentId }: Pag
                         )}
                     </div>
 
+                    {/* Search Questions */}
+                    {questions.length > 0 && (
+                        <div className="relative">
+                            <div className="pointer-events-none absolute left-3 top-3 h-4 w-4">
+                                <Search className="h-4 w-4 text-muted-foreground" />
+                            </div>
+                            <Input
+                                type="text"
+                                placeholder="Search questions by text, choices, topic, or number..."
+                                value={questionSearchQuery}
+                                onChange={(e) => setQuestionSearchQuery(e.target.value)}
+                                className="pl-10"
+                            />
+                            {questionSearchQuery && (
+                                <div className="mt-2 text-sm text-muted-foreground">
+                                    Showing {filteredQuestions.length} of {questions.length} questions
+                                </div>
+                            )}
+                        </div>
+                    )}
+
                     <div className="space-y-6">
-                        {questions.map((q, qi) => (
+                        {filteredQuestions.length === 0 && questionSearchQuery ? (
+                            <div className="rounded-lg border p-6 text-center">
+                                <Search className="mx-auto h-10 w-10 text-muted-foreground" />
+                                <p className="mt-2 text-sm text-muted-foreground">
+                                    No questions found matching "{questionSearchQuery}"
+                                </p>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="mt-2"
+                                    onClick={() => setQuestionSearchQuery('')}
+                                >
+                                    Clear search
+                                </Button>
+                            </div>
+                        ) : (
+                            filteredQuestions.map((q, filteredIndex) => {
+                                // Get the original index in the full questions array
+                                const qi = questions.indexOf(q);
+                                return (
                             <Collapsible
                                 key={qi}
                                 data-question-index={qi}
@@ -618,7 +675,9 @@ export default function CreateAssessment({ assessmentId: propAssessmentId }: Pag
                                 )}
                                 </CollapsibleContent>
                             </Collapsible>
-                        ))}
+                        );
+                        })
+                        )}
                     </div>
                     {questions.length > 0 && (
                         <div className="rounded-lg border bg-muted/30 p-4 text-sm">
