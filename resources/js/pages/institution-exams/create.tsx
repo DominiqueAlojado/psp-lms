@@ -8,15 +8,22 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select';
+    Command,
+    CommandEmpty,
+    CommandGroup,
+    CommandInput,
+    CommandItem,
+    CommandList,
+} from '@/components/ui/command';
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from '@/components/ui/popover';
+import { cn } from '@/lib/utils';
 import AppLayout from '@/layouts/app-layout';
 import { Head, router, usePage } from '@inertiajs/react';
-import { ChevronDown, ChevronRight, Plus, Trash2, Upload, X } from 'lucide-react';
+import { Check, ChevronDown, ChevronRight, ChevronsUpDown, Plus, Trash2, Upload, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 interface QuestionChoice {
@@ -56,6 +63,8 @@ export default function CreateAssessment({ assessmentId: propAssessmentId }: Pag
     const [topics, setTopics] = useState<Topic[]>([]);
     const [isAddingTopic, setIsAddingTopic] = useState<number | false>(false);
     const [newTopicName, setNewTopicName] = useState('');
+    const [openTopicCombobox, setOpenTopicCombobox] = useState<number | false>(false);
+    const [topicSearch, setTopicSearch] = useState('');
 
     // Get assessment ID from props (passed from backend)
     const assessmentId = propAssessmentId || null;
@@ -401,31 +410,100 @@ export default function CreateAssessment({ assessmentId: propAssessmentId }: Pag
                                     <div className="space-y-2">
                                         <Label>Topic (Optional)</Label>
                                         <div className="flex gap-2">
-                                            <Select
-                                                value={q.topic_id?.toString() || 'none'}
-                                                onValueChange={(value) => {
-                                                    setQuestions((prev) => {
-                                                        const next = [...prev];
-                                                        next[qi] = {
-                                                            ...next[qi],
-                                                            topic_id: value === 'none' ? null : parseInt(value),
-                                                        };
-                                                        return next;
-                                                    });
-                                                }}
-                                            >
-                                                <SelectTrigger>
-                                                    <SelectValue placeholder="Select a topic" />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="none">No topic</SelectItem>
-                                                    {topics.map((topic) => (
-                                                        <SelectItem key={topic.id} value={topic.id.toString()}>
-                                                            {topic.name} {topic.is_global && '(Global)'}
-                                                        </SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
+                                            <Popover open={openTopicCombobox === qi} onOpenChange={(open) => setOpenTopicCombobox(open ? qi : false)}>
+                                                <PopoverTrigger asChild>
+                                                    <Button
+                                                        type="button"
+                                                        variant="outline"
+                                                        role="combobox"
+                                                        aria-expanded={openTopicCombobox === qi}
+                                                        className="flex-1 justify-between"
+                                                    >
+                                                        {q.topic_id
+                                                            ? topics.find((topic) => topic.id === q.topic_id)?.name
+                                                            : "Select topic..."}
+                                                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                                    </Button>
+                                                </PopoverTrigger>
+                                                <PopoverContent className="w-[400px] p-0" align="start">
+                                                    <Command>
+                                                        <CommandInput 
+                                                            placeholder="Search topics..." 
+                                                            value={topicSearch}
+                                                            onValueChange={setTopicSearch}
+                                                        />
+                                                        <CommandList>
+                                                            <CommandGroup>
+                                                                {!topicSearch && (
+                                                                    <div
+                                                                        className="relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground"
+                                                                        onClick={() => {
+                                                                            setQuestions((prev) => {
+                                                                                const next = [...prev];
+                                                                                next[qi] = {
+                                                                                    ...next[qi],
+                                                                                    topic_id: null,
+                                                                                };
+                                                                                return next;
+                                                                            });
+                                                                            setOpenTopicCombobox(false);
+                                                                            setTopicSearch('');
+                                                                        }}
+                                                                    >
+                                                                        <Check
+                                                                            className={cn(
+                                                                                "mr-2 h-4 w-4",
+                                                                                !q.topic_id ? "opacity-100" : "opacity-0"
+                                                                            )}
+                                                                        />
+                                                                        No topic
+                                                                    </div>
+                                                                )}
+                                                                {topics
+                                                                    .filter((topic) =>
+                                                                        topic.name.toLowerCase().includes(topicSearch.toLowerCase())
+                                                                    )
+                                                                    .map((topic) => (
+                                                                        <div
+                                                                            key={topic.id}
+                                                                            className={cn(
+                                                                                "relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground",
+                                                                                q.topic_id === topic.id && "bg-accent"
+                                                                            )}
+                                                                            onClick={() => {
+                                                                                setQuestions((prev) => {
+                                                                                    const next = [...prev];
+                                                                                    next[qi] = {
+                                                                                        ...next[qi],
+                                                                                        topic_id: topic.id,
+                                                                                    };
+                                                                                    return next;
+                                                                                });
+                                                                                setOpenTopicCombobox(false);
+                                                                                setTopicSearch('');
+                                                                            }}
+                                                                        >
+                                                                            <Check
+                                                                                className={cn(
+                                                                                    "mr-2 h-4 w-4",
+                                                                                    q.topic_id === topic.id ? "opacity-100" : "opacity-0"
+                                                                                )}
+                                                                            />
+                                                                            {topic.name} {topic.is_global && <span className="text-muted-foreground">(Global)</span>}
+                                                                        </div>
+                                                                    ))}
+                                                                {topicSearch && topics.filter((topic) =>
+                                                                    topic.name.toLowerCase().includes(topicSearch.toLowerCase())
+                                                                ).length === 0 && (
+                                                                    <div className="py-6 text-center text-sm text-muted-foreground">
+                                                                        No topic found.
+                                                                    </div>
+                                                                )}
+                                                            </CommandGroup>
+                                                        </CommandList>
+                                                    </Command>
+                                                </PopoverContent>
+                                            </Popover>
                                             <Button
                                                 type="button"
                                                 variant="outline"
