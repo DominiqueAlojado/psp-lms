@@ -35,6 +35,7 @@ class SetOrganizationFromUrl
             || ($request->is('in-service*') && in_array($request->method(), ['POST', 'PATCH', 'PUT', 'DELETE']))
             || ($request->is('inservice-exams*') && in_array($request->method(), ['POST', 'PATCH', 'PUT', 'DELETE']))
             || ($request->is('topics*') && in_array($request->method(), ['POST', 'PATCH', 'PUT', 'DELETE']))
+            || ($request->is('exams/*') && in_array($request->method(), ['POST', 'PATCH', 'PUT', 'DELETE']))
         ) {
             return $next($request);
         }

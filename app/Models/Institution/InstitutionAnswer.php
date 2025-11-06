@@ -65,7 +65,7 @@ class InstitutionAnswer extends Model
             case 'true_false':
                 // Single correct answer
                 $correctChoice = $question->choices()->where('is_correct', true)->first();
-                $isCorrect = $answerData['choice_id'] ?? $correctChoice?->id == null;
+                $isCorrect = ($answerData['choice_id'] ?? null) == $correctChoice?->id;
                 break;
 
             case 'multiple_select':

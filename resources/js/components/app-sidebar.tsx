@@ -15,7 +15,7 @@ import { usePermissions } from '@/hooks/use-permissions';
 import { dashboard } from '@/routes';
 import { type NavItem, type SharedData } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
-import { BookOpen, Building2, ClipboardList, Folder, GraduationCap, LayoutGrid, UserCog, Users } from 'lucide-react';
+import { BookOpen, Building2, ClipboardList, FileText, Folder, GraduationCap, LayoutGrid, UserCog, Users } from 'lucide-react';
 import AppLogo from './app-logo';
 
 const mainNavItems: NavItem[] = [
@@ -23,6 +23,11 @@ const mainNavItems: NavItem[] = [
         title: 'Dashboard',
         href: dashboard(),
         icon: LayoutGrid,
+    },
+    {
+        title: 'My Exams',
+        href: '/resident-exams',
+        icon: FileText,
     },
     {
         title: 'In-Service Exams',
@@ -76,6 +81,11 @@ export function AppSidebar() {
 
     // Filter main nav items based on permissions and organization type
     const filteredMainNavItems = mainNavItems.filter((item) => {
+        // Hide "My Exams" for staff/admins (show only for residents)
+        if (item.title === 'My Exams' && hasPermission('view-residents')) {
+            return false;
+        }
+
         // Hide "In-Service Exams" if organization is not national
         if (item.title === 'In-Service Exams' && currentOrganization?.type !== 'national') {
             return false;
