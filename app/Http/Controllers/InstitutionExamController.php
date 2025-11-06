@@ -22,6 +22,7 @@ class InstitutionExamController extends Controller
 
         $assessments = InstitutionAssessment::query()
             ->where('organization_id', $organizationId)
+            ->where('is_published', true) // Only published exams
             ->with(['questions', 'creator:id,name'])
             ->withCount('questions')
             ->when($request->input('search'), function ($query, $search) {
@@ -29,13 +30,6 @@ class InstitutionExamController extends Controller
                     $q->where('title', 'like', "%{$search}%")
                         ->orWhere('description', 'like', "%{$search}%");
                 });
-            })
-            ->when($request->input('status'), function ($query, $status) {
-                if ($status === 'published') {
-                    $query->where('is_published', true);
-                } elseif ($status === 'draft') {
-                    $query->where('is_published', false);
-                }
             })
             ->orderBy($request->input('sort', 'created_at'), $request->input('direction', 'desc'))
             ->paginate(15)
@@ -59,7 +53,52 @@ class InstitutionExamController extends Controller
 
         return Inertia::render('institution-exams/active', [
             'exams' => $assessments,
-            'filters' => $request->only(['search', 'status']),
+            'filters' => $request->only(['search']),
+        ]);
+    }
+
+    /**
+     * Display a listing of draft institution assessments.
+     */
+    public function drafts(Request $request): Response
+    {
+        $user = $request->user();
+        $organizationId = $user->current_organization_id;
+
+        $assessments = InstitutionAssessment::query()
+            ->where('organization_id', $organizationId)
+            ->where('is_published', false) // Only draft exams
+            ->with(['questions', 'creator:id,name'])
+            ->withCount('questions')
+            ->when($request->input('search'), function ($query, $search) {
+                $query->where(function ($q) use ($search) {
+                    $q->where('title', 'like', "%{$search}%")
+                        ->orWhere('description', 'like', "%{$search}%");
+                });
+            })
+            ->orderBy($request->input('sort', 'created_at'), $request->input('direction', 'desc'))
+            ->paginate(15)
+            ->withQueryString()
+            ->through(fn ($assessment) => [
+                'id' => $assessment->id,
+                'title' => $assessment->title,
+                'description' => $assessment->description,
+                'questions_count' => $assessment->questions_count,
+                'total_points' => $assessment->total_points,
+                'passing_score' => $assessment->passing_score,
+                'duration_minutes' => $assessment->duration_minutes,
+                'is_published' => $assessment->is_published,
+                'is_available' => $assessment->isAvailable(),
+                'available_from' => $assessment->available_from?->format('Y-m-d H:i'),
+                'available_until' => $assessment->available_until?->format('Y-m-d H:i'),
+                'created_by' => $assessment->creator->name,
+                'created_at' => $assessment->created_at->format('Y-m-d'),
+                'updated_at' => $assessment->updated_at->diffForHumans(),
+            ]);
+
+        return Inertia::render('institution-exams/drafts', [
+            'exams' => $assessments,
+            'filters' => $request->only(['search']),
         ]);
     }
 

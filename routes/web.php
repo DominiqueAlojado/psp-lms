@@ -144,6 +144,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('institution-exams/active', [App\Http\Controllers\InstitutionExamController::class, 'index'])
         ->middleware('permission:view-assessments')
         ->name('institution-exams.active');
+    Route::get('institution-exams/drafts', [App\Http\Controllers\InstitutionExamController::class, 'drafts'])
+        ->middleware('permission:view-assessments')
+        ->name('institution-exams.drafts');
 
     // In-Service Exams (frontend pages)
     Route::redirect('inservice-exams', '/inservice-exams/active')->name('inservice-exams');
