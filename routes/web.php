@@ -112,6 +112,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('assessments/{assessment}/questions', [App\Http\Controllers\InstitutionExamController::class, 'storeQuestions'])
         ->middleware('permission:edit-assessments')
         ->name('assessments.questions.store');
+    Route::post('assessments/{assessment}/questions/save-one', [App\Http\Controllers\InstitutionExamController::class, 'saveOneQuestion'])
+        ->middleware('permission:edit-assessments')
+        ->name('assessments.questions.save-one');
+    Route::delete('assessments/{assessment}/questions/{question}', [App\Http\Controllers\InstitutionExamController::class, 'deleteQuestion'])
+        ->middleware('permission:edit-assessments')
+        ->name('assessments.questions.delete');
 
     // National In-Service Exams
     Route::get('in-service', [App\Http\Controllers\NationalAssessmentController::class, 'index'])

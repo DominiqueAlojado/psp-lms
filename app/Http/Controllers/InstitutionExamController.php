@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Institution\InstitutionAssessment;
+use App\Models\Institution\InstitutionQuestion;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -360,5 +361,138 @@ class InstitutionExamController extends Controller
         $assessment->update(['total_points' => $totalPoints]);
 
         return back()->with('success', 'Questions saved successfully');
+    }
+
+    /**
+     * Save or update a single question.
+     */
+    public function saveOneQuestion(Request $request, InstitutionAssessment $assessment): RedirectResponse
+    {
+        // Verify user has access
+        if ($assessment->organization_id !== $request->user()->current_organization_id) {
+            abort(403, 'You do not have access to this assessment.');
+        }
+
+        $validated = $request->validate([
+            'id' => ['nullable', 'integer', 'exists:institution_questions,id'],
+            'topic_id' => ['nullable', 'integer', 'exists:topics,id'],
+            'question_type' => ['required', 'in:multiple_choice,multiple_select,true_false'],
+            'question_text' => ['required', 'string'],
+            'points' => ['required', 'integer', 'min:1'],
+            'order' => ['nullable', 'integer', 'min:0'],
+            'image' => ['nullable', 'string'], // base64 encoded image
+            'choices' => ['nullable', 'array'],
+            'choices.*.choice_text' => ['required_with:choices', 'string'],
+            'choices.*.is_correct' => ['required_with:choices', 'boolean'],
+            'answer' => ['nullable'], // for true_false
+        ]);
+
+        $imagePath = null;
+
+        // Handle base64 image upload if provided
+        if (! empty($validated['image'])) {
+            try {
+                $imageData = $validated['image'];
+                if (preg_match('/^data:image\/(\w+);base64,/', $imageData, $type)) {
+                    $imageData = substr($imageData, strpos($imageData, ',') + 1);
+                    $type = strtolower($type[1]);
+
+                    $imageData = base64_decode($imageData);
+                    if ($imageData !== false) {
+                        $filename = 'question_'.uniqid().'.'.$type;
+                        $path = 'question-images/'.$filename;
+                        Storage::disk('public')->put($path, $imageData);
+                        $imagePath = $path;
+                    }
+                }
+            } catch (\Exception $e) {
+                \Log::error('Error uploading question image: '.$e->getMessage());
+            }
+        }
+
+        $questionData = [
+            'question_type' => $validated['question_type'],
+            'topic_id' => $validated['topic_id'] ?? null,
+            'question_text' => $validated['question_text'],
+            'points' => $validated['points'],
+            'order' => $validated['order'] ?? 0,
+        ];
+
+        if ($imagePath) {
+            $questionData['image_path'] = $imagePath;
+        }
+
+        // Update existing question or create new one
+        if (! empty($validated['id'])) {
+            $question = $assessment->questions()->find($validated['id']);
+            if ($question) {
+                $question->update($questionData);
+                $question->choices()->delete();
+            }
+        } else {
+            $question = $assessment->questions()->create($questionData);
+        }
+
+        // Handle choices for MCQ and Multiple Select
+        if (in_array($validated['question_type'], ['multiple_choice', 'multiple_select'])) {
+            foreach ($validated['choices'] ?? [] as $idx => $c) {
+                $question->choices()->create([
+                    'choice_text' => $c['choice_text'],
+                    'is_correct' => (bool) ($c['is_correct'] ?? false),
+                    'order' => $idx,
+                ]);
+            }
+        }
+
+        // True/False stored as two choices for consistency
+        if ($validated['question_type'] === 'true_false') {
+            $answer = filter_var($validated['answer'] ?? false, FILTER_VALIDATE_BOOLEAN);
+            $question->choices()->createMany([
+                ['choice_text' => 'True', 'is_correct' => $answer === true, 'order' => 0],
+                ['choice_text' => 'False', 'is_correct' => $answer === false, 'order' => 1],
+            ]);
+        }
+
+        // Recalculate total points
+        $totalPoints = $assessment->questions()->sum('points');
+        $assessment->update(['total_points' => $totalPoints]);
+
+        return back()->with([
+            'success' => 'Question saved successfully',
+            'question' => [
+                'id' => $question->id,
+                'topic_id' => $question->topic_id,
+                'question_type' => $question->question_type,
+                'question_text' => $question->question_text,
+                'points' => $question->points,
+                'order' => $question->order,
+                'image_path' => $question->image_path,
+                'image_url' => $question->image_path ? Storage::disk('public')->url($question->image_path) : null,
+            ],
+        ]);
+    }
+
+    /**
+     * Delete a single question.
+     */
+    public function deleteQuestion(Request $request, InstitutionAssessment $assessment, InstitutionQuestion $question): RedirectResponse
+    {
+        // Verify user has access
+        if ($assessment->organization_id !== $request->user()->current_organization_id) {
+            abort(403, 'You do not have access to this assessment.');
+        }
+
+        // Verify question belongs to this assessment
+        if ($question->assessment_id !== $assessment->id) {
+            abort(403, 'This question does not belong to this assessment.');
+        }
+
+        $question->delete();
+
+        // Recalculate total points
+        $totalPoints = $assessment->questions()->sum('points');
+        $assessment->update(['total_points' => $totalPoints]);
+
+        return back()->with('success', 'Question deleted successfully');
     }
 }

@@ -1,4 +1,5 @@
 import { RichTextEditor } from '@/components/rich-text-editor';
+import { TopicSelector } from '@/components/topic-selector';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -6,27 +7,14 @@ import {
     CollapsibleContent,
     CollapsibleTrigger,
 } from '@/components/ui/collapsible';
-import {
-    Command,
-    CommandEmpty,
-    CommandGroup,
-    CommandInput,
-    CommandItem,
-    CommandList,
-} from '@/components/ui/command';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-    Popover,
-    PopoverContent,
-    PopoverTrigger,
-} from '@/components/ui/popover';
 import { Textarea } from '@/components/ui/textarea';
-import { cn } from '@/lib/utils';
 import AppLayout from '@/layouts/app-layout';
 import { Head, router, usePage } from '@inertiajs/react';
-import { Check, ChevronDown, ChevronRight, ChevronsUpDown, Plus, Trash2, Upload, X } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { Check, ChevronDown, ChevronRight, Save, Trash2, Upload, X } from 'lucide-react';
+import { useState } from 'react';
+import { toast } from 'sonner';
 
 interface QuestionChoice {
     id?: number;
@@ -68,13 +56,6 @@ interface Assessment {
     created_at: string;
 }
 
-interface Topic {
-    id: number;
-    name: string;
-    slug: string;
-    is_global: boolean;
-}
-
 interface PageProps {
     assessment: Assessment;
 }
@@ -109,19 +90,7 @@ export default function EditAssessment() {
         assessment.questions || [],
     );
     const [openQuestions, setOpenQuestions] = useState<Record<number, boolean>>({});
-    const [topics, setTopics] = useState<Topic[]>([]);
-    const [isAddingTopic, setIsAddingTopic] = useState<number | false>(false);
-    const [newTopicName, setNewTopicName] = useState('');
-    const [openTopicCombobox, setOpenTopicCombobox] = useState<number | false>(false);
-    const [topicSearch, setTopicSearch] = useState('');
-
-    // Fetch topics
-    useEffect(() => {
-        fetch('/topics')
-            .then((res) => res.json())
-            .then((data) => setTopics(data))
-            .catch((err) => console.error('Failed to fetch topics:', err));
-    }, []);
+    const [savingQuestion, setSavingQuestion] = useState<number | null>(null);
 
     const toggleQuestion = (index: number) => {
         setOpenQuestions((prev) => ({
@@ -198,60 +167,9 @@ export default function EditAssessment() {
         });
     };
 
-    const createNewTopic = () => {
-        if (!newTopicName.trim()) {
-            alert('Please enter a topic name');
-            return;
-        }
-
-        const questionIndex = isAddingTopic;
-        if (questionIndex === false) return;
-
-        router.post(
-            '/topics',
-            { name: newTopicName },
-            {
-                preserveState: true,
-                preserveScroll: true,
-                onSuccess: () => {
-                    // Refetch topics to get the newly created one
-                    fetch('/topics')
-                        .then((res) => res.json())
-                        .then((data) => {
-                            setTopics(data);
-                            // Find the newly created topic (last one in the list)
-                            const newTopic = data.find((t: Topic) => t.name === newTopicName);
-                            if (newTopic) {
-                                // Auto-select the new topic for the current question
-                                setQuestions((prev) => {
-                                    const next = [...prev];
-                                    next[questionIndex] = {
-                                        ...next[questionIndex],
-                                        topic_id: newTopic.id,
-                                    };
-                                    return next;
-                                });
-                            }
-                            setNewTopicName('');
-                            setIsAddingTopic(false);
-                        })
-                        .catch((err) => {
-                            console.error('Failed to refetch topics:', err);
-                            setNewTopicName('');
-                            setIsAddingTopic(false);
-                        });
-                },
-                onError: (errors) => {
-                    console.error('Error creating topic:', errors);
-                    alert('Failed to create topic');
-                },
-            }
-        );
-    };
-
     const updateExam = () => {
         if (!title) {
-            alert('Please enter a title');
+            toast.error('Please enter a title');
             return;
         }
 
@@ -273,38 +191,84 @@ export default function EditAssessment() {
             {
                 preserveScroll: true,
                 onSuccess: () => {
-                    alert('Exam updated successfully!');
+                    toast.success('Exam updated successfully!');
                 },
                 onError: (errors) => {
                     console.error('Error updating exam:', errors);
-                    alert('Failed to update exam. Check console for details.');
+                    toast.error('Failed to update exam');
                 },
             },
         );
     };
 
-    const saveQuestions = () => {
-        if (questions.length === 0) {
-            alert('Please add at least one question');
+    const saveOneQuestion = (qi: number) => {
+        const question = questions[qi];
+        if (!question.question_text) {
+            toast.error('Please enter question text');
             return;
         }
 
+        setSavingQuestion(qi);
+
         router.post(
-            `/assessments/${assessment.id}/questions`,
+            `/assessments/${assessment.id}/questions/save-one`,
+            question as any,
             {
-                questions: questions as never,
-            },
-            {
+                preserveState: true,
                 preserveScroll: true,
-                onSuccess: () => {
-                    router.visit('/institution-exams/active');
+                onSuccess: (page: any) => {
+                    const savedQuestion = page.props.flash?.question;
+                    if (savedQuestion) {
+                        setQuestions((prev) => {
+                            const next = [...prev];
+                            next[qi] = {
+                                ...next[qi],
+                                id: savedQuestion.id,
+                            };
+                            return next;
+                        });
+                    }
+                    setSavingQuestion(null);
+                    toast.success('Question saved successfully!');
                 },
                 onError: (errors) => {
-                    console.error('Error saving questions:', errors);
-                    alert('Failed to save questions. Check console for details.');
+                    console.error('Error saving question:', errors);
+                    toast.error('Failed to save question');
+                    setSavingQuestion(null);
                 },
-            },
+            }
         );
+    };
+
+    const deleteOneQuestion = (qi: number) => {
+        const question = questions[qi];
+        
+        if (question.id) {
+            // Delete from database
+            if (!confirm('Are you sure you want to delete this question?')) {
+                return;
+            }
+
+            router.delete(
+                `/assessments/${assessment.id}/questions/${question.id}`,
+                {
+                    preserveState: true,
+                    preserveScroll: true,
+                    onSuccess: () => {
+                        setQuestions((prev) => prev.filter((_, i) => i !== qi));
+                        toast.success('Question deleted successfully!');
+                    },
+                    onError: (errors) => {
+                        console.error('Error deleting question:', errors);
+                        toast.error('Failed to delete question');
+                    },
+                }
+            );
+        } else {
+            // Just remove from local state (not saved yet)
+            setQuestions((prev) => prev.filter((_, i) => i !== qi));
+            toast.success('Question removed');
+        }
     };
 
     return (
@@ -518,6 +482,11 @@ export default function EditAssessment() {
                                         <Label className="cursor-pointer font-semibold">
                                             Question #{qi + 1} (
                                             {q.question_type.replace('_', ' ')})
+                                            {q.id && (
+                                                <span className="ml-2 text-xs text-green-600 dark:text-green-400">
+                                                    <Check className="inline h-3 w-3" /> Saved
+                                                </span>
+                                            )}
                                             {q.question_text && (
                                                 <span className="ml-2 font-normal text-muted-foreground">
                                                     - {q.question_text.substring(0, 50).replace(/<[^>]*>/g, '')}
@@ -526,158 +495,42 @@ export default function EditAssessment() {
                                             )}
                                         </Label>
                                     </CollapsibleTrigger>
-                                    <Button
-                                        type="button"
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => {
-                                            setQuestions((prev) =>
-                                                prev.filter((_, i) => i !== qi),
-                                            );
-                                        }}
-                                    >
-                                        <Trash2 className="h-4 w-4 text-destructive" />
-                                    </Button>
+                                    <div className="flex items-center gap-1">
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => saveOneQuestion(qi)}
+                                            disabled={savingQuestion === qi}
+                                        >
+                                            <Save className="h-4 w-4 text-green-600" />
+                                        </Button>
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => deleteOneQuestion(qi)}
+                                        >
+                                            <Trash2 className="h-4 w-4 text-destructive" />
+                                        </Button>
+                                    </div>
                                 </div>
                                 <CollapsibleContent className="p-4">
                                 <div className="grid gap-4">
                                     {/* Topic Selection */}
-                                    <div className="space-y-2">
-                                        <Label>Topic (Optional)</Label>
-                                        <div className="flex gap-2">
-                                            <Popover open={openTopicCombobox === qi} onOpenChange={(open) => setOpenTopicCombobox(open ? qi : false)}>
-                                                <PopoverTrigger asChild>
-                                                    <Button
-                                                        type="button"
-                                                        variant="outline"
-                                                        role="combobox"
-                                                        aria-expanded={openTopicCombobox === qi}
-                                                        className="flex-1 justify-between"
-                                                    >
-                                                        {q.topic_id
-                                                            ? topics.find((topic) => topic.id === q.topic_id)?.name
-                                                            : "Select topic..."}
-                                                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                                    </Button>
-                                                </PopoverTrigger>
-                                                <PopoverContent className="w-[400px] p-0" align="start">
-                                                    <Command>
-                                                        <CommandInput 
-                                                            placeholder="Search topics..." 
-                                                            value={topicSearch}
-                                                            onValueChange={setTopicSearch}
-                                                        />
-                                                        <CommandList>
-                                                            <CommandGroup>
-                                                                {!topicSearch && (
-                                                                    <div
-                                                                        className="relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground"
-                                                                        onClick={() => {
-                                                                            setQuestions((prev) => {
-                                                                                const next = [...prev];
-                                                                                next[qi] = {
-                                                                                    ...next[qi],
-                                                                                    topic_id: null,
-                                                                                };
-                                                                                return next;
-                                                                            });
-                                                                            setOpenTopicCombobox(false);
-                                                                            setTopicSearch('');
-                                                                        }}
-                                                                    >
-                                                                        <Check
-                                                                            className={cn(
-                                                                                "mr-2 h-4 w-4",
-                                                                                !q.topic_id ? "opacity-100" : "opacity-0"
-                                                                            )}
-                                                                        />
-                                                                        No topic
-                                                                    </div>
-                                                                )}
-                                                                {topics
-                                                                    .filter((topic) =>
-                                                                        topic.name.toLowerCase().includes(topicSearch.toLowerCase())
-                                                                    )
-                                                                    .map((topic) => (
-                                                                        <div
-                                                                            key={topic.id}
-                                                                            className={cn(
-                                                                                "relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground",
-                                                                                q.topic_id === topic.id && "bg-accent"
-                                                                            )}
-                                                                            onClick={() => {
-                                                                                setQuestions((prev) => {
-                                                                                    const next = [...prev];
-                                                                                    next[qi] = {
-                                                                                        ...next[qi],
-                                                                                        topic_id: topic.id,
-                                                                                    };
-                                                                                    return next;
-                                                                                });
-                                                                                setOpenTopicCombobox(false);
-                                                                                setTopicSearch('');
-                                                                            }}
-                                                                        >
-                                                                            <Check
-                                                                                className={cn(
-                                                                                    "mr-2 h-4 w-4",
-                                                                                    q.topic_id === topic.id ? "opacity-100" : "opacity-0"
-                                                                                )}
-                                                                            />
-                                                                            {topic.name} {topic.is_global && <span className="text-muted-foreground">(Global)</span>}
-                                                                        </div>
-                                                                    ))}
-                                                                {topicSearch && topics.filter((topic) =>
-                                                                    topic.name.toLowerCase().includes(topicSearch.toLowerCase())
-                                                                ).length === 0 && (
-                                                                    <div className="py-6 text-center text-sm text-muted-foreground">
-                                                                        No topic found.
-                                                                    </div>
-                                                                )}
-                                                            </CommandGroup>
-                                                        </CommandList>
-                                                    </Command>
-                                                </PopoverContent>
-                                            </Popover>
-                                            <Button
-                                                type="button"
-                                                variant="outline"
-                                                size="sm"
-                                                onClick={() => setIsAddingTopic(qi)}
-                                            >
-                                                <Plus className="h-4 w-4" />
-                                            </Button>
-                                        </div>
-                                        {isAddingTopic === qi && (
-                                            <div className="flex gap-2 rounded border bg-muted/30 p-3">
-                                                <Input
-                                                    placeholder="New topic name"
-                                                    value={newTopicName}
-                                                    onChange={(e) => setNewTopicName(e.target.value)}
-                                                    onKeyDown={(e) => {
-                                                        if (e.key === 'Enter') {
-                                                            e.preventDefault();
-                                                            createNewTopic();
-                                                        }
-                                                    }}
-                                                />
-                                                <Button type="button" size="sm" onClick={createNewTopic}>
-                                                    Add
-                                                </Button>
-                                                <Button
-                                                    type="button"
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    onClick={() => {
-                                                        setIsAddingTopic(false);
-                                                        setNewTopicName('');
-                                                    }}
-                                                >
-                                                    Cancel
-                                                </Button>
-                                            </div>
-                                        )}
-                                    </div>
+                                    <TopicSelector
+                                        value={q.topic_id}
+                                        onChange={(topicId) => {
+                                            setQuestions((prev) => {
+                                                const next = [...prev];
+                                                next[qi] = {
+                                                    ...next[qi],
+                                                    topic_id: topicId,
+                                                };
+                                                return next;
+                                            });
+                                        }}
+                                    />
 
                                     {/* Question Text */}
                                     <div className="grid gap-2">
@@ -870,9 +723,14 @@ export default function EditAssessment() {
                             </Collapsible>
                         ))}
                     </div>
-                    <div className="flex gap-3">
-                        <Button onClick={saveQuestions}>Save Questions</Button>
-                    </div>
+                    {questions.length > 0 && (
+                        <div className="rounded-lg border bg-muted/30 p-4 text-sm">
+                            <p className="text-muted-foreground">
+                                💡 Tip: Click the save icon on each question to save it individually. 
+                                Questions are saved immediately to the database.
+                            </p>
+                        </div>
+                    )}
                 </div>
             </div>
         </AppLayout>
