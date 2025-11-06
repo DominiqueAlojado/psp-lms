@@ -1,5 +1,4 @@
 export { CreateResidentSheet } from './create-resident-sheet';
-export { DeleteResidentDialog } from './delete-resident-dialog';
 export { EditResidentSheet } from './edit-resident-sheet';
 export { ResidentFilters } from './resident-filters';
 export { ResidentOrganizations } from './resident-organizations';

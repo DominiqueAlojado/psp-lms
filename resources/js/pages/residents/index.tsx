@@ -1,12 +1,12 @@
+import { DeleteConfirmationDialog } from '@/components/delete-confirmation-dialog';
 import { ExportButton } from '@/components/export-button';
 import HeadingSmall from '@/components/heading-small';
-import { StatCard } from '@/components/stat-card';
 import { CreateResidentSheet } from '@/components/residents/create-resident-sheet';
-import { DeleteResidentDialog } from '@/components/residents/delete-resident-dialog';
 import { EditResidentSheet } from '@/components/residents/edit-resident-sheet';
 import { ResidentFilters } from '@/components/residents/resident-filters';
 import { ResidentTable } from '@/components/residents/resident-table';
 import { ViewResidentSheet } from '@/components/residents/view-resident-sheet';
+import { StatCard } from '@/components/stat-card';
 import { Button } from '@/components/ui/button';
 import {
     Tooltip,
@@ -97,7 +97,9 @@ export default function ResidentsIndex({
     const [search, setSearch] = useState(filters.search || '');
     const [showFilters, setShowFilters] = useState(false);
     const [localFilters, setLocalFilters] = useState(filters);
-    const [viewingResident, setViewingResident] = useState<Resident | null>(null);
+    const [viewingResident, setViewingResident] = useState<Resident | null>(
+        null,
+    );
     const [viewOrganizations, setViewOrganizations] = useState<{
         current: any[];
         available: any[];
@@ -106,10 +108,9 @@ export default function ResidentsIndex({
         null,
     );
     const [addingResident, setAddingResident] = useState(false);
-    const [deletingResident, setDeletingResident] = useState<{
-        id: number;
-        name: string;
-    } | null>(null);
+    const [deletingResident, setDeletingResident] = useState<Resident | null>(
+        null,
+    );
     const { errors } = usePage<{ errors: Record<string, string> }>().props;
 
     const applyFilters = useCallback((newFilters: typeof filters) => {
@@ -153,7 +154,7 @@ export default function ResidentsIndex({
         try {
             const response = await fetch(`/residents/${residentId}`);
             const data = await response.json();
-            
+
             setViewOrganizations({
                 current: data.currentOrganizations || [],
                 available: data.availableOrganizations || [],
@@ -211,8 +212,14 @@ export default function ResidentsIndex({
                                 <TooltipTrigger asChild>
                                     <span className="inline-block">
                                         <Button
-                                            onClick={() => setAddingResident(true)}
-                                            disabled={!hasPermission('create-residents')}
+                                            onClick={() =>
+                                                setAddingResident(true)
+                                            }
+                                            disabled={
+                                                !hasPermission(
+                                                    'create-residents',
+                                                )
+                                            }
                                         >
                                             <Plus className="mr-2 h-4 w-4" />
                                             Add Resident
@@ -245,18 +252,14 @@ export default function ResidentsIndex({
                                 value={count}
                                 description={`${count === 1 ? 'resident' : 'residents'}`}
                                 icon={
-                                    level === 'Graduate'
-                                        ? GraduationCap
-                                        : Users
+                                    level === 'Graduate' ? GraduationCap : Users
                                 }
                                 iconColor={
                                     isFiltered
                                         ? 'text-primary'
                                         : 'text-muted-foreground'
                                 }
-                                className={
-                                    isFiltered ? 'border-primary' : ''
-                                }
+                                className={isFiltered ? 'border-primary' : ''}
                                 onClick={() => {
                                     if (isFiltered) {
                                         // Remove filter
@@ -293,7 +296,7 @@ export default function ResidentsIndex({
                     filters={filters}
                     onView={handleViewResident}
                     onEdit={setEditingResident}
-                    onDelete={(id, name) => setDeletingResident({ id, name })}
+                    onDelete={setDeletingResident}
                 />
             </div>
 
@@ -329,9 +332,21 @@ export default function ResidentsIndex({
             />
 
             {/* Delete Dialog */}
-            <DeleteResidentDialog
+            <DeleteConfirmationDialog
                 open={!!deletingResident}
-                residentName={deletingResident?.name || null}
+                title="Delete Resident?"
+                itemName={
+                    deletingResident
+                        ? `${deletingResident.full_name} (${deletingResident.email})`
+                        : undefined
+                }
+                description={
+                    deletingResident
+                        ? `${deletingResident.course} - ${deletingResident.year_level}`
+                        : undefined
+                }
+                warningMessage="This action cannot be undone. This will permanently delete this resident from the system."
+                confirmText="Delete Resident"
                 onConfirm={confirmDelete}
                 onCancel={() => setDeletingResident(null)}
             />

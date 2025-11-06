@@ -63,7 +63,7 @@ interface Props {
     filters: Record<string, any>;
     onView: (resident: Resident) => void;
     onEdit: (resident: Resident) => void;
-    onDelete: (id: number, name: string) => void;
+    onDelete: (resident: Resident) => void;
 }
 
 export function ResidentTable({ residents, filters, onView, onEdit, onDelete }: Props) {
@@ -204,10 +204,7 @@ export function ResidentTable({ residents, filters, onView, onEdit, onDelete }: 
                                                                     variant="ghost"
                                                                     size="sm"
                                                                     onClick={() =>
-                                                                        onDelete(
-                                                                            resident.id,
-                                                                            resident.full_name,
-                                                                        )
+                                                                        onDelete(resident)
                                                                     }
                                                                     disabled={!hasPermission('delete-residents')}
                                                                 >
