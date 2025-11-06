@@ -30,9 +30,6 @@ class ResidentExamController extends Controller
                 abort(403, 'This exam is not currently available.');
             }
 
-            // Load questions with choices
-            $assessment->load(['questions.choices']);
-
             // Check for existing in-progress attempt
             $attempt = $assessment->attempts()
                 ->where('user_id', $user->id)
@@ -48,6 +45,17 @@ class ResidentExamController extends Controller
                     'total_points' => $assessment->total_points,
                     'status' => 'in_progress',
                 ]);
+            }
+
+            // Load questions with choices in proper order
+            $questions = $assessment->questions()
+                ->with(['choices' => fn ($query) => $query->orderBy('order')])
+                ->orderBy('order')
+                ->get();
+
+            // Apply randomization if enabled (use attempt ID as seed for consistency)
+            if ($assessment->randomize_questions) {
+                $questions = $questions->shuffle($attempt->id);
             }
 
             // Load existing answers
@@ -67,17 +75,26 @@ class ResidentExamController extends Controller
                     'passing_score' => $assessment->passing_score,
                     'randomize_questions' => $assessment->randomize_questions,
                     'randomize_choices' => $assessment->randomize_choices,
-                    'questions' => $assessment->questions->map(fn ($q) => [
-                        'id' => $q->id,
-                        'question_type' => $q->question_type,
-                        'question_text' => $q->question_text,
-                        'points' => $q->points,
-                        'image_url' => $q->image_path ? \Storage::disk('public')->url($q->image_path) : null,
-                        'choices' => $q->choices->map(fn ($c) => [
-                            'id' => $c->id,
-                            'choice_text' => $c->choice_text,
-                        ]),
-                    ]),
+                    'questions' => $questions->map(function ($q) use ($assessment, $attempt) {
+                        $choices = $q->choices;
+
+                        // Randomize choices if enabled (use attempt ID + question ID as seed)
+                        if ($assessment->randomize_choices) {
+                            $choices = $choices->shuffle($attempt->id + $q->id);
+                        }
+
+                        return [
+                            'id' => $q->id,
+                            'question_type' => $q->question_type,
+                            'question_text' => $q->question_text,
+                            'points' => $q->points,
+                            'image_url' => $q->image_path ? \Storage::disk('public')->url($q->image_path) : null,
+                            'choices' => $choices->map(fn ($c) => [
+                                'id' => $c->id,
+                                'choice_text' => $c->choice_text,
+                            ])->values(),
+                        ];
+                    })->values(),
                 ],
                 'attempt' => [
                     'id' => $attempt->id,
@@ -92,9 +109,6 @@ class ResidentExamController extends Controller
             if (! $assessment->isAvailable()) {
                 abort(403, 'This exam is not currently available.');
             }
-
-            // Load questions with choices
-            $assessment->load(['questions.choices']);
 
             // Check for existing in-progress attempt
             $attempt = $assessment->attempts()
@@ -111,6 +125,17 @@ class ResidentExamController extends Controller
                     'total_points' => $assessment->total_points,
                     'status' => 'in_progress',
                 ]);
+            }
+
+            // Load questions with choices in proper order
+            $questions = $assessment->questions()
+                ->with(['choices' => fn ($query) => $query->orderBy('order')])
+                ->orderBy('order')
+                ->get();
+
+            // Apply randomization if enabled (use attempt ID as seed for consistency)
+            if ($assessment->randomize_questions) {
+                $questions = $questions->shuffle($attempt->id);
             }
 
             // Load existing answers
@@ -130,17 +155,26 @@ class ResidentExamController extends Controller
                     'passing_score' => $assessment->passing_score,
                     'randomize_questions' => $assessment->randomize_questions,
                     'randomize_choices' => $assessment->randomize_choices,
-                    'questions' => $assessment->questions->map(fn ($q) => [
-                        'id' => $q->id,
-                        'question_type' => $q->question_type,
-                        'question_text' => $q->question_text,
-                        'points' => $q->points,
-                        'image_url' => $q->image_path ? \Storage::disk('public')->url($q->image_path) : null,
-                        'choices' => $q->choices->map(fn ($c) => [
-                            'id' => $c->id,
-                            'choice_text' => $c->choice_text,
-                        ]),
-                    ]),
+                    'questions' => $questions->map(function ($q) use ($assessment, $attempt) {
+                        $choices = $q->choices;
+
+                        // Randomize choices if enabled (use attempt ID + question ID as seed)
+                        if ($assessment->randomize_choices) {
+                            $choices = $choices->shuffle($attempt->id + $q->id);
+                        }
+
+                        return [
+                            'id' => $q->id,
+                            'question_type' => $q->question_type,
+                            'question_text' => $q->question_text,
+                            'points' => $q->points,
+                            'image_url' => $q->image_path ? \Storage::disk('public')->url($q->image_path) : null,
+                            'choices' => $choices->map(fn ($c) => [
+                                'id' => $c->id,
+                                'choice_text' => $c->choice_text,
+                            ])->values(),
+                        ];
+                    })->values(),
                 ],
                 'attempt' => [
                     'id' => $attempt->id,
@@ -185,16 +219,40 @@ class ResidentExamController extends Controller
                 return response()->json(['error' => 'This exam has already been submitted.'], 403);
             }
 
-            // Update or create answer
-            $answer = \App\Models\Institution\InstitutionAnswer::updateOrCreate(
-                [
+            // Check for existing answer to track changes
+            $existingAnswer = \App\Models\Institution\InstitutionAnswer::where('attempt_id', $attemptModel->id)
+                ->where('question_id', $validated['question_id'])
+                ->first();
+
+            if ($existingAnswer) {
+                // Update existing answer
+                $changeCount = $existingAnswer->answer_change_count ?? 0;
+
+                // Log suspicious behavior: more than 5 changes on same question
+                if ($changeCount >= 5) {
+                    \Log::warning('Suspicious answer changes detected', [
+                        'user_id' => $user->id,
+                        'attempt_id' => $attemptModel->id,
+                        'question_id' => $validated['question_id'],
+                        'change_count' => $changeCount + 1,
+                    ]);
+                }
+
+                $existingAnswer->update([
+                    'answer_data' => $validated['answer_data'],
+                    'answer_change_count' => $changeCount + 1,
+                ]);
+
+                $answer = $existingAnswer;
+            } else {
+                // Create new answer
+                $answer = \App\Models\Institution\InstitutionAnswer::create([
                     'attempt_id' => $attemptModel->id,
                     'question_id' => $validated['question_id'],
-                ],
-                [
                     'answer_data' => $validated['answer_data'],
-                ]
-            );
+                    'answer_change_count' => 1,
+                ]);
+            }
 
             return response()->json(['success' => true]);
         } elseif ($type === 'inservice') {
@@ -210,16 +268,40 @@ class ResidentExamController extends Controller
                 return response()->json(['error' => 'This exam has already been submitted.'], 403);
             }
 
-            // Update or create answer
-            $answer = \App\Models\National\NationalAnswer::updateOrCreate(
-                [
+            // Check for existing answer to track changes
+            $existingAnswer = \App\Models\National\NationalAnswer::where('attempt_id', $attemptModel->id)
+                ->where('question_id', $validated['question_id'])
+                ->first();
+
+            if ($existingAnswer) {
+                // Update existing answer
+                $changeCount = $existingAnswer->answer_change_count ?? 0;
+
+                // Log suspicious behavior: more than 5 changes on same question
+                if ($changeCount >= 5) {
+                    \Log::warning('Suspicious answer changes detected', [
+                        'user_id' => $user->id,
+                        'attempt_id' => $attemptModel->id,
+                        'question_id' => $validated['question_id'],
+                        'change_count' => $changeCount + 1,
+                    ]);
+                }
+
+                $existingAnswer->update([
+                    'answer_data' => $validated['answer_data'],
+                    'answer_change_count' => $changeCount + 1,
+                ]);
+
+                $answer = $existingAnswer;
+            } else {
+                // Create new answer
+                $answer = \App\Models\National\NationalAnswer::create([
                     'attempt_id' => $attemptModel->id,
                     'question_id' => $validated['question_id'],
-                ],
-                [
                     'answer_data' => $validated['answer_data'],
-                ]
-            );
+                    'answer_change_count' => 1,
+                ]);
+            }
 
             return response()->json(['success' => true]);
         }

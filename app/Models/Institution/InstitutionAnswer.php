@@ -16,6 +16,7 @@ class InstitutionAnswer extends Model
         'attempt_id',
         'question_id',
         'answer_data',
+        'answer_change_count',
         'is_correct',
         'points_earned',
         'grader_feedback',

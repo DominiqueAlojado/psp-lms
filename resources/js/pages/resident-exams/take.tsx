@@ -95,7 +95,10 @@ function ExamContent({ exam, attempt, savedAnswers }: PageProps) {
         new Set(),
     );
     const [confirmText, setConfirmText] = useState('');
+    const [isChangingAnswer, setIsChangingAnswer] = useState(false);
     const questionRefs = useRef<(HTMLButtonElement | null)[]>([]);
+    const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const lastSaveTimeRef = useRef<number>(0);
 
     const currentQuestion = exam.questions[currentQuestionIndex];
 
@@ -107,6 +110,15 @@ function ExamContent({ exam, attempt, savedAnswers }: PageProps) {
             setOpen(true);
         };
     }, [setOpen]);
+
+    // Cleanup save timeout on unmount
+    useEffect(() => {
+        return () => {
+            if (saveTimeoutRef.current) {
+                clearTimeout(saveTimeoutRef.current);
+            }
+        };
+    }, []);
 
     // Auto-scroll to current question in sidebar
     useEffect(() => {
@@ -152,53 +164,74 @@ function ExamContent({ exam, attempt, savedAnswers }: PageProps) {
         answerId: number | number[],
         questionType: string,
     ) => {
+        // Rate limiting: Prevent rapid successive changes (only runs on user interaction, not during render)
+        // eslint-disable-next-line
+        const timeSinceLastSave = Date.now() - lastSaveTimeRef.current;
+
+        // Minimum 300ms between answer changes to prevent gaming
+        if (timeSinceLastSave < 300 && lastSaveTimeRef.current > 0) {
+            toast.error('Please wait before changing your answer again');
+            return;
+        }
+
         // Update local state immediately
         setAnswers((prev) => ({
             ...prev,
             [questionId]: answerId,
         }));
 
-        // Auto-save to backend
+        // Set loading state to disable inputs
+        setIsChangingAnswer(true);
         setSaving(questionId);
 
-        const answerData =
-            questionType === 'multiple_select'
-                ? {
-                      choice_ids: Array.isArray(answerId)
-                          ? answerId
-                          : [answerId],
-                  }
-                : { choice_id: answerId };
-
-        try {
-            console.log('🔵 Using axios.post() to save answer', {
-                questionId,
-                answerData,
-                url: `/exams/${exam.type}/${attempt.id}/save-answer`,
-            });
-
-            // Use axios which handles CSRF automatically
-            const response = await axios.post(
-                `/exams/${exam.type}/${attempt.id}/save-answer`,
-                {
-                    question_id: questionId,
-                    answer_data: answerData,
-                },
-            );
-
-            console.log('✅ Answer saved successfully', response.data);
-            setSaving(null);
-        } catch (error) {
-            console.error('❌ Failed to save answer:', error);
-            const axiosError = error as {
-                response?: { data?: { message?: string } };
-            };
-            toast.error(
-                axiosError.response?.data?.message ||
-                    'Failed to save answer. Please try again.',
-            );
-            setSaving(null);
+        // Clear any pending save timeout
+        if (saveTimeoutRef.current) {
+            clearTimeout(saveTimeoutRef.current);
         }
+
+        // Debounce the save operation (wait 500ms after last change)
+        saveTimeoutRef.current = setTimeout(async () => {
+            const answerData =
+                questionType === 'multiple_select'
+                    ? {
+                          choice_ids: Array.isArray(answerId)
+                              ? answerId
+                              : [answerId],
+                      }
+                    : { choice_id: answerId };
+
+            try {
+                console.log('🔵 Saving answer to database', {
+                    questionId,
+                    answerData,
+                });
+
+                // Use axios which handles CSRF automatically
+                const response = await axios.post(
+                    `/exams/${exam.type}/${attempt.id}/save-answer`,
+                    {
+                        question_id: questionId,
+                        answer_data: answerData,
+                    },
+                );
+
+                console.log('✅ Answer saved successfully', response.data);
+                lastSaveTimeRef.current = Date.now();
+                setSaving(null);
+                setIsChangingAnswer(false);
+            } catch (error) {
+                console.error('❌ Failed to save answer:', error);
+                const axiosError = error as {
+                    response?: { data?: { message?: string } };
+                };
+                toast.error(
+                    axiosError.response?.data?.message ||
+                        'Failed to save answer. Please try again.',
+                );
+                setSaving(null);
+                setIsChangingAnswer(false);
+            }
+        }, 500);
     };
 
     const handleSubmit = () => {
@@ -471,8 +504,9 @@ function ExamContent({ exam, attempt, savedAnswers }: PageProps) {
                                 </div>
                             </div>
                             {saving !== null && (
-                                <div className="text-sm text-muted-foreground">
-                                    Saving...
+                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                    <div className="h-2 w-2 animate-pulse rounded-full bg-blue-500" />
+                                    <span>Saving...</span>
                                 </div>
                             )}
                         </div>
@@ -561,7 +595,11 @@ function ExamContent({ exam, attempt, savedAnswers }: PageProps) {
                                                     <label
                                                         key={choice.id}
                                                         className={cn(
-                                                            'flex cursor-pointer items-start gap-3 rounded-lg border-2 p-4 transition-all hover:bg-muted/50',
+                                                            'flex cursor-pointer items-start gap-3 rounded-lg border-2 p-4 transition-all',
+                                                            !isChangingAnswer &&
+                                                                'hover:bg-muted/50',
+                                                            isChangingAnswer &&
+                                                                'cursor-not-allowed opacity-60',
                                                             (currentQuestion.question_type ===
                                                             'multiple_select'
                                                                 ? Array.isArray(
@@ -595,6 +633,9 @@ function ExamContent({ exam, attempt, savedAnswers }: PageProps) {
                                                             }
                                                             name={`question_${currentQuestion.id}`}
                                                             value={choice.id}
+                                                            disabled={
+                                                                isChangingAnswer
+                                                            }
                                                             checked={
                                                                 currentQuestion.question_type ===
                                                                 'multiple_select'
