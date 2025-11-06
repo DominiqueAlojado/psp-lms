@@ -1,14 +1,3 @@
-import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-    AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -28,7 +17,9 @@ import {
 import { usePermissions } from '@/hooks/use-permissions';
 import { router } from '@inertiajs/react';
 import { Building2, Pencil, Trash2 } from 'lucide-react';
+import { useState } from 'react';
 import { toast } from 'sonner';
+import { DeleteConfirmationDialog } from '../delete-confirmation-dialog';
 
 interface Staff {
     id: number;
@@ -50,16 +41,25 @@ interface StaffTableProps {
 
 export function StaffTable({ staff, onEdit }: StaffTableProps) {
     const { hasPermission } = usePermissions();
+    const [deletingStaff, setDeletingStaff] = useState<Staff | null>(null);
 
-    const handleDelete = (id: number) => {
-        router.delete(`/staff/${id}`, {
+    const handleDelete = () => {
+        if (!deletingStaff) return;
+
+        router.delete(`/staff/${deletingStaff.id}`, {
             preserveScroll: true,
+            onSuccess: () => {
+                setDeletingStaff(null);
+            },
             onError: (errors) => {
                 const errorMessage =
                     errors.error ||
                     Object.values(errors)[0] ||
                     'Failed to delete staff member';
                 toast.error(errorMessage);
+            },
+            onFinish: () => {
+                setDeletingStaff(null);
             },
         });
     };
@@ -160,77 +160,59 @@ export function StaffTable({ staff, onEdit }: StaffTableProps) {
                                             )}
                                         </Tooltip>
                                     </TooltipProvider>
-                                    <AlertDialog>
-                                        <TooltipProvider>
-                                            <Tooltip>
-                                                <TooltipTrigger asChild>
-                                                    <span className="inline-block">
-                                                        <AlertDialogTrigger
-                                                            asChild
-                                                        >
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="sm"
-                                                                disabled={
-                                                                    !hasPermission(
-                                                                        'delete-staff',
-                                                                    )
-                                                                }
-                                                            >
-                                                                <Trash2 className="h-4 w-4 text-destructive" />
-                                                            </Button>
-                                                        </AlertDialogTrigger>
-                                                    </span>
-                                                </TooltipTrigger>
-                                                {!hasPermission(
-                                                    'delete-staff',
-                                                ) && (
-                                                    <TooltipContent>
-                                                        <p>
-                                                            You don't have
-                                                            permission to delete
-                                                            staff members
-                                                        </p>
-                                                    </TooltipContent>
-                                                )}
-                                            </Tooltip>
-                                        </TooltipProvider>
-                                        <AlertDialogContent>
-                                            <AlertDialogHeader>
-                                                <AlertDialogTitle>
-                                                    Delete Staff Member
-                                                </AlertDialogTitle>
-                                                <AlertDialogDescription>
-                                                    Are you sure you want to
-                                                    delete{' '}
-                                                    <span className="font-semibold">
-                                                        {member.name}
-                                                    </span>
-                                                    ? This action cannot be
-                                                    undone.
-                                                </AlertDialogDescription>
-                                            </AlertDialogHeader>
-                                            <AlertDialogFooter>
-                                                <AlertDialogCancel>
-                                                    Cancel
-                                                </AlertDialogCancel>
-                                                <AlertDialogAction
-                                                    onClick={() =>
-                                                        handleDelete(member.id)
-                                                    }
-                                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                                >
-                                                    Delete
-                                                </AlertDialogAction>
-                                            </AlertDialogFooter>
-                                        </AlertDialogContent>
-                                    </AlertDialog>
+                                    <TooltipProvider>
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <span className="inline-block">
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        onClick={() =>
+                                                            setDeletingStaff(
+                                                                member,
+                                                            )
+                                                        }
+                                                        disabled={
+                                                            !hasPermission(
+                                                                'delete-staff',
+                                                            )
+                                                        }
+                                                    >
+                                                        <Trash2 className="h-4 w-4 text-destructive" />
+                                                    </Button>
+                                                </span>
+                                            </TooltipTrigger>
+                                            {!hasPermission('delete-staff') && (
+                                                <TooltipContent>
+                                                    <p>
+                                                        You don't have
+                                                        permission to delete
+                                                        staff members
+                                                    </p>
+                                                </TooltipContent>
+                                            )}
+                                        </Tooltip>
+                                    </TooltipProvider>
                                 </div>
                             </TableCell>
                         </TableRow>
                     ))}
                 </TableBody>
             </Table>
+
+            <DeleteConfirmationDialog
+                open={deletingStaff !== null}
+                title="Delete Staff Member?"
+                itemName={
+                    deletingStaff
+                        ? `${deletingStaff.name} (${deletingStaff.email})`
+                        : undefined
+                }
+                warningMessage="This action cannot be undone. This will permanently delete this staff member from the system."
+                confirmText="Delete Staff"
+                onConfirm={handleDelete}
+                onCancel={() => setDeletingStaff(null)}
+            />
         </div>
     );
 }
