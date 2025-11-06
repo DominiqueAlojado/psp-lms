@@ -31,6 +31,8 @@ interface TopicSelectorProps {
     label?: string;
     placeholder?: string;
     className?: string;
+    preloadedTopics?: Topic[]; // Optional pre-loaded topics
+    onTopicsUpdated?: (topics: Topic[]) => void; // Callback when topics change
 }
 
 export function TopicSelector({
@@ -39,20 +41,36 @@ export function TopicSelector({
     label = 'Topic (Optional)',
     placeholder = 'Select topic...',
     className,
+    preloadedTopics,
+    onTopicsUpdated,
 }: TopicSelectorProps) {
-    const [topics, setTopics] = useState<Topic[]>([]);
+    const [topics, setTopics] = useState<Topic[]>(preloadedTopics || []);
     const [open, setOpen] = useState(false);
     const [topicSearch, setTopicSearch] = useState('');
     const [isAddingTopic, setIsAddingTopic] = useState(false);
     const [newTopicName, setNewTopicName] = useState('');
 
-    // Fetch topics on mount
+    // Fetch topics on mount only if not preloaded
     useEffect(() => {
-        fetch('/topics')
-            .then((res) => res.json())
-            .then((data) => setTopics(data))
-            .catch((err) => console.error('Failed to fetch topics:', err));
-    }, []);
+        if (!preloadedTopics || preloadedTopics.length === 0) {
+            fetch('/topics')
+                .then((res) => res.json())
+                .then((data) => {
+                    setTopics(data);
+                    if (onTopicsUpdated) {
+                        onTopicsUpdated(data);
+                    }
+                })
+                .catch((err) => console.error('Failed to fetch topics:', err));
+        }
+    }, [preloadedTopics, onTopicsUpdated]);
+
+    // Update local topics when preloadedTopics changes
+    useEffect(() => {
+        if (preloadedTopics) {
+            setTopics(preloadedTopics);
+        }
+    }, [preloadedTopics]);
 
     const createNewTopic = () => {
         if (!newTopicName.trim()) {
@@ -72,6 +90,10 @@ export function TopicSelector({
                         .then((res) => res.json())
                         .then((data) => {
                             setTopics(data);
+                            // Notify parent of updated topics
+                            if (onTopicsUpdated) {
+                                onTopicsUpdated(data);
+                            }
                             // Find and auto-select the new topic
                             const newTopic = data.find(
                                 (t: Topic) => t.name === newTopicName,

@@ -11,8 +11,15 @@ import { Label } from '@/components/ui/label';
 import AppLayout from '@/layouts/app-layout';
 import { Head, router, usePage } from '@inertiajs/react';
 import { Check, ChevronDown, ChevronRight, Save, Trash2, Upload, X } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
+
+interface Topic {
+    id: number;
+    name: string;
+    slug: string;
+    is_global: boolean;
+}
 
 interface QuestionChoice {
     choice_text: string;
@@ -42,9 +49,18 @@ export default function CreateAssessment({ assessmentId: propAssessmentId }: Pag
     const [questions, setQuestions] = useState<DraftQuestion[]>([]);
     const [openQuestions, setOpenQuestions] = useState<Record<number, boolean>>({});
     const [savingQuestion, setSavingQuestion] = useState<number | null>(null);
+    const [topics, setTopics] = useState<Topic[]>([]);
 
     // Get assessment ID from props (passed from backend)
     const assessmentId = propAssessmentId || null;
+
+    // Fetch topics once on page load
+    useEffect(() => {
+        fetch('/topics')
+            .then((res) => res.json())
+            .then((data) => setTopics(data))
+            .catch((err) => console.error('Failed to fetch topics:', err));
+    }, []);
 
     const toggleQuestion = (index: number) => {
         setOpenQuestions((prev) => ({
@@ -58,6 +74,7 @@ export default function CreateAssessment({ assessmentId: propAssessmentId }: Pag
             question_type: type,
             question_text: '',
             points: 1,
+            order: questions.length, // Set order as the next number
         } as DraftQuestion;
         if (type === 'multiple_choice' || type === 'multiple_select') {
             base.choices = [
@@ -70,7 +87,20 @@ export default function CreateAssessment({ assessmentId: propAssessmentId }: Pag
         if (type === 'true_false') {
             base.answer = true;
         }
+        // Add new question at the bottom for proper ordering
         setQuestions((q) => [...q, base]);
+        // Auto-open the newly added question
+        const newIndex = questions.length;
+        setOpenQuestions((prev) => ({ ...prev, [newIndex]: true }));
+        
+        // Scroll to the new question after a brief delay
+        setTimeout(() => {
+            const questionElements = document.querySelectorAll('[data-question-index]');
+            const newQuestionElement = questionElements[newIndex];
+            if (newQuestionElement) {
+                newQuestionElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }, 100);
     };
 
     const updateChoice = (
@@ -332,6 +362,7 @@ export default function CreateAssessment({ assessmentId: propAssessmentId }: Pag
                         {questions.map((q, qi) => (
                             <Collapsible
                                 key={qi}
+                                data-question-index={qi}
                                 open={openQuestions[qi] ?? false}
                                 onOpenChange={() => toggleQuestion(qi)}
                                 className="rounded border"
@@ -394,6 +425,8 @@ export default function CreateAssessment({ assessmentId: propAssessmentId }: Pag
                                                 return next;
                                             });
                                         }}
+                                        preloadedTopics={topics}
+                                        onTopicsUpdated={setTopics}
                                     />
 
                                     {/* Question Text */}
