@@ -90,7 +90,7 @@ export default function CreateAssessment() {
                     // Assessment ID will be set via useEffect from flash session
                 },
                 onError: (errors) => {
-                    console.error('Error creating exam:', errors);
+                         console.error('Error creating exam:', errors);
                     alert('Failed to create exam. Check console for details.');
                 },
             },

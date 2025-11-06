@@ -31,7 +31,7 @@ class TopicController extends Controller
     /**
      * Store a new topic.
      */
-    public function store(Request $request): JsonResponse
+    public function store(Request $request)
     {
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
@@ -45,6 +45,14 @@ class TopicController extends Controller
             'is_global' => false,
         ]);
 
-        return response()->json($topic, 201);
+        return back()->with([
+            'success' => 'Topic created successfully',
+            'topic' => [
+                'id' => $topic->id,
+                'name' => $topic->name,
+                'slug' => $topic->slug,
+                'is_global' => $topic->is_global,
+            ],
+        ]);
     }
 }

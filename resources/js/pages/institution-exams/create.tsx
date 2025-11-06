@@ -54,7 +54,7 @@ export default function CreateAssessment({ assessmentId: propAssessmentId }: Pag
     const [questions, setQuestions] = useState<DraftQuestion[]>([]);
     const [openQuestions, setOpenQuestions] = useState<Record<number, boolean>>({});
     const [topics, setTopics] = useState<Topic[]>([]);
-    const [isAddingTopic, setIsAddingTopic] = useState(false);
+    const [isAddingTopic, setIsAddingTopic] = useState<number | false>(false);
     const [newTopicName, setNewTopicName] = useState('');
 
     // Get assessment ID from props (passed from backend)
@@ -141,34 +141,55 @@ export default function CreateAssessment({ assessmentId: propAssessmentId }: Pag
         });
     };
 
-    const createNewTopic = async () => {
+    const createNewTopic = () => {
         if (!newTopicName.trim()) {
             alert('Please enter a topic name');
             return;
         }
 
-        try {
-            const response = await fetch('/topics', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || '',
-                },
-                body: JSON.stringify({ name: newTopicName }),
-            });
+        const questionIndex = isAddingTopic;
+        if (questionIndex === false) return;
 
-            if (response.ok) {
-                const newTopic = await response.json();
-                setTopics((prev) => [...prev, newTopic]);
-                setNewTopicName('');
-                setIsAddingTopic(false);
-            } else {
-                alert('Failed to create topic');
+        router.post(
+            '/topics',
+            { name: newTopicName },
+            {
+                preserveState: true,
+                preserveScroll: true,
+                onSuccess: () => {
+                    // Refetch topics to get the newly created one
+                    fetch('/topics')
+                        .then((res) => res.json())
+                        .then((data) => {
+                            setTopics(data);
+                            // Find the newly created topic (last one in the list)
+                            const newTopic = data.find((t: Topic) => t.name === newTopicName);
+                            if (newTopic) {
+                                // Auto-select the new topic for the current question
+                                setQuestions((prev) => {
+                                    const next = [...prev];
+                                    next[questionIndex] = {
+                                        ...next[questionIndex],
+                                        topic_id: newTopic.id,
+                                    };
+                                    return next;
+                                });
+                            }
+                            setNewTopicName('');
+                            setIsAddingTopic(false);
+                        })
+                        .catch((err) => {
+                            console.error('Failed to refetch topics:', err);
+                            setNewTopicName('');
+                            setIsAddingTopic(false);
+                        });
+                },
+                onError: (errors) => {
+                    console.error('Error creating topic:', errors);
+                    alert('Failed to create topic');
+                },
             }
-        } catch (error) {
-            console.error('Error creating topic:', error);
-            alert('Failed to create topic');
-        }
+        );
     };
 
     const createExam = () => {
@@ -409,12 +430,12 @@ export default function CreateAssessment({ assessmentId: propAssessmentId }: Pag
                                                 type="button"
                                                 variant="outline"
                                                 size="sm"
-                                                onClick={() => setIsAddingTopic(true)}
+                                                onClick={() => setIsAddingTopic(qi)}
                                             >
                                                 <Plus className="h-4 w-4" />
                                             </Button>
                                         </div>
-                                        {isAddingTopic && (
+                                        {isAddingTopic === qi && (
                                             <div className="flex gap-2 rounded border bg-muted/30 p-3">
                                                 <Input
                                                     placeholder="New topic name"
