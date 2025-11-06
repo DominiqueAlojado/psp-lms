@@ -64,7 +64,9 @@ export function PersonalInformationFields({
             </div>
 
             <div className="space-y-2">
-                <Label htmlFor="middle_name">Middle Name</Label>
+                <Label htmlFor="middle_name">
+                    Middle Name <span className="text-muted-foreground">(Optional)</span>
+                </Label>
                 <Input
                     id="middle_name"
                     name="middle_name"

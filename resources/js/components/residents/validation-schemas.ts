@@ -7,7 +7,7 @@ export const philippinePhoneRegex = /^(\+63|0)?9\d{9}$/;
 export const step1Schema = z.object({
     organization_id: z.string().min(1, 'Organization is required'),
     first_name: z.string().min(1, 'First name is required').max(255),
-    middle_name: z.string().min(1, 'Middle name is required').max(255),
+    middle_name: z.string().max(255).optional().or(z.literal('')),
     last_name: z.string().min(1, 'Last name is required').max(255),
     email: z.string().email('Please enter a valid email address'),
     contact_number: z
@@ -38,7 +38,7 @@ export const step2Schema = z
 // Edit: Personal Information Schema (without organization_id)
 export const editPersonalSchema = z.object({
     first_name: z.string().min(1, 'First name is required').max(255),
-    middle_name: z.string().min(1, 'Middle name is required').max(255),
+    middle_name: z.string().max(255).optional().or(z.literal('')),
     last_name: z.string().min(1, 'Last name is required').max(255),
     email: z.string().email('Please enter a valid email address'),
     contact_number: z

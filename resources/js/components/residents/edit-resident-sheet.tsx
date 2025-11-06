@@ -1,11 +1,20 @@
 import { Button } from '@/components/ui/button';
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import {
+    Sheet,
+    SheetContent,
+    SheetDescription,
+    SheetHeader,
+    SheetTitle,
+} from '@/components/ui/sheet';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { router, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { z } from 'zod';
-import { AccountInformationFields, PersonalInformationFields } from './resident-form-fields';
+import {
+    AccountInformationFields,
+    PersonalInformationFields,
+} from './resident-form-fields';
 import { editAccountSchema, editPersonalSchema } from './validation-schemas';
 
 interface Organization {
@@ -43,7 +52,10 @@ export function EditResidentSheet({
     statuses,
     onClose,
 }: Props) {
-    const [clientValidationErrors, setClientValidationErrors] = useState<Record<string, string>>({});
+    const [activeTab, setActiveTab] = useState('personal');
+    const [clientValidationErrors, setClientValidationErrors] = useState<
+        Record<string, string>
+    >({});
     const { errors: serverErrors } = usePage<{
         errors: Record<string, string>;
     }>().props;
@@ -55,6 +67,7 @@ export function EditResidentSheet({
 
     const handleClose = () => {
         setClientValidationErrors({});
+        setActiveTab('personal');
         onClose();
     };
 
@@ -75,36 +88,44 @@ export function EditResidentSheet({
                             const formData = new FormData(e.currentTarget);
                             const data = Object.fromEntries(formData);
 
-                            // Validate personal information
+                            // Validate all fields before submitting
                             try {
+                                // Validate personal information
                                 editPersonalSchema.parse(data);
-                            } catch (error) {
-                                if (error instanceof z.ZodError) {
-                                    const errors: Record<string, string> = {};
-                                    error.issues.forEach((err) => {
-                                        if (err.path[0]) {
-                                            errors[err.path[0].toString()] = err.message;
-                                        }
-                                    });
-                                    setClientValidationErrors(errors);
-                                    toast.error('Please check the form for errors');
-                                    return;
-                                }
-                            }
-
-                            // Validate account information (optional password)
-                            try {
+                                // Validate account information (optional password)
                                 editAccountSchema.parse(data);
                             } catch (error) {
                                 if (error instanceof z.ZodError) {
                                     const errors: Record<string, string> = {};
                                     error.issues.forEach((err) => {
                                         if (err.path[0]) {
-                                            errors[err.path[0].toString()] = err.message;
+                                            errors[err.path[0].toString()] =
+                                                err.message;
                                         }
                                     });
                                     setClientValidationErrors(errors);
-                                    toast.error('Please check the form for errors');
+
+                                    // Switch to the tab with errors
+                                    if (
+                                        Object.keys(errors).some((key) =>
+                                            [
+                                                'first_name',
+                                                'middle_name',
+                                                'last_name',
+                                                'email',
+                                                'contact_number',
+                                                'course',
+                                                'year_level',
+                                                'status',
+                                            ].includes(key),
+                                        )
+                                    ) {
+                                        setActiveTab('personal');
+                                    }
+
+                                    toast.error(
+                                        'Please check the form for errors',
+                                    );
                                     return;
                                 }
                             }
@@ -124,10 +145,18 @@ export function EditResidentSheet({
                             });
                         }}
                     >
-                        <Tabs defaultValue="personal" className="w-full">
+                        <Tabs
+                            value={activeTab}
+                            onValueChange={setActiveTab}
+                            className="w-full"
+                        >
                             <TabsList className="mb-6 grid w-full grid-cols-2">
-                                <TabsTrigger value="personal">Personal Data</TabsTrigger>
-                                <TabsTrigger value="account">Account</TabsTrigger>
+                                <TabsTrigger value="personal">
+                                    Personal Data
+                                </TabsTrigger>
+                                <TabsTrigger value="account">
+                                    Account
+                                </TabsTrigger>
                             </TabsList>
 
                             <TabsContent value="personal" className="space-y-6">
@@ -140,7 +169,8 @@ export function EditResidentSheet({
                                         middle_name: resident.middle_name || '',
                                         last_name: resident.last_name,
                                         email: resident.email,
-                                        contact_number: resident.contact_number || '',
+                                        contact_number:
+                                            resident.contact_number || '',
                                         course: resident.course,
                                         year_level: resident.year_level,
                                         status: resident.status,
@@ -151,6 +181,48 @@ export function EditResidentSheet({
                             </TabsContent>
 
                             <TabsContent value="account" className="space-y-6">
+                                {/* Hidden inputs to preserve personal data when on Account tab */}
+                                <input
+                                    type="hidden"
+                                    name="first_name"
+                                    value={resident.first_name}
+                                />
+                                <input
+                                    type="hidden"
+                                    name="middle_name"
+                                    value={resident.middle_name || ''}
+                                />
+                                <input
+                                    type="hidden"
+                                    name="last_name"
+                                    value={resident.last_name}
+                                />
+                                <input
+                                    type="hidden"
+                                    name="email"
+                                    value={resident.email}
+                                />
+                                <input
+                                    type="hidden"
+                                    name="contact_number"
+                                    value={resident.contact_number || ''}
+                                />
+                                <input
+                                    type="hidden"
+                                    name="course"
+                                    value={resident.course}
+                                />
+                                <input
+                                    type="hidden"
+                                    name="year_level"
+                                    value={resident.year_level}
+                                />
+                                <input
+                                    type="hidden"
+                                    name="status"
+                                    value={resident.status}
+                                />
+
                                 <AccountInformationFields
                                     validationErrors={validationErrors}
                                     isOptional
@@ -159,7 +231,11 @@ export function EditResidentSheet({
                         </Tabs>
 
                         <div className="mt-6 flex justify-end gap-3 border-t pt-6">
-                            <Button type="button" variant="outline" onClick={handleClose}>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={handleClose}
+                            >
                                 Cancel
                             </Button>
                             <Button type="submit">Save Changes</Button>
@@ -170,4 +246,3 @@ export function EditResidentSheet({
         </Sheet>
     );
 }
-
