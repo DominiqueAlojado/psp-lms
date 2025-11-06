@@ -10,12 +10,13 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import AppLayout from '@/layouts/app-layout';
 import { cn } from '@/lib/utils';
 import { type BreadcrumbItem } from '@/types';
 import { Head, router } from '@inertiajs/react';
 import axios from 'axios';
-import { ChevronLeft, ChevronRight, Clock, Menu, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Clock, Flag, Menu, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -88,6 +89,10 @@ export default function TakeExam({ exam, attempt, savedAnswers }: PageProps) {
     const [unansweredCount, setUnansweredCount] = useState(0);
     const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
     const [showSidebar, setShowSidebar] = useState(true);
+    const [markedForReview, setMarkedForReview] = useState<Set<number>>(
+        new Set(),
+    );
+    const [confirmText, setConfirmText] = useState('');
     const questionRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
     const currentQuestion = exam.questions[currentQuestionIndex];
@@ -198,11 +203,18 @@ export default function TakeExam({ exam, attempt, savedAnswers }: PageProps) {
             }).length;
 
         setUnansweredCount(count);
+        setConfirmText('');
         setShowSubmitDialog(true);
     };
 
     const confirmSubmit = () => {
+        if (confirmText.toUpperCase() !== 'FINALIZE') {
+            toast.error('Please type FINALIZE to confirm submission');
+            return;
+        }
+
         // Submit to finalize (answers already saved in database)
+        setShowSubmitDialog(false);
         router.post(
             `/exams/${exam.type}/${attempt.id}/submit`,
             {},
@@ -242,6 +254,18 @@ export default function TakeExam({ exam, attempt, savedAnswers }: PageProps) {
         if (currentQuestionIndex > 0) {
             setCurrentQuestionIndex(currentQuestionIndex - 1);
         }
+    };
+
+    const toggleMarkForReview = (questionId: number) => {
+        setMarkedForReview((prev) => {
+            const newSet = new Set(prev);
+            if (newSet.has(questionId)) {
+                newSet.delete(questionId);
+            } else {
+                newSet.add(questionId);
+            }
+            return newSet;
+        });
     };
 
     return (
@@ -302,6 +326,15 @@ export default function TakeExam({ exam, attempt, savedAnswers }: PageProps) {
                                     <div className="h-8 w-8 rounded-lg border-2 border-primary bg-primary/20" />
                                     <span className="text-xs">Current</span>
                                 </div>
+                                <div className="flex items-center gap-2">
+                                    <div className="flex h-8 w-8 items-center justify-center rounded-lg border-2 border-orange-500 bg-orange-500/20">
+                                        <Flag className="h-4 w-4 fill-orange-500 text-orange-500" />
+                                    </div>
+                                    <span className="text-xs">
+                                        Marked for Review ({' '}
+                                        {markedForReview.size} )
+                                    </span>
+                                </div>
                             </div>
                         </div>
 
@@ -314,6 +347,9 @@ export default function TakeExam({ exam, attempt, savedAnswers }: PageProps) {
                                     );
                                     const current =
                                         index === currentQuestionIndex;
+                                    const marked = markedForReview.has(
+                                        question.id,
+                                    );
 
                                     return (
                                         <button
@@ -351,9 +387,14 @@ export default function TakeExam({ exam, attempt, savedAnswers }: PageProps) {
                                                 {index + 1}
                                             </span>
                                             <div className="flex-1">
-                                                <p className="text-sm font-medium">
-                                                    Item No. {index + 1}
-                                                </p>
+                                                <div className="flex items-center gap-2">
+                                                    <p className="text-sm font-medium">
+                                                        Item No. {index + 1}
+                                                    </p>
+                                                    {marked && (
+                                                        <Flag className="h-3.5 w-3.5 fill-orange-500 text-orange-500" />
+                                                    )}
+                                                </div>
                                                 <p className="text-xs text-muted-foreground">
                                                     {answered
                                                         ? 'Answered'
@@ -454,12 +495,52 @@ export default function TakeExam({ exam, attempt, savedAnswers }: PageProps) {
                                                     />
                                                 )}
                                             </div>
-                                            <span className="text-sm font-medium text-muted-foreground">
-                                                {currentQuestion.points}{' '}
-                                                {currentQuestion.points === 1
-                                                    ? 'point'
-                                                    : 'points'}
-                                            </span>
+                                            <div className="flex flex-col items-end gap-2">
+                                                <span className="text-sm font-medium text-muted-foreground">
+                                                    {currentQuestion.points}{' '}
+                                                    {currentQuestion.points ===
+                                                    1
+                                                        ? 'point'
+                                                        : 'points'}
+                                                </span>
+                                                <Button
+                                                    variant={
+                                                        markedForReview.has(
+                                                            currentQuestion.id,
+                                                        )
+                                                            ? 'default'
+                                                            : 'outline'
+                                                    }
+                                                    size="sm"
+                                                    onClick={() =>
+                                                        toggleMarkForReview(
+                                                            currentQuestion.id,
+                                                        )
+                                                    }
+                                                    className={cn(
+                                                        markedForReview.has(
+                                                            currentQuestion.id,
+                                                        ) &&
+                                                            'bg-orange-500 hover:bg-orange-600',
+                                                    )}
+                                                >
+                                                    <Flag
+                                                        className={cn(
+                                                            'h-4 w-4',
+                                                            markedForReview.has(
+                                                                currentQuestion.id,
+                                                            ) && 'fill-current',
+                                                        )}
+                                                    />
+                                                    <span className="ml-2">
+                                                        {markedForReview.has(
+                                                            currentQuestion.id,
+                                                        )
+                                                            ? 'Marked'
+                                                            : 'Mark'}
+                                                    </span>
+                                                </Button>
+                                            </div>
                                         </div>
 
                                         {/* Choices */}
@@ -625,26 +706,54 @@ export default function TakeExam({ exam, attempt, savedAnswers }: PageProps) {
                                 ? 'Submit with Unanswered Questions?'
                                 : 'Submit Exam?'}
                         </AlertDialogTitle>
-                        <AlertDialogDescription>
-                            {unansweredCount > 0 ? (
-                                <>
-                                    You have{' '}
-                                    <span className="font-semibold text-destructive">
-                                        {unansweredCount} unanswered question
-                                        {unansweredCount > 1 ? 's' : ''}
-                                    </span>
-                                    . Are you sure you want to submit anyway?
-                                    You cannot change your answers after
-                                    submission.
-                                </>
-                            ) : (
-                                'Are you sure you want to submit this exam? You cannot change your answers after submission.'
-                            )}
+                        <AlertDialogDescription className="space-y-4">
+                            <div>
+                                {unansweredCount > 0 ? (
+                                    <>
+                                        You have{' '}
+                                        <span className="font-semibold text-destructive">
+                                            {unansweredCount} unanswered
+                                            question
+                                            {unansweredCount > 1 ? 's' : ''}
+                                        </span>
+                                        . Are you sure you want to submit
+                                        anyway? You cannot change your answers
+                                        after submission.
+                                    </>
+                                ) : (
+                                    'Are you sure you want to submit this exam? You cannot change your answers after submission.'
+                                )}
+                            </div>
+                            <div className="space-y-2">
+                                <p className="text-sm font-medium text-foreground">
+                                    Type{' '}
+                                    <span className="font-bold text-destructive">
+                                        FINALIZE
+                                    </span>{' '}
+                                    to confirm:
+                                </p>
+                                <Input
+                                    type="text"
+                                    value={confirmText}
+                                    onChange={(e) =>
+                                        setConfirmText(e.target.value)
+                                    }
+                                    placeholder="Type FINALIZE"
+                                    className="uppercase"
+                                    autoFocus
+                                />
+                            </div>
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={confirmSubmit}>
+                        <AlertDialogCancel onClick={() => setConfirmText('')}>
+                            Cancel
+                        </AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={confirmSubmit}
+                            disabled={confirmText.toUpperCase() !== 'FINALIZE'}
+                            className="bg-destructive hover:bg-destructive/90"
+                        >
                             Submit Exam
                         </AlertDialogAction>
                     </AlertDialogFooter>
