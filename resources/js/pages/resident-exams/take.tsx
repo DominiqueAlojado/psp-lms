@@ -11,6 +11,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { useSidebar } from '@/components/ui/sidebar';
 import AppLayout from '@/layouts/app-layout';
 import { cn } from '@/lib/utils';
 import { type BreadcrumbItem } from '@/types';
@@ -68,7 +69,8 @@ interface PageProps {
     [key: string]: unknown;
 }
 
-export default function TakeExam({ exam, attempt, savedAnswers }: PageProps) {
+function ExamContent({ exam, attempt, savedAnswers }: PageProps) {
+    const { setOpen } = useSidebar();
     const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
     const [answers, setAnswers] = useState<Record<number, number | number[]>>(
         () => {
@@ -96,6 +98,15 @@ export default function TakeExam({ exam, attempt, savedAnswers }: PageProps) {
     const questionRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
     const currentQuestion = exam.questions[currentQuestionIndex];
+
+    // Collapse the main app sidebar when entering exam mode
+    useEffect(() => {
+        setOpen(false);
+        return () => {
+            // Restore sidebar when leaving exam
+            setOpen(true);
+        };
+    }, [setOpen]);
 
     // Auto-scroll to current question in sidebar
     useEffect(() => {
@@ -269,7 +280,7 @@ export default function TakeExam({ exam, attempt, savedAnswers }: PageProps) {
     };
 
     return (
-        <AppLayout breadcrumbs={breadcrumbs}>
+        <>
             <Head title={`Taking: ${exam.title}`} />
 
             <div className="relative flex h-[calc(100vh-4rem)] overflow-hidden">
@@ -759,6 +770,14 @@ export default function TakeExam({ exam, attempt, savedAnswers }: PageProps) {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+        </>
+    );
+}
+
+export default function TakeExam(props: PageProps) {
+    return (
+        <AppLayout breadcrumbs={breadcrumbs}>
+            <ExamContent {...props} />
         </AppLayout>
     );
 }
