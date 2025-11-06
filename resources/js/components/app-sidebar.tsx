@@ -96,6 +96,11 @@ export function AppSidebar() {
             return false;
         }
 
+        // Hide "Institution Exams" for residents (show only for staff/admins)
+        if (item.title === 'Institution Exams' && !hasPermission('view-residents')) {
+            return false;
+        }
+
         if (!item.permission) {
             return true;
         }

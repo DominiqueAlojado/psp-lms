@@ -30,6 +30,7 @@ interface Exam {
     max_attempts: number | null;
     best_score: number | null;
     last_attempted: string | null;
+    has_in_progress_attempt: boolean;
 }
 
 interface PageProps {
@@ -154,9 +155,11 @@ export default function ResidentExams() {
                                                     href={`/exams/${exam.type}/${exam.id}/take`}
                                                 >
                                                     <Play className="mr-2 h-4 w-4" />
-                                                    {exam.attempt_count > 0
-                                                        ? 'Retake Exam'
-                                                        : 'Start Exam'}
+                                                    {exam.has_in_progress_attempt
+                                                        ? 'Resume Exam'
+                                                        : exam.attempt_count > 0
+                                                          ? 'Retake Exam'
+                                                          : 'Start Exam'}
                                                 </Link>
                                             </Button>
                                         </div>

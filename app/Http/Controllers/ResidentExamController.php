@@ -306,7 +306,13 @@ class ResidentExamController extends Controller
             ->get();
 
         foreach ($institutionExams as $exam) {
-            // Get user's attempts for this exam
+            // Check for in-progress attempt
+            $inProgressAttempt = $exam->attempts()
+                ->where('user_id', $user->id)
+                ->where('status', 'in_progress')
+                ->exists();
+
+            // Get user's completed/graded attempts for this exam
             $attempts = $exam->attempts()
                 ->where('user_id', $user->id)
                 ->whereIn('status', ['completed', 'graded'])
@@ -332,6 +338,7 @@ class ResidentExamController extends Controller
                 'max_attempts' => null, // Can be added later if needed
                 'best_score' => $bestScore ? round(($bestScore / $exam->total_points) * 100, 2) : null,
                 'last_attempted' => $lastAttempt?->submitted_at?->diffForHumans(),
+                'has_in_progress_attempt' => $inProgressAttempt,
             ];
 
             if ($exam->isAvailable()) {
@@ -351,6 +358,13 @@ class ResidentExamController extends Controller
             ->get();
 
         foreach ($nationalExams as $exam) {
+            // Check for in-progress attempt
+            $inProgressAttempt = $exam->attempts()
+                ->where('user_id', $user->id)
+                ->where('status', 'in_progress')
+                ->exists();
+
+            // Get user's completed/graded attempts
             $attempts = $exam->attempts()
                 ->where('user_id', $user->id)
                 ->whereIn('status', ['completed', 'graded'])
@@ -376,6 +390,7 @@ class ResidentExamController extends Controller
                 'max_attempts' => null,
                 'best_score' => $bestScore ? round(($bestScore / $exam->total_points) * 100, 2) : null,
                 'last_attempted' => $lastAttempt?->submitted_at?->diffForHumans(),
+                'has_in_progress_attempt' => $inProgressAttempt,
             ];
 
             if ($exam->isAvailable()) {
