@@ -16,7 +16,7 @@ import { type BreadcrumbItem } from '@/types';
 import { Head, router } from '@inertiajs/react';
 import axios from 'axios';
 import { ChevronLeft, ChevronRight, Clock, Menu, X } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -88,8 +88,20 @@ export default function TakeExam({ exam, attempt, savedAnswers }: PageProps) {
     const [unansweredCount, setUnansweredCount] = useState(0);
     const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
     const [showSidebar, setShowSidebar] = useState(true);
+    const questionRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
     const currentQuestion = exam.questions[currentQuestionIndex];
+
+    // Auto-scroll to current question in sidebar
+    useEffect(() => {
+        const currentRef = questionRefs.current[currentQuestionIndex];
+        if (currentRef) {
+            currentRef.scrollIntoView({
+                behavior: 'smooth',
+                block: 'nearest',
+            });
+        }
+    }, [currentQuestionIndex]);
 
     // Calculate time remaining
     useEffect(() => {
@@ -306,6 +318,10 @@ export default function TakeExam({ exam, attempt, savedAnswers }: PageProps) {
                                     return (
                                         <button
                                             key={question.id}
+                                            ref={(el) => {
+                                                questionRefs.current[index] =
+                                                    el;
+                                            }}
                                             onClick={() => goToQuestion(index)}
                                             className={cn(
                                                 'flex w-full items-center gap-3 rounded-lg border-2 px-4 py-2.5 text-left transition-all',
