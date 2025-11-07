@@ -15,7 +15,17 @@ import { usePermissions } from '@/hooks/use-permissions';
 import { dashboard } from '@/routes';
 import { type NavItem, type SharedData } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
-import { BookOpen, Building2, ClipboardList, FileText, Folder, GraduationCap, LayoutGrid, UserCog, Users } from 'lucide-react';
+import {
+    BookOpen,
+    Building2,
+    ClipboardList,
+    FileText,
+    Folder,
+    GraduationCap,
+    LayoutGrid,
+    UserCog,
+    Users,
+} from 'lucide-react';
 import AppLogo from './app-logo';
 
 const mainNavItems: NavItem[] = [
@@ -87,17 +97,26 @@ export function AppSidebar() {
         }
 
         // Hide "In-Service Exams" if organization is not national
-        if (item.title === 'In-Service Exams' && currentOrganization?.type !== 'national') {
+        if (
+            item.title === 'In-Service Exams' &&
+            currentOrganization?.type !== 'national'
+        ) {
             return false;
         }
 
         // Hide "Institution Exams" if organization is national
-        if (item.title === 'Institution Exams' && currentOrganization?.type === 'national') {
+        if (
+            item.title === 'Institution Exams' &&
+            currentOrganization?.type === 'national'
+        ) {
             return false;
         }
 
         // Hide "Institution Exams" for residents (show only for staff/admins)
-        if (item.title === 'Institution Exams' && !hasPermission('view-residents')) {
+        if (
+            item.title === 'Institution Exams' &&
+            !hasPermission('view-residents')
+        ) {
             return false;
         }
 
@@ -126,8 +145,8 @@ export function AppSidebar() {
                             </Link>
                         </SidebarMenuButton>
                     </SidebarMenuItem>
-                    <SidebarMenuItem className="px-2 py-2">
-                        <OrganizationSwitcher className="w-full" />
+                    <SidebarMenuItem>
+                        <OrganizationSwitcher />
                     </SidebarMenuItem>
                 </SidebarMenu>
             </SidebarHeader>

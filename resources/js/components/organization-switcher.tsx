@@ -1,4 +1,3 @@
-import { Button } from '@/components/ui/button';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -8,7 +7,14 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
-import { cn } from '@/lib/utils';
+import { SidebarMenuButton, useSidebar } from '@/components/ui/sidebar';
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from '@/components/ui/tooltip';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { type SharedData } from '@/types';
 import { router, usePage } from '@inertiajs/react';
 import { Building2, Check, ChevronsUpDown, Search } from 'lucide-react';
@@ -18,10 +24,15 @@ interface OrganizationSwitcherProps {
     className?: string;
 }
 
-export function OrganizationSwitcher({ className }: OrganizationSwitcherProps = {}) {
+export function OrganizationSwitcher({
+    className,
+}: OrganizationSwitcherProps = {}) {
     const { auth } = usePage<SharedData>().props;
     const { organizations, currentOrganization } = auth;
     const [search, setSearch] = useState('');
+    const { state } = useSidebar();
+    const isMobile = useIsMobile();
+    const isCollapsed = state === 'collapsed';
 
     if (!organizations || organizations.length === 0) {
         return null;
@@ -35,93 +46,154 @@ export function OrganizationSwitcher({ className }: OrganizationSwitcherProps = 
     // Filter organizations based on search
     const filteredOrganizations = useMemo(() => {
         if (!search) return sortedOrganizations;
-        
+
         const searchLower = search.toLowerCase();
-        return sortedOrganizations.filter(org => 
-            org.name.toLowerCase().includes(searchLower) ||
-            org.type.toLowerCase().includes(searchLower)
+        return sortedOrganizations.filter(
+            (org) =>
+                org.name.toLowerCase().includes(searchLower) ||
+                org.type.toLowerCase().includes(searchLower),
         );
     }, [sortedOrganizations, search]);
 
     const handleSwitch = (organizationId: number, organizationSlug: string) => {
-        router.post(`/organization/${organizationId}/switch`, {}, {
-            preserveScroll: true,
-            preserveState: true,
-        });
+        router.post(
+            `/organization/${organizationId}/switch`,
+            {},
+            {
+                preserveScroll: true,
+                preserveState: true,
+            },
+        );
         setSearch(''); // Clear search after switching
     };
 
+    const dropdownContent = (
+        <DropdownMenuContent
+            className="w-[300px]"
+            align={isCollapsed ? 'start' : 'start'}
+            side={isCollapsed ? 'right' : 'bottom'}
+            sideOffset={isCollapsed ? 4 : 8}
+        >
+            <DropdownMenuLabel>Your Organizations</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+
+            {/* Search Input */}
+            <div className="px-2 py-2">
+                <div className="relative">
+                    <Search className="absolute top-2.5 left-2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                        placeholder="Search organizations..."
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        className="h-9 pl-8"
+                    />
+                </div>
+            </div>
+
+            <DropdownMenuSeparator />
+
+            {/* Organizations List */}
+            <div className="max-h-[300px] overflow-y-auto">
+                {filteredOrganizations.length === 0 ? (
+                    <div className="px-2 py-6 text-center text-sm text-muted-foreground">
+                        No organizations found
+                    </div>
+                ) : (
+                    filteredOrganizations.map((organization) => (
+                        <DropdownMenuItem
+                            key={organization.id}
+                            onClick={() =>
+                                handleSwitch(organization.id, organization.slug)
+                            }
+                            className="cursor-pointer"
+                        >
+                            <div className="flex w-full items-center justify-between gap-2">
+                                <div className="flex min-w-0 flex-1 items-center gap-2">
+                                    <Building2 className="h-4 w-4 shrink-0" />
+                                    <div className="flex min-w-0 flex-col">
+                                        <span className="truncate text-sm font-medium">
+                                            {organization.name}
+                                        </span>
+                                        <span className="text-xs text-muted-foreground capitalize">
+                                            {organization.type}
+                                        </span>
+                                    </div>
+                                </div>
+                                {currentOrganization?.id ===
+                                    organization.id && (
+                                    <Check className="h-4 w-4 shrink-0 text-primary" />
+                                )}
+                            </div>
+                        </DropdownMenuItem>
+                    ))
+                )}
+            </div>
+        </DropdownMenuContent>
+    );
+
+    // When sidebar is collapsed, show only icon with tooltip
+    if (isCollapsed) {
+        return (
+            <DropdownMenu>
+                <TooltipProvider delayDuration={0}>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <DropdownMenuTrigger asChild>
+                                <SidebarMenuButton
+                                    size="lg"
+                                    className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+                                >
+                                    <Building2 className="h-4 w-4" />
+                                    <span className="sr-only">
+                                        Switch Organization
+                                    </span>
+                                </SidebarMenuButton>
+                            </DropdownMenuTrigger>
+                        </TooltipTrigger>
+                        <TooltipContent
+                            side="right"
+                            className="flex items-center gap-2"
+                        >
+                            <span className="font-medium">
+                                {currentOrganization?.name}
+                            </span>
+                            <span className="text-xs text-muted-foreground capitalize">
+                                ({currentOrganization?.type})
+                            </span>
+                        </TooltipContent>
+                    </Tooltip>
+                </TooltipProvider>
+                {dropdownContent}
+            </DropdownMenu>
+        );
+    }
+
+    // When sidebar is expanded, show full button
     return (
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
-                <Button
-                    variant="outline"
-                    role="combobox"
-                    className={cn("h-9 w-[300px] justify-between", className)}
+                <SidebarMenuButton
+                    size="lg"
+                    className="w-full data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
                 >
-                    <div className="flex items-center gap-2 overflow-hidden">
+                    <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
                         <Building2 className="h-4 w-4 shrink-0" />
-                        <span className="truncate text-sm">
-                            {currentOrganization?.name ?? 'Select organization...'}
-                        </span>
-                    </div>
-                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-[300px]" align="start">
-                <DropdownMenuLabel>Your Organizations</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                
-                {/* Search Input */}
-                <div className="px-2 py-2">
-                    <div className="relative">
-                        <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                        <Input
-                            placeholder="Search organizations..."
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                            className="h-9 pl-8"
-                        />
-                    </div>
-                </div>
-                
-                <DropdownMenuSeparator />
-                
-                {/* Organizations List */}
-                <div className="max-h-[300px] overflow-y-auto">
-                    {filteredOrganizations.length === 0 ? (
-                        <div className="px-2 py-6 text-center text-sm text-muted-foreground">
-                            No organizations found
+                        <div className="flex min-w-0 flex-1 flex-col items-start">
+                            <span className="truncate text-sm font-medium">
+                                {currentOrganization?.name ??
+                                    'Select organization...'}
+                            </span>
+                            {currentOrganization && (
+                                <span className="text-xs text-muted-foreground capitalize">
+                                    {currentOrganization.type}
+                                </span>
+                            )}
                         </div>
-                    ) : (
-                        filteredOrganizations.map((organization) => (
-                            <DropdownMenuItem
-                                key={organization.id}
-                                onClick={() => handleSwitch(organization.id, organization.slug)}
-                                className="cursor-pointer"
-                            >
-                                <div className="flex w-full items-center justify-between gap-2">
-                                    <div className="flex min-w-0 flex-1 items-center gap-2">
-                                        <Building2 className="h-4 w-4 shrink-0" />
-                                        <div className="flex min-w-0 flex-col">
-                                            <span className="truncate text-sm font-medium">
-                                                {organization.name}
-                                            </span>
-                                            <span className="text-xs text-muted-foreground capitalize">
-                                                {organization.type}
-                                            </span>
-                                        </div>
-                                    </div>
-                                    {currentOrganization?.id === organization.id && (
-                                        <Check className="h-4 w-4 shrink-0 text-primary" />
-                                    )}
-                                </div>
-                            </DropdownMenuItem>
-                        ))
-                    )}
-                </div>
-            </DropdownMenuContent>
+                    </div>
+                    <ChevronsUpDown className="ml-auto h-4 w-4 shrink-0 opacity-50" />
+                </SidebarMenuButton>
+            </DropdownMenuTrigger>
+            {dropdownContent}
         </DropdownMenu>
     );
 }
-
