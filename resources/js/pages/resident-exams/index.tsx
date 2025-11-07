@@ -1,3 +1,4 @@
+import { ExamResultsDialog } from '@/components/exam-results-dialog';
 import HeadingSmall from '@/components/heading-small';
 import {
     AlertDialog,
@@ -58,6 +59,7 @@ export default function ResidentExams() {
         usePage<PageProps>().props;
 
     const [showStartDialog, setShowStartDialog] = useState(false);
+    const [showResultsDialog, setShowResultsDialog] = useState(false);
     const [selectedExam, setSelectedExam] = useState<Exam | null>(null);
     const [confirmText, setConfirmText] = useState('');
     const [actionType, setActionType] = useState<'start' | 'resume' | 'retake'>(
@@ -72,6 +74,18 @@ export default function ResidentExams() {
         setActionType(action);
         setConfirmText('');
         setShowStartDialog(true);
+    };
+
+    const handleViewResults = (exam: Exam) => {
+        setSelectedExam(exam);
+        setShowResultsDialog(true);
+    };
+
+    const handleRetakeFromResults = () => {
+        if (selectedExam) {
+            setShowResultsDialog(false);
+            handleExamAction(selectedExam, 'retake');
+        }
     };
 
     const confirmStartExam = () => {
@@ -212,27 +226,52 @@ export default function ResidentExams() {
                                                 </div>
                                             )}
 
-                                            <Button
-                                                className="w-full"
-                                                onClick={() =>
-                                                    handleExamAction(
-                                                        exam,
-                                                        exam.has_in_progress_attempt
-                                                            ? 'resume'
-                                                            : exam.attempt_count >
-                                                                0
-                                                              ? 'retake'
-                                                              : 'start',
-                                                    )
-                                                }
-                                            >
-                                                <Play className="mr-2 h-4 w-4" />
-                                                {exam.has_in_progress_attempt
-                                                    ? 'Resume Exam'
-                                                    : exam.attempt_count > 0
-                                                      ? 'Retake Exam'
-                                                      : 'Start Exam'}
-                                            </Button>
+                                            {/* Show both View Results and Start/Retake if exam has been attempted */}
+                                            {exam.attempt_count > 0 &&
+                                            !exam.has_in_progress_attempt ? (
+                                                <div className="flex gap-2">
+                                                    <Button
+                                                        variant="outline"
+                                                        className="flex-1"
+                                                        onClick={() =>
+                                                            handleViewResults(
+                                                                exam,
+                                                            )
+                                                        }
+                                                    >
+                                                        View Results
+                                                    </Button>
+                                                    <Button
+                                                        className="flex-1"
+                                                        onClick={() =>
+                                                            handleExamAction(
+                                                                exam,
+                                                                'retake',
+                                                            )
+                                                        }
+                                                    >
+                                                        <Play className="mr-2 h-4 w-4" />
+                                                        Retake
+                                                    </Button>
+                                                </div>
+                                            ) : (
+                                                <Button
+                                                    className="w-full"
+                                                    onClick={() =>
+                                                        handleExamAction(
+                                                            exam,
+                                                            exam.has_in_progress_attempt
+                                                                ? 'resume'
+                                                                : 'start',
+                                                        )
+                                                    }
+                                                >
+                                                    <Play className="mr-2 h-4 w-4" />
+                                                    {exam.has_in_progress_attempt
+                                                        ? 'Resume Exam'
+                                                        : 'Start Exam'}
+                                                </Button>
+                                            )}
                                         </div>
                                     </CardContent>
                                 </Card>
@@ -422,6 +461,18 @@ export default function ResidentExams() {
                             ))}
                         </div>
                     </div>
+                )}
+
+                {/* Results Dialog */}
+                {selectedExam && (
+                    <ExamResultsDialog
+                        open={showResultsDialog}
+                        onOpenChange={setShowResultsDialog}
+                        examId={selectedExam.id}
+                        examType={selectedExam.type}
+                        examTitle={selectedExam.title}
+                        onRetake={handleRetakeFromResults}
+                    />
                 )}
 
                 {/* Confirmation Dialog */}

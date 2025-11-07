@@ -19,8 +19,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Resident Exams (for residents to view and take exams)
     Route::get('resident-exams', [App\Http\Controllers\ResidentExamController::class, 'index'])
         ->name('resident-exams.index');
-    Route::get('exams/{type}/{exam}/take', [App\Http\Controllers\ResidentExamController::class, 'take'])
+    Route::get('exams/{type}/{id}/take', [App\Http\Controllers\ResidentExamController::class, 'take'])
         ->name('exams.take');
+    Route::get('exams/{type}/{id}/results', [App\Http\Controllers\ResidentExamController::class, 'results'])
+        ->name('exams.results');
+    Route::get('exams/{type}/{id}/results-data', [App\Http\Controllers\ResidentExamController::class, 'resultsApi'])
+        ->name('exams.results.api');
     Route::post('exams/{type}/{attempt}/save-answer', [App\Http\Controllers\ResidentExamController::class, 'saveAnswer'])
         ->name('exams.save-answer');
     Route::post('exams/{type}/{attempt}/submit', [App\Http\Controllers\ResidentExamController::class, 'submit'])
@@ -169,4 +173,4 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('organization.switch');
 });
 
-require __DIR__.'/settings.php';
+require __DIR__ . '/settings.php';

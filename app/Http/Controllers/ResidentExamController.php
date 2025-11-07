@@ -336,7 +336,10 @@ class ResidentExamController extends Controller
 
             // Calculate final score and mark as completed
             $attemptModel->calculateScore();
-            $attemptModel->update(['submitted_at' => now()]);
+            $attemptModel->update([
+                'submitted_at' => now(),
+                'status' => 'completed',
+            ]);
 
             return redirect('/resident-exams')->with('success', 'Exam submitted successfully! Score: '.$attemptModel->percentage.'%');
         } elseif ($type === 'inservice') {
@@ -359,9 +362,271 @@ class ResidentExamController extends Controller
 
             // Calculate final score and mark as completed
             $attemptModel->calculateScore();
-            $attemptModel->update(['submitted_at' => now()]);
+            $attemptModel->update([
+                'submitted_at' => now(),
+                'status' => 'completed',
+            ]);
 
             return redirect('/resident-exams')->with('success', 'Exam submitted successfully! Score: '.$attemptModel->percentage.'%');
+        }
+
+        abort(404);
+    }
+
+    /**
+     * Display exam results for a specific exam.
+     */
+    public function results(Request $request, string $type, int $id): Response
+    {
+        $user = $request->user();
+
+        if ($type === 'institution') {
+            $assessment = InstitutionAssessment::findOrFail($id);
+
+            // Verify user has access
+            if ($assessment->organization_id !== $user->current_organization_id) {
+                abort(403, 'You do not have access to this exam.');
+            }
+
+            // Get the user's most recent completed attempt for THIS exam
+            $attempt = $assessment->attempts()
+                ->where('user_id', $user->id)
+                ->whereIn('status', ['completed', 'graded'])
+                ->orderBy('submitted_at', 'desc')
+                ->first();
+
+            if (! $attempt) {
+                return redirect('/resident-exams')->with('error', 'No completed attempts found for this exam.');
+            }
+
+            // Get answers with their questions to show in the order they were answered
+            $answers = $attempt->answers()
+                ->with(['question.choices' => fn ($query) => $query->orderBy('order')])
+                ->orderBy('id')
+                ->get();
+
+            // Build results data
+            $questionsData = $answers->map(function ($answer) {
+                $question = $answer->question;
+                $selectedChoiceIds = [];
+
+                if (isset($answer->answer_data['choice_id'])) {
+                    $selectedChoiceIds = [$answer->answer_data['choice_id']];
+                } elseif (isset($answer->answer_data['choice_ids'])) {
+                    $selectedChoiceIds = $answer->answer_data['choice_ids'];
+                }
+
+                return [
+                    'id' => $question->id,
+                    'question_type' => $question->question_type,
+                    'question_text' => $question->question_text,
+                    'points' => $question->points,
+                    'explanation' => $question->explanation,
+                    'image_url' => $question->image_url,
+                    'order' => $question->order,
+                    'choices' => $question->choices->map(fn ($choice) => [
+                        'id' => $choice->id,
+                        'choice_text' => $choice->choice_text,
+                        'is_correct' => $choice->is_correct,
+                        'order' => $choice->order,
+                    ]),
+                    'selected_choice_ids' => $selectedChoiceIds,
+                    'is_correct' => $answer->is_correct,
+                    'points_earned' => $answer->is_correct ? $question->points : 0,
+                ];
+            });
+
+            return Inertia::render('resident-exams/results', [
+                'exam' => [
+                    'id' => $assessment->id,
+                    'title' => $assessment->title,
+                    'description' => $assessment->description,
+                    'type' => 'institution',
+                    'total_points' => $assessment->total_points,
+                    'passing_score' => $assessment->passing_score,
+                    'questions' => $questionsData,
+                ],
+                'attempt' => [
+                    'id' => $attempt->id,
+                    'score' => $attempt->score,
+                    'percentage' => $attempt->percentage,
+                    'started_at' => $attempt->started_at?->format('M d, Y h:i A'),
+                    'submitted_at' => $attempt->submitted_at?->format('M d, Y h:i A'),
+                    'time_taken_minutes' => $attempt->started_at && $attempt->submitted_at
+                        ? $attempt->started_at->diffInMinutes($attempt->submitted_at)
+                        : null,
+                ],
+            ]);
+        } elseif ($type === 'inservice') {
+            $assessment = NationalAssessment::findOrFail($id);
+
+            // Get the user's best completed attempt
+            $attempt = $assessment->attempts()
+                ->where('user_id', $user->id)
+                ->whereIn('status', ['completed', 'graded'])
+                ->orderBy('score', 'desc')
+                ->orderBy('submitted_at', 'desc')
+                ->first();
+
+            if (! $attempt) {
+                return redirect('/resident-exams')->with('error', 'No completed attempts found for this exam.');
+            }
+
+            // Load questions with choices and answers
+            $questions = $assessment->questions()
+                ->with(['choices' => fn ($query) => $query->orderBy('order')])
+                ->orderBy('order')
+                ->get();
+
+            // Load user's answers for this attempt
+            $answers = $attempt->answers()
+                ->with('question.choices')
+                ->get()
+                ->keyBy('question_id');
+
+            // Build results data
+            $questionsData = $questions->map(function ($question) use ($answers) {
+                $answer = $answers->get($question->id);
+                $selectedChoiceIds = [];
+                $isCorrect = false;
+
+                if ($answer) {
+                    if (isset($answer->answer_data['choice_id'])) {
+                        $selectedChoiceIds = [$answer->answer_data['choice_id']];
+                    } elseif (isset($answer->answer_data['choice_ids'])) {
+                        $selectedChoiceIds = $answer->answer_data['choice_ids'];
+                    }
+                    $isCorrect = $answer->is_correct;
+                }
+
+                return [
+                    'id' => $question->id,
+                    'question_type' => $question->question_type,
+                    'question_text' => $question->question_text,
+                    'points' => $question->points,
+                    'explanation' => $question->explanation,
+                    'image_url' => $question->image_url,
+                    'order' => $question->order,
+                    'choices' => $question->choices->map(fn ($choice) => [
+                        'id' => $choice->id,
+                        'choice_text' => $choice->choice_text,
+                        'is_correct' => $choice->is_correct,
+                        'order' => $choice->order,
+                    ]),
+                    'selected_choice_ids' => $selectedChoiceIds,
+                    'is_correct' => $isCorrect,
+                    'points_earned' => $isCorrect ? $question->points : 0,
+                ];
+            });
+
+            return Inertia::render('resident-exams/results', [
+                'exam' => [
+                    'id' => $assessment->id,
+                    'title' => $assessment->title,
+                    'description' => $assessment->description,
+                    'type' => 'inservice',
+                    'total_points' => $assessment->total_points,
+                    'passing_score' => $assessment->passing_score,
+                    'questions' => $questionsData,
+                ],
+                'attempt' => [
+                    'id' => $attempt->id,
+                    'score' => $attempt->score,
+                    'percentage' => $attempt->percentage,
+                    'started_at' => $attempt->started_at?->format('M d, Y h:i A'),
+                    'submitted_at' => $attempt->submitted_at?->format('M d, Y h:i A'),
+                    'time_taken_minutes' => $attempt->started_at && $attempt->submitted_at
+                        ? $attempt->started_at->diffInMinutes($attempt->submitted_at)
+                        : null,
+                ],
+            ]);
+        }
+
+        abort(404);
+    }
+
+    /**
+     * Get exam results as JSON for API calls.
+     */
+    public function resultsApi(Request $request, string $type, int $id): \Illuminate\Http\JsonResponse
+    {
+        $user = $request->user();
+
+        if ($type === 'institution') {
+            $assessment = InstitutionAssessment::findOrFail($id);
+
+            if ($assessment->organization_id !== $user->current_organization_id) {
+                abort(403, 'You do not have access to this exam.');
+            }
+
+            // Get the user's most recent completed attempt for THIS exam
+            $attempt = $assessment->attempts()
+                ->where('user_id', $user->id)
+                ->whereIn('status', ['completed', 'graded'])
+                ->orderBy('submitted_at', 'desc')
+                ->first();
+
+            if (! $attempt) {
+                return response()->json(['error' => 'No completed attempts found'], 404);
+            }
+
+            // Get answers with their questions to show in the order they were answered
+            $answers = $attempt->answers()
+                ->with(['question.choices' => fn ($query) => $query->orderBy('order')])
+                ->orderBy('id')
+                ->get();
+
+            $questionsData = $answers->map(function ($answer) {
+                $question = $answer->question;
+                $selectedChoiceIds = [];
+
+                if (isset($answer->answer_data['choice_id'])) {
+                    $selectedChoiceIds = [$answer->answer_data['choice_id']];
+                } elseif (isset($answer->answer_data['choice_ids'])) {
+                    $selectedChoiceIds = $answer->answer_data['choice_ids'];
+                }
+
+                return [
+                    'id' => $question->id,
+                    'question_type' => $question->question_type,
+                    'question_text' => $question->question_text,
+                    'points' => $question->points,
+                    'explanation' => $question->explanation,
+                    'image_url' => $question->image_url,
+                    'order' => $question->order,
+                    'choices' => $question->choices->map(fn ($choice) => [
+                        'id' => $choice->id,
+                        'choice_text' => $choice->choice_text,
+                        'is_correct' => $choice->is_correct,
+                        'order' => $choice->order,
+                    ]),
+                    'selected_choice_ids' => $selectedChoiceIds,
+                    'is_correct' => $answer->is_correct,
+                    'points_earned' => $answer->is_correct ? $question->points : 0,
+                ];
+            });
+
+            return response()->json([
+                'exam' => [
+                    'id' => $assessment->id,
+                    'title' => $assessment->title,
+                    'description' => $assessment->description,
+                    'type' => 'institution',
+                    'total_points' => $assessment->total_points,
+                    'passing_score' => $assessment->passing_score,
+                    'questions' => $questionsData,
+                ],
+                'attempt' => [
+                    'id' => $attempt->id,
+                    'score' => $attempt->score,
+                    'percentage' => $attempt->percentage,
+                    'started_at' => $attempt->started_at?->format('M d, Y h:i A'),
+                    'submitted_at' => $attempt->submitted_at?->format('M d, Y h:i A'),
+                    'time_taken_minutes' => $attempt->started_at && $attempt->submitted_at
+                        ? $attempt->started_at->diffInMinutes($attempt->submitted_at)
+                        : null,
+                ],
+            ]);
         }
 
         abort(404);
