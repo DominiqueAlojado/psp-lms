@@ -36,6 +36,7 @@ class LongFormQuestionsExamSeeder extends Seeder
             'organization_id' => $organization->id,
             'title' => 'Complex Clinical Scenarios and Critical Thinking Assessment',
             'description' => 'This comprehensive assessment evaluates your ability to analyze complex clinical situations, apply critical thinking skills, and make appropriate clinical decisions in challenging healthcare scenarios. Each question presents detailed patient cases requiring careful consideration of multiple factors.',
+            'exam_category' => 'Final Exam',
             'duration_minutes' => 120,
             'total_points' => 20,
             'passing_score' => 75,

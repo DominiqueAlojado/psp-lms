@@ -25,6 +25,7 @@ interface Exam {
     id: number;
     title: string;
     description: string | null;
+    exam_category: string | null;
     questions_count: number;
     total_points: number;
     passing_score: number;
@@ -111,9 +112,19 @@ export default function Drafts() {
                                 >
                                     <div className="flex items-start justify-between">
                                         <div className="flex-1">
-                                            <h3 className="font-semibold">
-                                                {exam.title}
-                                            </h3>
+                                            <div className="flex items-center gap-2">
+                                                <h3 className="font-semibold">
+                                                    {exam.title}
+                                                </h3>
+                                                {exam.exam_category && (
+                                                    <Badge
+                                                        variant="outline"
+                                                        className="text-xs"
+                                                    >
+                                                        {exam.exam_category}
+                                                    </Badge>
+                                                )}
+                                            </div>
                                             {exam.description && (
                                                 <p className="mt-1 text-sm text-muted-foreground">
                                                     {exam.description}
@@ -145,7 +156,9 @@ export default function Drafts() {
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-2">
-                                            <Badge variant="secondary">Draft</Badge>
+                                            <Badge variant="secondary">
+                                                Draft
+                                            </Badge>
                                             <TooltipProvider>
                                                 <Tooltip>
                                                     <TooltipTrigger asChild>
@@ -260,4 +273,3 @@ export default function Drafts() {
         </AppLayout>
     );
 }
-

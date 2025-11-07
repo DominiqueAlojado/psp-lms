@@ -9,9 +9,25 @@ import {
 } from '@/components/ui/collapsible';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import AppLayout from '@/layouts/app-layout';
-import { Head, router, usePage } from '@inertiajs/react';
-import { Check, ChevronDown, ChevronRight, Save, Search, Trash2, Upload, X } from 'lucide-react';
+import { Head, router } from '@inertiajs/react';
+import {
+    Check,
+    ChevronDown,
+    ChevronRight,
+    Save,
+    Search,
+    Trash2,
+    Upload,
+    X,
+} from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -43,16 +59,39 @@ interface PageProps {
     assessmentId?: number;
 }
 
-export default function CreateAssessment({ assessmentId: propAssessmentId }: PageProps) {
+// Define exam categories
+const EXAM_CATEGORIES = [
+    'Long Quiz',
+    'Short Quiz',
+    'Practical Exam',
+    'Laboratory Exam',
+    'Midterm Exam',
+    'Final Exam',
+    'Preliminary Exam',
+    'Diagnostic Exam',
+    'Pre-test',
+    'Post-test',
+    'Mock Exam',
+    'Other',
+] as const;
+
+export default function CreateAssessment({
+    assessmentId: propAssessmentId,
+}: PageProps) {
     const [title, setTitle] = useState('');
+    const [examCategory, setExamCategory] = useState('');
     const [passingScore, setPassingScore] = useState(0);
     const [duration, setDuration] = useState<number | ''>('');
     const [questions, setQuestions] = useState<DraftQuestion[]>([]);
-    const [openQuestions, setOpenQuestions] = useState<Record<number, boolean>>({});
+    const [openQuestions, setOpenQuestions] = useState<Record<number, boolean>>(
+        {},
+    );
     const [savingQuestion, setSavingQuestion] = useState<number | null>(null);
     const [topics, setTopics] = useState<Topic[]>([]);
     const [questionSearchQuery, setQuestionSearchQuery] = useState('');
-    const [deletingQuestionIndex, setDeletingQuestionIndex] = useState<number | null>(null);
+    const [deletingQuestionIndex, setDeletingQuestionIndex] = useState<
+        number | null
+    >(null);
 
     // Get assessment ID from props (passed from backend)
     const assessmentId = propAssessmentId || null;
@@ -95,13 +134,18 @@ export default function CreateAssessment({ assessmentId: propAssessmentId }: Pag
         // Auto-open the newly added question
         const newIndex = questions.length;
         setOpenQuestions((prev) => ({ ...prev, [newIndex]: true }));
-        
+
         // Scroll to the new question after a brief delay
         setTimeout(() => {
-            const questionElements = document.querySelectorAll('[data-question-index]');
+            const questionElements = document.querySelectorAll(
+                '[data-question-index]',
+            );
             const newQuestionElement = questionElements[newIndex];
             if (newQuestionElement) {
-                newQuestionElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                newQuestionElement.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'center',
+                });
             }
         }, 100);
     };
@@ -163,6 +207,7 @@ export default function CreateAssessment({ assessmentId: propAssessmentId }: Pag
             '/assessments',
             {
                 title,
+                exam_category: examCategory || null,
                 passing_score: passingScore,
                 duration_minutes: duration || null,
                 randomize_questions: false,
@@ -223,7 +268,7 @@ export default function CreateAssessment({ assessmentId: propAssessmentId }: Pag
                     toast.error('Failed to save question');
                     setSavingQuestion(null);
                 },
-            }
+            },
         );
     };
 
@@ -233,10 +278,10 @@ export default function CreateAssessment({ assessmentId: propAssessmentId }: Pag
 
     const confirmDeleteQuestion = () => {
         if (deletingQuestionIndex === null) return;
-        
+
         const qi = deletingQuestionIndex;
         const question = questions[qi];
-        
+
         if (question.id) {
             // Delete from database
             router.delete(
@@ -253,7 +298,7 @@ export default function CreateAssessment({ assessmentId: propAssessmentId }: Pag
                         toast.error('Failed to delete question');
                     },
                     onFinish: () => setDeletingQuestionIndex(null),
-                }
+                },
             );
         } else {
             // Just remove from local state (not saved yet)
@@ -266,17 +311,21 @@ export default function CreateAssessment({ assessmentId: propAssessmentId }: Pag
     // Filter questions based on search query
     const filteredQuestions = questions.filter((q, qi) => {
         if (!questionSearchQuery) return true;
-        
+
         const query = questionSearchQuery.toLowerCase();
         const questionText = q.question_text?.toLowerCase() || '';
-        const choicesText = q.choices?.map(c => c.choice_text.toLowerCase()).join(' ') || '';
-        const topicName = topics.find(t => t.id === q.topic_id)?.name.toLowerCase() || '';
+        const choicesText =
+            q.choices?.map((c) => c.choice_text.toLowerCase()).join(' ') || '';
+        const topicName =
+            topics.find((t) => t.id === q.topic_id)?.name.toLowerCase() || '';
         const questionNumber = `#${qi + 1}`;
-        
-        return questionText.includes(query) || 
-               choicesText.includes(query) || 
-               topicName.includes(query) ||
-               questionNumber.includes(query);
+
+        return (
+            questionText.includes(query) ||
+            choicesText.includes(query) ||
+            topicName.includes(query) ||
+            questionNumber.includes(query)
+        );
     });
 
     return (
@@ -290,7 +339,9 @@ export default function CreateAssessment({ assessmentId: propAssessmentId }: Pag
             <div className="space-y-8 p-6">
                 {/* Step 1: Exam Metadata */}
                 <div className="space-y-4 rounded-lg border p-6">
-                    <h3 className="text-lg font-semibold">Step 1: Exam Details</h3>
+                    <h3 className="text-lg font-semibold">
+                        Step 1: Exam Details
+                    </h3>
                     <div className="space-y-2">
                         <Label>Title</Label>
                         <Input
@@ -300,6 +351,25 @@ export default function CreateAssessment({ assessmentId: propAssessmentId }: Pag
                             disabled={!!assessmentId}
                         />
                     </div>
+                    <div className="space-y-2">
+                        <Label>Exam Category</Label>
+                        <Select
+                            value={examCategory}
+                            onValueChange={setExamCategory}
+                            disabled={!!assessmentId}
+                        >
+                            <SelectTrigger>
+                                <SelectValue placeholder="Select category (optional)" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {EXAM_CATEGORIES.map((category) => (
+                                    <SelectItem key={category} value={category}>
+                                        {category}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                         <div className="space-y-2">
                             <Label>Passing Score</Label>
@@ -307,7 +377,9 @@ export default function CreateAssessment({ assessmentId: propAssessmentId }: Pag
                                 type="number"
                                 value={passingScore}
                                 onChange={(e) =>
-                                    setPassingScore(parseInt(e.target.value || '0'))
+                                    setPassingScore(
+                                        parseInt(e.target.value || '0'),
+                                    )
                                 }
                                 min={0}
                                 disabled={!!assessmentId}
@@ -343,366 +415,582 @@ export default function CreateAssessment({ assessmentId: propAssessmentId }: Pag
                 {/* Step 2: Questions (only shown after exam is created) */}
                 {assessmentId && (
                     <div className="space-y-4">
-                    <div className="flex items-center justify-between gap-2">
-                        <div className="flex gap-2">
-                            <Button
-                                variant="outline"
-                                onClick={() => addQuestion('multiple_choice')}
-                            >
-                                Add Multiple Choice
-                            </Button>
-                            <Button
-                                variant="outline"
-                                onClick={() => addQuestion('multiple_select')}
-                            >
-                                Add Multiple Select
-                            </Button>
-                            <Button
-                                variant="outline"
-                                onClick={() => addQuestion('true_false')}
-                            >
-                                Add True/False
-                            </Button>
-                        </div>
-                        {questions.length > 0 && (
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => {
-                                    const allOpen = Object.values(openQuestions).every(Boolean);
-                                    const newState: Record<number, boolean> = {};
-                                    questions.forEach((_, i) => {
-                                        newState[i] = !allOpen;
-                                    });
-                                    setOpenQuestions(newState);
-                                }}
-                            >
-                                {Object.values(openQuestions).every(Boolean) ? 'Collapse All' : 'Expand All'}
-                            </Button>
-                        )}
-                    </div>
-
-                    {/* Search Questions */}
-                    {questions.length > 0 && (
-                        <div className="relative">
-                            <div className="pointer-events-none absolute left-3 top-3 h-4 w-4">
-                                <Search className="h-4 w-4 text-muted-foreground" />
+                        <div className="flex items-center justify-between gap-2">
+                            <div className="flex gap-2">
+                                <Button
+                                    variant="outline"
+                                    onClick={() =>
+                                        addQuestion('multiple_choice')
+                                    }
+                                >
+                                    Add Multiple Choice
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    onClick={() =>
+                                        addQuestion('multiple_select')
+                                    }
+                                >
+                                    Add Multiple Select
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    onClick={() => addQuestion('true_false')}
+                                >
+                                    Add True/False
+                                </Button>
                             </div>
-                            <Input
-                                type="text"
-                                placeholder="Search questions by text, choices, topic, or number..."
-                                value={questionSearchQuery}
-                                onChange={(e) => setQuestionSearchQuery(e.target.value)}
-                                className="pl-10"
-                            />
-                            {questionSearchQuery && (
-                                <div className="mt-2 text-sm text-muted-foreground">
-                                    Showing {filteredQuestions.length} of {questions.length} questions
-                                </div>
-                            )}
-                        </div>
-                    )}
-
-                    <div className="space-y-6">
-                        {filteredQuestions.length === 0 && questionSearchQuery ? (
-                            <div className="rounded-lg border p-6 text-center">
-                                <Search className="mx-auto h-10 w-10 text-muted-foreground" />
-                                <p className="mt-2 text-sm text-muted-foreground">
-                                    No questions found matching "{questionSearchQuery}"
-                                </p>
+                            {questions.length > 0 && (
                                 <Button
                                     variant="ghost"
                                     size="sm"
-                                    className="mt-2"
-                                    onClick={() => setQuestionSearchQuery('')}
-                                >
-                                    Clear search
-                                </Button>
-                            </div>
-                        ) : (
-                            filteredQuestions.map((q, filteredIndex) => {
-                                // Get the original index in the full questions array
-                                const qi = questions.indexOf(q);
-                                return (
-                            <Collapsible
-                                key={qi}
-                                data-question-index={qi}
-                                open={openQuestions[qi] ?? false}
-                                onOpenChange={() => toggleQuestion(qi)}
-                                className="rounded border"
-                            >
-                                <div className="flex items-center justify-between border-b bg-muted/50 p-3">
-                                    <CollapsibleTrigger className="flex flex-1 items-center gap-2 text-left">
-                                        {openQuestions[qi] ? (
-                                            <ChevronDown className="h-4 w-4" />
-                                        ) : (
-                                            <ChevronRight className="h-4 w-4" />
-                                        )}
-                                        <Label className="cursor-pointer font-semibold">
-                                            Question #{qi + 1} (
-                                            {q.question_type.replace('_', ' ')})
-                                            {q.id && (
-                                                <span className="ml-2 text-xs text-green-600 dark:text-green-400">
-                                                    <Check className="inline h-3 w-3" /> Saved
-                                                </span>
-                                            )}
-                                            {q.question_text && (
-                                                <span className="ml-2 font-normal text-muted-foreground">
-                                                    - {q.question_text.substring(0, 50).replace(/<[^>]*>/g, '')}
-                                                    {q.question_text.length > 50 ? '...' : ''}
-                                                </span>
-                                            )}
-                                        </Label>
-                                    </CollapsibleTrigger>
-                                    <div className="flex items-center gap-1">
-                                        <Button
-                                            type="button"
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() => saveOneQuestion(qi)}
-                                            disabled={savingQuestion === qi}
-                                        >
-                                            <Save className="h-4 w-4 text-green-600" />
-                                        </Button>
-                                        <Button
-                                            type="button"
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() => deleteOneQuestion(qi)}
-                                        >
-                                            <Trash2 className="h-4 w-4 text-destructive" />
-                                        </Button>
-                                    </div>
-                                </div>
-                                <CollapsibleContent className="p-4">
-                                <div className="grid gap-4">
-                                    {/* Topic Selection */}
-                                    <TopicSelector
-                                        value={q.topic_id}
-                                        onChange={(topicId) => {
-                                            setQuestions((prev) => {
-                                                const next = [...prev];
-                                                next[qi] = {
-                                                    ...next[qi],
-                                                    topic_id: topicId,
-                                                };
-                                                return next;
-                                            });
-                                        }}
-                                        preloadedTopics={topics}
-                                        onTopicsUpdated={setTopics}
-                                    />
-
-                                    {/* Question Text */}
-                                    <div className="grid gap-2">
-                                        <Label>Question Text</Label>
-                                        <RichTextEditor
-                                            value={q.question_text}
-                                            onChange={(v) => {
-                                                setQuestions((prev) => {
-                                                    const next = [...prev];
-                                                    next[qi] = {
-                                                        ...next[qi],
-                                                        question_text: v,
-                                                    };
-                                                    return next;
-                                                });
-                                            }}
-                                            placeholder="Type the question"
-                                        />
-                                    </div>
-                                </div>
-                                <div className="mt-3 space-y-3">
-                                    <Label>Question Image (Optional)</Label>
-                                    {q.image_url ? (
-                                        <div className="relative flex">
-                                            <img
-                                                src={q.image_url}
-                                                alt="Question"
-                                                className="h-auto max-h-96 w-full max-w-2xl rounded border object-contain"
-                                            />
-                                            <Button
-                                                type="button"
-                                                variant="destructive"
-                                                size="sm"
-                                                className="absolute right-2 top-2"
-                                                onClick={() => removeImage(qi)}
-                                            >
-                                                <X className="h-4 w-4" />
-                                            </Button>
-                                        </div>
-                                    ) : (
-                                        <div className="flex items-center gap-2">
-                                            <Input
-                                                type="file"
-                                                accept="image/*"
-                                                onChange={(e) => {
-                                                    const file =
-                                                        e.target.files?.[0];
-                                                    if (file) {
-                                                        handleImageUpload(
-                                                            qi,
-                                                            file,
-                                                        );
-                                                    }
-                                                }}
-                                                className="max-w-xs"
-                                            />
-                                            <Upload className="h-4 w-4 text-muted-foreground" />
-                                        </div>
-                                    )}
-                                </div>
-                                <div className="mt-3 grid max-w-xs gap-2">
-                                    <Label>Points</Label>
-                                    <Input
-                                        type="number"
-                                        value={q.points}
-                                        min={1}
-                                        onChange={(e) => {
-                                            const v = parseInt(
-                                                e.target.value || '1',
+                                    onClick={() => {
+                                        const allOpen =
+                                            Object.values(openQuestions).every(
+                                                Boolean,
                                             );
-                                            setQuestions((prev) => {
-                                                const next = [...prev];
-                                                next[qi] = {
-                                                    ...next[qi],
-                                                    points: v,
-                                                };
-                                                return next;
-                                            });
-                                        }}
-                                    />
-                                </div>
+                                        const newState: Record<
+                                            number,
+                                            boolean
+                                        > = {};
+                                        questions.forEach((_, i) => {
+                                            newState[i] = !allOpen;
+                                        });
+                                        setOpenQuestions(newState);
+                                    }}
+                                >
+                                    {Object.values(openQuestions).every(Boolean)
+                                        ? 'Collapse All'
+                                        : 'Expand All'}
+                                </Button>
+                            )}
+                        </div>
 
-                                {(q.question_type === 'multiple_choice' ||
-                                    q.question_type === 'multiple_select') && (
-                                    <div className="mt-4 space-y-2">
-                                        <Label>Choices (Choice #1 is the correct answer)</Label>
-                                        {(q.choices || []).map((c, ci) => (
-                                            <div
-                                                key={ci}
-                                                className="flex items-center gap-2"
-                                            >
-                                                <div className="flex w-full items-center gap-2">
-                                                    <span className={`min-w-[80px] text-sm font-medium ${ci === 0 ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'}`}>
-                                                        Choice #{ci + 1}{ci === 0 ? ' ✓' : ''}
-                                                    </span>
-                                                    <Input
-                                                        value={c.choice_text}
-                                                        onChange={(e) => {
-                                                            setQuestions((prev) => {
-                                                                const next = [...prev];
-                                                                const choices = [...(next[qi].choices || [])];
-                                                                choices[ci] = {
-                                                                    ...choices[ci],
-                                                                    choice_text: e.target.value,
-                                                                    is_correct: ci === 0,
-                                                                };
-                                                                next[qi] = { ...next[qi], choices };
-                                                                return next;
-                                                            });
-                                                        }}
-                                                        placeholder={`Enter choice ${ci + 1}`}
-                                                        className={ci === 0 ? 'border-green-500' : ''}
-                                                    />
+                        {/* Search Questions */}
+                        {questions.length > 0 && (
+                            <div className="relative">
+                                <div className="pointer-events-none absolute top-3 left-3 h-4 w-4">
+                                    <Search className="h-4 w-4 text-muted-foreground" />
+                                </div>
+                                <Input
+                                    type="text"
+                                    placeholder="Search questions by text, choices, topic, or number..."
+                                    value={questionSearchQuery}
+                                    onChange={(e) =>
+                                        setQuestionSearchQuery(e.target.value)
+                                    }
+                                    className="pl-10"
+                                />
+                                {questionSearchQuery && (
+                                    <div className="mt-2 text-sm text-muted-foreground">
+                                        Showing {filteredQuestions.length} of{' '}
+                                        {questions.length} questions
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        <div className="space-y-6">
+                            {filteredQuestions.length === 0 &&
+                            questionSearchQuery ? (
+                                <div className="rounded-lg border p-6 text-center">
+                                    <Search className="mx-auto h-10 w-10 text-muted-foreground" />
+                                    <p className="mt-2 text-sm text-muted-foreground">
+                                        No questions found matching "
+                                        {questionSearchQuery}"
+                                    </p>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="mt-2"
+                                        onClick={() =>
+                                            setQuestionSearchQuery('')
+                                        }
+                                    >
+                                        Clear search
+                                    </Button>
+                                </div>
+                            ) : (
+                                filteredQuestions.map((q, filteredIndex) => {
+                                    // Get the original index in the full questions array
+                                    const qi = questions.indexOf(q);
+                                    return (
+                                        <Collapsible
+                                            key={qi}
+                                            data-question-index={qi}
+                                            open={openQuestions[qi] ?? false}
+                                            onOpenChange={() =>
+                                                toggleQuestion(qi)
+                                            }
+                                            className="rounded border"
+                                        >
+                                            <div className="flex items-center justify-between border-b bg-muted/50 p-3">
+                                                <CollapsibleTrigger className="flex flex-1 items-center gap-2 text-left">
+                                                    {openQuestions[qi] ? (
+                                                        <ChevronDown className="h-4 w-4" />
+                                                    ) : (
+                                                        <ChevronRight className="h-4 w-4" />
+                                                    )}
+                                                    <Label className="cursor-pointer font-semibold">
+                                                        Question #{qi + 1} (
+                                                        {q.question_type.replace(
+                                                            '_',
+                                                            ' ',
+                                                        )}
+                                                        )
+                                                        {q.id && (
+                                                            <span className="ml-2 text-xs text-green-600 dark:text-green-400">
+                                                                <Check className="inline h-3 w-3" />{' '}
+                                                                Saved
+                                                            </span>
+                                                        )}
+                                                        {q.question_text && (
+                                                            <span className="ml-2 font-normal text-muted-foreground">
+                                                                -{' '}
+                                                                {q.question_text
+                                                                    .substring(
+                                                                        0,
+                                                                        50,
+                                                                    )
+                                                                    .replace(
+                                                                        /<[^>]*>/g,
+                                                                        '',
+                                                                    )}
+                                                                {q.question_text
+                                                                    .length > 50
+                                                                    ? '...'
+                                                                    : ''}
+                                                            </span>
+                                                        )}
+                                                    </Label>
+                                                </CollapsibleTrigger>
+                                                <div className="flex items-center gap-1">
+                                                    <Button
+                                                        type="button"
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        onClick={() =>
+                                                            saveOneQuestion(qi)
+                                                        }
+                                                        disabled={
+                                                            savingQuestion ===
+                                                            qi
+                                                        }
+                                                    >
+                                                        <Save className="h-4 w-4 text-green-600" />
+                                                    </Button>
+                                                    <Button
+                                                        type="button"
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        onClick={() =>
+                                                            deleteOneQuestion(
+                                                                qi,
+                                                            )
+                                                        }
+                                                    >
+                                                        <Trash2 className="h-4 w-4 text-destructive" />
+                                                    </Button>
                                                 </div>
                                             </div>
-                                        ))}
-                                        {(q.choices?.length || 0) < 4 && (
-                                            <div className="flex gap-2">
-                                                <Button
-                                                    variant="ghost"
-                                                    onClick={() =>
-                                                        setQuestions((prev) => {
-                                                            const next = [...prev];
-                                                            const choices = [
-                                                                ...(next[qi]
-                                                                    .choices || []),
-                                                            ];
-                                                            if (choices.length < 4) {
-                                                                choices.push({
-                                                                    choice_text: '',
-                                                                    is_correct: false,
-                                                                });
-                                                            }
-                                                            next[qi] = {
-                                                                ...next[qi],
-                                                                choices,
-                                                            };
-                                                            return next;
-                                                        })
-                                                    }
-                                                >
-                                                    Add Choice
-                                                </Button>
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
+                                            <CollapsibleContent className="p-4">
+                                                <div className="grid gap-4">
+                                                    {/* Topic Selection */}
+                                                    <TopicSelector
+                                                        value={q.topic_id}
+                                                        onChange={(topicId) => {
+                                                            setQuestions(
+                                                                (prev) => {
+                                                                    const next =
+                                                                        [
+                                                                            ...prev,
+                                                                        ];
+                                                                    next[qi] = {
+                                                                        ...next[
+                                                                            qi
+                                                                        ],
+                                                                        topic_id:
+                                                                            topicId,
+                                                                    };
+                                                                    return next;
+                                                                },
+                                                            );
+                                                        }}
+                                                        preloadedTopics={topics}
+                                                        onTopicsUpdated={
+                                                            setTopics
+                                                        }
+                                                    />
 
-                                {q.question_type === 'true_false' && (
-                                    <div className="mt-4">
-                                        <label className="flex items-center gap-2 text-sm">
-                                            <input
-                                                type="radio"
-                                                name={`tf-${qi}`}
-                                                checked={q.answer === true}
-                                                onChange={() =>
-                                                    setQuestions((prev) => {
-                                                        const next = [...prev];
-                                                        next[qi] = {
-                                                            ...next[qi],
-                                                            answer: true,
-                                                        };
-                                                        return next;
-                                                    })
-                                                }
-                                            />
-                                            True
-                                        </label>
-                                        <label className="mt-2 flex items-center gap-2 text-sm">
-                                            <input
-                                                type="radio"
-                                                name={`tf-${qi}`}
-                                                checked={q.answer === false}
-                                                onChange={() =>
-                                                    setQuestions((prev) => {
-                                                        const next = [...prev];
-                                                        next[qi] = {
-                                                            ...next[qi],
-                                                            answer: false,
-                                                        };
-                                                        return next;
-                                                    })
-                                                }
-                                            />
-                                            False
-                                        </label>
-                                    </div>
-                                )}
-                                </CollapsibleContent>
-                            </Collapsible>
-                        );
-                        })
+                                                    {/* Question Text */}
+                                                    <div className="grid gap-2">
+                                                        <Label>
+                                                            Question Text
+                                                        </Label>
+                                                        <RichTextEditor
+                                                            value={
+                                                                q.question_text
+                                                            }
+                                                            onChange={(v) => {
+                                                                setQuestions(
+                                                                    (prev) => {
+                                                                        const next =
+                                                                            [
+                                                                                ...prev,
+                                                                            ];
+                                                                        next[
+                                                                            qi
+                                                                        ] = {
+                                                                            ...next[
+                                                                                qi
+                                                                            ],
+                                                                            question_text:
+                                                                                v,
+                                                                        };
+                                                                        return next;
+                                                                    },
+                                                                );
+                                                            }}
+                                                            placeholder="Type the question"
+                                                        />
+                                                    </div>
+                                                </div>
+                                                <div className="mt-3 space-y-3">
+                                                    <Label>
+                                                        Question Image
+                                                        (Optional)
+                                                    </Label>
+                                                    {q.image_url ? (
+                                                        <div className="relative flex">
+                                                            <img
+                                                                src={
+                                                                    q.image_url
+                                                                }
+                                                                alt="Question"
+                                                                className="h-auto max-h-96 w-full max-w-2xl rounded border object-contain"
+                                                            />
+                                                            <Button
+                                                                type="button"
+                                                                variant="destructive"
+                                                                size="sm"
+                                                                className="absolute top-2 right-2"
+                                                                onClick={() =>
+                                                                    removeImage(
+                                                                        qi,
+                                                                    )
+                                                                }
+                                                            >
+                                                                <X className="h-4 w-4" />
+                                                            </Button>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="flex items-center gap-2">
+                                                            <Input
+                                                                type="file"
+                                                                accept="image/*"
+                                                                onChange={(
+                                                                    e,
+                                                                ) => {
+                                                                    const file =
+                                                                        e.target
+                                                                            .files?.[0];
+                                                                    if (file) {
+                                                                        handleImageUpload(
+                                                                            qi,
+                                                                            file,
+                                                                        );
+                                                                    }
+                                                                }}
+                                                                className="max-w-xs"
+                                                            />
+                                                            <Upload className="h-4 w-4 text-muted-foreground" />
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <div className="mt-3 grid max-w-xs gap-2">
+                                                    <Label>Points</Label>
+                                                    <Input
+                                                        type="number"
+                                                        value={q.points}
+                                                        min={1}
+                                                        onChange={(e) => {
+                                                            const v = parseInt(
+                                                                e.target
+                                                                    .value ||
+                                                                    '1',
+                                                            );
+                                                            setQuestions(
+                                                                (prev) => {
+                                                                    const next =
+                                                                        [
+                                                                            ...prev,
+                                                                        ];
+                                                                    next[qi] = {
+                                                                        ...next[
+                                                                            qi
+                                                                        ],
+                                                                        points: v,
+                                                                    };
+                                                                    return next;
+                                                                },
+                                                            );
+                                                        }}
+                                                    />
+                                                </div>
+
+                                                {(q.question_type ===
+                                                    'multiple_choice' ||
+                                                    q.question_type ===
+                                                        'multiple_select') && (
+                                                    <div className="mt-4 space-y-2">
+                                                        <Label>
+                                                            Choices (Choice #1
+                                                            is the correct
+                                                            answer)
+                                                        </Label>
+                                                        {(q.choices || []).map(
+                                                            (c, ci) => (
+                                                                <div
+                                                                    key={ci}
+                                                                    className="flex items-center gap-2"
+                                                                >
+                                                                    <div className="flex w-full items-center gap-2">
+                                                                        <span
+                                                                            className={`min-w-[80px] text-sm font-medium ${ci === 0 ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'}`}
+                                                                        >
+                                                                            Choice
+                                                                            #
+                                                                            {ci +
+                                                                                1}
+                                                                            {ci ===
+                                                                            0
+                                                                                ? ' ✓'
+                                                                                : ''}
+                                                                        </span>
+                                                                        <Input
+                                                                            value={
+                                                                                c.choice_text
+                                                                            }
+                                                                            onChange={(
+                                                                                e,
+                                                                            ) => {
+                                                                                setQuestions(
+                                                                                    (
+                                                                                        prev,
+                                                                                    ) => {
+                                                                                        const next =
+                                                                                            [
+                                                                                                ...prev,
+                                                                                            ];
+                                                                                        const choices =
+                                                                                            [
+                                                                                                ...(next[
+                                                                                                    qi
+                                                                                                ]
+                                                                                                    .choices ||
+                                                                                                    []),
+                                                                                            ];
+                                                                                        choices[
+                                                                                            ci
+                                                                                        ] =
+                                                                                            {
+                                                                                                ...choices[
+                                                                                                    ci
+                                                                                                ],
+                                                                                                choice_text:
+                                                                                                    e
+                                                                                                        .target
+                                                                                                        .value,
+                                                                                                is_correct:
+                                                                                                    ci ===
+                                                                                                    0,
+                                                                                            };
+                                                                                        next[
+                                                                                            qi
+                                                                                        ] =
+                                                                                            {
+                                                                                                ...next[
+                                                                                                    qi
+                                                                                                ],
+                                                                                                choices,
+                                                                                            };
+                                                                                        return next;
+                                                                                    },
+                                                                                );
+                                                                            }}
+                                                                            placeholder={`Enter choice ${ci + 1}`}
+                                                                            className={
+                                                                                ci ===
+                                                                                0
+                                                                                    ? 'border-green-500'
+                                                                                    : ''
+                                                                            }
+                                                                        />
+                                                                    </div>
+                                                                </div>
+                                                            ),
+                                                        )}
+                                                        {(q.choices?.length ||
+                                                            0) < 4 && (
+                                                            <div className="flex gap-2">
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    onClick={() =>
+                                                                        setQuestions(
+                                                                            (
+                                                                                prev,
+                                                                            ) => {
+                                                                                const next =
+                                                                                    [
+                                                                                        ...prev,
+                                                                                    ];
+                                                                                const choices =
+                                                                                    [
+                                                                                        ...(next[
+                                                                                            qi
+                                                                                        ]
+                                                                                            .choices ||
+                                                                                            []),
+                                                                                    ];
+                                                                                if (
+                                                                                    choices.length <
+                                                                                    4
+                                                                                ) {
+                                                                                    choices.push(
+                                                                                        {
+                                                                                            choice_text:
+                                                                                                '',
+                                                                                            is_correct: false,
+                                                                                        },
+                                                                                    );
+                                                                                }
+                                                                                next[
+                                                                                    qi
+                                                                                ] =
+                                                                                    {
+                                                                                        ...next[
+                                                                                            qi
+                                                                                        ],
+                                                                                        choices,
+                                                                                    };
+                                                                                return next;
+                                                                            },
+                                                                        )
+                                                                    }
+                                                                >
+                                                                    Add Choice
+                                                                </Button>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                )}
+
+                                                {q.question_type ===
+                                                    'true_false' && (
+                                                    <div className="mt-4">
+                                                        <label className="flex items-center gap-2 text-sm">
+                                                            <input
+                                                                type="radio"
+                                                                name={`tf-${qi}`}
+                                                                checked={
+                                                                    q.answer ===
+                                                                    true
+                                                                }
+                                                                onChange={() =>
+                                                                    setQuestions(
+                                                                        (
+                                                                            prev,
+                                                                        ) => {
+                                                                            const next =
+                                                                                [
+                                                                                    ...prev,
+                                                                                ];
+                                                                            next[
+                                                                                qi
+                                                                            ] =
+                                                                                {
+                                                                                    ...next[
+                                                                                        qi
+                                                                                    ],
+                                                                                    answer: true,
+                                                                                };
+                                                                            return next;
+                                                                        },
+                                                                    )
+                                                                }
+                                                            />
+                                                            True
+                                                        </label>
+                                                        <label className="mt-2 flex items-center gap-2 text-sm">
+                                                            <input
+                                                                type="radio"
+                                                                name={`tf-${qi}`}
+                                                                checked={
+                                                                    q.answer ===
+                                                                    false
+                                                                }
+                                                                onChange={() =>
+                                                                    setQuestions(
+                                                                        (
+                                                                            prev,
+                                                                        ) => {
+                                                                            const next =
+                                                                                [
+                                                                                    ...prev,
+                                                                                ];
+                                                                            next[
+                                                                                qi
+                                                                            ] =
+                                                                                {
+                                                                                    ...next[
+                                                                                        qi
+                                                                                    ],
+                                                                                    answer: false,
+                                                                                };
+                                                                            return next;
+                                                                        },
+                                                                    )
+                                                                }
+                                                            />
+                                                            False
+                                                        </label>
+                                                    </div>
+                                                )}
+                                            </CollapsibleContent>
+                                        </Collapsible>
+                                    );
+                                })
+                            )}
+                        </div>
+                        {questions.length > 0 && (
+                            <div className="rounded-lg border bg-muted/30 p-4 text-sm">
+                                <p className="text-muted-foreground">
+                                    💡 Tip: Click the save icon on each question
+                                    to save it individually. Once all questions
+                                    are saved, you can navigate back to the
+                                    exams list.
+                                </p>
+                            </div>
                         )}
                     </div>
-                    {questions.length > 0 && (
-                        <div className="rounded-lg border bg-muted/30 p-4 text-sm">
-                            <p className="text-muted-foreground">
-                                💡 Tip: Click the save icon on each question to save it individually. 
-                                Once all questions are saved, you can navigate back to the exams list.
-                            </p>
-                        </div>
-                    )}
-                </div>
                 )}
             </div>
 
             <DeleteConfirmationDialog
                 open={deletingQuestionIndex !== null}
                 title="Delete Question?"
-                itemIdentifier={deletingQuestionIndex !== null ? `Question #${deletingQuestionIndex + 1}` : undefined}
-                itemName={deletingQuestionIndex !== null ? questions[deletingQuestionIndex]?.question_text?.replace(/<[^>]*>/g, '') : undefined}
+                itemIdentifier={
+                    deletingQuestionIndex !== null
+                        ? `Question #${deletingQuestionIndex + 1}`
+                        : undefined
+                }
+                itemName={
+                    deletingQuestionIndex !== null
+                        ? questions[
+                              deletingQuestionIndex
+                          ]?.question_text?.replace(/<[^>]*>/g, '')
+                        : undefined
+                }
                 warningMessage="This action cannot be undone. This will permanently delete the question and all its associated choices."
                 confirmText="Delete Question"
                 onConfirm={confirmDeleteQuestion}

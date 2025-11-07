@@ -10,6 +10,13 @@ import {
 } from '@/components/ui/collapsible';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import AppLayout from '@/layouts/app-layout';
 import { Head, router, usePage } from '@inertiajs/react';
@@ -58,6 +65,7 @@ interface Assessment {
     id: number;
     title: string;
     description: string | null;
+    exam_category: string | null;
     duration_minutes: number | null;
     total_points: number;
     passing_score: number;
@@ -77,12 +85,31 @@ interface PageProps {
     assessment: Assessment;
 }
 
+// Define exam categories
+const EXAM_CATEGORIES = [
+    'Long Quiz',
+    'Short Quiz',
+    'Practical Exam',
+    'Laboratory Exam',
+    'Midterm Exam',
+    'Final Exam',
+    'Preliminary Exam',
+    'Diagnostic Exam',
+    'Pre-test',
+    'Post-test',
+    'Mock Exam',
+    'Other',
+] as const;
+
 export default function EditAssessment() {
     const { assessment } = usePage<PageProps>().props;
 
     const [title, setTitle] = useState(assessment.title);
     const [description, setDescription] = useState(
         assessment.description || '',
+    );
+    const [examCategory, setExamCategory] = useState(
+        assessment.exam_category || '',
     );
     const [passingScore, setPassingScore] = useState(assessment.passing_score);
     const [duration, setDuration] = useState<number | ''>(
@@ -231,6 +258,7 @@ export default function EditAssessment() {
             {
                 title,
                 description: description || null,
+                exam_category: examCategory || null,
                 passing_score: passingScore,
                 duration_minutes: duration || null,
                 randomize_questions: randomizeQuestions,
@@ -380,6 +408,24 @@ export default function EditAssessment() {
                             onChange={(e) => setDescription(e.target.value)}
                             placeholder="Exam description (optional)"
                         />
+                    </div>
+                    <div className="space-y-2">
+                        <Label>Exam Category</Label>
+                        <Select
+                            value={examCategory}
+                            onValueChange={setExamCategory}
+                        >
+                            <SelectTrigger>
+                                <SelectValue placeholder="Select category (optional)" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {EXAM_CATEGORIES.map((category) => (
+                                    <SelectItem key={category} value={category}>
+                                        {category}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
                     </div>
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                         <div className="space-y-2">

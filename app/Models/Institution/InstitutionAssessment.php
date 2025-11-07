@@ -18,6 +18,7 @@ class InstitutionAssessment extends Model
         'organization_id',
         'title',
         'description',
+        'exam_category',
         'course_id',
         'duration_minutes',
         'total_points',

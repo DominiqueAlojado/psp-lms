@@ -32,6 +32,7 @@ interface Exam {
     id: number;
     title: string;
     description: string | null;
+    exam_category: string | null;
     type: 'institution' | 'inservice';
     questions_count: number;
     total_points: number;
@@ -140,11 +141,23 @@ export default function ResidentExams() {
                                 >
                                     <CardContent className="p-6">
                                         <div className="space-y-4">
-                                            <div className="flex items-start justify-between">
+                                            <div className="flex items-start justify-between gap-2">
                                                 <div className="flex-1">
-                                                    <h4 className="font-semibold">
-                                                        {exam.title}
-                                                    </h4>
+                                                    <div className="flex flex-wrap items-center gap-2">
+                                                        <h4 className="font-semibold">
+                                                            {exam.title}
+                                                        </h4>
+                                                        {exam.exam_category && (
+                                                            <Badge
+                                                                variant="outline"
+                                                                className="text-xs"
+                                                            >
+                                                                {
+                                                                    exam.exam_category
+                                                                }
+                                                            </Badge>
+                                                        )}
+                                                    </div>
                                                     {exam.description && (
                                                         <p className="mt-1 text-sm text-muted-foreground">
                                                             {exam.description}
@@ -158,6 +171,7 @@ export default function ResidentExams() {
                                                             ? 'default'
                                                             : 'secondary'
                                                     }
+                                                    className="shrink-0"
                                                 >
                                                     {exam.type === 'inservice'
                                                         ? 'In-Service'

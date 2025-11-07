@@ -673,6 +673,7 @@ class ResidentExamController extends Controller
                 'id' => $exam->id,
                 'title' => $exam->title,
                 'description' => $exam->description,
+                'exam_category' => $exam->exam_category,
                 'type' => 'institution',
                 'questions_count' => $exam->questions_count,
                 'total_points' => $exam->total_points,
