@@ -1,11 +1,24 @@
 import HeadingSmall from '@/components/heading-small';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
-import { Head, Link, usePage } from '@inertiajs/react';
-import { Clock, FileText, Play } from 'lucide-react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
+import { AlertTriangle, Clock, FileText, Play } from 'lucide-react';
+import { useState } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -44,6 +57,44 @@ export default function ResidentExams() {
     const { availableExams, completedExams, upcomingExams } =
         usePage<PageProps>().props;
 
+    const [showStartDialog, setShowStartDialog] = useState(false);
+    const [selectedExam, setSelectedExam] = useState<Exam | null>(null);
+    const [confirmText, setConfirmText] = useState('');
+    const [actionType, setActionType] = useState<'start' | 'resume' | 'retake'>(
+        'start',
+    );
+
+    const handleExamAction = (
+        exam: Exam,
+        action: 'start' | 'resume' | 'retake',
+    ) => {
+        setSelectedExam(exam);
+        setActionType(action);
+        setConfirmText('');
+        setShowStartDialog(true);
+    };
+
+    const confirmStartExam = () => {
+        if (confirmText.toUpperCase() !== 'START EXAM') {
+            return;
+        }
+
+        if (selectedExam) {
+            router.visit(`/exams/${selectedExam.type}/${selectedExam.id}/take`);
+        }
+    };
+
+    const getActionLabel = () => {
+        switch (actionType) {
+            case 'resume':
+                return 'Resume';
+            case 'retake':
+                return 'Retake';
+            default:
+                return 'Start';
+        }
+    };
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="My Exams" />
@@ -69,7 +120,10 @@ export default function ResidentExams() {
                     ) : (
                         <div className="grid gap-4 md:grid-cols-2">
                             {availableExams.map((exam) => (
-                                <Card key={exam.id} className="hover:bg-muted/50">
+                                <Card
+                                    key={exam.id}
+                                    className="hover:bg-muted/50"
+                                >
                                     <CardContent className="p-6">
                                         <div className="space-y-4">
                                             <div className="flex items-start justify-between">
@@ -85,7 +139,8 @@ export default function ResidentExams() {
                                                 </div>
                                                 <Badge
                                                     variant={
-                                                        exam.type === 'inservice'
+                                                        exam.type ===
+                                                        'inservice'
                                                             ? 'default'
                                                             : 'secondary'
                                                     }
@@ -100,14 +155,18 @@ export default function ResidentExams() {
                                                 <div className="flex items-center gap-1">
                                                     <FileText className="h-4 w-4" />
                                                     <span>
-                                                        {exam.questions_count} questions
+                                                        {exam.questions_count}{' '}
+                                                        questions
                                                     </span>
                                                 </div>
                                                 {exam.duration_minutes && (
                                                     <div className="flex items-center gap-1">
                                                         <Clock className="h-4 w-4" />
                                                         <span>
-                                                            {exam.duration_minutes} min
+                                                            {
+                                                                exam.duration_minutes
+                                                            }{' '}
+                                                            min
                                                         </span>
                                                     </div>
                                                 )}
@@ -143,24 +202,36 @@ export default function ResidentExams() {
                                                                         : 'font-medium'
                                                                 }
                                                             >
-                                                                {exam.best_score}%
+                                                                {
+                                                                    exam.best_score
+                                                                }
+                                                                %
                                                             </span>
                                                         </>
                                                     )}
                                                 </div>
                                             )}
 
-                                            <Button asChild className="w-full">
-                                                <Link
-                                                    href={`/exams/${exam.type}/${exam.id}/take`}
-                                                >
-                                                    <Play className="mr-2 h-4 w-4" />
-                                                    {exam.has_in_progress_attempt
-                                                        ? 'Resume Exam'
-                                                        : exam.attempt_count > 0
-                                                          ? 'Retake Exam'
-                                                          : 'Start Exam'}
-                                                </Link>
+                                            <Button
+                                                className="w-full"
+                                                onClick={() =>
+                                                    handleExamAction(
+                                                        exam,
+                                                        exam.has_in_progress_attempt
+                                                            ? 'resume'
+                                                            : exam.attempt_count >
+                                                                0
+                                                              ? 'retake'
+                                                              : 'start',
+                                                    )
+                                                }
+                                            >
+                                                <Play className="mr-2 h-4 w-4" />
+                                                {exam.has_in_progress_attempt
+                                                    ? 'Resume Exam'
+                                                    : exam.attempt_count > 0
+                                                      ? 'Retake Exam'
+                                                      : 'Start Exam'}
                                             </Button>
                                         </div>
                                     </CardContent>
@@ -173,7 +244,9 @@ export default function ResidentExams() {
                 {/* Upcoming Exams */}
                 {upcomingExams.length > 0 && (
                     <div className="space-y-4">
-                        <h3 className="text-lg font-semibold">Upcoming Exams</h3>
+                        <h3 className="text-lg font-semibold">
+                            Upcoming Exams
+                        </h3>
                         <div className="grid gap-4 md:grid-cols-2">
                             {upcomingExams.map((exam) => (
                                 <Card key={exam.id} className="opacity-75">
@@ -199,14 +272,18 @@ export default function ResidentExams() {
                                                 <div className="flex items-center gap-1">
                                                     <FileText className="h-4 w-4" />
                                                     <span>
-                                                        {exam.questions_count} questions
+                                                        {exam.questions_count}{' '}
+                                                        questions
                                                     </span>
                                                 </div>
                                                 {exam.duration_minutes && (
                                                     <div className="flex items-center gap-1">
                                                         <Clock className="h-4 w-4" />
                                                         <span>
-                                                            {exam.duration_minutes} min
+                                                            {
+                                                                exam.duration_minutes
+                                                            }{' '}
+                                                            min
                                                         </span>
                                                     </div>
                                                 )}
@@ -304,7 +381,8 @@ export default function ResidentExams() {
                                                 )}
                                                 {exam.last_attempted && (
                                                     <div className="text-muted-foreground">
-                                                        Last: {exam.last_attempted}
+                                                        Last:{' '}
+                                                        {exam.last_attempted}
                                                     </div>
                                                 )}
                                             </div>
@@ -325,15 +403,16 @@ export default function ResidentExams() {
                                                     exam.attempt_count <
                                                         exam.max_attempts) && (
                                                     <Button
-                                                        asChild
                                                         className="flex-1"
+                                                        onClick={() =>
+                                                            handleExamAction(
+                                                                exam,
+                                                                'retake',
+                                                            )
+                                                        }
                                                     >
-                                                        <Link
-                                                            href={`/exams/${exam.type}/${exam.id}/take`}
-                                                        >
-                                                            <Play className="mr-2 h-4 w-4" />
-                                                            Retake
-                                                        </Link>
+                                                        <Play className="mr-2 h-4 w-4" />
+                                                        Retake
                                                     </Button>
                                                 )}
                                             </div>
@@ -344,8 +423,104 @@ export default function ResidentExams() {
                         </div>
                     </div>
                 )}
+
+                {/* Confirmation Dialog */}
+                <AlertDialog
+                    open={showStartDialog}
+                    onOpenChange={setShowStartDialog}
+                >
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle className="flex items-center gap-2">
+                                <AlertTriangle className="h-5 w-5 text-amber-500" />
+                                {getActionLabel()} Exam Confirmation
+                            </AlertDialogTitle>
+                            <AlertDialogDescription asChild>
+                                <div className="space-y-4">
+                                    <p>
+                                        You are about to {actionType} the exam:{' '}
+                                        <span className="font-semibold text-foreground">
+                                            {selectedExam?.title}
+                                        </span>
+                                    </p>
+
+                                    {selectedExam?.duration_minutes && (
+                                        <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-900/50 dark:bg-amber-900/20">
+                                            <p className="text-sm font-medium text-amber-900 dark:text-amber-200">
+                                                ⏱️ Time Limit:{' '}
+                                                {selectedExam.duration_minutes}{' '}
+                                                minutes
+                                            </p>
+                                            <p className="mt-1 text-xs text-amber-700 dark:text-amber-300">
+                                                Once started, the timer will
+                                                begin immediately and cannot be
+                                                paused.
+                                            </p>
+                                        </div>
+                                    )}
+
+                                    <div className="space-y-2">
+                                        <Label
+                                            htmlFor="confirm-text"
+                                            className="text-sm font-medium"
+                                        >
+                                            To confirm, please type{' '}
+                                            <span className="font-mono font-bold text-foreground">
+                                                START EXAM
+                                            </span>{' '}
+                                            below:
+                                        </Label>
+                                        <Input
+                                            id="confirm-text"
+                                            value={confirmText}
+                                            onChange={(e) =>
+                                                setConfirmText(e.target.value)
+                                            }
+                                            placeholder="Type START EXAM"
+                                            className="font-mono"
+                                            autoComplete="off"
+                                            autoFocus
+                                            onKeyDown={(e) => {
+                                                if (
+                                                    e.key === 'Enter' &&
+                                                    confirmText.toUpperCase() ===
+                                                        'START EXAM'
+                                                ) {
+                                                    confirmStartExam();
+                                                }
+                                            }}
+                                        />
+                                        {confirmText &&
+                                            confirmText.toUpperCase() !==
+                                                'START EXAM' && (
+                                                <p className="text-xs text-destructive">
+                                                    Text doesn't match. Please
+                                                    type exactly: START EXAM
+                                                </p>
+                                            )}
+                                    </div>
+                                </div>
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel
+                                onClick={() => setConfirmText('')}
+                            >
+                                Cancel
+                            </AlertDialogCancel>
+                            <AlertDialogAction
+                                onClick={confirmStartExam}
+                                disabled={
+                                    confirmText.toUpperCase() !== 'START EXAM'
+                                }
+                                className="bg-primary"
+                            >
+                                {getActionLabel()} Exam
+                            </AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
             </div>
         </AppLayout>
     );
 }
-
