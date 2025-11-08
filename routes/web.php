@@ -33,6 +33,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('exams.log-session-change');
     Route::post('exams/{type}/{attempt}/log-activity', [App\Http\Controllers\ResidentExamController::class, 'logActivity'])
         ->name('exams.log-activity');
+    Route::post('exams/{type}/{attempt}/update-metadata', [App\Http\Controllers\ResidentExamController::class, 'updateMetadata'])
+        ->name('exams.update-metadata');
 
     // Residents
     Route::get('residents', [App\Http\Controllers\ResidentController::class, 'index'])
@@ -144,9 +146,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('assessment-reports/by-resident', [App\Http\Controllers\AssessmentReportController::class, 'byResident'])
         ->middleware('permission:view-assessments')
         ->name('assessment-reports.by-resident');
-    Route::get('assessment-reports/tab2', function () {
-        return Inertia::render('assessment-reports/tab2');
-    })->middleware('permission:view-assessments')->name('assessment-reports.tab2');
+    Route::get('assessment-reports/live-monitor', [App\Http\Controllers\AssessmentReportController::class, 'liveMonitor'])
+        ->middleware('permission:view-assessments')
+        ->name('assessment-reports.live-monitor');
 
     // Institution Exams
     Route::get('assessments', [App\Http\Controllers\InstitutionExamController::class, 'index'])

@@ -17,7 +17,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
-import { captureExamMetadata } from '@/utils/exam-metadata';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { AlertTriangle, Clock, FileText, Play } from 'lucide-react';
 import { useState } from 'react';
@@ -90,27 +89,14 @@ export default function ResidentExams() {
         }
     };
 
-    const confirmStartExam = async () => {
+    const confirmStartExam = () => {
         if (confirmText.toUpperCase() !== 'START EXAM') {
             return;
         }
 
         if (selectedExam) {
-            // Capture exam metadata
-            const metadata = await captureExamMetadata();
-
-            // Navigate to exam with metadata
-            router.visit(
-                `/exams/${selectedExam.type}/${selectedExam.id}/take`,
-                {
-                    method: 'get',
-                    data: {
-                        browser_metadata: metadata.browserMetadata,
-                        connection_type: metadata.connectionType,
-                        connection_speed: metadata.connectionSpeed,
-                    },
-                },
-            );
+            // Navigate to exam - metadata will be captured on the exam page
+            router.visit(`/exams/${selectedExam.type}/${selectedExam.id}/take`);
         }
     };
 

@@ -859,4 +859,43 @@ class ResidentExamController extends Controller
 
         return response()->noContent();
     }
+
+    /**
+     * Update exam attempt metadata (called from frontend after page load).
+     */
+    public function updateMetadata(Request $request, string $type, int $attemptId)
+    {
+        $user = $request->user();
+
+        $validated = $request->validate([
+            'browser_metadata' => ['required', 'array'],
+            'connection_type' => ['nullable', 'string'],
+            'connection_speed' => ['nullable', 'numeric'],
+        ]);
+
+        // Verify attempt belongs to user
+        if ($type === 'institution') {
+            $attempt = InstitutionAttempt::findOrFail($attemptId);
+        } else {
+            $attempt = NationalAttempt::findOrFail($attemptId);
+        }
+
+        if ($attempt->user_id !== $user->id) {
+            abort(403, 'Unauthorized');
+        }
+
+        // Update metadata if not already set
+        if (! $attempt->browser_metadata) {
+            $attempt->update([
+                'ip_address' => $request->ip(),
+                'user_agent' => $request->userAgent(),
+                'browser_metadata' => $validated['browser_metadata'],
+                'connection_type' => $validated['connection_type'] ?? null,
+                'connection_speed' => $validated['connection_speed'] ?? null,
+                'last_activity_at' => now(),
+            ]);
+        }
+
+        return response()->json(['success' => true]);
+    }
 }

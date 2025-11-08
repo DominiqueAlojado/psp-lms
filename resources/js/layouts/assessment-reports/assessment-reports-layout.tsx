@@ -15,8 +15,8 @@ const sidebarNavItems: NavItem[] = [
         icon: null,
     },
     {
-        title: 'Tab 2',
-        href: { url: '/assessment-reports/tab2', method: 'get' },
+        title: 'Live Monitor',
+        href: { url: '/assessment-reports/live-monitor', method: 'get' },
         icon: null,
     },
 ];

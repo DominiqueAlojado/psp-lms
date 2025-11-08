@@ -12,6 +12,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { useSidebar } from '@/components/ui/sidebar';
+import { useCaptureExamMetadata } from '@/hooks/use-capture-exam-metadata';
+import { useExamSessionMonitor } from '@/hooks/use-exam-session-monitor';
 import AppLayout from '@/layouts/app-layout';
 import { cn } from '@/lib/utils';
 import { type BreadcrumbItem } from '@/types';
@@ -71,6 +73,20 @@ interface PageProps {
 
 function ExamContent({ exam, attempt, savedAnswers }: PageProps) {
     const { setOpen } = useSidebar();
+    
+    // Capture exam metadata on page load
+    useCaptureExamMetadata({
+        examType: exam.type,
+        attemptId: attempt.id,
+    });
+
+    // Monitor session for changes and idle time
+    useExamSessionMonitor({
+        examType: exam.type,
+        attemptId: attempt.id,
+        isActive: true,
+    });
+
     const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
     const [answers, setAnswers] = useState<Record<number, number | number[]>>(
         () => {
