@@ -29,6 +29,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('exams.save-answer');
     Route::post('exams/{type}/{attempt}/submit', [App\Http\Controllers\ResidentExamController::class, 'submit'])
         ->name('exams.submit');
+    Route::post('exams/{type}/{attempt}/log-session-change', [App\Http\Controllers\ResidentExamController::class, 'logSessionChange'])
+        ->name('exams.log-session-change');
+    Route::post('exams/{type}/{attempt}/log-activity', [App\Http\Controllers\ResidentExamController::class, 'logActivity'])
+        ->name('exams.log-activity');
 
     // Residents
     Route::get('residents', [App\Http\Controllers\ResidentController::class, 'index'])

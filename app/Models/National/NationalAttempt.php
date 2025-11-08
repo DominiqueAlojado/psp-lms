@@ -27,6 +27,17 @@ class NationalAttempt extends Model
         'institution_rank',
         'percentile',
         'status',
+        'ip_address',
+        'user_agent',
+        'browser_metadata',
+        'connection_type',
+        'connection_speed',
+        'ip_changes_count',
+        'browser_changes_count',
+        'last_activity_at',
+        'total_idle_time',
+        'idle_periods_count',
+        'max_idle_duration',
     ];
 
     protected function casts(): array
@@ -39,6 +50,14 @@ class NationalAttempt extends Model
             'national_rank' => 'integer',
             'institution_rank' => 'integer',
             'percentile' => 'decimal:2',
+            'browser_metadata' => 'array',
+            'connection_speed' => 'decimal:2',
+            'ip_changes_count' => 'integer',
+            'browser_changes_count' => 'integer',
+            'last_activity_at' => 'datetime',
+            'total_idle_time' => 'integer',
+            'idle_periods_count' => 'integer',
+            'max_idle_duration' => 'integer',
         ];
     }
 

@@ -2,8 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ExamSessionChange;
 use App\Models\Institution\InstitutionAssessment;
+use App\Models\Institution\InstitutionAttempt;
 use App\Models\National\NationalAssessment;
+use App\Models\National\NationalAttempt;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -126,6 +129,11 @@ class ResidentExamController extends Controller
                     'started_at' => now(),
                     'total_points' => $assessment->total_points,
                     'status' => 'in_progress',
+                    'ip_address' => $request->ip(),
+                    'user_agent' => $request->userAgent(),
+                    'browser_metadata' => $request->input('browser_metadata'),
+                    'connection_type' => $request->input('connection_type'),
+                    'connection_speed' => $request->input('connection_speed'),
                 ]);
             }
 
@@ -757,5 +765,98 @@ class ResidentExamController extends Controller
             'completedExams' => $completedExams,
             'upcomingExams' => $upcomingExams,
         ]);
+    }
+
+    /**
+     * Log browser or IP change during exam session.
+     */
+    public function logSessionChange(Request $request, string $type, int $attemptId)
+    {
+        $user = $request->user();
+
+        $validated = $request->validate([
+            'change_type' => ['required', 'in:ip_address,browser,both'],
+            'previous_ip' => ['nullable', 'string'],
+            'new_ip' => ['nullable', 'string'],
+            'previous_user_agent' => ['nullable', 'string'],
+            'new_user_agent' => ['nullable', 'string'],
+            'browser_info' => ['nullable', 'array'],
+        ]);
+
+        // Verify attempt belongs to user
+        if ($type === 'institution') {
+            $attempt = InstitutionAttempt::findOrFail($attemptId);
+        } else {
+            $attempt = NationalAttempt::findOrFail($attemptId);
+        }
+
+        if ($attempt->user_id !== $user->id) {
+            abort(403, 'Unauthorized');
+        }
+
+        // Log the change
+        ExamSessionChange::create([
+            'attempt_type' => $type,
+            'attempt_id' => $attemptId,
+            'user_id' => $user->id,
+            'change_type' => $validated['change_type'],
+            'previous_ip_address' => $validated['previous_ip'] ?? null,
+            'new_ip_address' => $validated['new_ip'] ?? null,
+            'previous_user_agent' => $validated['previous_user_agent'] ?? null,
+            'new_user_agent' => $validated['new_user_agent'] ?? null,
+            'browser_info' => $validated['browser_info'] ?? null,
+            'detected_at' => now(),
+        ]);
+
+        // Increment counters
+        if ($validated['change_type'] === 'ip_address' || $validated['change_type'] === 'both') {
+            $attempt->increment('ip_changes_count');
+        }
+        if ($validated['change_type'] === 'browser' || $validated['change_type'] === 'both') {
+            $attempt->increment('browser_changes_count');
+        }
+
+        return response()->noContent();
+    }
+
+    /**
+     * Log activity and idle time for an exam attempt.
+     */
+    public function logActivity(Request $request, string $type, int $attemptId)
+    {
+        $user = $request->user();
+
+        $validated = $request->validate([
+            'idle_duration' => ['nullable', 'integer', 'min:0'], // seconds of idle time
+        ]);
+
+        // Verify attempt belongs to user
+        if ($type === 'institution') {
+            $attempt = InstitutionAttempt::findOrFail($attemptId);
+        } else {
+            $attempt = NationalAttempt::findOrFail($attemptId);
+        }
+
+        if ($attempt->user_id !== $user->id) {
+            abort(403, 'Unauthorized');
+        }
+
+        // Update last activity
+        $attempt->update(['last_activity_at' => now()]);
+
+        // If idle duration provided, log it
+        if (isset($validated['idle_duration']) && $validated['idle_duration'] > 0) {
+            $idleDuration = $validated['idle_duration'];
+
+            $attempt->increment('total_idle_time', $idleDuration);
+            $attempt->increment('idle_periods_count');
+
+            // Update max idle duration if this is longer
+            if ($idleDuration > $attempt->max_idle_duration) {
+                $attempt->update(['max_idle_duration' => $idleDuration]);
+            }
+        }
+
+        return response()->noContent();
     }
 }
