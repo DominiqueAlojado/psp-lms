@@ -135,6 +135,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('announcements/{announcement}/view', [App\Http\Controllers\AnnouncementController::class, 'markAsViewed'])
         ->name('announcements.view');
 
+    // Assessment Reports
+    Route::redirect('assessment-reports', '/assessment-reports/by-resident')->name('assessment-reports');
+    Route::get('assessment-reports/by-resident', [App\Http\Controllers\AssessmentReportController::class, 'byResident'])
+        ->middleware('permission:view-assessments')
+        ->name('assessment-reports.by-resident');
+    Route::get('assessment-reports/tab2', function () {
+        return Inertia::render('assessment-reports/tab2');
+    })->middleware('permission:view-assessments')->name('assessment-reports.tab2');
+
     // Institution Exams
     Route::get('assessments', [App\Http\Controllers\InstitutionExamController::class, 'index'])
         ->middleware('permission:view-assessments')

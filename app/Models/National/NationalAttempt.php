@@ -17,6 +17,7 @@ class NationalAttempt extends Model
     protected $fillable = [
         'assessment_id',
         'user_id',
+        'year_level',
         'organization_id',
         'started_at',
         'submitted_at',

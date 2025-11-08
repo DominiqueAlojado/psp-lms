@@ -1,0 +1,469 @@
+import HeadingSmall from '@/components/heading-small';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from '@/components/ui/table';
+import AppLayout from '@/layouts/app-layout';
+import AssessmentReportsLayout from '@/layouts/assessment-reports/assessment-reports-layout';
+import { type BreadcrumbItem } from '@/types';
+import { Head, router, usePage } from '@inertiajs/react';
+import { FileBarChart, Search, X } from 'lucide-react';
+import { useState } from 'react';
+
+const breadcrumbs: BreadcrumbItem[] = [
+    {
+        title: 'Assessment Reports',
+        href: '/assessment-reports/by-resident',
+    },
+];
+
+const YEAR_LEVELS = ['PGY-1', 'PGY-2', 'PGY-3', 'PGY-4', 'PGY-5'];
+
+interface Attempt {
+    id: number;
+    resident_name: string;
+    resident_email: string;
+    year_level: string | null;
+    exam_title: string;
+    exam_category: string | null;
+    score: number;
+    total_points: number;
+    percentage: number;
+    passing_score: number;
+    status: 'Passed' | 'Failed';
+    organization_name: string;
+    submitted_at: string;
+    time_spent: string;
+}
+
+interface PaginatedAttempts {
+    data: Attempt[];
+    total: number;
+    current_page: number;
+    last_page: number;
+}
+
+interface Organization {
+    id: number;
+    name: string;
+}
+
+interface Exam {
+    id: number;
+    title: string;
+}
+
+interface PageProps {
+    attempts: PaginatedAttempts;
+    filters: {
+        search?: string;
+        exam?: number;
+        organization?: number;
+        year_level?: string;
+        status?: string;
+        date_from?: string;
+        date_to?: string;
+    };
+    organizations: Organization[];
+    exams: Exam[];
+    isSystemAdmin: boolean;
+    [key: string]: unknown;
+}
+
+export default function ByResidentReport() {
+    const { attempts, filters, organizations, exams, isSystemAdmin } =
+        usePage<PageProps>().props;
+
+    const [search, setSearch] = useState(filters.search || '');
+    const [examFilter, setExamFilter] = useState(
+        filters.exam?.toString() || '',
+    );
+    const [organizationFilter, setOrganizationFilter] = useState(
+        filters.organization?.toString() || '',
+    );
+    const [yearLevelFilter, setYearLevelFilter] = useState(
+        filters.year_level || '',
+    );
+    const [statusFilter, setStatusFilter] = useState(filters.status || '');
+    const [dateFrom, setDateFrom] = useState(filters.date_from || '');
+    const [dateTo, setDateTo] = useState(filters.date_to || '');
+
+    const handleSearch = () => {
+        router.get(
+            '/assessment-reports/by-resident',
+            {
+                search: search || undefined,
+                exam: examFilter || undefined,
+                organization: organizationFilter || undefined,
+                year_level: yearLevelFilter || undefined,
+                status: statusFilter || undefined,
+                date_from: dateFrom || undefined,
+                date_to: dateTo || undefined,
+            },
+            { preserveState: true, preserveScroll: true },
+        );
+    };
+
+    const clearFilters = () => {
+        setSearch('');
+        setExamFilter('');
+        setOrganizationFilter('');
+        setYearLevelFilter('');
+        setStatusFilter('');
+        setDateFrom('');
+        setDateTo('');
+        router.get(
+            '/assessment-reports/by-resident',
+            {},
+            { preserveState: true },
+        );
+    };
+
+    const hasActiveFilters =
+        filters.search ||
+        filters.exam ||
+        filters.organization ||
+        filters.year_level ||
+        filters.status ||
+        filters.date_from ||
+        filters.date_to;
+
+    return (
+        <AppLayout breadcrumbs={breadcrumbs}>
+            <Head title="Assessment Reports - By Resident" />
+
+            <AssessmentReportsLayout>
+                <div className="space-y-6">
+                    <HeadingSmall
+                        title="Exam Results by Resident"
+                        description="View and filter resident exam performance"
+                    />
+
+                    {/* Filters */}
+                    <Card>
+                        <CardContent className="p-4">
+                            <div className="space-y-4">
+                                {/* Search */}
+                                <div className="space-y-2">
+                                    <Label>Search Resident</Label>
+                                    <div className="relative">
+                                        <Search className="absolute top-3 left-3 h-4 w-4 text-muted-foreground" />
+                                        <Input
+                                            placeholder="Search by name or email..."
+                                            value={search}
+                                            onChange={(e) =>
+                                                setSearch(e.target.value)
+                                            }
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter') {
+                                                    handleSearch();
+                                                }
+                                            }}
+                                            className="pl-9"
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Exam & Organization */}
+                                <div className="grid gap-4 sm:grid-cols-2">
+                                    <div className="space-y-2">
+                                        <Label>Exam</Label>
+                                        <Select
+                                            value={examFilter}
+                                            onValueChange={setExamFilter}
+                                        >
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="All Exams" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {exams.map((exam) => (
+                                                    <SelectItem
+                                                        key={exam.id}
+                                                        value={exam.id.toString()}
+                                                    >
+                                                        {exam.title}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+
+                                    {isSystemAdmin && (
+                                        <div className="space-y-2">
+                                            <Label>Institution</Label>
+                                            <Select
+                                                value={organizationFilter}
+                                                onValueChange={
+                                                    setOrganizationFilter
+                                                }
+                                            >
+                                                <SelectTrigger>
+                                                    <SelectValue placeholder="All Institutions" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {organizations.map(
+                                                        (org) => (
+                                                            <SelectItem
+                                                                key={org.id}
+                                                                value={org.id.toString()}
+                                                            >
+                                                                {org.name}
+                                                            </SelectItem>
+                                                        ),
+                                                    )}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Year Level & Status */}
+                                <div className="grid gap-4 sm:grid-cols-2">
+                                    <div className="space-y-2">
+                                        <Label>Year Level</Label>
+                                        <Select
+                                            value={yearLevelFilter}
+                                            onValueChange={setYearLevelFilter}
+                                        >
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="All Year Levels" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {YEAR_LEVELS.map((level) => (
+                                                    <SelectItem
+                                                        key={level}
+                                                        value={level}
+                                                    >
+                                                        {level}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <Label>Status</Label>
+                                        <Select
+                                            value={statusFilter}
+                                            onValueChange={setStatusFilter}
+                                        >
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="All Status" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="passed">
+                                                    Passed
+                                                </SelectItem>
+                                                <SelectItem value="failed">
+                                                    Failed
+                                                </SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                </div>
+
+                                {/* Date Range */}
+                                <div className="grid gap-4 sm:grid-cols-2">
+                                    <div className="space-y-2">
+                                        <Label>Date From</Label>
+                                        <Input
+                                            type="date"
+                                            value={dateFrom}
+                                            onChange={(e) =>
+                                                setDateFrom(e.target.value)
+                                            }
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>Date To</Label>
+                                        <Input
+                                            type="date"
+                                            value={dateTo}
+                                            onChange={(e) =>
+                                                setDateTo(e.target.value)
+                                            }
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Action Buttons */}
+                                <div className="flex gap-2">
+                                    <Button onClick={handleSearch}>
+                                        <Search className="mr-2 h-4 w-4" />
+                                        Search
+                                    </Button>
+                                    {hasActiveFilters && (
+                                        <Button
+                                            variant="outline"
+                                            onClick={clearFilters}
+                                        >
+                                            <X className="mr-2 h-4 w-4" />
+                                            Clear Filters
+                                        </Button>
+                                    )}
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    {/* Results */}
+                    {attempts.data.length === 0 ? (
+                        <Card>
+                            <CardContent className="p-12 text-center">
+                                <FileBarChart className="mx-auto h-12 w-12 text-muted-foreground" />
+                                <p className="mt-4 text-sm text-muted-foreground">
+                                    {hasActiveFilters
+                                        ? 'No exam attempts found matching your filters'
+                                        : 'No completed exam attempts yet'}
+                                </p>
+                            </CardContent>
+                        </Card>
+                    ) : (
+                        <Card>
+                            <CardContent className="p-0">
+                                <div className="overflow-x-auto">
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead>Resident</TableHead>
+                                                {isSystemAdmin && (
+                                                    <TableHead>
+                                                        Institution
+                                                    </TableHead>
+                                                )}
+                                                <TableHead>Exam</TableHead>
+                                                <TableHead className="text-right">
+                                                    Score
+                                                </TableHead>
+                                                <TableHead>Status</TableHead>
+                                                <TableHead>Submitted</TableHead>
+                                                <TableHead>Duration</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {attempts.data.map((attempt) => (
+                                                <TableRow key={attempt.id}>
+                                                    <TableCell>
+                                                        <div>
+                                                            <div className="font-medium">
+                                                                {
+                                                                    attempt.resident_name
+                                                                }
+                                                            </div>
+                                                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                                                <span>
+                                                                    {
+                                                                        attempt.resident_email
+                                                                    }
+                                                                </span>
+                                                                {attempt.year_level && (
+                                                                    <>
+                                                                        <span>
+                                                                            •
+                                                                        </span>
+                                                                        <Badge
+                                                                            variant="secondary"
+                                                                            className="text-xs"
+                                                                        >
+                                                                            {
+                                                                                attempt.year_level
+                                                                            }
+                                                                        </Badge>
+                                                                    </>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    </TableCell>
+                                                    {isSystemAdmin && (
+                                                        <TableCell className="text-sm">
+                                                            {
+                                                                attempt.organization_name
+                                                            }
+                                                        </TableCell>
+                                                    )}
+                                                    <TableCell>
+                                                        <div>
+                                                            <div className="font-medium">
+                                                                {
+                                                                    attempt.exam_title
+                                                                }
+                                                            </div>
+                                                            {attempt.exam_category && (
+                                                                <div className="text-xs text-muted-foreground">
+                                                                    {
+                                                                        attempt.exam_category
+                                                                    }
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell className="text-right">
+                                                        <div className="font-mono">
+                                                            {attempt.score}/
+                                                            {
+                                                                attempt.total_points
+                                                            }
+                                                        </div>
+                                                        <div className="text-xs text-muted-foreground">
+                                                            {attempt.percentage.toFixed(
+                                                                1,
+                                                            )}
+                                                            %
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <Badge
+                                                            variant={
+                                                                attempt.status ===
+                                                                'Passed'
+                                                                    ? 'default'
+                                                                    : 'destructive'
+                                                            }
+                                                        >
+                                                            {attempt.status}
+                                                        </Badge>
+                                                    </TableCell>
+                                                    <TableCell className="text-sm">
+                                                        {attempt.submitted_at}
+                                                    </TableCell>
+                                                    <TableCell className="text-sm text-muted-foreground">
+                                                        {attempt.time_spent}
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    )}
+
+                    {/* Pagination Info */}
+                    {attempts.data.length > 0 && (
+                        <div className="text-center text-sm text-muted-foreground">
+                            Showing {attempts.data.length} of {attempts.total}{' '}
+                            results
+                        </div>
+                    )}
+                </div>
+            </AssessmentReportsLayout>
+        </AppLayout>
+    );
+}
+

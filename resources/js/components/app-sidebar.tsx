@@ -16,6 +16,7 @@ import { dashboard } from '@/routes';
 import { type NavItem, type SharedData } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
 import {
+    BarChart3,
     BookOpen,
     Building2,
     ClipboardList,
@@ -50,6 +51,12 @@ const mainNavItems: NavItem[] = [
         title: 'Announcements',
         href: '/announcements',
         icon: Megaphone,
+    },
+    {
+        title: 'Assessment Reports',
+        href: '/assessment-reports',
+        icon: BarChart3,
+        permission: 'view-assessments',
     },
     {
         title: 'In-Service Exams',

@@ -40,6 +40,7 @@ class ResidentExamController extends Controller
             if (! $attempt) {
                 $attempt = $assessment->attempts()->create([
                     'user_id' => $user->id,
+                    'year_level' => $user->resident?->year_level,
                     'organization_id' => $user->current_organization_id,
                     'started_at' => now(),
                     'total_points' => $assessment->total_points,
@@ -120,6 +121,7 @@ class ResidentExamController extends Controller
             if (! $attempt) {
                 $attempt = $assessment->attempts()->create([
                     'user_id' => $user->id,
+                    'year_level' => $user->resident?->year_level,
                     'organization_id' => $user->current_organization_id,
                     'started_at' => now(),
                     'total_points' => $assessment->total_points,
