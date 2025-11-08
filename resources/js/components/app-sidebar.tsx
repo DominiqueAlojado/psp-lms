@@ -24,6 +24,7 @@ import {
     FolderOpen,
     GraduationCap,
     LayoutGrid,
+    Megaphone,
     UserCog,
     Users,
 } from 'lucide-react';
@@ -44,6 +45,11 @@ const mainNavItems: NavItem[] = [
         title: 'Learning Resources',
         href: '/resources',
         icon: FolderOpen,
+    },
+    {
+        title: 'Announcements',
+        href: '/announcements',
+        icon: Megaphone,
     },
     {
         title: 'In-Service Exams',

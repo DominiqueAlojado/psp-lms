@@ -117,6 +117,24 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('resources/{resource}/download', [App\Http\Controllers\ResourceController::class, 'download'])
         ->name('resources.download');
 
+    // Announcements
+    Route::get('announcements', [App\Http\Controllers\AnnouncementController::class, 'index'])
+        ->name('announcements.index');
+    Route::get('announcements/manage', [App\Http\Controllers\AnnouncementController::class, 'manage'])
+        ->middleware('permission:view-announcements')
+        ->name('announcements.manage');
+    Route::post('announcements', [App\Http\Controllers\AnnouncementController::class, 'store'])
+        ->middleware('permission:create-announcements')
+        ->name('announcements.store');
+    Route::patch('announcements/{announcement}', [App\Http\Controllers\AnnouncementController::class, 'update'])
+        ->middleware('permission:edit-announcements')
+        ->name('announcements.update');
+    Route::delete('announcements/{announcement}', [App\Http\Controllers\AnnouncementController::class, 'destroy'])
+        ->middleware('permission:delete-announcements')
+        ->name('announcements.destroy');
+    Route::post('announcements/{announcement}/view', [App\Http\Controllers\AnnouncementController::class, 'markAsViewed'])
+        ->name('announcements.view');
+
     // Institution Exams
     Route::get('assessments', [App\Http\Controllers\InstitutionExamController::class, 'index'])
         ->middleware('permission:view-assessments')
@@ -191,4 +209,4 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('organization.switch');
 });
 
-require __DIR__ . '/settings.php';
+require __DIR__.'/settings.php';
