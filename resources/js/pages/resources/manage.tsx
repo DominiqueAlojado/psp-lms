@@ -24,7 +24,7 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
-import { Head, Link, router, usePage } from '@inertiajs/react';
+import { Head, router, usePage } from '@inertiajs/react';
 import {
     BookOpen,
     Download,
@@ -464,13 +464,13 @@ export default function ManageResources() {
                                                 size="sm"
                                                 asChild
                                             >
-                                                <Link
+                                                <a
                                                     href={`/resources/${resource.id}/download`}
-                                                    as="a"
                                                     target="_blank"
+                                                    rel="noopener noreferrer"
                                                 >
                                                     <Download className="h-4 w-4" />
-                                                </Link>
+                                                </a>
                                             </Button>
                                             <Button
                                                 variant="outline"

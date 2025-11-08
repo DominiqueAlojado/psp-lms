@@ -234,14 +234,14 @@ export default function ResourcesIndex() {
                                                 className="w-full"
                                                 size="sm"
                                             >
-                                                <Link
+                                                <a
                                                     href={`/resources/${resource.id}/download`}
-                                                    as="a"
                                                     target="_blank"
+                                                    rel="noopener noreferrer"
                                                 >
                                                     <Download className="mr-2 h-4 w-4" />
                                                     Download
-                                                </Link>
+                                                </a>
                                             </Button>
                                         </div>
 
