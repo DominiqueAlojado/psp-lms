@@ -21,6 +21,7 @@ import {
     ClipboardList,
     FileText,
     Folder,
+    FolderOpen,
     GraduationCap,
     LayoutGrid,
     UserCog,
@@ -38,6 +39,11 @@ const mainNavItems: NavItem[] = [
         title: 'My Exams',
         href: '/resident-exams',
         icon: FileText,
+    },
+    {
+        title: 'Learning Resources',
+        href: '/resources',
+        icon: FolderOpen,
     },
     {
         title: 'In-Service Exams',

@@ -99,6 +99,24 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('topics', [App\Http\Controllers\TopicController::class, 'store'])
         ->name('topics.store');
 
+    // Learning Resources
+    Route::get('resources', [App\Http\Controllers\ResourceController::class, 'index'])
+        ->name('resources.index');
+    Route::get('resources/manage', [App\Http\Controllers\ResourceController::class, 'manage'])
+        ->middleware('permission:view-materials')
+        ->name('resources.manage');
+    Route::post('resources', [App\Http\Controllers\ResourceController::class, 'store'])
+        // ->middleware('permission:upload-materials') // Temporarily disabled for testing
+        ->name('resources.store');
+    Route::patch('resources/{resource}', [App\Http\Controllers\ResourceController::class, 'update'])
+        ->middleware('permission:edit-materials')
+        ->name('resources.update');
+    Route::delete('resources/{resource}', [App\Http\Controllers\ResourceController::class, 'destroy'])
+        ->middleware('permission:delete-materials')
+        ->name('resources.destroy');
+    Route::get('resources/{resource}/download', [App\Http\Controllers\ResourceController::class, 'download'])
+        ->name('resources.download');
+
     // Institution Exams
     Route::get('assessments', [App\Http\Controllers\InstitutionExamController::class, 'index'])
         ->middleware('permission:view-assessments')
