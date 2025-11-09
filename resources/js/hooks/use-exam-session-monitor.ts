@@ -14,7 +14,7 @@ interface UseExamSessionMonitorProps {
     isActive: boolean; // Only monitor when exam is active
 }
 
-const IDLE_THRESHOLD = 30; // 2 minutes of no activity = idle
+const IDLE_THRESHOLD = 60; // 2 minutes of no activity = idle
 const ACTIVITY_CHECK_INTERVAL = 30000; // Check every 30 seconds
 
 /**
