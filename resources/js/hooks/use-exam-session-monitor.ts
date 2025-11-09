@@ -5,6 +5,7 @@ import { useEffect, useRef } from 'react';
 interface SessionData {
     userAgent: string;
     browserMetadata: any;
+    changeLogged?: boolean; // Track if we already logged this change
 }
 
 interface UseExamSessionMonitorProps {
@@ -110,65 +111,72 @@ export function useExamSessionMonitor({
             return;
         }
 
-        // Capture initial session data
-        if (!initialSession.current) {
-            const metadata = captureExamMetadataSync();
-            initialSession.current = {
-                userAgent: metadata.userAgent,
-                browserMetadata: metadata.browserMetadata,
-            };
-        }
+        // Fetch initial session data from server and check for changes
+        const initializeAndCheck = async () => {
+            try {
+                // Get the attempt data from server (includes initial user_agent)
+                const response = await axios.get(
+                    `/exams/${examType}/${attemptId}/session-info`,
+                );
 
-        // Check for changes periodically
-        const checkForChanges = async () => {
-            const currentMetadata = captureExamMetadataSync();
+                const serverUserAgent = response.data.user_agent;
+                const currentMetadata = captureExamMetadataSync();
 
-            if (!initialSession.current) {
-                return;
-            }
-
-            const userAgentChanged =
-                currentMetadata.userAgent !== initialSession.current.userAgent;
-
-            if (userAgentChanged) {
-                console.warn('⚠️ Browser/Device change detected during exam!');
-
-                // Log the change
-                try {
-                    await axios.post(
-                        `/exams/${examType}/${attemptId}/log-session-change`,
-                        {
-                            change_type: 'browser',
-                            previous_user_agent:
-                                initialSession.current.userAgent,
-                            new_user_agent: currentMetadata.userAgent,
-                            browser_info: currentMetadata.browserMetadata,
-                        },
-                    );
-
-                    // Update reference
+                // Store initial session from this page load
+                if (!initialSession.current) {
                     initialSession.current = {
                         userAgent: currentMetadata.userAgent,
                         browserMetadata: currentMetadata.browserMetadata,
+                        changeLogged: false,
                     };
-                } catch (error) {
-                    console.error('Failed to log session change:', error);
                 }
+
+                // Compare current browser with what was used to start the exam
+                const userAgentChanged =
+                    serverUserAgent &&
+                    currentMetadata.userAgent !== serverUserAgent;
+
+                // Only log if changed AND not already logged in this session
+                if (userAgentChanged && !initialSession.current.changeLogged) {
+                    console.warn(
+                        '⚠️ Browser/Device change detected during exam!',
+                    );
+                    console.log('Original:', serverUserAgent);
+                    console.log('Current:', currentMetadata.userAgent);
+
+                    // Log the change
+                    try {
+                        await axios.post(
+                            `/exams/${examType}/${attemptId}/log-session-change`,
+                            {
+                                change_type: 'browser',
+                                previous_user_agent: serverUserAgent,
+                                new_user_agent: currentMetadata.userAgent,
+                                browser_info: currentMetadata.browserMetadata,
+                            },
+                        );
+                        
+                        // Mark as logged to prevent duplicate logs
+                        initialSession.current.changeLogged = true;
+                        console.log('✅ Browser change logged successfully');
+                    } catch (error) {
+                        console.error('Failed to log session change:', error);
+                    }
+                }
+            } catch (error) {
+                console.error('Failed to fetch session info:', error);
             }
         };
 
-        // Check every 30 seconds
-        checkIntervalRef.current = setInterval(checkForChanges, 30000);
-
-        // Initial check after 5 seconds
-        const initialCheckTimeout = setTimeout(checkForChanges, 5000);
+        // Check immediately and periodically
+        initializeAndCheck();
+        checkIntervalRef.current = setInterval(initializeAndCheck, 30000);
 
         // Cleanup
         return () => {
             if (checkIntervalRef.current) {
                 clearInterval(checkIntervalRef.current);
             }
-            clearTimeout(initialCheckTimeout);
         };
     }, [examType, attemptId, isActive]);
 
@@ -180,37 +188,38 @@ export function useExamSessionMonitor({
 
         const handleVisibilityChange = async () => {
             if (document.visibilityState === 'visible') {
-                // User came back to the tab, check for changes
-                const currentMetadata = captureExamMetadataSync();
-
-                if (
-                    initialSession.current &&
-                    currentMetadata.userAgent !==
-                        initialSession.current.userAgent
-                ) {
-                    console.warn(
-                        '⚠️ Browser change detected after tab became visible!',
+                // User came back to the tab, check for changes against server data
+                try {
+                    const response = await axios.get(
+                        `/exams/${examType}/${attemptId}/session-info`,
                     );
 
-                    try {
+                    const serverUserAgent = response.data.user_agent;
+                    const currentMetadata = captureExamMetadataSync();
+
+                    if (
+                        serverUserAgent &&
+                        currentMetadata.userAgent !== serverUserAgent
+                    ) {
+                        console.warn(
+                            '⚠️ Browser change detected after tab became visible!',
+                        );
+
                         await axios.post(
                             `/exams/${examType}/${attemptId}/log-session-change`,
                             {
                                 change_type: 'browser',
-                                previous_user_agent:
-                                    initialSession.current.userAgent,
+                                previous_user_agent: serverUserAgent,
                                 new_user_agent: currentMetadata.userAgent,
                                 browser_info: currentMetadata.browserMetadata,
                             },
                         );
-
-                        initialSession.current = {
-                            userAgent: currentMetadata.userAgent,
-                            browserMetadata: currentMetadata.browserMetadata,
-                        };
-                    } catch (error) {
-                        console.error('Failed to log session change:', error);
                     }
+                } catch (error) {
+                    console.error(
+                        'Failed to check session on visibility change:',
+                        error,
+                    );
                 }
             }
         };

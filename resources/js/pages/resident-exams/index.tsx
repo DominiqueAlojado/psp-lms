@@ -90,7 +90,11 @@ export default function ResidentExams() {
     };
 
     const confirmStartExam = () => {
-        if (confirmText.toUpperCase() !== 'START EXAM') {
+        // For resume, no text confirmation needed
+        if (
+            actionType !== 'resume' &&
+            confirmText.toUpperCase() !== 'START EXAM'
+        ) {
             return;
         }
 
@@ -525,46 +529,57 @@ export default function ResidentExams() {
                                         </div>
                                     )}
 
-                                    <div className="space-y-2">
-                                        <Label
-                                            htmlFor="confirm-text"
-                                            className="text-sm font-medium"
-                                        >
-                                            To confirm, please type{' '}
-                                            <span className="font-mono font-bold text-foreground">
-                                                START EXAM
-                                            </span>{' '}
-                                            below:
-                                        </Label>
-                                        <Input
-                                            id="confirm-text"
-                                            value={confirmText}
-                                            onChange={(e) =>
-                                                setConfirmText(e.target.value)
-                                            }
-                                            placeholder="Type START EXAM"
-                                            className="font-mono"
-                                            autoComplete="off"
-                                            autoFocus
-                                            onKeyDown={(e) => {
-                                                if (
-                                                    e.key === 'Enter' &&
-                                                    confirmText.toUpperCase() ===
-                                                        'START EXAM'
-                                                ) {
-                                                    confirmStartExam();
+                                    {actionType === 'resume' ? (
+                                        <p className="text-sm text-muted-foreground">
+                                            You will continue from where you
+                                            left off. Your progress has been
+                                            saved.
+                                        </p>
+                                    ) : (
+                                        <div className="space-y-2">
+                                            <Label
+                                                htmlFor="confirm-text"
+                                                className="text-sm font-medium"
+                                            >
+                                                To confirm, please type{' '}
+                                                <span className="font-mono font-bold text-foreground">
+                                                    START EXAM
+                                                </span>{' '}
+                                                below:
+                                            </Label>
+                                            <Input
+                                                id="confirm-text"
+                                                value={confirmText}
+                                                onChange={(e) =>
+                                                    setConfirmText(
+                                                        e.target.value,
+                                                    )
                                                 }
-                                            }}
-                                        />
-                                        {confirmText &&
-                                            confirmText.toUpperCase() !==
-                                                'START EXAM' && (
-                                                <p className="text-xs text-destructive">
-                                                    Text doesn't match. Please
-                                                    type exactly: START EXAM
-                                                </p>
-                                            )}
-                                    </div>
+                                                placeholder="Type START EXAM"
+                                                className="font-mono"
+                                                autoComplete="off"
+                                                autoFocus
+                                                onKeyDown={(e) => {
+                                                    if (
+                                                        e.key === 'Enter' &&
+                                                        confirmText.toUpperCase() ===
+                                                            'START EXAM'
+                                                    ) {
+                                                        confirmStartExam();
+                                                    }
+                                                }}
+                                            />
+                                            {confirmText &&
+                                                confirmText.toUpperCase() !==
+                                                    'START EXAM' && (
+                                                    <p className="text-xs text-destructive">
+                                                        Text doesn't match.
+                                                        Please type exactly:
+                                                        START EXAM
+                                                    </p>
+                                                )}
+                                        </div>
+                                    )}
                                 </div>
                             </AlertDialogDescription>
                         </AlertDialogHeader>
@@ -577,6 +592,7 @@ export default function ResidentExams() {
                             <AlertDialogAction
                                 onClick={confirmStartExam}
                                 disabled={
+                                    actionType !== 'resume' &&
                                     confirmText.toUpperCase() !== 'START EXAM'
                                 }
                                 className="bg-primary"

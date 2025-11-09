@@ -26,6 +26,7 @@ import {
     Activity,
     AlertTriangle,
     Clock,
+    Globe,
     RefreshCw,
     Wifi,
     X,
@@ -395,7 +396,17 @@ export default function LiveExamMonitor() {
                                                         </div>
                                                     </TableCell>
                                                     <TableCell className="text-sm">
-                                                        <div className="space-y-1">
+                                                        <div className="space-y-1.5">
+                                                            {session.ip_address && (
+                                                                <div className="flex items-center gap-1.5">
+                                                                    <Globe className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+                                                                    <span className="font-mono text-xs font-semibold text-blue-700 dark:text-blue-300">
+                                                                        {
+                                                                            session.ip_address
+                                                                        }
+                                                                    </span>
+                                                                </div>
+                                                            )}
                                                             <div className="flex items-center gap-1">
                                                                 <Wifi className="h-3 w-3" />
                                                                 <span className="text-xs">
@@ -412,13 +423,6 @@ export default function LiveExamMonitor() {
                                                                 {session.browser}{' '}
                                                                 ({session.device})
                                                             </div>
-                                                            {session.ip_address && (
-                                                                <div className="font-mono text-xs text-muted-foreground">
-                                                                    {
-                                                                        session.ip_address
-                                                                    }
-                                                                </div>
-                                                            )}
                                                         </div>
                                                     </TableCell>
                                                     <TableCell className="text-center">

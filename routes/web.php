@@ -35,6 +35,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('exams.log-activity');
     Route::post('exams/{type}/{attempt}/update-metadata', [App\Http\Controllers\ResidentExamController::class, 'updateMetadata'])
         ->name('exams.update-metadata');
+    Route::get('exams/{type}/{attempt}/session-info', [App\Http\Controllers\ResidentExamController::class, 'getSessionInfo'])
+        ->name('exams.session-info');
 
     // Residents
     Route::get('residents', [App\Http\Controllers\ResidentController::class, 'index'])

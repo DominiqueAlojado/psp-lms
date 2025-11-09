@@ -861,6 +861,32 @@ class ResidentExamController extends Controller
     }
 
     /**
+     * Get session info for browser change detection.
+     */
+    public function getSessionInfo(Request $request, string $type, int $attemptId)
+    {
+        $user = $request->user();
+
+        // Get attempt
+        if ($type === 'institution') {
+            $attempt = InstitutionAttempt::findOrFail($attemptId);
+        } else {
+            $attempt = NationalAttempt::findOrFail($attemptId);
+        }
+
+        // Verify ownership
+        if ($attempt->user_id !== $user->id) {
+            abort(403, 'Unauthorized');
+        }
+
+        return response()->json([
+            'user_agent' => $attempt->user_agent,
+            'ip_address' => $attempt->ip_address,
+            'browser_metadata' => $attempt->browser_metadata,
+        ]);
+    }
+
+    /**
      * Update exam attempt metadata (called from frontend after page load).
      */
     public function updateMetadata(Request $request, string $type, int $attemptId)
