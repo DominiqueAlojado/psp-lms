@@ -10,8 +10,8 @@ use Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
-        web: __DIR__ . '/../routes/web.php',
-        commands: __DIR__ . '/../routes/console.php',
+        web: __DIR__.'/../routes/web.php',
+        commands: __DIR__.'/../routes/console.php',
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
@@ -21,7 +21,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'exams/*/*/save-answer',
         ]);
 
-        // Trust proxies for HTTPS detection in production
+        // Trust proxies for HTTPS detection and real IP (including Cloudflare)
         $middleware->trustProxies(
             at: '*',
             headers: \Illuminate\Http\Request::HEADER_X_FORWARDED_FOR |
@@ -32,6 +32,7 @@ return Application::configure(basePath: dirname(__DIR__))
         );
 
         $middleware->web(append: [
+            \App\Http\Middleware\TrustCloudflare::class, // Get real IP from Cloudflare
             HandleAppearance::class,
             SetOrganizationFromUrl::class,
             HandleInertiaRequests::class,

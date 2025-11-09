@@ -49,7 +49,6 @@ class ResidentExamController extends Controller
                     'total_points' => $assessment->total_points,
                     'status' => 'in_progress',
                     'ip_address' => $request->ip(),
-                    // 'ip_address' => '192.1.168.1.2',
                     'user_agent' => $request->userAgent(),
                     'last_activity_at' => now(),
                 ]);
