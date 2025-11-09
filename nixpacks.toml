@@ -107,7 +107,7 @@ http {
     server {
         # ...
         location ~ \.php$ {
-+            fastcgi_buffer_size 8k;
+            fastcgi_buffer_size 8k;
             fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
             include $!{nginx}/conf/fastcgi_params;
             include $!{nginx}/conf/fastcgi.conf;
@@ -189,3 +189,4 @@ http {
         }
     }
 }
+'''
