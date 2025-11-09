@@ -153,20 +153,43 @@ function ExamContent({ exam, attempt, savedAnswers }: PageProps) {
 
         const startTime = new Date(attempt.started_at).getTime();
         const endTime = startTime + exam.duration_minutes * 60 * 1000;
+        let autoSubmitted = false;
 
         const interval = setInterval(() => {
             const now = Date.now();
             const remaining = Math.max(0, endTime - now);
             setTimeRemaining(Math.floor(remaining / 1000));
 
-            if (remaining === 0) {
-                // Auto-submit when time runs out
-                // TODO: Implement auto-submit
+            // Auto-submit when time runs out (only once)
+            if (remaining === 0 && !autoSubmitted) {
+                autoSubmitted = true;
+                clearInterval(interval);
+                
+                toast.warning('⏱️ Time is up! Exam is being submitted automatically...', {
+                    duration: 5000,
+                });
+
+                // Auto-submit without confirmation (time expired)
+                setTimeout(() => {
+                    router.post(
+                        `/exams/${exam.type}/${attempt.id}/submit`,
+                        {},
+                        {
+                            onSuccess: () => {
+                                toast.success('Exam submitted successfully!');
+                            },
+                            onError: (errors) => {
+                                console.error('Auto-submission error:', errors);
+                                toast.error('Failed to auto-submit exam.');
+                            },
+                        },
+                    );
+                }, 1000); // Small delay to show the warning message
             }
         }, 1000);
 
         return () => clearInterval(interval);
-    }, [exam.duration_minutes, attempt.started_at]);
+    }, [exam.duration_minutes, attempt.started_at, exam.type, attempt.id]);
 
     const formatTime = (seconds: number) => {
         const hours = Math.floor(seconds / 3600);

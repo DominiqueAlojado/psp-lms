@@ -145,14 +145,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('announcements/{announcement}/view', [App\Http\Controllers\AnnouncementController::class, 'markAsViewed'])
         ->name('announcements.view');
 
-    // Assessment Reports
+    // Assessment Reports (Staff Only - residents use "My Exams" to see their own results)
     Route::redirect('assessment-reports', '/assessment-reports/by-resident')->name('assessment-reports');
     Route::get('assessment-reports/by-resident', [App\Http\Controllers\AssessmentReportController::class, 'byResident'])
-        ->middleware('permission:view-assessments')
-        ->name('assessment-reports.by-resident');
+        ->middleware('permission:view-assessment-reports')
+        ->name('assessment-reports.by-resident'); // Staff only - view all residents' results
     Route::get('assessment-reports/live-monitor', [App\Http\Controllers\AssessmentReportController::class, 'liveMonitor'])
-        ->middleware('permission:view-assessments')
-        ->name('assessment-reports.live-monitor');
+        ->middleware('permission:view-assessment-reports')
+        ->name('assessment-reports.live-monitor'); // Staff only - live monitoring/proctoring
 
     // Institution Exams
     Route::get('assessments', [App\Http\Controllers\InstitutionExamController::class, 'index'])

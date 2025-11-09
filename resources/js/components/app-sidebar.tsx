@@ -56,7 +56,7 @@ const mainNavItems: NavItem[] = [
         title: 'Assessment Reports',
         href: '/assessment-reports',
         icon: BarChart3,
-        permission: 'view-assessments',
+        permission: 'view-assessment-reports',
     },
     {
         title: 'In-Service Exams',
