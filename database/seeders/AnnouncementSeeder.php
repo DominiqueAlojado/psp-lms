@@ -38,6 +38,13 @@ class AnnouncementSeeder extends Seeder
         // System-wide announcements (for admins/BOP)
         $systemAnnouncements = [
             [
+                'title' => '🎭 DEMO SITE NOTICE - All Data is Sample/Test Data',
+                'content' => '<div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px; border-radius: 10px; color: white; margin-bottom: 15px;"><h2 style="color: white; margin-top: 0;">⚠️ Welcome to the Demo Environment</h2><p style="font-size: 16px;"><strong>Please Note:</strong> This is a demonstration site for testing and evaluation purposes.</p></div><div style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 15px 0;"><h3 style="color: #856404; margin-top: 0;">📋 Important Information:</h3><ul style="color: #856404;"><li><strong>All data displayed is fictitious</strong> - Names, organizations, exam results, and announcements are randomly generated for demo purposes</li><li><strong>Data resets regularly</strong> - The database may be refreshed periodically to showcase the system\'s features</li><li><strong>Test freely</strong> - Feel free to explore all features, create test entries, and experiment with the system</li><li><strong>No real data</strong> - Do not enter any real personal information, medical records, or confidential data</li></ul></div><div style="background: #d1ecf1; border-left: 4px solid #17a2b8; padding: 15px; margin: 15px 0;"><h3 style="color: #0c5460; margin-top: 0;">✨ System Features:</h3><p style="color: #0c5460;">This demonstration includes sample residents, institutions, exams, assessments, and learning materials to help you evaluate the complete Learning Management System experience.</p></div><p style="text-align: center; color: #6c757d; font-style: italic; margin-top: 20px;">Thank you for testing our platform! For inquiries, please contact the system administrator.</p>',
+                'scope' => 'system',
+                'priority' => 'urgent',
+                'is_pinned' => true,
+            ],
+            [
                 'title' => 'National In-Service Examination Schedule',
                 'content' => '<p>The National In-Service Examination for all residency programs will be held on <strong>December 15, 2024</strong>.</p><p>All residents are required to attend. Please coordinate with your respective training officers for the examination venue and schedule.</p><p>Topics covered:</p><ul><li>Basic Sciences</li><li>Clinical Medicine</li><li>Specialty-specific modules</li></ul>',
                 'scope' => 'system',
