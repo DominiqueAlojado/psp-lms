@@ -18,6 +18,7 @@ class DatabaseSeeder extends Seeder
             OrganizationSeeder::class,  // Create organizations
             RoleSeeder::class,           // Create roles
             PermissionSeeder::class,     // Create permissions
+            AnnouncementPermissionSeeder::class, // Create announcement-specific permissions
             RolePermissionSeeder::class, // Assign permissions to roles
             SystemAdminSeeder::class,    // Create system admin user
             StaffSeeder::class,          // Create staff members
