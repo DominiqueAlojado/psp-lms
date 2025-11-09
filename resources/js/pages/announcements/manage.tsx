@@ -1,5 +1,6 @@
 import { DeleteConfirmationDialog } from '@/components/delete-confirmation-dialog';
 import HeadingSmall from '@/components/heading-small';
+import { RichTextEditor } from '@/components/rich-text-editor';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -21,7 +22,6 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, router, usePage } from '@inertiajs/react';
@@ -514,18 +514,15 @@ export default function ManageAnnouncements() {
                                             *
                                         </span>
                                     </Label>
-                                    <Textarea
-                                        id="create-content"
+                                    <RichTextEditor
                                         value={createContent}
-                                        onChange={(e) =>
-                                            setCreateContent(e.target.value)
-                                        }
+                                        onChange={setCreateContent}
                                         placeholder="Enter the announcement details..."
-                                        rows={6}
-                                        required
                                     />
                                     <p className="text-xs text-muted-foreground">
-                                        You can use HTML tags for formatting
+                                        Use the toolbar to format your
+                                        announcement with bold, italic, lists,
+                                        links, and more.
                                     </p>
                                 </div>
 
@@ -739,14 +736,10 @@ export default function ManageAnnouncements() {
                                                 *
                                             </span>
                                         </Label>
-                                        <Textarea
-                                            id="edit-content"
+                                        <RichTextEditor
                                             value={editContent}
-                                            onChange={(e) =>
-                                                setEditContent(e.target.value)
-                                            }
-                                            rows={6}
-                                            required
+                                            onChange={setEditContent}
+                                            placeholder="Enter the announcement details..."
                                         />
                                     </div>
 
