@@ -62,11 +62,42 @@ class ResidentExamController extends Controller
                 $questions = $questions->shuffle($attempt->id);
             }
 
-            // Load existing answers
+            // Load existing answers and validate against current choices
             $attempt->load('answers');
-            $savedAnswers = $attempt->answers->mapWithKeys(fn ($answer) => [
-                $answer->question_id => $answer->answer_data,
-            ]);
+
+            // Create a map of valid choice IDs per question
+            $validChoiceIds = $questions->mapWithKeys(function ($question) {
+                return [$question->id => $question->choices->pluck('id')->toArray()];
+            });
+
+            $savedAnswers = $attempt->answers->mapWithKeys(function ($answer) use ($validChoiceIds) {
+                $answerData = $answer->answer_data;
+
+                // Validate and clean choice IDs
+                if (isset($answerData['choice_id'])) {
+                    // Single choice - check if it still exists
+                    if (! in_array($answerData['choice_id'], $validChoiceIds[$answer->question_id] ?? [])) {
+                        // Choice no longer exists, remove the answer
+                        return [$answer->question_id => []];
+                    }
+                } elseif (isset($answerData['choice_ids'])) {
+                    // Multiple choices - filter out invalid ones
+                    $validIds = array_intersect(
+                        $answerData['choice_ids'],
+                        $validChoiceIds[$answer->question_id] ?? []
+                    );
+
+                    if (empty($validIds)) {
+                        // No valid choices left, remove the answer
+                        return [$answer->question_id => []];
+                    }
+
+                    // Update with only valid choice IDs
+                    $answerData['choice_ids'] = array_values($validIds);
+                }
+
+                return [$answer->question_id => $answerData];
+            })->filter();
 
             return Inertia::render('resident-exams/take', [
                 'exam' => [
@@ -148,11 +179,42 @@ class ResidentExamController extends Controller
                 $questions = $questions->shuffle($attempt->id);
             }
 
-            // Load existing answers
+            // Load existing answers and validate against current choices
             $attempt->load('answers');
-            $savedAnswers = $attempt->answers->mapWithKeys(fn ($answer) => [
-                $answer->question_id => $answer->answer_data,
-            ]);
+
+            // Create a map of valid choice IDs per question
+            $validChoiceIds = $questions->mapWithKeys(function ($question) {
+                return [$question->id => $question->choices->pluck('id')->toArray()];
+            });
+
+            $savedAnswers = $attempt->answers->mapWithKeys(function ($answer) use ($validChoiceIds) {
+                $answerData = $answer->answer_data;
+
+                // Validate and clean choice IDs
+                if (isset($answerData['choice_id'])) {
+                    // Single choice - check if it still exists
+                    if (! in_array($answerData['choice_id'], $validChoiceIds[$answer->question_id] ?? [])) {
+                        // Choice no longer exists, remove the answer
+                        return [$answer->question_id => []];
+                    }
+                } elseif (isset($answerData['choice_ids'])) {
+                    // Multiple choices - filter out invalid ones
+                    $validIds = array_intersect(
+                        $answerData['choice_ids'],
+                        $validChoiceIds[$answer->question_id] ?? []
+                    );
+
+                    if (empty($validIds)) {
+                        // No valid choices left, remove the answer
+                        return [$answer->question_id => []];
+                    }
+
+                    // Update with only valid choice IDs
+                    $answerData['choice_ids'] = array_values($validIds);
+                }
+
+                return [$answer->question_id => $answerData];
+            })->filter();
 
             return Inertia::render('resident-exams/take', [
                 'exam' => [

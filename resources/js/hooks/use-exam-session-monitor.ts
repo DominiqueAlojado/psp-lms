@@ -14,7 +14,7 @@ interface UseExamSessionMonitorProps {
     isActive: boolean; // Only monitor when exam is active
 }
 
-const IDLE_THRESHOLD = 120; // 2 minutes of no activity = idle
+const IDLE_THRESHOLD = 30; // 2 minutes of no activity = idle
 const ACTIVITY_CHECK_INTERVAL = 30000; // Check every 30 seconds
 
 /**
@@ -155,7 +155,7 @@ export function useExamSessionMonitor({
                                 browser_info: currentMetadata.browserMetadata,
                             },
                         );
-                        
+
                         // Mark as logged to prevent duplicate logs
                         initialSession.current.changeLogged = true;
                         console.log('✅ Browser change logged successfully');
@@ -234,4 +234,3 @@ export function useExamSessionMonitor({
         };
     }, [examType, attemptId, isActive]);
 }
-

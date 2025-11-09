@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ExamSessionChange;
 use App\Models\Institution\InstitutionAssessment;
 use App\Models\Institution\InstitutionAttempt;
 use App\Models\Organization;
@@ -181,30 +182,45 @@ class AssessmentReportController extends Controller
         $activeSessions = $query
             ->orderBy('started_at', 'desc')
             ->get()
-            ->map(fn ($attempt) => [
-                'id' => $attempt->id,
-                'resident_name' => $attempt->user->name,
-                'resident_email' => $attempt->user->email,
-                'exam_title' => $attempt->assessment->title,
-                'exam_category' => $attempt->assessment->exam_category,
-                'organization_name' => $attempt->organization->name,
-                'started_at' => $attempt->started_at?->format('M d, Y h:i A'),
-                'time_elapsed' => $attempt->started_at?->diffInMinutes(now()).' mins',
-                'last_activity' => $attempt->last_activity_at
-                    ? $attempt->last_activity_at->diffForHumans()
-                    : 'No activity yet',
-                'is_idle' => $attempt->last_activity_at && $attempt->last_activity_at < now()->subMinutes(2),
-                'ip_address' => $attempt->ip_address,
-                'browser' => $attempt->browser_metadata['browser'] ?? 'Unknown',
-                'device' => $attempt->browser_metadata['device'] ?? 'Unknown',
-                'connection' => $attempt->connection_type,
-                'speed' => $attempt->connection_speed ? round($attempt->connection_speed, 1).' Mbps' : 'N/A',
-                'ip_changes' => $attempt->ip_changes_count,
-                'browser_changes' => $attempt->browser_changes_count,
-                'idle_time' => gmdate('H:i:s', $attempt->total_idle_time),
-                'idle_periods' => $attempt->idle_periods_count,
-                'is_suspicious' => $attempt->ip_changes_count > 0 || $attempt->browser_changes_count > 0,
-            ]);
+            ->map(function ($attempt) {
+                // Get browser change details
+                $browserChanges = ExamSessionChange::where('attempt_type', 'institution')
+                    ->where('attempt_id', $attempt->id)
+                    ->where('change_type', 'browser')
+                    ->orderBy('detected_at', 'asc')
+                    ->get()
+                    ->map(fn ($change) => [
+                        'from' => $this->extractBrowserName($change->previous_user_agent),
+                        'to' => $change->browser_info['browser'] ?? $this->extractBrowserName($change->new_user_agent),
+                        'time' => $change->detected_at->format('h:i A'),
+                    ]);
+
+                return [
+                    'id' => $attempt->id,
+                    'resident_name' => $attempt->user->name,
+                    'resident_email' => $attempt->user->email,
+                    'exam_title' => $attempt->assessment->title,
+                    'exam_category' => $attempt->assessment->exam_category,
+                    'organization_name' => $attempt->organization->name,
+                    'started_at' => $attempt->started_at?->format('M d, Y h:i A'),
+                    'time_elapsed' => $attempt->started_at?->diffInMinutes(now()).' mins',
+                    'last_activity' => $attempt->last_activity_at
+                        ? $attempt->last_activity_at->diffForHumans()
+                        : 'No activity yet',
+                    'is_idle' => $attempt->last_activity_at && $attempt->last_activity_at < now()->subMinutes(2),
+                    'ip_address' => $attempt->ip_address,
+                    'browser' => $attempt->browser_metadata['browser'] ?? 'Unknown',
+                    'device' => $attempt->browser_metadata['device'] ?? 'Unknown',
+                    'connection' => $attempt->connection_type,
+                    'speed' => $attempt->connection_speed ? round($attempt->connection_speed, 1).' Mbps' : 'N/A',
+                    'ip_changes' => $attempt->ip_changes_count,
+                    'browser_changes' => $attempt->browser_changes_count,
+                    'browser_change_details' => $browserChanges,
+                    'idle_time' => gmdate('H:i:s', $attempt->total_idle_time),
+                    'idle_periods' => $attempt->idle_periods_count,
+                    'is_suspicious' => $attempt->ip_changes_count > 0 || $attempt->browser_changes_count > 0,
+                ];
+            });
 
         // Filter options
         $organizations = $isSystemAdmin
@@ -227,5 +243,23 @@ class AssessmentReportController extends Controller
             'isSystemAdmin' => $isSystemAdmin,
             'lastUpdate' => now()->format('h:i:s A'),
         ]);
+    }
+
+    /**
+     * Extract browser name from user agent string.
+     */
+    private function extractBrowserName(string $userAgent): string
+    {
+        if (str_contains($userAgent, 'Firefox')) {
+            return 'Firefox';
+        } elseif (str_contains($userAgent, 'Edg/')) {
+            return 'Edge';
+        } elseif (str_contains($userAgent, 'Chrome')) {
+            return 'Chrome';
+        } elseif (str_contains($userAgent, 'Safari')) {
+            return 'Safari';
+        }
+
+        return 'Unknown';
     }
 }

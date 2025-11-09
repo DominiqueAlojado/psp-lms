@@ -40,6 +40,12 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
 ];
 
+interface BrowserChangeDetail {
+    from: string;
+    to: string;
+    time: string;
+}
+
 interface ActiveSession {
     id: number;
     resident_name: string;
@@ -58,6 +64,7 @@ interface ActiveSession {
     speed: string;
     ip_changes: number;
     browser_changes: number;
+    browser_change_details: BrowserChangeDetail[];
     idle_time: string;
     idle_periods: number;
     is_suspicious: boolean;
@@ -397,7 +404,7 @@ export default function LiveExamMonitor() {
                                                     </TableCell>
                                                     <TableCell className="text-sm">
                                                         <div className="space-y-1.5">
-                                                            {session.ip_address && (
+                                                            {session.ip_address ? (
                                                                 <div className="flex items-center gap-1.5">
                                                                     <Globe className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
                                                                     <span className="font-mono text-xs font-semibold text-blue-700 dark:text-blue-300">
@@ -406,22 +413,32 @@ export default function LiveExamMonitor() {
                                                                         }
                                                                     </span>
                                                                 </div>
+                                                            ) : (
+                                                                <div className="flex items-center gap-1.5">
+                                                                    <Globe className="h-3.5 w-3.5 text-muted-foreground" />
+                                                                    <span className="text-xs italic text-muted-foreground">
+                                                                        IP not
+                                                                        captured
+                                                                    </span>
+                                                                </div>
                                                             )}
                                                             <div className="flex items-center gap-1">
-                                                                <Wifi className="h-3 w-3" />
-                                                                <span className="text-xs">
-                                                                    {
-                                                                        session.connection
-                                                                    }{' '}
+                                                                <Wifi className="h-3 w-3 text-muted-foreground" />
+                                                                <span className="text-xs text-muted-foreground">
+                                                                    {session.connection ||
+                                                                        'Unknown'}{' '}
                                                                     |{' '}
-                                                                    {
-                                                                        session.speed
-                                                                    }
+                                                                    {session.speed ||
+                                                                        'N/A'}
                                                                 </span>
                                                             </div>
                                                             <div className="text-xs text-muted-foreground">
-                                                                {session.browser}{' '}
-                                                                ({session.device})
+                                                                {session.browser !==
+                                                                    'Unknown' ||
+                                                                session.device !==
+                                                                    'Unknown'
+                                                                    ? `${session.browser} (${session.device})`
+                                                                    : 'Browser info not captured'}
                                                             </div>
                                                         </div>
                                                     </TableCell>
@@ -445,15 +462,52 @@ export default function LiveExamMonitor() {
                                                                 )}
                                                                 {session.browser_changes >
                                                                     0 && (
-                                                                    <Badge
-                                                                        variant="destructive"
-                                                                        className="text-xs"
-                                                                    >
-                                                                        Browser:{' '}
-                                                                        {
-                                                                            session.browser_changes
-                                                                        }
-                                                                    </Badge>
+                                                                    <div className="flex flex-col gap-1">
+                                                                        <Badge
+                                                                            variant="destructive"
+                                                                            className="text-xs"
+                                                                        >
+                                                                            Browser:{' '}
+                                                                            {
+                                                                                session.browser_changes
+                                                                            }
+                                                                        </Badge>
+                                                                        {session
+                                                                            .browser_change_details
+                                                                            .length >
+                                                                            0 && (
+                                                                            <div className="mt-1 text-xs text-muted-foreground">
+                                                                                {session.browser_change_details.map(
+                                                                                    (
+                                                                                        change,
+                                                                                        idx,
+                                                                                    ) => (
+                                                                                        <div
+                                                                                            key={
+                                                                                                idx
+                                                                                            }
+                                                                                            className="whitespace-nowrap"
+                                                                                        >
+                                                                                            {
+                                                                                                change.from
+                                                                                            }{' '}
+                                                                                            →{' '}
+                                                                                            <span className="font-semibold text-red-600 dark:text-red-400">
+                                                                                                {
+                                                                                                    change.to
+                                                                                                }
+                                                                                            </span>
+                                                                                            <span className="ml-1 text-[10px]">
+                                                                                                ({
+                                                                                                    change.time
+                                                                                                })
+                                                                                            </span>
+                                                                                        </div>
+                                                                                    ),
+                                                                                )}
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
                                                                 )}
                                                             </div>
                                                         )}
