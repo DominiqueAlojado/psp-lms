@@ -46,20 +46,6 @@ class AnnouncementSeeder extends Seeder
                 'priority' => 'urgent',
                 'is_pinned' => true,
             ],
-            [
-                'title' => 'National In-Service Examination Schedule',
-                'content' => '<p>The National In-Service Examination for all residency programs will be held on <strong>December 15, 2024</strong>.</p><p>All residents are required to attend. Please coordinate with your respective training officers for the examination venue and schedule.</p><p>Topics covered:</p><ul><li>Basic Sciences</li><li>Clinical Medicine</li><li>Specialty-specific modules</li></ul>',
-                'scope' => 'system',
-                'priority' => 'important',
-                'is_pinned' => true,
-            ],
-            [
-                'title' => 'System Maintenance Notice',
-                'content' => '<p>The PSP Learning Management System will undergo scheduled maintenance on <strong>November 12, 2024, from 2:00 AM to 6:00 AM</strong>.</p><p>During this period, the system will be temporarily unavailable. We apologize for any inconvenience.</p>',
-                'scope' => 'system',
-                'priority' => 'normal',
-                'expires_at' => now()->addDays(7),
-            ],
         ];
 
         foreach ($systemAnnouncements as $data) {
