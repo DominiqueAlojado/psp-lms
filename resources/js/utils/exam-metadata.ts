@@ -40,9 +40,19 @@ function parseBrowserInfo(): BrowserMetadata {
     let device = 'Desktop';
 
     // Detect Browser (order matters - check most specific first)
-    if (ua.includes('Edg/')) {
+    if (
+        ua.includes('Edg/') ||
+        ua.includes('Edge/') ||
+        ua.includes('EdgA/') ||
+        ua.includes('EdgiOS/')
+    ) {
         browser = 'Edge';
-        browserVersion = ua.match(/Edg\/([0-9.]+)/)?.[1] || 'Unknown';
+        browserVersion =
+            ua.match(/Edg\/([0-9.]+)/)?.[1] ||
+            ua.match(/Edge\/([0-9.]+)/)?.[1] ||
+            ua.match(/EdgA\/([0-9.]+)/)?.[1] ||
+            ua.match(/EdgiOS\/([0-9.]+)/)?.[1] ||
+            'Unknown';
     } else if (ua.includes('OPR/') || ua.includes('Opera/')) {
         browser = 'Opera';
         browserVersion =
@@ -64,7 +74,8 @@ function parseBrowserInfo(): BrowserMetadata {
         browserVersion = ua.match(/Arc\/([0-9.]+)/)?.[1] || 'Unknown';
     } else if (ua.includes('SamsungBrowser/')) {
         browser = 'Samsung Internet';
-        browserVersion = ua.match(/SamsungBrowser\/([0-9.]+)/)?.[1] || 'Unknown';
+        browserVersion =
+            ua.match(/SamsungBrowser\/([0-9.]+)/)?.[1] || 'Unknown';
     } else if (ua.includes('UCBrowser/')) {
         browser = 'UC Browser';
         browserVersion = ua.match(/UCBrowser\/([0-9.]+)/)?.[1] || 'Unknown';
@@ -99,7 +110,11 @@ function parseBrowserInfo(): BrowserMetadata {
         os = 'Android';
         osVersion = ua.match(/Android ([0-9.]+)/)?.[1] || 'Unknown';
         device = 'Mobile';
-    } else if (ua.includes('iOS') || ua.includes('iPhone') || ua.includes('iPad')) {
+    } else if (
+        ua.includes('iOS') ||
+        ua.includes('iPhone') ||
+        ua.includes('iPad')
+    ) {
         os = 'iOS';
         osVersion =
             ua.match(/OS ([0-9_]+)/)?.[1]?.replace(/_/g, '.') || 'Unknown';
@@ -118,7 +133,8 @@ function parseBrowserInfo(): BrowserMetadata {
     } else if (ua.includes('Mac OS X')) {
         os = 'macOS';
         osVersion =
-            ua.match(/Mac OS X ([0-9_]+)/)?.[1]?.replace(/_/g, '.') || 'Unknown';
+            ua.match(/Mac OS X ([0-9_]+)/)?.[1]?.replace(/_/g, '.') ||
+            'Unknown';
     } else if (ua.includes('Linux')) {
         os = 'Linux';
         // Try to detect specific Linux distributions
@@ -141,7 +157,8 @@ function parseBrowserInfo(): BrowserMetadata {
             ua,
         )
     ) {
-        device = ua.includes('iPad') || ua.includes('Tablet') ? 'Tablet' : 'Mobile';
+        device =
+            ua.includes('iPad') || ua.includes('Tablet') ? 'Tablet' : 'Mobile';
     }
 
     return {
@@ -182,7 +199,8 @@ function getConnectionInfo(): ConnectionInfo {
         };
     };
 
-    const connection = nav.connection || nav.mozConnection || nav.webkitConnection;
+    const connection =
+        nav.connection || nav.mozConnection || nav.webkitConnection;
 
     if (!connection) {
         // Network Information API not available - return empty object
@@ -291,4 +309,3 @@ export function captureExamMetadataSync(): Omit<
         connectionType,
     };
 }
-

@@ -37,6 +37,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('exams.update-metadata');
     Route::get('exams/{type}/{attempt}/session-info', [App\Http\Controllers\ResidentExamController::class, 'getSessionInfo'])
         ->name('exams.session-info');
+    Route::get('exams/{type}/{attempt}/current-ip', [App\Http\Controllers\ResidentExamController::class, 'getCurrentIp'])
+        ->name('exams.current-ip');
 
     // Residents
     Route::get('residents', [App\Http\Controllers\ResidentController::class, 'index'])

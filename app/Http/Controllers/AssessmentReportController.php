@@ -165,8 +165,8 @@ class AssessmentReportController extends Controller
         if ($request->filled('activity_status')) {
             $status = $request->input('activity_status');
             if ($status === 'idle') {
-                // No activity in last 2 minutes
-                $query->where('last_activity_at', '<', now()->subMinutes(2));
+                // No activity in last 3 minutes
+                $query->where('last_activity_at', '<', now()->subMinutes(3));
             } elseif ($status === 'suspicious') {
                 // Has IP or browser changes
                 $query->where(function ($q) {
@@ -174,8 +174,8 @@ class AssessmentReportController extends Controller
                         ->orWhere('browser_changes_count', '>', 0);
                 });
             } elseif ($status === 'active') {
-                // Active in last 2 minutes
-                $query->where('last_activity_at', '>=', now()->subMinutes(2));
+                // Active in last 3 minutes
+                $query->where('last_activity_at', '>=', now()->subMinutes(3));
             }
         }
 
@@ -183,16 +183,54 @@ class AssessmentReportController extends Controller
             ->orderBy('started_at', 'desc')
             ->get()
             ->map(function ($attempt) {
-                // Get browser change details
+                // Get browser change details (deduplicated)
                 $browserChanges = ExamSessionChange::where('attempt_type', 'institution')
                     ->where('attempt_id', $attempt->id)
-                    ->where('change_type', 'browser')
+                    ->whereIn('change_type', ['browser', 'both'])
                     ->orderBy('detected_at', 'asc')
                     ->get()
+                    ->unique(function ($change) {
+                        // Deduplicate by combining user agents and timestamp (rounded to minute)
+                        return $change->previous_user_agent.
+                            '|'.$change->new_user_agent.
+                            '|'.$change->detected_at->format('Y-m-d H:i');
+                    })
                     ->map(fn ($change) => [
                         'from' => $this->extractBrowserName($change->previous_user_agent),
                         'to' => $change->browser_info['browser'] ?? $this->extractBrowserName($change->new_user_agent),
                         'time' => $change->detected_at->format('h:i A'),
+                    ])
+                    ->values(); // Reset array keys after deduplication
+
+                // Get IP change details (deduplicated)
+                $ipChanges = ExamSessionChange::where('attempt_type', 'institution')
+                    ->where('attempt_id', $attempt->id)
+                    ->whereIn('change_type', ['ip_address', 'both'])
+                    ->orderBy('detected_at', 'asc')
+                    ->get()
+                    ->unique(function ($change) {
+                        // Deduplicate by IP addresses and timestamp (rounded to minute)
+                        return $change->previous_ip_address.
+                            '|'.$change->new_ip_address.
+                            '|'.$change->detected_at->format('Y-m-d H:i');
+                    })
+                    ->map(fn ($change) => [
+                        'from' => $change->previous_ip_address ?? 'Unknown',
+                        'to' => $change->new_ip_address ?? 'Unknown',
+                        'time' => $change->detected_at->format('h:i A'),
+                    ])
+                    ->values();
+
+                // Get idle period details
+                $idlePeriods = \App\Models\ExamIdlePeriod::where('attempt_type', 'institution')
+                    ->where('attempt_id', $attempt->id)
+                    ->orderBy('started_at', 'asc')
+                    ->get()
+                    ->map(fn ($period) => [
+                        'started_at' => $period->started_at->format('M d, h:i A'),
+                        'ended_at' => $period->ended_at->format('M d, h:i A'),
+                        'duration' => gmdate('H:i:s', $period->duration_seconds),
+                        'duration_minutes' => round($period->duration_seconds / 60, 1),
                     ]);
 
                 return [
@@ -207,18 +245,20 @@ class AssessmentReportController extends Controller
                     'last_activity' => $attempt->last_activity_at
                         ? $attempt->last_activity_at->diffForHumans()
                         : 'No activity yet',
-                    'is_idle' => $attempt->last_activity_at && $attempt->last_activity_at < now()->subMinutes(2),
+                    'is_idle' => $attempt->last_activity_at && $attempt->last_activity_at < now()->subMinutes(3),
                     'ip_address' => $attempt->ip_address,
                     'browser' => $attempt->browser_metadata['browser'] ?? 'Unknown',
                     'device' => $attempt->browser_metadata['device'] ?? 'Unknown',
                     'connection' => $attempt->connection_type,
                     'speed' => $attempt->connection_speed ? round($attempt->connection_speed, 1).' Mbps' : 'N/A',
-                    'ip_changes' => $attempt->ip_changes_count,
-                    'browser_changes' => $attempt->browser_changes_count,
+                    'ip_changes' => $ipChanges->count(), // Use actual deduplicated count
+                    'ip_change_details' => $ipChanges,
+                    'browser_changes' => $browserChanges->count(), // Use actual deduplicated count
                     'browser_change_details' => $browserChanges,
                     'idle_time' => gmdate('H:i:s', $attempt->total_idle_time),
                     'idle_periods' => $attempt->idle_periods_count,
-                    'is_suspicious' => $attempt->ip_changes_count > 0 || $attempt->browser_changes_count > 0,
+                    'idle_period_details' => $idlePeriods,
+                    'is_suspicious' => $ipChanges->count() > 0 || $browserChanges->count() > 0,
                 ];
             });
 
@@ -254,8 +294,11 @@ class AssessmentReportController extends Controller
             return 'Unknown';
         }
 
-        // Check most specific browsers first
-        if (str_contains($userAgent, 'Edg/')) {
+        // Check most specific browsers first (Edge has multiple identifiers)
+        if (str_contains($userAgent, 'Edg/') ||
+            str_contains($userAgent, 'Edge/') ||
+            str_contains($userAgent, 'EdgA/') ||
+            str_contains($userAgent, 'EdgiOS/')) {
             return 'Edge';
         } elseif (str_contains($userAgent, 'OPR/') || str_contains($userAgent, 'Opera/')) {
             return 'Opera';

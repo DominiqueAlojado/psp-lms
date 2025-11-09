@@ -54,6 +54,19 @@ interface BrowserChangeDetail {
     time: string;
 }
 
+interface IdlePeriodDetail {
+    started_at: string;
+    ended_at: string;
+    duration: string;
+    duration_minutes: number;
+}
+
+interface IpChangeDetail {
+    from: string;
+    to: string;
+    time: string;
+}
+
 interface ActiveSession {
     id: number;
     resident_name: string;
@@ -71,10 +84,12 @@ interface ActiveSession {
     connection: string | null;
     speed: string;
     ip_changes: number;
+    ip_change_details: IpChangeDetail[];
     browser_changes: number;
     browser_change_details: BrowserChangeDetail[];
     idle_time: string;
     idle_periods: number;
+    idle_period_details: IdlePeriodDetail[];
     is_suspicious: boolean;
 }
 
@@ -125,13 +140,13 @@ export default function LiveExamMonitor() {
     const [selectedSession, setSelectedSession] =
         useState<ActiveSession | null>(null);
 
-    // Auto-refresh every 10 seconds
+    // Auto-refresh every 3 minutes
     useEffect(() => {
         if (!autoRefresh) return;
 
         const interval = setInterval(() => {
             router.reload({ only: ['activeSessions', 'lastUpdate'] });
-        }, 10000); // 10 seconds
+        }, 180000); // 3 minutes
 
         return () => clearInterval(interval);
     }, [autoRefresh]);
@@ -439,7 +454,8 @@ export default function LiveExamMonitor() {
                                                                 <span className="text-xs text-muted-foreground">
                                                                     {session.connection ||
                                                                         'broadband'}{' '}
-                                                                    {session.speed && `| ${session.speed}`}
+                                                                    {session.speed &&
+                                                                        `| ${session.speed}`}
                                                                 </span>
                                                             </div>
                                                             <div className="text-xs text-muted-foreground">
@@ -656,45 +672,150 @@ export default function LiveExamMonitor() {
 
                             {/* Summary Cards */}
                             <div className="grid gap-4 sm:grid-cols-2">
-                                {selectedSession.ip_changes > 0 && (
-                                    <Card>
-                                        <CardContent className="p-4 text-center">
-                                            <Badge
-                                                variant="destructive"
-                                                className="mb-2"
-                                            >
-                                                IP Changes
-                                            </Badge>
-                                            <div className="text-3xl font-bold text-red-600">
-                                                {selectedSession.ip_changes}
-                                            </div>
-                                            <div className="text-xs text-muted-foreground">
-                                                Total IP address changes
-                                            </div>
-                                        </CardContent>
-                                    </Card>
-                                )}
-                                {selectedSession.browser_changes > 0 && (
-                                    <Card>
-                                        <CardContent className="p-4 text-center">
-                                            <Badge
-                                                variant="destructive"
-                                                className="mb-2"
-                                            >
-                                                Browser Changes
-                                            </Badge>
-                                            <div className="text-3xl font-bold text-red-600">
-                                                {
-                                                    selectedSession.browser_changes
-                                                }
-                                            </div>
-                                            <div className="text-xs text-muted-foreground">
-                                                Total browser changes
-                                            </div>
-                                        </CardContent>
-                                    </Card>
-                                )}
+                                {selectedSession.ip_changes > 0 &&
+                                    (() => {
+                                        // Calculate unique IPs
+                                        const ips = new Set<string>();
+                                        selectedSession.ip_change_details.forEach(
+                                            (change) => {
+                                                ips.add(change.from);
+                                                ips.add(change.to);
+                                            },
+                                        );
+                                        const uniqueIpCount = ips.size;
+
+                                        return (
+                                            <Card>
+                                                <CardContent className="p-4 text-center">
+                                                    <Badge
+                                                        variant="destructive"
+                                                        className="mb-2"
+                                                    >
+                                                        IP Changes
+                                                    </Badge>
+                                                    <div className="text-3xl font-bold text-red-600">
+                                                        {
+                                                            selectedSession.ip_changes
+                                                        }
+                                                    </div>
+                                                    <div className="text-xs text-muted-foreground">
+                                                        {
+                                                            selectedSession.ip_changes
+                                                        }{' '}
+                                                        {selectedSession.ip_changes ===
+                                                        1
+                                                            ? 'change'
+                                                            : 'changes'}{' '}
+                                                        between {uniqueIpCount}{' '}
+                                                        {uniqueIpCount === 1
+                                                            ? 'IP address'
+                                                            : 'IP addresses'}
+                                                    </div>
+                                                </CardContent>
+                                            </Card>
+                                        );
+                                    })()}
+                                {selectedSession.browser_changes > 0 &&
+                                    (() => {
+                                        // Calculate unique browsers
+                                        const browsers = new Set<string>();
+                                        selectedSession.browser_change_details.forEach(
+                                            (change) => {
+                                                browsers.add(change.from);
+                                                browsers.add(change.to);
+                                            },
+                                        );
+                                        const uniqueBrowserCount =
+                                            browsers.size;
+
+                                        return (
+                                            <Card>
+                                                <CardContent className="p-4 text-center">
+                                                    <Badge
+                                                        variant="destructive"
+                                                        className="mb-2"
+                                                    >
+                                                        Browser Switches
+                                                    </Badge>
+                                                    <div className="text-3xl font-bold text-red-600">
+                                                        {
+                                                            selectedSession.browser_changes
+                                                        }
+                                                    </div>
+                                                    <div className="text-xs text-muted-foreground">
+                                                        {
+                                                            selectedSession.browser_changes
+                                                        }{' '}
+                                                        {selectedSession.browser_changes ===
+                                                        1
+                                                            ? 'switch'
+                                                            : 'switches'}{' '}
+                                                        between{' '}
+                                                        {uniqueBrowserCount}{' '}
+                                                        {uniqueBrowserCount ===
+                                                        1
+                                                            ? 'browser'
+                                                            : 'browsers'}
+                                                    </div>
+                                                </CardContent>
+                                            </Card>
+                                        );
+                                    })()}
                             </div>
+
+                            {/* IP Change Details */}
+                            {selectedSession.ip_change_details &&
+                                selectedSession.ip_change_details.length >
+                                    0 && (
+                                    <div className="space-y-3">
+                                        <h3 className="font-semibold">
+                                            IP Address Change History
+                                        </h3>
+                                        <div className="rounded-lg border">
+                                            <div className="divide-y">
+                                                {selectedSession.ip_change_details.map(
+                                                    (change, idx) => (
+                                                        <div
+                                                            key={idx}
+                                                            className="flex items-center justify-between p-3 hover:bg-muted/50"
+                                                        >
+                                                            <div className="flex items-center gap-2">
+                                                                <Badge
+                                                                    variant="outline"
+                                                                    className="font-mono text-xs"
+                                                                >
+                                                                    #{idx + 1}
+                                                                </Badge>
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className="font-mono text-sm text-muted-foreground">
+                                                                        {
+                                                                            change.from
+                                                                        }
+                                                                    </span>
+                                                                    <span className="text-muted-foreground">
+                                                                        →
+                                                                    </span>
+                                                                    <span className="font-mono font-semibold text-red-600 dark:text-red-400">
+                                                                        {
+                                                                            change.to
+                                                                        }
+                                                                    </span>
+                                                                </div>
+                                                            </div>
+                                                            <Badge
+                                                                variant="secondary"
+                                                                className="font-mono text-xs"
+                                                            >
+                                                                <Clock className="mr-1 h-3 w-3" />
+                                                                {change.time}
+                                                            </Badge>
+                                                        </div>
+                                                    ),
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
 
                             {/* Browser Change Details */}
                             {selectedSession.browser_change_details.length >
@@ -746,6 +867,75 @@ export default function LiveExamMonitor() {
                                     </div>
                                 </div>
                             )}
+
+                            {/* Idle Period Details */}
+                            {selectedSession.idle_period_details &&
+                                selectedSession.idle_period_details.length >
+                                    0 && (
+                                    <div className="space-y-3">
+                                        <h3 className="font-semibold">
+                                            Idle Period History
+                                        </h3>
+                                        <div className="rounded-lg border">
+                                            <div className="divide-y">
+                                                {selectedSession.idle_period_details.map(
+                                                    (period, idx) => (
+                                                        <div
+                                                            key={idx}
+                                                            className="flex items-center justify-between p-3 hover:bg-muted/50"
+                                                        >
+                                                            <div className="flex items-center gap-2">
+                                                                <Badge
+                                                                    variant="outline"
+                                                                    className="font-mono text-xs"
+                                                                >
+                                                                    #{idx + 1}
+                                                                </Badge>
+                                                                <div className="flex flex-col gap-0.5">
+                                                                    <div className="flex items-center gap-1.5 text-sm">
+                                                                        <Clock className="h-3 w-3 text-muted-foreground" />
+                                                                        <span className="text-muted-foreground">
+                                                                            Started:
+                                                                        </span>
+                                                                        <span className="font-medium">
+                                                                            {
+                                                                                period.started_at
+                                                                            }
+                                                                        </span>
+                                                                    </div>
+                                                                    <div className="flex items-center gap-1.5 text-sm">
+                                                                        <Clock className="h-3 w-3 text-muted-foreground" />
+                                                                        <span className="text-muted-foreground">
+                                                                            Ended:
+                                                                        </span>
+                                                                        <span className="font-medium">
+                                                                            {
+                                                                                period.ended_at
+                                                                            }
+                                                                        </span>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                            <Badge
+                                                                variant="secondary"
+                                                                className="font-mono text-xs"
+                                                            >
+                                                                {
+                                                                    period.duration
+                                                                }{' '}
+                                                                (
+                                                                {
+                                                                    period.duration_minutes
+                                                                }{' '}
+                                                                min)
+                                                            </Badge>
+                                                        </div>
+                                                    ),
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
 
                             {/* Current Connection Info */}
                             <div className="space-y-3">

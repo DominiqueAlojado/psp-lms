@@ -4,8 +4,10 @@ import { useEffect, useRef } from 'react';
 
 interface SessionData {
     userAgent: string;
-    browserMetadata: any;
-    changeLogged?: boolean; // Track if we already logged this change
+    ipAddress: string | null;
+    browserMetadata: unknown;
+    browserChangeLogged?: boolean; // Track if we already logged browser change
+    ipChangeLogged?: boolean; // Track if we already logged IP change
 }
 
 interface UseExamSessionMonitorProps {
@@ -14,8 +16,8 @@ interface UseExamSessionMonitorProps {
     isActive: boolean; // Only monitor when exam is active
 }
 
-const IDLE_THRESHOLD = 60; // 2 minutes of no activity = idle
-const ACTIVITY_CHECK_INTERVAL = 30000; // Check every 30 seconds
+const IDLE_THRESHOLD = 180; // 3 minutes of no activity = idle
+const ACTIVITY_CHECK_INTERVAL = 180000; // Check every 3 minutes
 
 /**
  * Hook to monitor and log browser/IP changes and idle time during an exam
@@ -27,13 +29,18 @@ export function useExamSessionMonitor({
 }: UseExamSessionMonitorProps) {
     const initialSession = useRef<SessionData | null>(null);
     const checkIntervalRef = useRef<NodeJS.Timeout | null>(null);
-    const lastActivityTime = useRef<number>(Date.now());
+    const lastActivityTime = useRef<number>(0);
     const activityIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
     // Track user activity
     useEffect(() => {
         if (!isActive) {
             return;
+        }
+
+        // Initialize activity time on mount
+        if (lastActivityTime.current === 0) {
+            lastActivityTime.current = Date.now();
         }
 
         const updateActivity = () => {
@@ -114,53 +121,121 @@ export function useExamSessionMonitor({
         // Fetch initial session data from server and check for changes
         const initializeAndCheck = async () => {
             try {
-                // Get the attempt data from server (includes initial user_agent)
+                // Get the attempt data from server (includes initial user_agent and IP)
                 const response = await axios.get(
                     `/exams/${examType}/${attemptId}/session-info`,
                 );
 
                 const serverUserAgent = response.data.user_agent;
+                const serverIpAddress = response.data.ip_address;
                 const currentMetadata = captureExamMetadataSync();
+
+                // Get current IP from server (can't get it from JavaScript directly)
+                const currentIpResponse = await axios.get(
+                    `/exams/${examType}/${attemptId}/current-ip`,
+                );
+                const currentIpAddress = currentIpResponse.data.ip_address;
 
                 // Store initial session from this page load
                 if (!initialSession.current) {
                     initialSession.current = {
                         userAgent: currentMetadata.userAgent,
+                        ipAddress: currentIpAddress,
                         browserMetadata: currentMetadata.browserMetadata,
-                        changeLogged: false,
+                        browserChangeLogged: false,
+                        ipChangeLogged: false,
                     };
                 }
 
-                // Compare current browser with what was used to start the exam
+                // Check for browser changes
                 const userAgentChanged =
                     serverUserAgent &&
                     currentMetadata.userAgent !== serverUserAgent;
 
-                // Only log if changed AND not already logged in this session
-                if (userAgentChanged && !initialSession.current.changeLogged) {
+                // Check for IP address changes
+                const ipAddressChanged =
+                    serverIpAddress &&
+                    currentIpAddress &&
+                    currentIpAddress !== serverIpAddress;
+
+                // Determine change type
+                let changeType: 'browser' | 'ip_address' | 'both' | null = null;
+                if (userAgentChanged && ipAddressChanged) {
+                    changeType = 'both';
+                } else if (userAgentChanged) {
+                    changeType = 'browser';
+                } else if (ipAddressChanged) {
+                    changeType = 'ip_address';
+                }
+
+                // Only proceed if we have initialized session
+                if (!initialSession.current) {
+                    return;
+                }
+
+                // Log browser change if detected and not already logged
+                if (
+                    userAgentChanged &&
+                    !initialSession.current.browserChangeLogged
+                ) {
                     console.warn(
                         '⚠️ Browser/Device change detected during exam!',
                     );
-                    console.log('Original:', serverUserAgent);
-                    console.log('Current:', currentMetadata.userAgent);
+                    console.log('Original Browser:', serverUserAgent);
+                    console.log('Current Browser:', currentMetadata.userAgent);
+                }
 
-                    // Log the change
-                    try {
-                        await axios.post(
-                            `/exams/${examType}/${attemptId}/log-session-change`,
-                            {
-                                change_type: 'browser',
-                                previous_user_agent: serverUserAgent,
-                                new_user_agent: currentMetadata.userAgent,
-                                browser_info: currentMetadata.browserMetadata,
-                            },
-                        );
+                // Log IP change if detected and not already logged
+                if (
+                    ipAddressChanged &&
+                    !initialSession.current.ipChangeLogged
+                ) {
+                    console.warn('⚠️ IP Address change detected during exam!');
+                    console.log('Original IP:', serverIpAddress);
+                    console.log('Current IP:', currentIpAddress);
+                }
 
-                        // Mark as logged to prevent duplicate logs
-                        initialSession.current.changeLogged = true;
-                        console.log('✅ Browser change logged successfully');
-                    } catch (error) {
-                        console.error('Failed to log session change:', error);
+                // Log the change(s) if detected
+                if (changeType) {
+                    const shouldLogBrowser =
+                        (changeType === 'browser' || changeType === 'both') &&
+                        !initialSession.current.browserChangeLogged;
+                    const shouldLogIp =
+                        (changeType === 'ip_address' ||
+                            changeType === 'both') &&
+                        !initialSession.current.ipChangeLogged;
+
+                    if (shouldLogBrowser || shouldLogIp) {
+                        try {
+                            await axios.post(
+                                `/exams/${examType}/${attemptId}/log-session-change`,
+                                {
+                                    change_type: changeType,
+                                    previous_ip: serverIpAddress,
+                                    new_ip: currentIpAddress,
+                                    previous_user_agent: serverUserAgent,
+                                    new_user_agent: currentMetadata.userAgent,
+                                    browser_info:
+                                        currentMetadata.browserMetadata,
+                                },
+                            );
+
+                            // Mark as logged to prevent duplicate logs
+                            if (shouldLogBrowser) {
+                                initialSession.current.browserChangeLogged = true;
+                            }
+                            if (shouldLogIp) {
+                                initialSession.current.ipChangeLogged = true;
+                            }
+                            console.log(
+                                '✅ Session change logged successfully',
+                            );
+                        } catch (error) {
+                            console.error(
+                                'Failed to log session change:',
+                                error,
+                            );
+                        }
                     }
                 }
             } catch (error) {
@@ -170,7 +245,10 @@ export function useExamSessionMonitor({
 
         // Check immediately and periodically
         initializeAndCheck();
-        checkIntervalRef.current = setInterval(initializeAndCheck, 30000);
+        checkIntervalRef.current = setInterval(
+            initializeAndCheck,
+            ACTIVITY_CHECK_INTERVAL,
+        );
 
         // Cleanup
         return () => {
@@ -195,24 +273,95 @@ export function useExamSessionMonitor({
                     );
 
                     const serverUserAgent = response.data.user_agent;
+                    const serverIpAddress = response.data.ip_address;
                     const currentMetadata = captureExamMetadataSync();
 
-                    if (
+                    // Get current IP from server
+                    const currentIpResponse = await axios.get(
+                        `/exams/${examType}/${attemptId}/current-ip`,
+                    );
+                    const currentIpAddress = currentIpResponse.data.ip_address;
+
+                    // Check for changes
+                    const userAgentChanged =
                         serverUserAgent &&
-                        currentMetadata.userAgent !== serverUserAgent
-                    ) {
+                        currentMetadata.userAgent !== serverUserAgent;
+
+                    const ipAddressChanged =
+                        serverIpAddress &&
+                        currentIpAddress &&
+                        currentIpAddress !== serverIpAddress;
+
+                    // Determine change type
+                    let changeType: 'browser' | 'ip_address' | 'both' | null =
+                        null;
+                    if (userAgentChanged && ipAddressChanged) {
+                        changeType = 'both';
+                    } else if (userAgentChanged) {
+                        changeType = 'browser';
+                    } else if (ipAddressChanged) {
+                        changeType = 'ip_address';
+                    }
+
+                    const shouldLogBrowser =
+                        changeType &&
+                        initialSession.current &&
+                        (changeType === 'browser' || changeType === 'both') &&
+                        !initialSession.current.browserChangeLogged;
+
+                    const shouldLogIp =
+                        changeType &&
+                        initialSession.current &&
+                        (changeType === 'ip_address' ||
+                            changeType === 'both') &&
+                        !initialSession.current.ipChangeLogged;
+
+                    if (shouldLogBrowser || shouldLogIp) {
                         console.warn(
-                            '⚠️ Browser change detected after tab became visible!',
+                            '⚠️ Session change detected after tab became visible!',
                         );
+
+                        if (userAgentChanged) {
+                            console.log('Browser changed!');
+                        }
+                        if (ipAddressChanged) {
+                            console.log(
+                                'IP changed:',
+                                serverIpAddress,
+                                '→',
+                                currentIpAddress,
+                            );
+                        }
 
                         await axios.post(
                             `/exams/${examType}/${attemptId}/log-session-change`,
                             {
-                                change_type: 'browser',
+                                change_type: changeType,
+                                previous_ip: serverIpAddress,
+                                new_ip: currentIpAddress,
                                 previous_user_agent: serverUserAgent,
                                 new_user_agent: currentMetadata.userAgent,
                                 browser_info: currentMetadata.browserMetadata,
                             },
+                        );
+
+                        // Mark as logged to prevent duplicate logs
+                        if (initialSession.current) {
+                            if (
+                                changeType === 'browser' ||
+                                changeType === 'both'
+                            ) {
+                                initialSession.current.browserChangeLogged = true;
+                            }
+                            if (
+                                changeType === 'ip_address' ||
+                                changeType === 'both'
+                            ) {
+                                initialSession.current.ipChangeLogged = true;
+                            }
+                        }
+                        console.log(
+                            '✅ Session change logged from visibility event',
                         );
                     }
                 } catch (error) {

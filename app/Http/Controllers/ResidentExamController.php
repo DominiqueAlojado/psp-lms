@@ -48,7 +48,8 @@ class ResidentExamController extends Controller
                     'started_at' => now(),
                     'total_points' => $assessment->total_points,
                     'status' => 'in_progress',
-                    'ip_address' => $request->ip(),
+                    // 'ip_address' => $request->ip(),
+                    'ip_address' => '192.1.168.1.2',
                     'user_agent' => $request->userAgent(),
                     'last_activity_at' => now(),
                 ]);
@@ -914,6 +915,21 @@ class ResidentExamController extends Controller
         if (isset($validated['idle_duration']) && $validated['idle_duration'] > 0) {
             $idleDuration = $validated['idle_duration'];
 
+            // Calculate when idle period started
+            $endedAt = now();
+            $startedAt = $endedAt->copy()->subSeconds($idleDuration);
+
+            // Store individual idle period with timestamps
+            \App\Models\ExamIdlePeriod::create([
+                'attempt_type' => $type,
+                'attempt_id' => $attemptId,
+                'user_id' => $user->id,
+                'started_at' => $startedAt,
+                'ended_at' => $endedAt,
+                'duration_seconds' => $idleDuration,
+            ]);
+
+            // Update aggregate counters
             $attempt->increment('total_idle_time', $idleDuration);
             $attempt->increment('idle_periods_count');
 
@@ -924,6 +940,30 @@ class ResidentExamController extends Controller
         }
 
         return response()->noContent();
+    }
+
+    /**
+     * Get current IP address for change detection.
+     */
+    public function getCurrentIp(Request $request, string $type, int $attemptId)
+    {
+        $user = $request->user();
+
+        // Get attempt
+        if ($type === 'institution') {
+            $attempt = InstitutionAttempt::findOrFail($attemptId);
+        } else {
+            $attempt = NationalAttempt::findOrFail($attemptId);
+        }
+
+        // Verify ownership
+        if ($attempt->user_id !== $user->id) {
+            abort(403, 'Unauthorized');
+        }
+
+        return response()->json([
+            'ip_address' => $request->ip(),
+        ]);
     }
 
     /**

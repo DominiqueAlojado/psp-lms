@@ -2,6 +2,7 @@
 
 namespace App\Models\National;
 
+use App\Models\ExamSessionChange;
 use App\Models\Organization;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -79,6 +80,22 @@ class NationalAttempt extends Model
     public function answers(): HasMany
     {
         return $this->hasMany(NationalAnswer::class, 'attempt_id');
+    }
+
+    public function sessionChanges(): HasMany
+    {
+        return $this->hasMany(ExamSessionChange::class, 'attempt_id')
+            ->where('attempt_type', 'inservice');
+    }
+
+    protected static function boot(): void
+    {
+        parent::boot();
+
+        // Cascade delete session changes when attempt is deleted
+        static::deleting(function (NationalAttempt $attempt) {
+            $attempt->sessionChanges()->delete();
+        });
     }
 
     public function calculateScore(): void

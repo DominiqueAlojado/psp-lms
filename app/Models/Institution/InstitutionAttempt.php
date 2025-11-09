@@ -2,6 +2,7 @@
 
 namespace App\Models\Institution;
 
+use App\Models\ExamSessionChange;
 use App\Models\Organization;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -73,6 +74,22 @@ class InstitutionAttempt extends Model
     public function answers(): HasMany
     {
         return $this->hasMany(InstitutionAnswer::class, 'attempt_id');
+    }
+
+    public function sessionChanges(): HasMany
+    {
+        return $this->hasMany(ExamSessionChange::class, 'attempt_id')
+            ->where('attempt_type', 'institution');
+    }
+
+    protected static function boot(): void
+    {
+        parent::boot();
+
+        // Cascade delete session changes when attempt is deleted
+        static::deleting(function (InstitutionAttempt $attempt) {
+            $attempt->sessionChanges()->delete();
+        });
     }
 
     public function calculateScore(): void
