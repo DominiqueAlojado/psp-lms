@@ -438,19 +438,16 @@ export default function LiveExamMonitor() {
                                                                 <Wifi className="h-3 w-3 text-muted-foreground" />
                                                                 <span className="text-xs text-muted-foreground">
                                                                     {session.connection ||
-                                                                        'Unknown'}{' '}
-                                                                    |{' '}
-                                                                    {session.speed ||
-                                                                        'N/A'}
+                                                                        'broadband'}{' '}
+                                                                    {session.speed && `| ${session.speed}`}
                                                                 </span>
                                                             </div>
                                                             <div className="text-xs text-muted-foreground">
-                                                                {session.browser !==
-                                                                    'Unknown' ||
-                                                                session.device !==
+                                                                {session.browser &&
+                                                                session.browser !==
                                                                     'Unknown'
-                                                                    ? `${session.browser} (${session.device})`
-                                                                    : 'Browser info not captured'}
+                                                                    ? `${session.browser}${session.device && session.device !== 'Unknown' ? ` (${session.device})` : ''}`
+                                                                    : 'Detecting browser...'}
                                                             </div>
                                                         </div>
                                                     </TableCell>

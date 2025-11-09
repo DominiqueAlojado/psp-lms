@@ -248,16 +248,39 @@ class AssessmentReportController extends Controller
     /**
      * Extract browser name from user agent string.
      */
-    private function extractBrowserName(string $userAgent): string
+    private function extractBrowserName(?string $userAgent): string
     {
-        if (str_contains($userAgent, 'Firefox')) {
-            return 'Firefox';
-        } elseif (str_contains($userAgent, 'Edg/')) {
+        if (! $userAgent) {
+            return 'Unknown';
+        }
+
+        // Check most specific browsers first
+        if (str_contains($userAgent, 'Edg/')) {
             return 'Edge';
+        } elseif (str_contains($userAgent, 'OPR/') || str_contains($userAgent, 'Opera/')) {
+            return 'Opera';
+        } elseif (str_contains($userAgent, 'Vivaldi/')) {
+            return 'Vivaldi';
+        } elseif (str_contains($userAgent, 'Arc/')) {
+            return 'Arc';
+        } elseif (str_contains($userAgent, 'SamsungBrowser/')) {
+            return 'Samsung Internet';
+        } elseif (str_contains($userAgent, 'UCBrowser/')) {
+            return 'UC Browser';
+        } elseif (str_contains($userAgent, 'DuckDuckGo/')) {
+            return 'DuckDuckGo';
+        } elseif (str_contains($userAgent, 'YaBrowser/')) {
+            return 'Yandex';
+        } elseif (str_contains($userAgent, 'Firefox')) {
+            return 'Firefox';
         } elseif (str_contains($userAgent, 'Chrome')) {
             return 'Chrome';
         } elseif (str_contains($userAgent, 'Safari')) {
             return 'Safari';
+        } elseif (str_contains($userAgent, 'MSIE') || str_contains($userAgent, 'Trident/')) {
+            return 'Internet Explorer';
+        } elseif (str_contains($userAgent, 'Chromium/')) {
+            return 'Chromium';
         }
 
         return 'Unknown';
