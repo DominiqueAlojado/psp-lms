@@ -88,13 +88,20 @@ class NationalAttempt extends Model
             ->where('attempt_type', 'inservice');
     }
 
+    public function idlePeriods(): HasMany
+    {
+        return $this->hasMany(\App\Models\ExamIdlePeriod::class, 'attempt_id')
+            ->where('attempt_type', 'inservice');
+    }
+
     protected static function boot(): void
     {
         parent::boot();
 
-        // Cascade delete session changes when attempt is deleted
+        // Cascade delete session changes and idle periods when attempt is deleted
         static::deleting(function (NationalAttempt $attempt) {
             $attempt->sessionChanges()->delete();
+            $attempt->idlePeriods()->delete();
         });
     }
 

@@ -32,6 +32,8 @@ import { Head, router, usePage } from '@inertiajs/react';
 import {
     Activity,
     AlertTriangle,
+    Bell,
+    BellOff,
     Clock,
     Eye,
     Globe,
@@ -39,7 +41,7 @@ import {
     Wifi,
     X,
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -139,14 +141,92 @@ export default function LiveExamMonitor() {
     const [autoRefresh, setAutoRefresh] = useState(true);
     const [selectedSession, setSelectedSession] =
         useState<ActiveSession | null>(null);
+    const [alarmEnabled, setAlarmEnabled] = useState(true);
+    const previousSuspiciousCount = useRef(0);
 
-    // Auto-refresh every 3 minutes
+    // Function to play alarm sound
+    const playAlarmSound = useCallback(() => {
+        try {
+            const AudioContextClass =
+                window.AudioContext ||
+                (
+                    window as Window & {
+                        webkitAudioContext?: typeof AudioContext;
+                    }
+                ).webkitAudioContext;
+
+            if (!AudioContextClass) {
+                console.warn('❌ Audio not supported in this browser');
+                return;
+            }
+
+            const audioContext = new AudioContextClass();
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+
+            // Alert beep sound (frequency and pattern)
+            oscillator.frequency.value = 800; // Hz
+            oscillator.type = 'sine';
+
+            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+
+            // Play 3 short beeps
+            oscillator.start(audioContext.currentTime);
+            gainNode.gain.setValueAtTime(0, audioContext.currentTime + 0.1);
+            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime + 0.2);
+            gainNode.gain.setValueAtTime(0, audioContext.currentTime + 0.3);
+            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime + 0.4);
+            gainNode.gain.setValueAtTime(0, audioContext.currentTime + 0.5);
+            oscillator.stop(audioContext.currentTime + 0.5);
+
+            console.log('🔊 Alarm sound played successfully');
+        } catch (error) {
+            console.error('❌ Failed to play alarm:', error);
+        }
+    }, []);
+
+    // Play alarm when new suspicious activity is detected
+    useEffect(() => {
+        const suspiciousCount = activeSessions.filter(
+            (s) => s.is_suspicious,
+        ).length;
+
+        console.log('👀 Alarm check:', {
+            alarmEnabled,
+            suspiciousCount,
+            previousCount: previousSuspiciousCount.current,
+            willTrigger:
+                alarmEnabled &&
+                suspiciousCount > previousSuspiciousCount.current &&
+                previousSuspiciousCount.current > 0,
+        });
+
+        // Check if suspicious count increased (new flagged session)
+        if (
+            alarmEnabled &&
+            suspiciousCount > previousSuspiciousCount.current &&
+            previousSuspiciousCount.current > 0
+        ) {
+            console.warn('🚨 ALARM: New suspicious activity detected!');
+            console.log(
+                `Suspicious sessions increased: ${previousSuspiciousCount.current} → ${suspiciousCount}`,
+            );
+            playAlarmSound();
+        }
+
+        previousSuspiciousCount.current = suspiciousCount;
+    }, [activeSessions, alarmEnabled, playAlarmSound]);
+
+    // Auto-refresh every 5 seconds
     useEffect(() => {
         if (!autoRefresh) return;
 
         const interval = setInterval(() => {
             router.reload({ only: ['activeSessions', 'lastUpdate'] });
-        }, 180000); // 3 minutes
+        }, 5000); // 5 seconds
 
         return () => clearInterval(interval);
     }, [autoRefresh]);
@@ -193,6 +273,35 @@ export default function LiveExamMonitor() {
                                 <Clock className="h-3 w-3" />
                                 {lastUpdate}
                             </Badge>
+                            <Button
+                                variant={alarmEnabled ? 'default' : 'outline'}
+                                size="sm"
+                                onClick={() => setAlarmEnabled(!alarmEnabled)}
+                                title={
+                                    alarmEnabled
+                                        ? 'Alarm enabled - will sound when suspicious activity detected'
+                                        : 'Alarm disabled'
+                                }
+                            >
+                                {alarmEnabled ? (
+                                    <Bell className="mr-2 h-4 w-4" />
+                                ) : (
+                                    <BellOff className="mr-2 h-4 w-4" />
+                                )}
+                                {alarmEnabled ? 'Alarm On' : 'Alarm Off'}
+                            </Button>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                    console.log('🧪 Testing alarm sound...');
+                                    playAlarmSound();
+                                }}
+                                title="Test the alarm sound"
+                            >
+                                <Bell className="mr-2 h-4 w-4" />
+                                Test Alarm
+                            </Button>
                             <Button
                                 variant={autoRefresh ? 'default' : 'outline'}
                                 size="sm"

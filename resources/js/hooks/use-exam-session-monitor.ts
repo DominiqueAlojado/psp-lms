@@ -16,8 +16,8 @@ interface UseExamSessionMonitorProps {
     isActive: boolean; // Only monitor when exam is active
 }
 
-const IDLE_THRESHOLD = 180; // 3 minutes of no activity = idle
-const ACTIVITY_CHECK_INTERVAL = 180000; // Check every 3 minutes
+const IDLE_THRESHOLD = 120; // 2 minutes of no activity = idle
+const ACTIVITY_CHECK_INTERVAL = 5000; // Check every 5 seconds
 
 /**
  * Hook to monitor and log browser/IP changes and idle time during an exam
@@ -130,11 +130,20 @@ export function useExamSessionMonitor({
                 const serverIpAddress = response.data.ip_address;
                 const currentMetadata = captureExamMetadataSync();
 
+                console.log('🔍 Session Monitor Check:', {
+                    serverUserAgent: serverUserAgent?.substring(0, 50) + '...',
+                    currentUserAgent:
+                        currentMetadata.userAgent.substring(0, 50) + '...',
+                    serverIp: serverIpAddress,
+                });
+
                 // Get current IP from server (can't get it from JavaScript directly)
                 const currentIpResponse = await axios.get(
                     `/exams/${examType}/${attemptId}/current-ip`,
                 );
                 const currentIpAddress = currentIpResponse.data.ip_address;
+
+                console.log('🔍 Current IP:', currentIpAddress);
 
                 // Store initial session from this page load
                 if (!initialSession.current) {

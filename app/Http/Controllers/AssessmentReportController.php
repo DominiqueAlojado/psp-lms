@@ -165,8 +165,8 @@ class AssessmentReportController extends Controller
         if ($request->filled('activity_status')) {
             $status = $request->input('activity_status');
             if ($status === 'idle') {
-                // No activity in last 3 minutes
-                $query->where('last_activity_at', '<', now()->subMinutes(3));
+                // No activity in last 2 minutes
+                $query->where('last_activity_at', '<', now()->subMinutes(2));
             } elseif ($status === 'suspicious') {
                 // Has IP or browser changes
                 $query->where(function ($q) {
@@ -174,8 +174,8 @@ class AssessmentReportController extends Controller
                         ->orWhere('browser_changes_count', '>', 0);
                 });
             } elseif ($status === 'active') {
-                // Active in last 3 minutes
-                $query->where('last_activity_at', '>=', now()->subMinutes(3));
+                // Active in last 2 minutes
+                $query->where('last_activity_at', '>=', now()->subMinutes(2));
             }
         }
 
@@ -245,7 +245,7 @@ class AssessmentReportController extends Controller
                     'last_activity' => $attempt->last_activity_at
                         ? $attempt->last_activity_at->diffForHumans()
                         : 'No activity yet',
-                    'is_idle' => $attempt->last_activity_at && $attempt->last_activity_at < now()->subMinutes(3),
+                    'is_idle' => $attempt->last_activity_at && $attempt->last_activity_at < now()->subMinutes(2),
                     'ip_address' => $attempt->ip_address,
                     'browser' => $attempt->browser_metadata['browser'] ?? 'Unknown',
                     'device' => $attempt->browser_metadata['device'] ?? 'Unknown',
