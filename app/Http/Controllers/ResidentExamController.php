@@ -48,6 +48,9 @@ class ResidentExamController extends Controller
                     'started_at' => now(),
                     'total_points' => $assessment->total_points,
                     'status' => 'in_progress',
+                    'ip_address' => $request->ip(),
+                    'user_agent' => $request->userAgent(),
+                    'last_activity_at' => now(),
                 ]);
             }
 
@@ -165,6 +168,7 @@ class ResidentExamController extends Controller
                     'browser_metadata' => $request->input('browser_metadata'),
                     'connection_type' => $request->input('connection_type'),
                     'connection_speed' => $request->input('connection_speed'),
+                    'last_activity_at' => now(),
                 ]);
             }
 
@@ -972,17 +976,30 @@ class ResidentExamController extends Controller
             abort(403, 'Unauthorized');
         }
 
-        // Update metadata if not already set
-        if (! $attempt->browser_metadata) {
-            $attempt->update([
-                'ip_address' => $request->ip(),
-                'user_agent' => $request->userAgent(),
-                'browser_metadata' => $validated['browser_metadata'],
-                'connection_type' => $validated['connection_type'] ?? null,
-                'connection_speed' => $validated['connection_speed'] ?? null,
-                'last_activity_at' => now(),
-            ]);
+        // Always capture IP and user agent at exam start
+        // Update browser metadata, connection info if not already set
+        $updateData = [
+            'last_activity_at' => now(),
+        ];
+
+        // Always update IP address (captures initial IP at exam start)
+        if (! $attempt->ip_address) {
+            $updateData['ip_address'] = $request->ip();
         }
+
+        // Always update user agent if not set
+        if (! $attempt->user_agent) {
+            $updateData['user_agent'] = $request->userAgent();
+        }
+
+        // Update browser metadata if not already set
+        if (! $attempt->browser_metadata) {
+            $updateData['browser_metadata'] = $validated['browser_metadata'];
+            $updateData['connection_type'] = $validated['connection_type'] ?? null;
+            $updateData['connection_speed'] = $validated['connection_speed'] ?? null;
+        }
+
+        $attempt->update($updateData);
 
         return response()->json(['success' => true]);
     }

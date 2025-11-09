@@ -2,6 +2,13 @@ import HeadingSmall from '@/components/heading-small';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import {
     Select,
@@ -26,6 +33,7 @@ import {
     Activity,
     AlertTriangle,
     Clock,
+    Eye,
     Globe,
     RefreshCw,
     Wifi,
@@ -114,6 +122,8 @@ export default function LiveExamMonitor() {
         filters.activity_status || '',
     );
     const [autoRefresh, setAutoRefresh] = useState(true);
+    const [selectedSession, setSelectedSession] =
+        useState<ActiveSession | null>(null);
 
     // Auto-refresh every 10 seconds
     useEffect(() => {
@@ -142,7 +152,11 @@ export default function LiveExamMonitor() {
         setExamFilter('');
         setOrganizationFilter('');
         setActivityStatusFilter('');
-        router.get('/assessment-reports/live-monitor', {}, { preserveState: true });
+        router.get(
+            '/assessment-reports/live-monitor',
+            {},
+            { preserveState: true },
+        );
     };
 
     const hasActiveFilters =
@@ -295,9 +309,7 @@ export default function LiveExamMonitor() {
                                     <Table>
                                         <TableHeader>
                                             <TableRow>
-                                                <TableHead>
-                                                    Resident
-                                                </TableHead>
+                                                <TableHead>Resident</TableHead>
                                                 {isSystemAdmin && (
                                                     <TableHead>
                                                         Institution
@@ -416,7 +428,7 @@ export default function LiveExamMonitor() {
                                                             ) : (
                                                                 <div className="flex items-center gap-1.5">
                                                                     <Globe className="h-3.5 w-3.5 text-muted-foreground" />
-                                                                    <span className="text-xs italic text-muted-foreground">
+                                                                    <span className="text-xs text-muted-foreground italic">
                                                                         IP not
                                                                         captured
                                                                     </span>
@@ -447,7 +459,7 @@ export default function LiveExamMonitor() {
                                                             0 ||
                                                             session.browser_changes >
                                                                 0) && (
-                                                            <div className="flex flex-col items-center gap-1">
+                                                            <div className="flex flex-col items-center gap-1.5">
                                                                 {session.ip_changes >
                                                                     0 && (
                                                                     <Badge
@@ -462,52 +474,36 @@ export default function LiveExamMonitor() {
                                                                 )}
                                                                 {session.browser_changes >
                                                                     0 && (
-                                                                    <div className="flex flex-col gap-1">
-                                                                        <Badge
-                                                                            variant="destructive"
-                                                                            className="text-xs"
-                                                                        >
-                                                                            Browser:{' '}
-                                                                            {
-                                                                                session.browser_changes
-                                                                            }
-                                                                        </Badge>
-                                                                        {session
-                                                                            .browser_change_details
-                                                                            .length >
-                                                                            0 && (
-                                                                            <div className="mt-1 text-xs text-muted-foreground">
-                                                                                {session.browser_change_details.map(
-                                                                                    (
-                                                                                        change,
-                                                                                        idx,
-                                                                                    ) => (
-                                                                                        <div
-                                                                                            key={
-                                                                                                idx
-                                                                                            }
-                                                                                            className="whitespace-nowrap"
-                                                                                        >
-                                                                                            {
-                                                                                                change.from
-                                                                                            }{' '}
-                                                                                            →{' '}
-                                                                                            <span className="font-semibold text-red-600 dark:text-red-400">
-                                                                                                {
-                                                                                                    change.to
-                                                                                                }
-                                                                                            </span>
-                                                                                            <span className="ml-1 text-[10px]">
-                                                                                                ({
-                                                                                                    change.time
-                                                                                                })
-                                                                                            </span>
-                                                                                        </div>
-                                                                                    ),
-                                                                                )}
-                                                                            </div>
-                                                                        )}
-                                                                    </div>
+                                                                    <Badge
+                                                                        variant="destructive"
+                                                                        className="text-xs"
+                                                                    >
+                                                                        Browser:{' '}
+                                                                        {
+                                                                            session.browser_changes
+                                                                        }
+                                                                    </Badge>
+                                                                )}
+                                                                {(session
+                                                                    .browser_change_details
+                                                                    .length >
+                                                                    0 ||
+                                                                    session.ip_changes >
+                                                                        0) && (
+                                                                    <Button
+                                                                        variant="ghost"
+                                                                        size="sm"
+                                                                        className="h-7 text-xs"
+                                                                        onClick={() =>
+                                                                            setSelectedSession(
+                                                                                session,
+                                                                            )
+                                                                        }
+                                                                    >
+                                                                        <Eye className="mr-1 h-3 w-3" />
+                                                                        See
+                                                                        Details
+                                                                    </Button>
                                                                 )}
                                                             </div>
                                                         )}
@@ -585,8 +581,9 @@ export default function LiveExamMonitor() {
                                 <CardContent className="p-4 text-center">
                                     <div className="text-2xl font-bold text-yellow-600">
                                         {
-                                            activeSessions.filter((s) => s.is_idle)
-                                                .length
+                                            activeSessions.filter(
+                                                (s) => s.is_idle,
+                                            ).length
                                         }
                                     </div>
                                     <div className="text-sm text-muted-foreground">
@@ -613,7 +610,189 @@ export default function LiveExamMonitor() {
                     )}
                 </div>
             </AssessmentReportsLayout>
+
+            {/* Session Change Details Modal */}
+            <Dialog
+                open={selectedSession !== null}
+                onOpenChange={(open) => !open && setSelectedSession(null)}
+            >
+                <DialogContent className="max-h-[80vh] max-w-2xl overflow-y-auto">
+                    <DialogHeader>
+                        <DialogTitle>Session Change Details</DialogTitle>
+                        <DialogDescription>
+                            Detailed information about browser and IP changes
+                            during the exam session
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    {selectedSession && (
+                        <div className="space-y-6">
+                            {/* Student Info */}
+                            <div className="rounded-lg border bg-muted/50 p-4">
+                                <div className="space-y-2">
+                                    <div>
+                                        <span className="text-sm font-semibold">
+                                            Resident:
+                                        </span>{' '}
+                                        <span className="text-sm">
+                                            {selectedSession.resident_name}
+                                        </span>
+                                    </div>
+                                    <div>
+                                        <span className="text-sm font-semibold">
+                                            Email:
+                                        </span>{' '}
+                                        <span className="text-sm">
+                                            {selectedSession.resident_email}
+                                        </span>
+                                    </div>
+                                    <div>
+                                        <span className="text-sm font-semibold">
+                                            Exam:
+                                        </span>{' '}
+                                        <span className="text-sm">
+                                            {selectedSession.exam_title}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Summary Cards */}
+                            <div className="grid gap-4 sm:grid-cols-2">
+                                {selectedSession.ip_changes > 0 && (
+                                    <Card>
+                                        <CardContent className="p-4 text-center">
+                                            <Badge
+                                                variant="destructive"
+                                                className="mb-2"
+                                            >
+                                                IP Changes
+                                            </Badge>
+                                            <div className="text-3xl font-bold text-red-600">
+                                                {selectedSession.ip_changes}
+                                            </div>
+                                            <div className="text-xs text-muted-foreground">
+                                                Total IP address changes
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                )}
+                                {selectedSession.browser_changes > 0 && (
+                                    <Card>
+                                        <CardContent className="p-4 text-center">
+                                            <Badge
+                                                variant="destructive"
+                                                className="mb-2"
+                                            >
+                                                Browser Changes
+                                            </Badge>
+                                            <div className="text-3xl font-bold text-red-600">
+                                                {
+                                                    selectedSession.browser_changes
+                                                }
+                                            </div>
+                                            <div className="text-xs text-muted-foreground">
+                                                Total browser changes
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                )}
+                            </div>
+
+                            {/* Browser Change Details */}
+                            {selectedSession.browser_change_details.length >
+                                0 && (
+                                <div className="space-y-3">
+                                    <h3 className="font-semibold">
+                                        Browser Switch History
+                                    </h3>
+                                    <div className="rounded-lg border">
+                                        <div className="divide-y">
+                                            {selectedSession.browser_change_details.map(
+                                                (change, idx) => (
+                                                    <div
+                                                        key={idx}
+                                                        className="flex items-center justify-between p-3 hover:bg-muted/50"
+                                                    >
+                                                        <div className="flex items-center gap-2">
+                                                            <Badge
+                                                                variant="outline"
+                                                                className="font-mono text-xs"
+                                                            >
+                                                                #{idx + 1}
+                                                            </Badge>
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="text-sm text-muted-foreground">
+                                                                    {
+                                                                        change.from
+                                                                    }
+                                                                </span>
+                                                                <span className="text-muted-foreground">
+                                                                    →
+                                                                </span>
+                                                                <span className="font-semibold text-red-600 dark:text-red-400">
+                                                                    {change.to}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                        <Badge
+                                                            variant="secondary"
+                                                            className="font-mono text-xs"
+                                                        >
+                                                            <Clock className="mr-1 h-3 w-3" />
+                                                            {change.time}
+                                                        </Badge>
+                                                    </div>
+                                                ),
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Current Connection Info */}
+                            <div className="space-y-3">
+                                <h3 className="font-semibold">
+                                    Current Connection
+                                </h3>
+                                <div className="space-y-2 rounded-lg border p-4">
+                                    <div className="flex items-center gap-2">
+                                        <Globe className="h-4 w-4 text-muted-foreground" />
+                                        <span className="text-sm font-medium">
+                                            IP Address:
+                                        </span>
+                                        <span className="font-mono text-sm text-blue-600 dark:text-blue-400">
+                                            {selectedSession.ip_address ||
+                                                'Not captured'}
+                                        </span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <Wifi className="h-4 w-4 text-muted-foreground" />
+                                        <span className="text-sm font-medium">
+                                            Connection:
+                                        </span>
+                                        <span className="text-sm">
+                                            {selectedSession.connection ||
+                                                'Unknown'}{' '}
+                                            | {selectedSession.speed || 'N/A'}
+                                        </span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <Activity className="h-4 w-4 text-muted-foreground" />
+                                        <span className="text-sm font-medium">
+                                            Browser:
+                                        </span>
+                                        <span className="text-sm">
+                                            {selectedSession.browser} (
+                                            {selectedSession.device})
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </DialogContent>
+            </Dialog>
         </AppLayout>
     );
 }
-
