@@ -48,8 +48,8 @@ class ResidentExamController extends Controller
                     'started_at' => now(),
                     'total_points' => $assessment->total_points,
                     'status' => 'in_progress',
-                    // 'ip_address' => $request->ip(),
-                    'ip_address' => '192.1.168.1.2',
+                    'ip_address' => $request->ip(),
+                    // 'ip_address' => '192.1.168.1.2',
                     'user_agent' => $request->userAgent(),
                     'last_activity_at' => now(),
                 ]);
@@ -57,7 +57,7 @@ class ResidentExamController extends Controller
 
             // Load questions with choices in proper order
             $questions = $assessment->questions()
-                ->with(['choices' => fn ($query) => $query->orderBy('order')])
+                ->with(['choices' => fn($query) => $query->orderBy('order')])
                 ->orderBy('order')
                 ->get();
 
@@ -128,7 +128,7 @@ class ResidentExamController extends Controller
                             'question_text' => $q->question_text,
                             'points' => $q->points,
                             'image_url' => $q->image_path ? \Storage::disk('public')->url($q->image_path) : null,
-                            'choices' => $choices->map(fn ($c) => [
+                            'choices' => $choices->map(fn($c) => [
                                 'id' => $c->id,
                                 'choice_text' => $c->choice_text,
                             ])->values(),
@@ -175,7 +175,7 @@ class ResidentExamController extends Controller
 
             // Load questions with choices in proper order
             $questions = $assessment->questions()
-                ->with(['choices' => fn ($query) => $query->orderBy('order')])
+                ->with(['choices' => fn($query) => $query->orderBy('order')])
                 ->orderBy('order')
                 ->get();
 
@@ -246,7 +246,7 @@ class ResidentExamController extends Controller
                             'question_text' => $q->question_text,
                             'points' => $q->points,
                             'image_url' => $q->image_path ? \Storage::disk('public')->url($q->image_path) : null,
-                            'choices' => $choices->map(fn ($c) => [
+                            'choices' => $choices->map(fn($c) => [
                                 'id' => $c->id,
                                 'choice_text' => $c->choice_text,
                             ])->values(),
@@ -418,7 +418,7 @@ class ResidentExamController extends Controller
                 'status' => 'completed',
             ]);
 
-            return redirect('/resident-exams')->with('success', 'Exam submitted successfully! Score: '.$attemptModel->percentage.'%');
+            return redirect('/resident-exams')->with('success', 'Exam submitted successfully! Score: ' . $attemptModel->percentage . '%');
         } elseif ($type === 'inservice') {
             $attemptModel = \App\Models\National\NationalAttempt::findOrFail($attempt);
 
@@ -444,7 +444,7 @@ class ResidentExamController extends Controller
                 'status' => 'completed',
             ]);
 
-            return redirect('/resident-exams')->with('success', 'Exam submitted successfully! Score: '.$attemptModel->percentage.'%');
+            return redirect('/resident-exams')->with('success', 'Exam submitted successfully! Score: ' . $attemptModel->percentage . '%');
         }
 
         abort(404);
@@ -478,7 +478,7 @@ class ResidentExamController extends Controller
 
             // Get answers with their questions to show in the order they were answered
             $answers = $attempt->answers()
-                ->with(['question.choices' => fn ($query) => $query->orderBy('order')])
+                ->with(['question.choices' => fn($query) => $query->orderBy('order')])
                 ->orderBy('id')
                 ->get();
 
@@ -501,7 +501,7 @@ class ResidentExamController extends Controller
                     'explanation' => $question->explanation,
                     'image_url' => $question->image_url,
                     'order' => $question->order,
-                    'choices' => $question->choices->map(fn ($choice) => [
+                    'choices' => $question->choices->map(fn($choice) => [
                         'id' => $choice->id,
                         'choice_text' => $choice->choice_text,
                         'is_correct' => $choice->is_correct,
@@ -551,7 +551,7 @@ class ResidentExamController extends Controller
 
             // Load questions with choices and answers
             $questions = $assessment->questions()
-                ->with(['choices' => fn ($query) => $query->orderBy('order')])
+                ->with(['choices' => fn($query) => $query->orderBy('order')])
                 ->orderBy('order')
                 ->get();
 
@@ -584,7 +584,7 @@ class ResidentExamController extends Controller
                     'explanation' => $question->explanation,
                     'image_url' => $question->image_url,
                     'order' => $question->order,
-                    'choices' => $question->choices->map(fn ($choice) => [
+                    'choices' => $question->choices->map(fn($choice) => [
                         'id' => $choice->id,
                         'choice_text' => $choice->choice_text,
                         'is_correct' => $choice->is_correct,
@@ -649,7 +649,7 @@ class ResidentExamController extends Controller
 
             // Get answers with their questions to show in the order they were answered
             $answers = $attempt->answers()
-                ->with(['question.choices' => fn ($query) => $query->orderBy('order')])
+                ->with(['question.choices' => fn($query) => $query->orderBy('order')])
                 ->orderBy('id')
                 ->get();
 
@@ -671,7 +671,7 @@ class ResidentExamController extends Controller
                     'explanation' => $question->explanation,
                     'image_url' => $question->image_url,
                     'order' => $question->order,
-                    'choices' => $question->choices->map(fn ($choice) => [
+                    'choices' => $question->choices->map(fn($choice) => [
                         'id' => $choice->id,
                         'choice_text' => $choice->choice_text,
                         'is_correct' => $choice->is_correct,

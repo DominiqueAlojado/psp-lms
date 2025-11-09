@@ -200,19 +200,19 @@ export default function LiveExamMonitor() {
             previousCount: previousSuspiciousCount.current,
             willTrigger:
                 alarmEnabled &&
-                suspiciousCount > previousSuspiciousCount.current &&
-                previousSuspiciousCount.current > 0,
+                suspiciousCount > 0 &&
+                suspiciousCount > previousSuspiciousCount.current,
         });
 
-        // Check if suspicious count increased (new flagged session)
+        // Check if suspicious count increased OR first detection
         if (
             alarmEnabled &&
-            suspiciousCount > previousSuspiciousCount.current &&
-            previousSuspiciousCount.current > 0
+            suspiciousCount > 0 &&
+            suspiciousCount > previousSuspiciousCount.current
         ) {
-            console.warn('🚨 ALARM: New suspicious activity detected!');
+            console.warn('🚨 ALARM: Suspicious activity detected!');
             console.log(
-                `Suspicious sessions increased: ${previousSuspiciousCount.current} → ${suspiciousCount}`,
+                `Flagged sessions: ${previousSuspiciousCount.current} → ${suspiciousCount}`,
             );
             playAlarmSound();
         }
