@@ -16,11 +16,13 @@ class AnnouncementSeeder extends Seeder
     {
         $this->command->info('🔔 Seeding announcements...');
 
-        // Get a sample organization and user
-        $organization = Organization::where('type', 'training_institution')->first();
+        // Get a sample organization and user (prefer PSP main, or any organization)
+        $organization = Organization::where('slug', 'psp-main')
+            ->orWhereNotNull('id')
+            ->first();
 
         if (! $organization) {
-            $this->command->warn('⚠️  No training institution found. Skipping announcement seeding.');
+            $this->command->warn('⚠️  No organizations found. Skipping announcement seeding.');
 
             return;
         }
