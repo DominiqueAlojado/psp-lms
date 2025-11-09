@@ -22,6 +22,11 @@ class DatabaseSeeder extends Seeder
             SystemAdminSeeder::class,    // Create system admin user
             StaffSeeder::class,          // Create staff members
             ResidentSeeder::class,       // Seed residents with user accounts
+            TopicSeeder::class,          // Create topics for questions
+            BataanGeneralHospitalExamsSeeder::class, // Create dummy exams
+            LongFormQuestionsExamSeeder::class,      // Create exam with long questions
+            AnnouncementSeeder::class,   // Create sample announcements
+            LearningResourceSeeder::class, // Create sample learning resources
         ]);
 
         // User::factory(10)->create();
