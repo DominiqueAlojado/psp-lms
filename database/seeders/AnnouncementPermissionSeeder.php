@@ -41,7 +41,7 @@ class AnnouncementPermissionSeeder extends Seeder
         }
 
         // Training Officers and Program Directors get organization-level permissions
-        $staffRoles = Role::whereIn('name', ['Training Officer', 'Program Director'])->get();
+        $staffRoles = Role::whereIn('name', ['Training Officer'])->get();
         foreach ($staffRoles as $role) {
             $role->givePermissionTo([
                 'view-announcements',
