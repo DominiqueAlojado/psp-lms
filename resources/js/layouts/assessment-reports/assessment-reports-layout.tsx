@@ -10,8 +10,13 @@ import { type PropsWithChildren, useState } from 'react';
 
 const sidebarNavItems: NavItem[] = [
     {
-        title: 'By Resident',
+        title: 'By Attempt',
         href: { url: '/assessment-reports/by-resident', method: 'get' },
+        icon: null,
+    },
+    {
+        title: 'By Performance',
+        href: { url: '/assessment-reports/by-performance', method: 'get' },
         icon: null,
     },
     {

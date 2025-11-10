@@ -16,6 +16,7 @@ import { dashboard } from '@/routes';
 import { type NavItem, type SharedData } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
 import {
+    Award,
     BarChart3,
     BookOpen,
     Building2,
@@ -41,6 +42,11 @@ const mainNavItems: NavItem[] = [
         title: 'My Exams',
         href: '/resident-exams',
         icon: FileText,
+    },
+    {
+        title: 'My Grades',
+        href: '/my-grades',
+        icon: Award,
     },
     {
         title: 'Learning Resources',
@@ -110,8 +116,8 @@ export function AppSidebar() {
 
     // Filter main nav items based on permissions and organization type
     const filteredMainNavItems = mainNavItems.filter((item) => {
-        // Hide "My Exams" for staff/admins (show only for residents)
-        if (item.title === 'My Exams' && hasPermission('view-residents')) {
+        // Hide "My Exams" and "My Grades" for staff/admins (show only for residents)
+        if ((item.title === 'My Exams' || item.title === 'My Grades') && hasPermission('view-residents')) {
             return false;
         }
 

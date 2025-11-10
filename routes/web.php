@@ -145,14 +145,24 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('announcements/{announcement}/view', [App\Http\Controllers\AnnouncementController::class, 'markAsViewed'])
         ->name('announcements.view');
 
+    // My Grades (Resident's personal performance dashboard)
+    Route::get('my-grades', [App\Http\Controllers\GradebookController::class, 'myGrades'])
+        ->name('gradebook.my-grades');
+
     // Assessment Reports (Staff Only - residents use "My Exams" to see their own results)
     Route::redirect('assessment-reports', '/assessment-reports/by-resident')->name('assessment-reports');
     Route::get('assessment-reports/by-resident', [App\Http\Controllers\AssessmentReportController::class, 'byResident'])
         ->middleware('permission:view-assessment-reports')
-        ->name('assessment-reports.by-resident'); // Staff only - view all residents' results
+        ->name('assessment-reports.by-resident'); // Individual exam attempts
+    Route::get('assessment-reports/by-performance', [App\Http\Controllers\GradebookController::class, 'index'])
+        ->middleware('permission:view-assessment-reports')
+        ->name('assessment-reports.by-performance'); // Aggregated resident performance
+    Route::get('assessment-reports/resident/{resident}', [App\Http\Controllers\GradebookController::class, 'show'])
+        ->middleware('permission:view-assessment-reports')
+        ->name('assessment-reports.resident-detail'); // Detailed resident report
     Route::get('assessment-reports/live-monitor', [App\Http\Controllers\AssessmentReportController::class, 'liveMonitor'])
         ->middleware('permission:view-assessment-reports')
-        ->name('assessment-reports.live-monitor'); // Staff only - live monitoring/proctoring
+        ->name('assessment-reports.live-monitor'); // Real-time monitoring
 
     // Institution Exams
     Route::get('assessments', [App\Http\Controllers\InstitutionExamController::class, 'index'])
