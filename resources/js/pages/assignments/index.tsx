@@ -1,3 +1,19 @@
+import {
+    CreateAssignmentSheet,
+    EditAssignmentSheet,
+    ViewAssignmentSheet,
+} from '@/components/assignments';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,25 +26,27 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
-import { Head, Link, router } from '@inertiajs/react';
-import { Calendar, Eye, Pencil, Plus, Trash2 } from 'lucide-react';
-import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-    AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
+import { Head, router } from '@inertiajs/react';
+import { Calendar, Eye, Pencil, Plus, SquarePen, Trash2 } from 'lucide-react';
+import { useState } from 'react';
 
 interface Assignment {
     id: number;
     title: string;
     assignment_type: string;
+    description?: string | null;
+    instructions?: string | null;
+    target_year_levels?: string[] | null;
+    max_score?: number;
     due_date: string | null;
+    allow_late_submission?: boolean;
+    late_submission_until?: string | null;
+    late_penalty_percent?: number;
+    allow_resubmission?: boolean;
+    max_submissions?: number;
+    allowed_file_types?: string[];
+    max_file_size_mb?: number;
+    max_files?: number;
     is_published: boolean;
     is_overdue: boolean;
     submissions_count: number;
@@ -52,6 +70,12 @@ const assignmentTypeLabels: Record<string, string> = {
 };
 
 export default function AssignmentsIndex({ assignments }: Props) {
+    const [createSheetOpen, setCreateSheetOpen] = useState(false);
+    const [editSheetOpen, setEditSheetOpen] = useState(false);
+    const [viewSheetOpen, setViewSheetOpen] = useState(false);
+    const [selectedAssignment, setSelectedAssignment] =
+        useState<Assignment | null>(null);
+
     const handleDelete = (id: number) => {
         router.delete(`/assignments/${id}`, {
             onSuccess: () => {
@@ -60,11 +84,21 @@ export default function AssignmentsIndex({ assignments }: Props) {
         });
     };
 
+    const handleView = (assignment: Assignment) => {
+        setSelectedAssignment(assignment);
+        setViewSheetOpen(true);
+    };
+
+    const handleEdit = (assignment: Assignment) => {
+        setSelectedAssignment(assignment);
+        setEditSheetOpen(true);
+    };
+
     return (
         <AppLayout>
             <Head title="Assignments" />
 
-            <div className="space-y-6">
+            <div className="flex h-full flex-1 flex-col gap-6 overflow-x-auto rounded-xl p-6">
                 {/* Header */}
                 <div className="flex items-center justify-between">
                     <div>
@@ -73,18 +107,18 @@ export default function AssignmentsIndex({ assignments }: Props) {
                             Create and manage assignments for residents
                         </p>
                     </div>
-                    <Button asChild>
-                        <Link href="/assignments/create">
-                            <Plus className="mr-2 size-4" />
-                            Create Assignment
-                        </Link>
+                    <Button onClick={() => setCreateSheetOpen(true)}>
+                        <Plus className="mr-2 size-4" />
+                        Create Assignment
                     </Button>
                 </div>
 
                 {/* Assignments Table */}
                 <Card>
                     <CardHeader>
-                        <CardTitle>All Assignments ({assignments.length})</CardTitle>
+                        <CardTitle>
+                            All Assignments ({assignments.length})
+                        </CardTitle>
                     </CardHeader>
                     <CardContent>
                         {assignments.length > 0 ? (
@@ -116,7 +150,12 @@ export default function AssignmentsIndex({ assignments }: Props) {
                                             </TableCell>
                                             <TableCell>
                                                 <Badge variant="outline">
-                                                    {assignmentTypeLabels[assignment.assignment_type]}
+                                                    {
+                                                        assignmentTypeLabels[
+                                                            assignment
+                                                                .assignment_type
+                                                        ]
+                                                    }
                                                 </Badge>
                                             </TableCell>
                                             <TableCell>
@@ -163,16 +202,29 @@ export default function AssignmentsIndex({ assignments }: Props) {
                                                     <Button
                                                         variant="ghost"
                                                         size="sm"
-                                                        asChild
+                                                        onClick={() =>
+                                                            handleView(
+                                                                assignment,
+                                                            )
+                                                        }
                                                     >
-                                                        <Link
-                                                            href={`/assignments/${assignment.id}`}
-                                                        >
-                                                            <Eye className="size-4" />
-                                                        </Link>
+                                                        <Eye className="size-4" />
+                                                    </Button>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        onClick={() =>
+                                                            handleEdit(
+                                                                assignment,
+                                                            )
+                                                        }
+                                                    >
+                                                        <SquarePen className="size-4" />
                                                     </Button>
                                                     <AlertDialog>
-                                                        <AlertDialogTrigger asChild>
+                                                        <AlertDialogTrigger
+                                                            asChild
+                                                        >
                                                             <Button
                                                                 variant="ghost"
                                                                 size="sm"
@@ -183,11 +235,19 @@ export default function AssignmentsIndex({ assignments }: Props) {
                                                         <AlertDialogContent>
                                                             <AlertDialogHeader>
                                                                 <AlertDialogTitle>
-                                                                    Delete Assignment?
+                                                                    Delete
+                                                                    Assignment?
                                                                 </AlertDialogTitle>
                                                                 <AlertDialogDescription>
-                                                                    This will permanently delete the assignment
-                                                                    and all submissions. This action cannot be undone.
+                                                                    This will
+                                                                    permanently
+                                                                    delete the
+                                                                    assignment
+                                                                    and all
+                                                                    submissions.
+                                                                    This action
+                                                                    cannot be
+                                                                    undone.
                                                                 </AlertDialogDescription>
                                                             </AlertDialogHeader>
                                                             <AlertDialogFooter>
@@ -221,18 +281,38 @@ export default function AssignmentsIndex({ assignments }: Props) {
                                 <p className="mb-4 text-center text-sm text-muted-foreground">
                                     Create your first assignment to get started
                                 </p>
-                                <Button asChild>
-                                    <Link href="/assignments/create">
-                                        <Plus className="mr-2 size-4" />
-                                        Create Assignment
-                                    </Link>
+                                <Button
+                                    onClick={() => setCreateSheetOpen(true)}
+                                >
+                                    <Plus className="mr-2 size-4" />
+                                    Create Assignment
                                 </Button>
                             </div>
                         )}
                     </CardContent>
                 </Card>
             </div>
+
+            {/* Create Assignment Sheet */}
+            <CreateAssignmentSheet
+                open={createSheetOpen}
+                onClose={() => setCreateSheetOpen(false)}
+            />
+
+            {/* View Assignment Sheet */}
+            <ViewAssignmentSheet
+                open={viewSheetOpen}
+                assignment={selectedAssignment}
+                onClose={() => setViewSheetOpen(false)}
+                onEdit={handleEdit}
+            />
+
+            {/* Edit Assignment Sheet */}
+            <EditAssignmentSheet
+                open={editSheetOpen}
+                assignment={selectedAssignment}
+                onClose={() => setEditSheetOpen(false)}
+            />
         </AppLayout>
     );
 }
-

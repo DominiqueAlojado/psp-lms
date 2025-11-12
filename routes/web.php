@@ -162,6 +162,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('assignments/{assignment}', [App\Http\Controllers\AssignmentController::class, 'show'])
         ->middleware('permission:view-assignments')
         ->name('assignments.show');
+    Route::get('assignments/{assignment}/edit', [App\Http\Controllers\AssignmentController::class, 'edit'])
+        ->middleware('permission:edit-assignments')
+        ->name('assignments.edit');
     Route::patch('assignments/{assignment}', [App\Http\Controllers\AssignmentController::class, 'update'])
         ->middleware('permission:edit-assignments')
         ->name('assignments.update');

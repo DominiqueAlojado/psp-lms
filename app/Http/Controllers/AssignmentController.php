@@ -40,8 +40,20 @@ class AssignmentController extends Controller
             ->map(fn ($assignment) => [
                 'id' => $assignment->id,
                 'title' => $assignment->title,
+                'description' => $assignment->description,
+                'instructions' => $assignment->instructions,
                 'assignment_type' => $assignment->assignment_type,
-                'due_date' => $assignment->due_date?->format('Y-m-d H:i:s'),
+                'target_year_levels' => $assignment->target_year_levels,
+                'max_score' => $assignment->max_score,
+                'due_date' => $assignment->due_date?->format('Y-m-d\TH:i'),
+                'allow_late_submission' => $assignment->allow_late_submission,
+                'late_submission_until' => $assignment->late_submission_until?->format('Y-m-d\TH:i'),
+                'late_penalty_percent' => $assignment->late_penalty_percent,
+                'allow_resubmission' => $assignment->allow_resubmission,
+                'max_submissions' => $assignment->max_submissions,
+                'allowed_file_types' => $assignment->allowed_file_types,
+                'max_file_size_mb' => $assignment->max_file_size_mb,
+                'max_files' => $assignment->max_files,
                 'is_published' => $assignment->is_published,
                 'is_overdue' => $assignment->isOverdue(),
                 'submissions_count' => $assignment->submissions()->whereIn('status', ['submitted', 'graded'])->count(),
@@ -64,6 +76,41 @@ class AssignmentController extends Controller
     }
 
     /**
+     * Show assignment edit form.
+     */
+    public function edit(Request $request, Assignment $assignment): Response
+    {
+        $user = $request->user();
+
+        // Verify assignment belongs to user's organization
+        if ($assignment->organization_id !== $user->currentOrganization?->id) {
+            abort(403, 'You do not have access to this assignment.');
+        }
+
+        return Inertia::render('assignments/edit', [
+            'assignment' => [
+                'id' => $assignment->id,
+                'title' => $assignment->title,
+                'description' => $assignment->description,
+                'instructions' => $assignment->instructions,
+                'assignment_type' => $assignment->assignment_type,
+                'target_year_levels' => $assignment->target_year_levels,
+                'max_score' => $assignment->max_score,
+                'due_date' => $assignment->due_date?->format('Y-m-d\TH:i'),
+                'allow_late_submission' => $assignment->allow_late_submission,
+                'late_submission_until' => $assignment->late_submission_until?->format('Y-m-d\TH:i'),
+                'late_penalty_percent' => $assignment->late_penalty_percent,
+                'allow_resubmission' => $assignment->allow_resubmission,
+                'max_submissions' => $assignment->max_submissions,
+                'allowed_file_types' => $assignment->allowed_file_types,
+                'max_file_size_mb' => $assignment->max_file_size_mb,
+                'max_files' => $assignment->max_files,
+                'is_published' => $assignment->is_published,
+            ],
+        ]);
+    }
+
+    /**
      * Store a new assignment.
      */
     public function store(Request $request): \Illuminate\Http\RedirectResponse
@@ -82,23 +129,23 @@ class AssignmentController extends Controller
 
         $validated = $request->validate([
             'title' => ['required', 'string', 'max:255'],
-            'description' => ['nullable', 'string'],
-            'instructions' => ['nullable', 'string'],
+            'description' => ['required', 'string'],
+            'instructions' => ['required', 'string'],
             'assignment_type' => ['required', 'string', 'in:case_report,procedure_log,journal_review,presentation,research_paper,reflection,other'],
-            'target_year_levels' => ['nullable', 'array'],
+            'target_year_levels' => ['required', 'array', 'min:1'],
             'target_year_levels.*' => ['string'],
             'max_score' => ['required', 'integer', 'min:1'],
-            'due_date' => ['nullable', 'date'],
-            'allow_late_submission' => ['boolean'],
-            'late_submission_until' => ['nullable', 'date', 'after:due_date'],
-            'late_penalty_percent' => ['integer', 'min:0', 'max:100'],
-            'allow_resubmission' => ['boolean'],
-            'max_submissions' => ['integer', 'min:1', 'max:10'],
-            'allowed_file_types' => ['nullable', 'array'],
+            'due_date' => ['required', 'date'],
+            'allow_late_submission' => ['required', 'boolean'],
+            'late_submission_until' => ['nullable', 'date', 'after:due_date', 'required_if:allow_late_submission,true'],
+            'late_penalty_percent' => ['required', 'integer', 'min:0', 'max:100'],
+            'allow_resubmission' => ['required', 'boolean'],
+            'max_submissions' => ['required', 'integer', 'min:1', 'max:10'],
+            'allowed_file_types' => ['required', 'array', 'min:1'],
             'allowed_file_types.*' => ['string'],
-            'max_file_size_mb' => ['integer', 'min:1', 'max:100'],
-            'max_files' => ['integer', 'min:1', 'max:20'],
-            'is_published' => ['boolean'],
+            'max_file_size_mb' => ['required', 'integer', 'min:1', 'max:100'],
+            'max_files' => ['required', 'integer', 'min:1', 'max:20'],
+            'is_published' => ['required', 'boolean'],
         ]);
 
         $validated['organization_id'] = $organizationId;
@@ -184,23 +231,23 @@ class AssignmentController extends Controller
 
         $validated = $request->validate([
             'title' => ['required', 'string', 'max:255'],
-            'description' => ['nullable', 'string'],
-            'instructions' => ['nullable', 'string'],
+            'description' => ['required', 'string'],
+            'instructions' => ['required', 'string'],
             'assignment_type' => ['required', 'string', 'in:case_report,procedure_log,journal_review,presentation,research_paper,reflection,other'],
-            'target_year_levels' => ['nullable', 'array'],
+            'target_year_levels' => ['required', 'array', 'min:1'],
             'target_year_levels.*' => ['string'],
             'max_score' => ['required', 'integer', 'min:1'],
-            'due_date' => ['nullable', 'date'],
-            'allow_late_submission' => ['boolean'],
-            'late_submission_until' => ['nullable', 'date', 'after:due_date'],
-            'late_penalty_percent' => ['integer', 'min:0', 'max:100'],
-            'allow_resubmission' => ['boolean'],
-            'max_submissions' => ['integer', 'min:1', 'max:10'],
-            'allowed_file_types' => ['nullable', 'array'],
+            'due_date' => ['required', 'date'],
+            'allow_late_submission' => ['required', 'boolean'],
+            'late_submission_until' => ['nullable', 'date', 'after:due_date', 'required_if:allow_late_submission,true'],
+            'late_penalty_percent' => ['required', 'integer', 'min:0', 'max:100'],
+            'allow_resubmission' => ['required', 'boolean'],
+            'max_submissions' => ['required', 'integer', 'min:1', 'max:10'],
+            'allowed_file_types' => ['required', 'array', 'min:1'],
             'allowed_file_types.*' => ['string'],
-            'max_file_size_mb' => ['integer', 'min:1', 'max:100'],
-            'max_files' => ['integer', 'min:1', 'max:20'],
-            'is_published' => ['boolean'],
+            'max_file_size_mb' => ['required', 'integer', 'min:1', 'max:100'],
+            'max_files' => ['required', 'integer', 'min:1', 'max:20'],
+            'is_published' => ['required', 'boolean'],
         ]);
 
         $assignment->update($validated);
@@ -238,60 +285,79 @@ class AssignmentController extends Controller
             abort(403, 'No organization selected.');
         }
 
-        // Get user's year level and convert to PGY format
+        // Get user's year level and convert to assignment format
         $resident = $user->resident;
         $yearLevel = $resident?->year_level;
 
-        // Convert year level format: "First Year" -> "PGY-1", etc.
-        $pgyFormat = match ($yearLevel) {
-            'Pre-Resident' => 'PGY-0',
-            'First Year' => 'PGY-1',
-            'Second Year' => 'PGY-2',
-            'Third Year' => 'PGY-3',
-            'Fourth Year' => 'PGY-4',
-            'Fifth Year' => 'PGY-5',
+        // Convert year level format: "First Year" -> "1st Year", etc.
+        $formattedYearLevel = match ($yearLevel) {
+            'Pre-Resident' => 'Pre-Resident',
+            'First Year' => '1st Year',
+            'Second Year' => '2nd Year',
+            'Third Year' => '3rd Year',
+            'Fourth Year' => '4th Year',
+            'Fifth Year' => '4th Year', // Map Fifth Year to 4th Year
             'Graduate' => 'Graduate',
             default => $yearLevel,
         };
 
+        // Debug logging
+        \Log::info('MyAssignments Debug', [
+            'user_id' => $user->id,
+            'user_name' => $user->name,
+            'organization_id' => $organizationId,
+            'organization_name' => $user->currentOrganization?->name,
+            'resident' => $resident ? 'Found' : 'Not Found',
+            'year_level_raw' => $yearLevel,
+            'year_level_formatted' => $formattedYearLevel,
+        ]);
+
         // Get published assignments for this organization
         $assignments = Assignment::where('organization_id', $organizationId)
             ->where('is_published', true)
-            ->where(function ($query) use ($pgyFormat) {
+            ->where(function ($query) use ($formattedYearLevel) {
                 $query->whereNull('target_year_levels')
-                    ->orWhereJsonContains('target_year_levels', $pgyFormat);
+                    ->orWhereJsonContains('target_year_levels', $formattedYearLevel);
             })
             ->with(['submissions' => function ($query) use ($user) {
                 $query->where('user_id', $user->id);
             }])
             ->orderBy('due_date', 'asc')
-            ->get()
-            ->map(function ($assignment) use ($user) {
-                $userSubmission = $assignment->submissions->first();
+            ->get();
 
-                return [
-                    'id' => $assignment->id,
-                    'title' => $assignment->title,
-                    'description' => $assignment->description,
-                    'assignment_type' => $assignment->assignment_type,
-                    'due_date' => $assignment->due_date?->format('Y-m-d H:i:s'),
-                    'max_score' => $assignment->max_score,
-                    'is_overdue' => $assignment->isOverdue(),
-                    'can_still_submit' => $assignment->canStillSubmit(),
-                    'has_submitted' => $assignment->hasUserSubmitted($user),
-                    'submission_count' => $assignment->getUserSubmissionCount($user),
-                    'max_submissions' => $assignment->max_submissions,
-                    'allow_resubmission' => $assignment->allow_resubmission,
-                    'submission' => $userSubmission ? [
-                        'id' => $userSubmission->id,
-                        'status' => $userSubmission->status,
-                        'score' => $userSubmission->score,
-                        'submitted_at' => $userSubmission->submitted_at?->format('Y-m-d H:i:s'),
-                        'is_late' => $userSubmission->is_late,
-                        'grader_feedback' => $userSubmission->grader_feedback,
-                    ] : null,
-                ];
-            });
+        // Debug: Log found assignments
+        \Log::info('Assignments found', [
+            'count' => $assignments->count(),
+            'assignment_ids' => $assignments->pluck('id')->toArray(),
+            'assignment_titles' => $assignments->pluck('title')->toArray(),
+        ]);
+
+        $assignments = $assignments->map(function ($assignment) use ($user) {
+            $userSubmission = $assignment->submissions->first();
+
+            return [
+                'id' => $assignment->id,
+                'title' => $assignment->title,
+                'description' => $assignment->description,
+                'assignment_type' => $assignment->assignment_type,
+                'due_date' => $assignment->due_date?->format('Y-m-d H:i:s'),
+                'max_score' => $assignment->max_score,
+                'is_overdue' => $assignment->isOverdue(),
+                'can_still_submit' => $assignment->canStillSubmit(),
+                'has_submitted' => $assignment->hasUserSubmitted($user),
+                'submission_count' => $assignment->getUserSubmissionCount($user),
+                'max_submissions' => $assignment->max_submissions,
+                'allow_resubmission' => $assignment->allow_resubmission,
+                'submission' => $userSubmission ? [
+                    'id' => $userSubmission->id,
+                    'status' => $userSubmission->status,
+                    'score' => $userSubmission->score,
+                    'submitted_at' => $userSubmission->submitted_at?->format('Y-m-d H:i:s'),
+                    'is_late' => $userSubmission->is_late,
+                    'grader_feedback' => $userSubmission->grader_feedback,
+                ] : null,
+            ];
+        });
 
         return Inertia::render('assignments/my-assignments', [
             'assignments' => $assignments,
