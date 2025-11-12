@@ -144,6 +144,7 @@ class RolePermissionSeeder extends Seeder
             'grade-assessments',
             'view-assessment-results',
             'export-assessment-results',
+            'view-assessment-reports',
 
             // Cases
             'view-cases',

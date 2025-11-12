@@ -27,6 +27,7 @@ import {
     GraduationCap,
     LayoutGrid,
     Megaphone,
+    Pencil,
     UserCog,
     Users,
 } from 'lucide-react';
@@ -49,6 +50,12 @@ const mainNavItems: NavItem[] = [
         icon: Award,
     },
     {
+        title: 'My Assignments',
+        href: '/my-assignments',
+        icon: Pencil,
+        excludeOrgTypes: ['national'], // Hide when in national org
+    },
+    {
         title: 'Learning Resources',
         href: '/resources',
         icon: FolderOpen,
@@ -57,6 +64,13 @@ const mainNavItems: NavItem[] = [
         title: 'Announcements',
         href: '/announcements',
         icon: Megaphone,
+    },
+    {
+        title: 'Assignments',
+        href: '/assignments',
+        icon: Pencil,
+        permission: 'view-assignments',
+        excludeOrgTypes: ['national'], // Hide when in national org
     },
     {
         title: 'Assessment Reports',
@@ -116,8 +130,13 @@ export function AppSidebar() {
 
     // Filter main nav items based on permissions and organization type
     const filteredMainNavItems = mainNavItems.filter((item) => {
-        // Hide "My Exams" and "My Grades" for staff/admins (show only for residents)
-        if ((item.title === 'My Exams' || item.title === 'My Grades') && hasPermission('view-residents')) {
+        // Hide "My Exams", "My Grades", and "My Assignments" for staff/admins (show only for residents)
+        if ((item.title === 'My Exams' || item.title === 'My Grades' || item.title === 'My Assignments') && hasPermission('view-residents')) {
+            return false;
+        }
+
+        // Hide items with excludeOrgTypes matching current org
+        if (item.excludeOrgTypes && currentOrganization?.type && item.excludeOrgTypes.includes(currentOrganization.type)) {
             return false;
         }
 

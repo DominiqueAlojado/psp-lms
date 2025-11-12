@@ -32,6 +32,7 @@ export interface NavItem {
     icon?: LucideIcon | null;
     isActive?: boolean;
     permission?: string;
+    excludeOrgTypes?: string[]; // Hide menu item for specific organization types
 }
 
 export interface SharedData {

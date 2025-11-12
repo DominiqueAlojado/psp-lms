@@ -41,7 +41,7 @@ class ResidentController extends Controller
             ->orderBy($request->input('sort', 'last_name'), $request->input('direction', 'asc'))
             ->paginate(15)
             ->withQueryString()
-            ->through(fn ($resident) => [
+            ->through(fn($resident) => [
                 'id' => $resident->id,
                 'uuid' => $resident->uuid,
                 'full_name' => $resident->full_name,
@@ -127,6 +127,7 @@ class ResidentController extends Controller
                 'name' => $resident->full_name,
                 'email' => $validated['email'],
                 'password' => bcrypt($validated['password']),
+                'current_organization_id' => $validated['organization_id'], // Set current org
             ]);
 
             // Link the user to the resident
@@ -138,17 +139,20 @@ class ResidentController extends Controller
                 'is_active' => true,
             ]);
 
+            // Set permission context for this organization
+            setPermissionsTeamId($validated['organization_id']);
+
             // Assign "Resident" role to the user
             $user->assignRole('Resident');
 
             return back()->with('success', 'Resident created successfully');
         } catch (\Exception $e) {
-            \Log::error('Error creating resident: '.$e->getMessage(), [
+            \Log::error('Error creating resident: ' . $e->getMessage(), [
                 'exception' => $e,
                 'trace' => $e->getTraceAsString(),
             ]);
 
-            return back()->withErrors(['error' => 'Failed to create resident: '.$e->getMessage()]);
+            return back()->withErrors(['error' => 'Failed to create resident: ' . $e->getMessage()]);
         }
     }
 
@@ -161,7 +165,7 @@ class ResidentController extends Controller
 
         // Get current organizations through user
         $currentOrganizations = $resident->user
-            ? $resident->user->organizations->map(fn ($org) => [
+            ? $resident->user->organizations->map(fn($org) => [
                 'id' => $org->id,
                 'name' => $org->name,
                 'slug' => $org->slug,
@@ -180,7 +184,7 @@ class ResidentController extends Controller
             ->where('is_active', true)
             ->orderBy('name')
             ->get(['id', 'name', 'slug', 'type'])
-            ->map(fn ($org) => [
+            ->map(fn($org) => [
                 'id' => $org->id,
                 'name' => $org->name,
                 'slug' => $org->slug,
@@ -202,7 +206,7 @@ class ResidentController extends Controller
             'first_name' => ['required', 'string', 'max:255'],
             'middle_name' => ['nullable', 'string', 'max:255'],
             'last_name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email:rfc', 'max:255', 'unique:residents,email,'.$resident->id],
+            'email' => ['required', 'email:rfc', 'max:255', 'unique:residents,email,' . $resident->id],
             'contact_number' => ['required', 'string', 'regex:/^(\+63|0)?9\d{9}$/'],
             'course' => ['required', 'string', 'max:255'],
             'year_level' => ['required', 'string', 'in:Pre Resident,First Year,Second Year,Third Year,Fourth Year,Graduate'],
@@ -258,7 +262,7 @@ class ResidentController extends Controller
     {
         $filters = $request->only(['search', 'organization_id', 'year_level', 'status', 'course']);
 
-        $filename = 'residents_'.now()->format('Y-m-d_His').'.xlsx';
+        $filename = 'residents_' . now()->format('Y-m-d_His') . '.xlsx';
 
         return Excel::download(new ResidentsExport($filters), $filename);
     }

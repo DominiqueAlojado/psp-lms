@@ -149,6 +149,44 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('my-grades', [App\Http\Controllers\GradebookController::class, 'myGrades'])
         ->name('gradebook.my-grades');
 
+    // Assignments (Training Officers create, Residents submit)
+    Route::get('assignments', [App\Http\Controllers\AssignmentController::class, 'index'])
+        ->middleware('permission:view-assignments')
+        ->name('assignments.index');
+    Route::get('assignments/create', [App\Http\Controllers\AssignmentController::class, 'create'])
+        ->middleware('permission:create-assignments')
+        ->name('assignments.create');
+    Route::post('assignments', [App\Http\Controllers\AssignmentController::class, 'store'])
+        ->middleware('permission:create-assignments')
+        ->name('assignments.store');
+    Route::get('assignments/{assignment}', [App\Http\Controllers\AssignmentController::class, 'show'])
+        ->middleware('permission:view-assignments')
+        ->name('assignments.show');
+    Route::patch('assignments/{assignment}', [App\Http\Controllers\AssignmentController::class, 'update'])
+        ->middleware('permission:edit-assignments')
+        ->name('assignments.update');
+    Route::delete('assignments/{assignment}', [App\Http\Controllers\AssignmentController::class, 'destroy'])
+        ->middleware('permission:delete-assignments')
+        ->name('assignments.destroy');
+
+    // Resident Assignment Portal
+    Route::get('my-assignments', [App\Http\Controllers\AssignmentController::class, 'myAssignments'])
+        ->name('assignments.my-assignments');
+    Route::get('assignments/{assignment}/submit', [App\Http\Controllers\AssignmentController::class, 'submit'])
+        ->name('assignments.submit');
+    Route::post('assignments/{assignment}/submit', [App\Http\Controllers\AssignmentController::class, 'storeSubmission'])
+        ->name('assignments.submit.store');
+
+    // Grading Interface (Training Officers)
+    Route::get('submissions/{submission}/grade', [App\Http\Controllers\AssignmentController::class, 'grade'])
+        ->middleware('permission:grade-assignments')
+        ->name('submissions.grade');
+    Route::post('submissions/{submission}/grade', [App\Http\Controllers\AssignmentController::class, 'saveGrade'])
+        ->middleware('permission:grade-assignments')
+        ->name('submissions.save-grade');
+    Route::get('submission-files/{file}/download', [App\Http\Controllers\AssignmentController::class, 'downloadFile'])
+        ->name('submission-files.download');
+
     // Assessment Reports (Staff Only - residents use "My Exams" to see their own results)
     Route::redirect('assessment-reports', '/assessment-reports/by-resident')->name('assessment-reports');
     Route::get('assessment-reports/by-resident', [App\Http\Controllers\AssessmentReportController::class, 'byResident'])
