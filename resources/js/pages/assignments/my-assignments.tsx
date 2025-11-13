@@ -1,3 +1,7 @@
+import {
+    SubmitAssignmentSheet,
+    ViewSubmissionSheet,
+} from '@/components/assignments';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -20,10 +24,6 @@ import {
     Pencil,
 } from 'lucide-react';
 import { useState } from 'react';
-import {
-    SubmitAssignmentSheet,
-    ViewSubmissionSheet,
-} from '@/components/assignments';
 
 interface SubmissionFile {
     id: number;
@@ -78,7 +78,10 @@ const assignmentTypeLabels: Record<string, string> = {
     other: 'Other',
 };
 
-const statusLabels: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' }> = {
+const statusLabels: Record<
+    string,
+    { label: string; variant: 'default' | 'secondary' | 'destructive' }
+> = {
     draft: { label: 'Draft', variant: 'secondary' },
     submitted: { label: 'Submitted', variant: 'default' },
     graded: { label: 'Graded', variant: 'default' },
@@ -114,12 +117,13 @@ export default function MyAssignments({ assignments }: Props) {
         <AppLayout>
             <Head title="My Assignments" />
 
-            <div className="space-y-6">
+            <div className="flex h-full flex-1 flex-col gap-6 overflow-x-auto rounded-xl p-6">
                 {/* Header */}
                 <div>
                     <h1 className="text-3xl font-bold">My Assignments</h1>
                     <p className="text-muted-foreground">
-                        Submit case reports, logs, and other required assignments
+                        Submit case reports, logs, and other required
+                        assignments
                     </p>
                 </div>
 
@@ -180,7 +184,9 @@ export default function MyAssignments({ assignments }: Props) {
                 {/* Assignments Table */}
                 <Card>
                     <CardHeader>
-                        <CardTitle>All Assignments ({assignments.length})</CardTitle>
+                        <CardTitle>
+                            All Assignments ({assignments.length})
+                        </CardTitle>
                     </CardHeader>
                     <CardContent>
                         {assignments.length > 0 ? (
@@ -210,15 +216,22 @@ export default function MyAssignments({ assignments }: Props) {
                                                         {assignment.title}
                                                     </div>
                                                     {assignment.description && (
-                                                        <div className="mt-1 text-sm text-muted-foreground line-clamp-1">
-                                                            {assignment.description}
+                                                        <div className="mt-1 line-clamp-1 text-sm text-muted-foreground">
+                                                            {
+                                                                assignment.description
+                                                            }
                                                         </div>
                                                     )}
                                                 </div>
                                             </TableCell>
                                             <TableCell>
                                                 <Badge variant="outline">
-                                                    {assignmentTypeLabels[assignment.assignment_type]}
+                                                    {
+                                                        assignmentTypeLabels[
+                                                            assignment
+                                                                .assignment_type
+                                                        ]
+                                                    }
                                                 </Badge>
                                             </TableCell>
                                             <TableCell>
@@ -247,16 +260,24 @@ export default function MyAssignments({ assignments }: Props) {
                                                     <Badge
                                                         variant={
                                                             statusLabels[
-                                                                assignment.submission
+                                                                assignment
+                                                                    .submission
                                                                     .status
-                                                            ]?.variant || 'secondary'
+                                                            ]?.variant ||
+                                                            'secondary'
                                                         }
                                                     >
                                                         {statusLabels[
-                                                            assignment.submission
+                                                            assignment
+                                                                .submission
                                                                 .status
-                                                        ]?.label || assignment.submission.status}
-                                                        {assignment.submission.is_late && ' (Late)'}
+                                                        ]?.label ||
+                                                            assignment
+                                                                .submission
+                                                                .status}
+                                                        {assignment.submission
+                                                            .is_late &&
+                                                            ' (Late)'}
                                                     </Badge>
                                                 ) : (
                                                     <Badge variant="secondary">
@@ -265,10 +286,15 @@ export default function MyAssignments({ assignments }: Props) {
                                                 )}
                                             </TableCell>
                                             <TableCell className="text-center">
-                                                {assignment.submission?.score ? (
+                                                {assignment.submission
+                                                    ?.score ? (
                                                     <span className="font-medium">
-                                                        {assignment.submission.score} /{' '}
-                                                        {assignment.max_score}
+                                                        {
+                                                            assignment
+                                                                .submission
+                                                                .score
+                                                        }{' '}
+                                                        / {assignment.max_score}
                                                     </span>
                                                 ) : (
                                                     <span className="text-muted-foreground">
@@ -282,7 +308,9 @@ export default function MyAssignments({ assignments }: Props) {
                                                     <Button
                                                         size="sm"
                                                         onClick={() =>
-                                                            handleSubmit(assignment)
+                                                            handleSubmit(
+                                                                assignment,
+                                                            )
                                                         }
                                                     >
                                                         <FileText className="mr-2 size-4" />
@@ -295,7 +323,9 @@ export default function MyAssignments({ assignments }: Props) {
                                                         size="sm"
                                                         variant="outline"
                                                         onClick={() =>
-                                                            handleSubmit(assignment)
+                                                            handleSubmit(
+                                                                assignment,
+                                                            )
                                                         }
                                                     >
                                                         <FileText className="mr-2 size-4" />
@@ -335,8 +365,8 @@ export default function MyAssignments({ assignments }: Props) {
                                     No assignments yet
                                 </h3>
                                 <p className="text-center text-sm text-muted-foreground">
-                                    Assignments from your training officers will appear
-                                    here
+                                    Assignments from your training officers will
+                                    appear here
                                 </p>
                             </div>
                         )}
@@ -360,4 +390,3 @@ export default function MyAssignments({ assignments }: Props) {
         </AppLayout>
     );
 }
-
