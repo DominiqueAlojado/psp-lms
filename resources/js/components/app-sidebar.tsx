@@ -20,6 +20,7 @@ import {
     BarChart3,
     BookOpen,
     Building2,
+    CalendarDays,
     ClipboardList,
     FileText,
     Folder,
@@ -64,6 +65,11 @@ const mainNavItems: NavItem[] = [
         title: 'Announcements',
         href: '/announcements',
         icon: Megaphone,
+    },
+    {
+        title: 'Events',
+        href: '/events',
+        icon: CalendarDays,
     },
     {
         title: 'Assignments',

@@ -22,7 +22,7 @@ class SetOrganizationFromUrl
             return $next($request);
         }
 
-        // Skip organization switch routes, logout, settings, residents, institutions, staff, resources, announcements, assignments, and exam form submissions
+        // Skip organization switch routes, logout, settings, residents, institutions, staff, resources, announcements, assignments, events, and exam form submissions
         if (
             $request->is('organization/*/switch')
             || $request->is('logout')
@@ -34,6 +34,7 @@ class SetOrganizationFromUrl
             || ($request->is('announcements*') && in_array($request->method(), ['POST', 'PATCH', 'PUT', 'DELETE']))
             || ($request->is('assignments*') && in_array($request->method(), ['POST', 'PATCH', 'PUT', 'DELETE']))
             || ($request->is('submissions*') && in_array($request->method(), ['POST', 'PATCH', 'PUT', 'DELETE']))
+            || ($request->is('events*') && in_array($request->method(), ['POST', 'PATCH', 'PUT', 'DELETE']))
             || ($request->is('assessments*') && in_array($request->method(), ['POST', 'PATCH', 'PUT', 'DELETE']))
             || ($request->is('institution-exams*') && in_array($request->method(), ['POST', 'PATCH', 'PUT', 'DELETE']))
             || ($request->is('in-service*') && in_array($request->method(), ['POST', 'PATCH', 'PUT', 'DELETE']))

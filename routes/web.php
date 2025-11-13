@@ -145,6 +145,42 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('announcements/{announcement}/view', [App\Http\Controllers\AnnouncementController::class, 'markAsViewed'])
         ->name('announcements.view');
 
+    // Events & Conventions
+    Route::get('events', [App\Http\Controllers\EventController::class, 'index'])
+        ->name('events.index');
+    Route::get('events/manage', [App\Http\Controllers\EventController::class, 'manage'])
+        ->middleware('permission:view-events')
+        ->name('events.manage');
+    Route::get('events/create', [App\Http\Controllers\EventController::class, 'create'])
+        ->middleware('permission:create-events')
+        ->name('events.create');
+    Route::post('events', [App\Http\Controllers\EventController::class, 'store'])
+        ->middleware('permission:create-events')
+        ->name('events.store');
+    Route::get('events/my-registrations', [App\Http\Controllers\EventController::class, 'myRegistrations'])
+        ->name('events.my-registrations');
+    Route::get('events/{event}', [App\Http\Controllers\EventController::class, 'show'])
+        ->name('events.show');
+    Route::get('events/{event}/edit', [App\Http\Controllers\EventController::class, 'edit'])
+        ->middleware('permission:edit-events')
+        ->name('events.edit');
+    Route::patch('events/{event}', [App\Http\Controllers\EventController::class, 'update'])
+        ->middleware('permission:edit-events')
+        ->name('events.update');
+    Route::delete('events/{event}', [App\Http\Controllers\EventController::class, 'destroy'])
+        ->middleware('permission:delete-events')
+        ->name('events.destroy');
+    Route::post('events/{event}/register', [App\Http\Controllers\EventController::class, 'register'])
+        ->name('events.register');
+    Route::post('events/{event}/cancel-registration', [App\Http\Controllers\EventController::class, 'cancelRegistration'])
+        ->name('events.cancel-registration');
+    Route::get('events/{event}/attendees', [App\Http\Controllers\EventController::class, 'attendees'])
+        ->middleware('permission:view-events')
+        ->name('events.attendees');
+    Route::post('events/{event}/registrations/{registration}/approve', [App\Http\Controllers\EventController::class, 'approveRegistration'])
+        ->middleware('permission:edit-events')
+        ->name('events.approve-registration');
+
     // My Grades (Resident's personal performance dashboard)
     Route::get('my-grades', [App\Http\Controllers\GradebookController::class, 'myGrades'])
         ->name('gradebook.my-grades');
