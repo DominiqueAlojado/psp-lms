@@ -151,9 +151,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('events/manage', [App\Http\Controllers\EventController::class, 'manage'])
         ->middleware('permission:view-events')
         ->name('events.manage');
-    Route::get('events/create', [App\Http\Controllers\EventController::class, 'create'])
-        ->middleware('permission:create-events')
-        ->name('events.create');
     Route::post('events', [App\Http\Controllers\EventController::class, 'store'])
         ->middleware('permission:create-events')
         ->name('events.store');
@@ -161,9 +158,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('events.my-registrations');
     Route::get('events/{event}', [App\Http\Controllers\EventController::class, 'show'])
         ->name('events.show');
-    Route::get('events/{event}/edit', [App\Http\Controllers\EventController::class, 'edit'])
-        ->middleware('permission:edit-events')
-        ->name('events.edit');
     Route::patch('events/{event}', [App\Http\Controllers\EventController::class, 'update'])
         ->middleware('permission:edit-events')
         ->name('events.update');

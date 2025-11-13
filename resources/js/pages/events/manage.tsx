@@ -11,6 +11,7 @@ import { Calendar, Edit, Eye, Plus, Search, Trash2, Users } from 'lucide-react';
 import { useState } from 'react';
 import { format, parseISO } from 'date-fns';
 import { CreateEventSheet, EditEventSheet } from '@/components/events';
+import { DeleteConfirmationDialog } from '@/components/delete-confirmation-dialog';
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Events', href: '/events' },
@@ -52,6 +53,8 @@ export default function ManageEvents({ events, filters }: PageProps) {
     const [createSheetOpen, setCreateSheetOpen] = useState(false);
     const [editSheetOpen, setEditSheetOpen] = useState(false);
     const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
+    const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+    const [eventToDelete, setEventToDelete] = useState<Event | null>(null);
 
     const handleSearch = (e: React.FormEvent) => {
         e.preventDefault();
@@ -70,12 +73,26 @@ export default function ManageEvents({ events, filters }: PageProps) {
         );
     };
 
-    const handleDelete = (eventId: number) => {
-        if (confirm('Are you sure you want to delete this event?')) {
-            router.delete(`/events/${eventId}`, {
+    const handleDeleteClick = (event: Event) => {
+        setEventToDelete(event);
+        setDeleteDialogOpen(true);
+    };
+
+    const handleDeleteConfirm = () => {
+        if (eventToDelete) {
+            router.delete(`/events/${eventToDelete.id}`, {
                 preserveScroll: true,
+                onSuccess: () => {
+                    setDeleteDialogOpen(false);
+                    setEventToDelete(null);
+                },
             });
         }
+    };
+
+    const handleDeleteCancel = () => {
+        setDeleteDialogOpen(false);
+        setEventToDelete(null);
     };
 
     const handleEdit = (event: Event) => {
@@ -202,7 +219,7 @@ export default function ManageEvents({ events, filters }: PageProps) {
                                             <Button 
                                                 variant="outline" 
                                                 size="sm"
-                                                onClick={() => handleDelete(event.id)}
+                                                onClick={() => handleDeleteClick(event)}
                                             >
                                                 <Trash2 className="h-4 w-4" />
                                             </Button>
@@ -238,6 +255,15 @@ export default function ManageEvents({ events, filters }: PageProps) {
 
                 <CreateEventSheet open={createSheetOpen} onClose={() => setCreateSheetOpen(false)} />
                 <EditEventSheet open={editSheetOpen} onClose={() => setEditSheetOpen(false)} event={selectedEvent} />
+                <DeleteConfirmationDialog
+                    open={deleteDialogOpen}
+                    title="Delete Event?"
+                    itemName={eventToDelete?.title}
+                    description="This will remove the event and all its registrations."
+                    warningMessage="This action cannot be undone."
+                    onConfirm={handleDeleteConfirm}
+                    onCancel={handleDeleteCancel}
+                />
             </div>
         </AppLayout>
     );

@@ -18,12 +18,11 @@ class EventController extends Controller
     public function index(Request $request): Response
     {
         $user = $request->user();
-        $organizationId = $user->currentOrganization?->id;
 
+        // Show ALL published events to residents (cross-organization)
         $query = Event::query()
             ->with(['creator:id,name', 'organization:id,name'])
-            ->published()
-            ->forOrganization($organizationId);
+            ->published();
 
         // Filter by category
         if ($request->filled('category')) {
@@ -141,14 +140,6 @@ class EventController extends Controller
     }
 
     /**
-     * Show the form for creating a new event.
-     */
-    public function create(): Response
-    {
-        return Inertia::render('events/create');
-    }
-
-    /**
      * Store a newly created event.
      */
     public function store(Request $request): \Illuminate\Http\RedirectResponse
@@ -192,28 +183,8 @@ class EventController extends Controller
             'created_by' => $user->id,
         ]);
 
-        return redirect()->route('events.edit', $event)
-            ->with('success', 'Event created successfully. You can now add speakers and agenda items.');
-    }
-
-    /**
-     * Show the form for editing an event.
-     */
-    public function edit(Request $request, Event $event): Response
-    {
-        $user = $request->user();
-        $organizationId = $user->currentOrganization?->id;
-
-        // Check access
-        if ($event->organization_id !== $organizationId) {
-            abort(403, 'You do not have access to this event.');
-        }
-
-        // Event data includes speakers and agenda_items as JSON
-
-        return Inertia::render('events/edit', [
-            'event' => $event,
-        ]);
+        return redirect()->route('events.manage')
+            ->with('success', 'Event created successfully!');
     }
 
     /**
@@ -300,6 +271,11 @@ class EventController extends Controller
     {
         $user = $request->user();
         $organizationId = $user->currentOrganization?->id;
+
+        // Check if event is published
+        if (! $event->is_published) {
+            return back()->with('error', 'This event is not available for registration.');
+        }
 
         // Check if registration is open
         if (! $event->isRegistrationOpen()) {
