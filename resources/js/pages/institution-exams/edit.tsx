@@ -1,4 +1,5 @@
 import { DeleteConfirmationDialog } from '@/components/delete-confirmation-dialog';
+import { QuestionsImportPreviewDialog } from '@/components/questions-import-preview-dialog';
 import { RichTextEditor } from '@/components/rich-text-editor';
 import { TopicSelector } from '@/components/topic-selector';
 import { Button } from '@/components/ui/button';
@@ -24,6 +25,7 @@ import {
     Check,
     ChevronDown,
     ChevronRight,
+    Download,
     Save,
     Search,
     Trash2,
@@ -145,6 +147,13 @@ export default function EditAssessment() {
         number | null
     >(null);
 
+    // Import preview state
+    const [showImportPreview, setShowImportPreview] = useState(false);
+    const [importFile, setImportFile] = useState<File | null>(null);
+    const [previewData, setPreviewData] = useState<any>(null);
+    const [isLoadingPreview, setIsLoadingPreview] = useState(false);
+    const [isImporting, setIsImporting] = useState(false);
+
     // Fetch topics once on page load
     useEffect(() => {
         fetch('/topics')
@@ -152,6 +161,11 @@ export default function EditAssessment() {
             .then((data) => setTopics(data))
             .catch((err) => console.error('Failed to fetch topics:', err));
     }, []);
+
+    // Update questions when assessment changes (after import/reload)
+    useEffect(() => {
+        setQuestions(assessment.questions || []);
+    }, [assessment.questions]);
 
     const toggleQuestion = (index: number) => {
         setOpenQuestions((prev) => ({
@@ -197,6 +211,74 @@ export default function EditAssessment() {
                 });
             }
         }, 100);
+    };
+
+    const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setImportFile(file);
+        setIsLoadingPreview(true);
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+            const response = await fetch(`/assessments/${assessment.id}/questions/preview`, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                },
+            });
+
+            const data = await response.json();
+            
+            if (data.success) {
+                setPreviewData(data);
+                setShowImportPreview(true);
+            } else {
+                toast.error(data.message || 'Failed to preview questions');
+            }
+        } catch (error) {
+            console.error('Preview error:', error);
+            toast.error('Failed to preview questions');
+        } finally {
+            setIsLoadingPreview(false);
+            e.target.value = ''; // Reset file input
+        }
+    };
+
+    const handleConfirmImport = () => {
+        if (!importFile) return;
+
+        setIsImporting(true);
+        const formData = new FormData();
+        formData.append('file', importFile);
+
+        router.post(`/assessments/${assessment.id}/questions/import`, formData, {
+            forceFormData: true,
+            preserveScroll: true,
+            onSuccess: () => {
+                setShowImportPreview(false);
+                setImportFile(null);
+                setPreviewData(null);
+                router.reload({ only: ['assessment'] });
+            },
+            onError: (errors) => {
+                console.error('Import errors:', errors);
+                toast.error('Import failed');
+            },
+            onFinish: () => {
+                setIsImporting(false);
+            },
+        });
+    };
+
+    const handleCancelImport = () => {
+        setShowImportPreview(false);
+        setImportFile(null);
+        setPreviewData(null);
     };
 
     const updateChoice = (
@@ -548,9 +630,36 @@ export default function EditAssessment() {
 
                 {/* Questions */}
                 <div className="space-y-4 rounded-lg border p-6">
-                    <h3 className="text-lg font-semibold">Questions</h3>
-                    <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center justify-between">
+                        <h3 className="text-lg font-semibold">Questions</h3>
                         <div className="flex gap-2">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => window.open('/assessments/questions/template', '_blank')}
+                            >
+                                <Download className="mr-2 h-4 w-4" />
+                                Download Template
+                            </Button>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => document.getElementById('import-file')?.click()}
+                            >
+                                <Upload className="mr-2 h-4 w-4" />
+                                Import from Excel
+                            </Button>
+                            <input
+                                id="import-file"
+                                type="file"
+                                accept=".xlsx,.xls,.csv"
+                                className="hidden"
+                                onChange={handleImportFile}
+                            />
+                        </div>
+                    </div>
+                    <div className="flex items-center justify-between gap-2">
+                        <div className="flex flex-wrap gap-2">
                             <Button
                                 variant="outline"
                                 onClick={() => addQuestion('multiple_choice')}
@@ -1083,6 +1192,19 @@ export default function EditAssessment() {
                 onConfirm={confirmDeleteQuestion}
                 onCancel={() => setDeletingQuestionIndex(null)}
             />
+
+            {previewData && (
+                <QuestionsImportPreviewDialog
+                    open={showImportPreview}
+                    questions={previewData.questions || []}
+                    errors={previewData.errors || []}
+                    totalValid={previewData.total_valid || 0}
+                    totalErrors={previewData.total_errors || 0}
+                    onConfirm={handleConfirmImport}
+                    onCancel={handleCancelImport}
+                    isImporting={isImporting}
+                />
+            )}
         </AppLayout>
     );
 }

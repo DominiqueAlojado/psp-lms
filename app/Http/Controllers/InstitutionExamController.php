@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Exports\QuestionsTemplateExport;
+use App\Imports\QuestionsImport;
 use App\Models\Institution\InstitutionAssessment;
 use App\Models\Institution\InstitutionQuestion;
 use Illuminate\Http\RedirectResponse;
@@ -9,6 +11,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
+use Maatwebsite\Excel\Facades\Excel;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class InstitutionExamController extends Controller
 {
@@ -539,5 +543,51 @@ class InstitutionExamController extends Controller
         $assessment->update(['total_points' => $totalPoints]);
 
         return back()->with('success', 'Question deleted successfully');
+    }
+
+    /**
+     * Download Excel template for bulk question import.
+     */
+    public function downloadTemplate(): BinaryFileResponse
+    {
+        return Excel::download(new QuestionsTemplateExport, 'question_import_template.xlsx');
+    }
+
+    /**
+     * Import questions from Excel file.
+     */
+    public function importQuestions(Request $request, InstitutionAssessment $assessment): RedirectResponse
+    {
+        // Verify user has access
+        if ($assessment->organization_id !== $request->user()->current_organization_id) {
+            abort(403, 'You do not have access to this assessment.');
+        }
+
+        $request->validate([
+            'file' => ['required', 'file', 'mimes:xlsx,xls,csv', 'max:5120'], // 5MB max
+        ]);
+
+        try {
+            $import = new QuestionsImport($assessment->id, $assessment->organization_id);
+            Excel::import($import, $request->file('file'));
+
+            $successCount = $import->getSuccessCount();
+            $errors = $import->getErrors();
+
+            if (count($errors) > 0) {
+                $errorMessage = "Imported {$successCount} questions with ".count($errors).' errors: '.implode('; ', array_slice($errors, 0, 3));
+                if (count($errors) > 3) {
+                    $errorMessage .= '... and '.(count($errors) - 3).' more errors.';
+                }
+
+                return back()->with('warning', $errorMessage);
+            }
+
+            return back()->with('success', "Successfully imported {$successCount} questions!");
+        } catch (\Exception $e) {
+            \Log::error('Question import failed', ['error' => $e->getMessage()]);
+
+            return back()->withErrors(['file' => 'Import failed: '.$e->getMessage()]);
+        }
     }
 }

@@ -271,6 +271,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::delete('assessments/{assessment}/questions/{question}', [App\Http\Controllers\InstitutionExamController::class, 'deleteQuestion'])
         ->middleware('permission:edit-assessments')
         ->name('assessments.questions.delete');
+    Route::get('assessments/questions/template', [App\Http\Controllers\InstitutionExamController::class, 'downloadTemplate'])
+        ->middleware('permission:create-assessments')
+        ->name('assessments.questions.template');
+    Route::post('assessments/{assessment}/questions/preview', [App\Http\Controllers\QuestionImportController::class, 'preview'])
+        ->middleware('permission:edit-assessments')
+        ->name('assessments.questions.preview');
+    Route::post('assessments/{assessment}/questions/import', [App\Http\Controllers\QuestionImportController::class, 'confirmImport'])
+        ->middleware('permission:edit-assessments')
+        ->name('assessments.questions.import');
 
     // National In-Service Exams
     Route::get('in-service', [App\Http\Controllers\NationalAssessmentController::class, 'index'])
