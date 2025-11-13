@@ -19,6 +19,8 @@ interface Event {
 interface Registration {
     id: number;
     registration_status: string;
+    payment_status: string;
+    payment_amount: string;
     created_at: string;
     user: {
         id: number;
@@ -56,6 +58,14 @@ const registrationStatusColors = {
     confirmed: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
     cancelled: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
     waitlisted: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300',
+};
+
+const paymentStatusColors = {
+    not_required: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300',
+    pending: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
+    paid: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
+    refunded: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
+    failed: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
 };
 
 export default function EventAttendees({ event, registrations, filters }: PageProps) {
@@ -110,9 +120,6 @@ export default function EventAttendees({ event, registrations, filters }: PagePr
                         description={`Manage registrations for ${event.title}`}
                     />
                     <div className="flex gap-2">
-                        <Button asChild variant="outline">
-                            <Link href={`/events/${event.id}/edit`}>Edit Event</Link>
-                        </Button>
                         <Button asChild variant="outline">
                             <Link href="/events/manage">Back to Manage</Link>
                         </Button>
@@ -170,19 +177,38 @@ export default function EventAttendees({ event, registrations, filters }: PagePr
                                 <div className="divide-y">
                                     {registrations.data.map((registration) => (
                                         <div key={registration.id} className="flex items-center justify-between p-4">
-                                            <div className="flex-1">
-                                                <div className="flex items-center gap-2">
+                                            <div className="flex-1 space-y-2">
+                                                <div className="flex flex-wrap items-center gap-2">
                                                     <h4 className="font-medium">{registration.user.name}</h4>
                                                     <Badge className={registrationStatusColors[registration.registration_status as keyof typeof registrationStatusColors]}>
                                                         {registration.registration_status}
                                                     </Badge>
+                                                    {registration.payment_status !== 'not_required' && (
+                                                        <Badge className={paymentStatusColors[registration.payment_status as keyof typeof paymentStatusColors]}>
+                                                            {registration.payment_status === 'paid' ? 'Paid' : 
+                                                             registration.payment_status === 'pending' ? 'Payment Pending' : 
+                                                             registration.payment_status}
+                                                        </Badge>
+                                                    )}
                                                 </div>
                                                 <p className="text-sm text-muted-foreground">{registration.user.email}</p>
-                                                <div className="mt-1 flex gap-4 text-sm text-muted-foreground">
+                                                <div className="flex flex-wrap items-center gap-3 text-sm">
+                                                    <span className="font-medium text-primary">
+                                                        {registration.organization.name}
+                                                    </span>
                                                     {registration.user.resident && (
-                                                        <span>{registration.user.resident.year_level}</span>
+                                                        <span className="text-muted-foreground">{registration.user.resident.year_level}</span>
                                                     )}
+                                                </div>
+                                                <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
                                                     <span>Registered: {formatDate(registration.created_at)}</span>
+                                                    {registration.payment_amount && parseFloat(registration.payment_amount) > 0 ? (
+                                                        <span className="font-medium text-foreground">
+                                                            Fee: ₱{parseFloat(registration.payment_amount).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                        </span>
+                                                    ) : (
+                                                        <span className="font-medium text-green-600 dark:text-green-400">Free</span>
+                                                    )}
                                                 </div>
                                             </div>
                                             {registration.registration_status === 'pending' && (

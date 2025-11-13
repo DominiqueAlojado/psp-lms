@@ -112,8 +112,12 @@ class EventController extends Controller
 
         $query = Event::query()
             ->with(['creator:id,name', 'organization:id,name'])
-            ->where('organization_id', $organizationId)
             ->withCount('registrations');
+
+        // System Admins and BOP see ALL events, others see only their organization's events
+        if (! $user->hasAnyRole(['System Admin', 'BOP'])) {
+            $query->where('organization_id', $organizationId);
+        }
 
         // Filter by status
         if ($request->filled('status')) {
@@ -195,8 +199,8 @@ class EventController extends Controller
         $user = $request->user();
         $organizationId = $user->currentOrganization?->id;
 
-        // Check access
-        if ($event->organization_id !== $organizationId) {
+        // Check access (System Admins and BOP can access all events)
+        if (! $user->hasAnyRole(['System Admin', 'BOP']) && $event->organization_id !== $organizationId) {
             abort(403, 'You do not have access to this event.');
         }
 
@@ -247,8 +251,8 @@ class EventController extends Controller
         $user = $request->user();
         $organizationId = $user->currentOrganization?->id;
 
-        // Check access
-        if ($event->organization_id !== $organizationId) {
+        // Check access (System Admins and BOP can delete all events)
+        if (! $user->hasAnyRole(['System Admin', 'BOP']) && $event->organization_id !== $organizationId) {
             abort(403, 'You do not have access to this event.');
         }
 
@@ -365,8 +369,8 @@ class EventController extends Controller
         $user = $request->user();
         $organizationId = $user->currentOrganization?->id;
 
-        // Check access
-        if ($event->organization_id !== $organizationId) {
+        // Check access (System Admins and BOP can view all event attendees)
+        if (! $user->hasAnyRole(['System Admin', 'BOP']) && $event->organization_id !== $organizationId) {
             abort(403, 'You do not have access to this event.');
         }
 
@@ -405,8 +409,12 @@ class EventController extends Controller
         $user = $request->user();
         $organizationId = $user->currentOrganization?->id;
 
-        // Check access
-        if ($event->organization_id !== $organizationId || $registration->event_id !== $event->id) {
+        // Check access (System Admins and BOP can approve any registration)
+        if (! $user->hasAnyRole(['System Admin', 'BOP']) && $event->organization_id !== $organizationId) {
+            abort(403);
+        }
+
+        if ($registration->event_id !== $event->id) {
             abort(403);
         }
 
