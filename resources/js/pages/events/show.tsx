@@ -192,9 +192,14 @@ export default function EventShow({ event, userRegistration, registrationStats, 
                                 <CardTitle>About This Event</CardTitle>
                             </CardHeader>
                             <CardContent>
-                                <p className="whitespace-pre-wrap text-muted-foreground">
-                                    {event.description || 'No description available.'}
-                                </p>
+                                {event.description ? (
+                                    <div
+                                        className="prose prose-sm max-w-none dark:prose-invert [&_ul]:list-disc [&_ul]:pl-6 [&_ul]:space-y-1 [&_ol]:list-decimal [&_ol]:pl-6 [&_ol]:space-y-1 [&_li]:text-muted-foreground [&_strong]:font-semibold [&_strong]:text-foreground [&_a]:text-primary [&_a]:underline [&_em]:italic"
+                                        dangerouslySetInnerHTML={{ __html: event.description }}
+                                    />
+                                ) : (
+                                    <p className="text-muted-foreground">No description available.</p>
+                                )}
                             </CardContent>
                         </Card>
 
@@ -205,9 +210,10 @@ export default function EventShow({ event, userRegistration, registrationStats, 
                                     <CardTitle>Requirements</CardTitle>
                                 </CardHeader>
                                 <CardContent>
-                                    <p className="whitespace-pre-wrap text-muted-foreground">
-                                        {event.requirements}
-                                    </p>
+                                    <div
+                                        className="prose prose-sm max-w-none dark:prose-invert [&_ul]:list-disc [&_ul]:pl-6 [&_ul]:space-y-1 [&_ol]:list-decimal [&_ol]:pl-6 [&_ol]:space-y-1 [&_li]:text-muted-foreground [&_strong]:font-semibold [&_strong]:text-foreground [&_a]:text-primary [&_a]:underline [&_em]:italic"
+                                        dangerouslySetInnerHTML={{ __html: event.requirements }}
+                                    />
                                 </CardContent>
                             </Card>
                         )}

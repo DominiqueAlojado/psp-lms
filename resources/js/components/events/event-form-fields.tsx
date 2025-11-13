@@ -1,3 +1,4 @@
+import { RichTextEditor } from '@/components/rich-text-editor';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -8,7 +9,6 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
 
 interface EventFormData {
     title: string;
@@ -100,20 +100,22 @@ export function EventFormFields({ data, setData, errors = {} }: Props) {
 
                 <div className="space-y-2">
                     <Label htmlFor="description">Description</Label>
-                    <Textarea
-                        id="description"
+                    <RichTextEditor
                         value={data.description}
-                        onChange={(e) =>
-                            setData({ ...data, description: e.target.value })
+                        onChange={(value) =>
+                            setData({ ...data, description: value })
                         }
-                        placeholder="Describe your event..."
-                        rows={3}
+                        placeholder="Describe your event with formatted text, lists, and links..."
                     />
                     {errors.description && (
                         <p className="text-sm text-destructive">
                             {errors.description}
                         </p>
                     )}
+                    <p className="text-xs text-muted-foreground">
+                        Use the toolbar to format text with bold, italic, lists,
+                        links, and more.
+                    </p>
                 </div>
 
                 <div className="grid gap-4 sm:grid-cols-2">
@@ -392,14 +394,12 @@ export function EventFormFields({ data, setData, errors = {} }: Props) {
                     <Label htmlFor="requirements">
                         Requirements/Prerequisites
                     </Label>
-                    <Textarea
-                        id="requirements"
+                    <RichTextEditor
                         value={data.requirements}
-                        onChange={(e) =>
-                            setData({ ...data, requirements: e.target.value })
+                        onChange={(value) =>
+                            setData({ ...data, requirements: value })
                         }
-                        placeholder="Any requirements for attendees..."
-                        rows={2}
+                        placeholder="List any requirements or prerequisites for attendees..."
                     />
                     {errors.requirements && (
                         <p className="text-sm text-destructive">

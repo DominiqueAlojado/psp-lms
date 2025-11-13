@@ -6,6 +6,7 @@ import Superscript from '@tiptap/extension-superscript';
 import Subscript from '@tiptap/extension-subscript';
 import { Button } from '@/components/ui/button';
 import { Bold, Italic, List, ListOrdered, Undo, Redo, Link as LinkIcon } from 'lucide-react';
+import { useEffect } from 'react';
 
 interface RichTextEditorProps {
     value: string;
@@ -30,10 +31,17 @@ export function RichTextEditor({ value, onChange, placeholder }: RichTextEditorP
         },
         editorProps: {
             attributes: {
-                class: 'prose prose-sm max-w-none focus:outline-none min-h-[120px] px-3 py-2',
+                class: 'prose prose-sm max-w-none focus:outline-none min-h-[120px] px-3 py-2 [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6 [&_li]:my-1',
             },
         },
     });
+
+    // Update editor content when value prop changes
+    useEffect(() => {
+        if (editor && value !== editor.getHTML()) {
+            editor.commands.setContent(value || '');
+        }
+    }, [value, editor]);
 
     if (!editor) {
         return null;
@@ -94,6 +102,7 @@ export function RichTextEditor({ value, onChange, placeholder }: RichTextEditorP
                     size="sm"
                     onClick={() => editor.chain().focus().toggleBulletList().run()}
                     className={editor.isActive('bulletList') ? 'bg-muted' : ''}
+                    title="Bullet List"
                 >
                     <List className="h-4 w-4" />
                 </Button>
@@ -103,6 +112,7 @@ export function RichTextEditor({ value, onChange, placeholder }: RichTextEditorP
                     size="sm"
                     onClick={() => editor.chain().focus().toggleOrderedList().run()}
                     className={editor.isActive('orderedList') ? 'bg-muted' : ''}
+                    title="Numbered List"
                 >
                     <ListOrdered className="h-4 w-4" />
                 </Button>

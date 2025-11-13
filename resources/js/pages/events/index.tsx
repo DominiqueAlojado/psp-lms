@@ -273,7 +273,9 @@ export default function EventsIndex({ events, filters }: PageProps) {
                                             </div>
                                             <CardTitle className="line-clamp-2">{event.title}</CardTitle>
                                             <CardDescription className="line-clamp-3">
-                                                {event.description || 'No description available'}
+                                                {event.description 
+                                                    ? event.description.replace(/<[^>]*>/g, '') 
+                                                    : 'No description available'}
                                             </CardDescription>
                                         </CardHeader>
                                         <CardContent className="flex-1">

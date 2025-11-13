@@ -20,6 +20,7 @@ const breadcrumbs: BreadcrumbItem[] = [
 interface Event {
     id: number;
     title: string;
+    description: string | null;
     event_category: string;
     event_type: string;
     start_date: string;
@@ -165,6 +166,11 @@ export default function ManageEvents({ events, filters }: PageProps) {
                                                 </Badge>
                                             </div>
                                             <h3 className="font-semibold">{event.title}</h3>
+                                            {event.description && (
+                                                <p className="line-clamp-2 text-sm text-muted-foreground">
+                                                    {event.description.replace(/<[^>]*>/g, '')}
+                                                </p>
+                                            )}
                                             <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
                                                 <div className="flex items-center gap-1">
                                                     <Calendar className="h-4 w-4" />
