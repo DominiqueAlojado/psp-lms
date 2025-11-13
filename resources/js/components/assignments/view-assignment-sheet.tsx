@@ -18,7 +18,8 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { Calendar, Download, FileText, Users } from 'lucide-react';
-import { router } from '@inertiajs/react';
+import { useState } from 'react';
+import { GradeSubmissionSheet } from './grade-submission-sheet';
 
 interface Assignment {
     id: number;
@@ -66,6 +67,7 @@ interface Submission {
     late_days: number;
     files_count: number;
     has_feedback: boolean;
+    submission_text?: string | null;
     files?: SubmissionFile[];
 }
 
@@ -76,6 +78,7 @@ interface Props {
     onClose: () => void;
     onEdit?: (assignment: Assignment) => void;
     onViewSubmission?: (submissionId: number) => void;
+    onRefreshSubmissions?: () => void;
 }
 
 const assignmentTypeLabels: Record<string, string> = {
@@ -116,7 +119,12 @@ export function ViewAssignmentSheet({
     onClose,
     onEdit,
     onViewSubmission,
+    onRefreshSubmissions,
 }: Props) {
+    const [gradeSheetOpen, setGradeSheetOpen] = useState(false);
+    const [selectedSubmission, setSelectedSubmission] =
+        useState<Submission | null>(null);
+
     if (!assignment) return null;
 
     const handleEdit = () => {
@@ -126,8 +134,16 @@ export function ViewAssignmentSheet({
         }
     };
 
-    const handleGrade = (submissionId: number) => {
-        router.visit(`/submissions/${submissionId}/grade`);
+    const handleGrade = (submission: Submission) => {
+        setSelectedSubmission(submission);
+        setGradeSheetOpen(true);
+    };
+
+    const handleGradeSuccess = () => {
+        // Refresh submissions after grading
+        if (onRefreshSubmissions) {
+            onRefreshSubmissions();
+        }
     };
 
     return (
@@ -443,7 +459,7 @@ export function ViewAssignmentSheet({
                                                         size="sm"
                                                         variant="outline"
                                                         onClick={() =>
-                                                            handleGrade(submission.id)
+                                                            handleGrade(submission)
                                                         }
                                                     >
                                                         {submission.status === 'graded'
@@ -452,6 +468,20 @@ export function ViewAssignmentSheet({
                                                     </Button>
                                                 </div>
                                             </div>
+
+                                            {/* Submission Notes/Comments */}
+                                            {submission.submission_text && (
+                                                <div className="border-b p-4">
+                                                    <Label className="mb-2 text-sm text-muted-foreground">
+                                                        Notes / Comments
+                                                    </Label>
+                                                    <div className="mt-2 rounded-lg bg-muted/50 p-3">
+                                                        <p className="whitespace-pre-wrap text-sm">
+                                                            {submission.submission_text}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            )}
 
                                             {/* Attached Files */}
                                             {submission.files &&
@@ -537,6 +567,14 @@ export function ViewAssignmentSheet({
                     </div>
                 </div>
             </SheetContent>
+
+            {/* Grade Submission Sheet (nested sheet) */}
+            <GradeSubmissionSheet
+                open={gradeSheetOpen}
+                submission={selectedSubmission}
+                onClose={() => setGradeSheetOpen(false)}
+                onSuccess={handleGradeSuccess}
+            />
         </Sheet>
     );
 }

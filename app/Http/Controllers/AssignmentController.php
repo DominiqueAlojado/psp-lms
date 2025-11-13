@@ -187,6 +187,7 @@ class AssignmentController extends Controller
                 'late_days' => $submission->late_days,
                 'files_count' => $submission->files->count(),
                 'has_feedback' => ! empty($submission->grader_feedback),
+                'submission_text' => $submission->submission_text,
                 'files' => $submission->files->map(fn ($file) => [
                     'id' => $file->id,
                     'original_name' => $file->original_name,
@@ -229,6 +230,7 @@ class AssignmentController extends Controller
                 'late_days' => $submission->late_days,
                 'files_count' => $submission->files->count(),
                 'has_feedback' => ! empty($submission->grader_feedback),
+                'submission_text' => $submission->submission_text,
                 'files' => $submission->files->map(fn ($file) => [
                     'id' => $file->id,
                     'original_name' => $file->original_name,

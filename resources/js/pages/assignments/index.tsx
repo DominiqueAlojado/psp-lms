@@ -69,6 +69,14 @@ const assignmentTypeLabels: Record<string, string> = {
     other: 'Other',
 };
 
+interface SubmissionFile {
+    id: number;
+    original_name: string;
+    file_path: string;
+    file_size: number;
+    mime_type: string;
+}
+
 interface Submission {
     id: number;
     resident_name: string;
@@ -82,6 +90,8 @@ interface Submission {
     late_days: number;
     files_count: number;
     has_feedback: boolean;
+    submission_text?: string | null;
+    files?: SubmissionFile[];
 }
 
 export default function AssignmentsIndex({ assignments }: Props) {
@@ -100,15 +110,10 @@ export default function AssignmentsIndex({ assignments }: Props) {
         });
     };
 
-    const handleView = async (assignment: Assignment) => {
-        setSelectedAssignment(assignment);
-        setSubmissions([]); // Reset submissions
-        setViewSheetOpen(true);
-
-        // Fetch submissions for this assignment
+    const fetchSubmissions = async (assignmentId: number) => {
         try {
             const response = await fetch(
-                `/api/assignments/${assignment.id}/submissions`,
+                `/api/assignments/${assignmentId}/submissions`,
             );
             if (response.ok) {
                 const data = await response.json();
@@ -116,6 +121,21 @@ export default function AssignmentsIndex({ assignments }: Props) {
             }
         } catch (error) {
             console.error('Failed to fetch submissions:', error);
+        }
+    };
+
+    const handleView = async (assignment: Assignment) => {
+        setSelectedAssignment(assignment);
+        setSubmissions([]); // Reset submissions
+        setViewSheetOpen(true);
+
+        // Fetch submissions for this assignment
+        await fetchSubmissions(assignment.id);
+    };
+
+    const handleRefreshSubmissions = async () => {
+        if (selectedAssignment) {
+            await fetchSubmissions(selectedAssignment.id);
         }
     };
 
@@ -336,6 +356,7 @@ export default function AssignmentsIndex({ assignments }: Props) {
                 submissions={submissions}
                 onClose={() => setViewSheetOpen(false)}
                 onEdit={handleEdit}
+                onRefreshSubmissions={handleRefreshSubmissions}
             />
 
             {/* Edit Assignment Sheet */}
