@@ -8,7 +8,17 @@ import {
     SheetHeader,
     SheetTitle,
 } from '@/components/ui/sheet';
-import { Calendar, FileText, Users } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from '@/components/ui/table';
+import { Calendar, Download, FileText, Users } from 'lucide-react';
+import { router } from '@inertiajs/react';
 
 interface Assignment {
     id: number;
@@ -35,11 +45,37 @@ interface Assignment {
     created_at: string;
 }
 
+interface SubmissionFile {
+    id: number;
+    original_name: string;
+    file_path: string;
+    file_size: number;
+    mime_type: string;
+}
+
+interface Submission {
+    id: number;
+    resident_name: string;
+    year_level: string;
+    submitted_at: string;
+    status: string;
+    score: number | null;
+    max_score: number;
+    percentage: number | null;
+    is_late: boolean;
+    late_days: number;
+    files_count: number;
+    has_feedback: boolean;
+    files?: SubmissionFile[];
+}
+
 interface Props {
     open: boolean;
     assignment: Assignment | null;
+    submissions?: Submission[];
     onClose: () => void;
     onEdit?: (assignment: Assignment) => void;
+    onViewSubmission?: (submissionId: number) => void;
 }
 
 const assignmentTypeLabels: Record<string, string> = {
@@ -63,7 +99,24 @@ const fileTypeLabels: Record<string, string> = {
     png: 'Image (PNG)',
 };
 
-export function ViewAssignmentSheet({ open, assignment, onClose, onEdit }: Props) {
+const statusLabels: Record<
+    string,
+    { label: string; variant: 'default' | 'secondary' | 'destructive' }
+> = {
+    draft: { label: 'Draft', variant: 'secondary' },
+    submitted: { label: 'Submitted', variant: 'default' },
+    graded: { label: 'Graded', variant: 'default' },
+    returned: { label: 'Returned', variant: 'secondary' },
+};
+
+export function ViewAssignmentSheet({
+    open,
+    assignment,
+    submissions,
+    onClose,
+    onEdit,
+    onViewSubmission,
+}: Props) {
     if (!assignment) return null;
 
     const handleEdit = () => {
@@ -73,9 +126,13 @@ export function ViewAssignmentSheet({ open, assignment, onClose, onEdit }: Props
         }
     };
 
+    const handleGrade = (submissionId: number) => {
+        router.visit(`/submissions/${submissionId}/grade`);
+    };
+
     return (
         <Sheet open={open} onOpenChange={(open) => !open && onClose()}>
-            <SheetContent className="overflow-y-auto p-0 sm:max-w-[700px]">
+            <SheetContent className="overflow-y-auto p-0 sm:max-w-[800px]">
                 <div className="p-6">
                     <SheetHeader className="pb-6 text-left">
                         <div className="flex items-start justify-between">
@@ -84,7 +141,7 @@ export function ViewAssignmentSheet({ open, assignment, onClose, onEdit }: Props
                                     {assignment.title}
                                 </SheetTitle>
                                 <SheetDescription className="mt-2">
-                                    View assignment details and submission information
+                                    View assignment details and submissions
                                 </SheetDescription>
                             </div>
                             <Badge
@@ -97,7 +154,15 @@ export function ViewAssignmentSheet({ open, assignment, onClose, onEdit }: Props
                         </div>
                     </SheetHeader>
 
-                    <div className="space-y-6">
+                    <Tabs defaultValue="general" className="space-y-6">
+                        <TabsList className="grid w-full grid-cols-2">
+                            <TabsTrigger value="general">General</TabsTrigger>
+                            <TabsTrigger value="submissions">
+                                Submissions ({submissions?.length || 0})
+                            </TabsTrigger>
+                        </TabsList>
+
+                        <TabsContent value="general" className="space-y-6">
                         {/* Basic Information */}
                         <div className="space-y-4">
                             <h3 className="text-lg font-semibold">Basic Information</h3>
@@ -310,7 +375,157 @@ export function ViewAssignmentSheet({ open, assignment, onClose, onEdit }: Props
                                 </div>
                             </div>
                         )}
-                    </div>
+                        </TabsContent>
+
+                        <TabsContent value="submissions" className="space-y-4">
+                            {submissions && submissions.length > 0 ? (
+                                <div className="space-y-4">
+                                    {submissions.map((submission) => (
+                                        <div
+                                            key={submission.id}
+                                            className="rounded-lg border"
+                                        >
+                                            {/* Submission Header */}
+                                            <div className="border-b bg-muted/30 p-4">
+                                                <div className="flex items-start justify-between gap-4">
+                                                    <div className="flex-1">
+                                                        <div className="flex items-center gap-2">
+                                                            <h4 className="font-semibold">
+                                                                {submission.resident_name}
+                                                            </h4>
+                                                            <Badge variant="outline">
+                                                                {submission.year_level}
+                                                            </Badge>
+                                                            <Badge
+                                                                variant={
+                                                                    statusLabels[
+                                                                        submission.status
+                                                                    ]?.variant ||
+                                                                    'secondary'
+                                                                }
+                                                            >
+                                                                {statusLabels[
+                                                                    submission.status
+                                                                ]?.label ||
+                                                                    submission.status}
+                                                            </Badge>
+                                                            {submission.is_late && (
+                                                                <Badge variant="destructive">
+                                                                    Late
+                                                                    {submission.late_days >
+                                                                        0 &&
+                                                                        ` (${submission.late_days}d)`}
+                                                                </Badge>
+                                                            )}
+                                                        </div>
+                                                        <div className="mt-2 flex items-center gap-4 text-sm text-muted-foreground">
+                                                            <div className="flex items-center gap-1">
+                                                                <Calendar className="size-3" />
+                                                                Submitted:{' '}
+                                                                {new Date(
+                                                                    submission.submitted_at,
+                                                                ).toLocaleString()}
+                                                            </div>
+                                                            {submission.score !== null && (
+                                                                <div className="font-medium text-foreground">
+                                                                    Score:{' '}
+                                                                    {submission.score} /{' '}
+                                                                    {submission.max_score} (
+                                                                    {submission.percentage?.toFixed(
+                                                                        0,
+                                                                    )}
+                                                                    %)
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                    <Button
+                                                        size="sm"
+                                                        variant="outline"
+                                                        onClick={() =>
+                                                            handleGrade(submission.id)
+                                                        }
+                                                    >
+                                                        {submission.status === 'graded'
+                                                            ? 'Review'
+                                                            : 'Grade'}
+                                                    </Button>
+                                                </div>
+                                            </div>
+
+                                            {/* Attached Files */}
+                                            {submission.files &&
+                                                submission.files.length > 0 && (
+                                                    <div className="p-4">
+                                                        <Label className="mb-2 text-sm text-muted-foreground">
+                                                            Attached Files (
+                                                            {submission.files.length})
+                                                        </Label>
+                                                        <div className="mt-2 space-y-2">
+                                                            {submission.files.map(
+                                                                (file) => (
+                                                                    <div
+                                                                        key={file.id}
+                                                                        className="flex items-center justify-between rounded border p-2"
+                                                                    >
+                                                                        <div className="flex items-center gap-2">
+                                                                            <FileText className="size-4 text-muted-foreground" />
+                                                                            <div>
+                                                                                <p className="text-sm font-medium">
+                                                                                    {
+                                                                                        file.original_name
+                                                                                    }
+                                                                                </p>
+                                                                                <p className="text-xs text-muted-foreground">
+                                                                                    {(
+                                                                                        file.file_size /
+                                                                                        (1024 *
+                                                                                            1024)
+                                                                                    ).toFixed(
+                                                                                        2,
+                                                                                    )}{' '}
+                                                                                    MB
+                                                                                </p>
+                                                                            </div>
+                                                                        </div>
+                                                                        <Button
+                                                                            size="sm"
+                                                                            variant="ghost"
+                                                                            asChild
+                                                                        >
+                                                                            <a
+                                                                                href={`/storage/${file.file_path}`}
+                                                                                download={
+                                                                                    file.original_name
+                                                                                }
+                                                                                target="_blank"
+                                                                                rel="noopener noreferrer"
+                                                                            >
+                                                                                <Download className="size-4" />
+                                                                            </a>
+                                                                        </Button>
+                                                                    </div>
+                                                                ),
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="flex flex-col items-center justify-center py-12 text-center">
+                                    <FileText className="mb-4 size-12 text-muted-foreground" />
+                                    <h3 className="mb-2 text-lg font-semibold">
+                                        No submissions yet
+                                    </h3>
+                                    <p className="text-sm text-muted-foreground">
+                                        Submissions from residents will appear here
+                                    </p>
+                                </div>
+                            )}
+                        </TabsContent>
+                    </Tabs>
 
                     <div className="mt-6 flex justify-end gap-2 border-t pt-6">
                         <Button variant="outline" onClick={onClose}>

@@ -69,12 +69,28 @@ const assignmentTypeLabels: Record<string, string> = {
     other: 'Other',
 };
 
+interface Submission {
+    id: number;
+    resident_name: string;
+    year_level: string;
+    submitted_at: string;
+    status: string;
+    score: number | null;
+    max_score: number;
+    percentage: number | null;
+    is_late: boolean;
+    late_days: number;
+    files_count: number;
+    has_feedback: boolean;
+}
+
 export default function AssignmentsIndex({ assignments }: Props) {
     const [createSheetOpen, setCreateSheetOpen] = useState(false);
     const [editSheetOpen, setEditSheetOpen] = useState(false);
     const [viewSheetOpen, setViewSheetOpen] = useState(false);
     const [selectedAssignment, setSelectedAssignment] =
         useState<Assignment | null>(null);
+    const [submissions, setSubmissions] = useState<Submission[]>([]);
 
     const handleDelete = (id: number) => {
         router.delete(`/assignments/${id}`, {
@@ -84,9 +100,23 @@ export default function AssignmentsIndex({ assignments }: Props) {
         });
     };
 
-    const handleView = (assignment: Assignment) => {
+    const handleView = async (assignment: Assignment) => {
         setSelectedAssignment(assignment);
+        setSubmissions([]); // Reset submissions
         setViewSheetOpen(true);
+
+        // Fetch submissions for this assignment
+        try {
+            const response = await fetch(
+                `/api/assignments/${assignment.id}/submissions`,
+            );
+            if (response.ok) {
+                const data = await response.json();
+                setSubmissions(data);
+            }
+        } catch (error) {
+            console.error('Failed to fetch submissions:', error);
+        }
     };
 
     const handleEdit = (assignment: Assignment) => {
@@ -303,6 +333,7 @@ export default function AssignmentsIndex({ assignments }: Props) {
             <ViewAssignmentSheet
                 open={viewSheetOpen}
                 assignment={selectedAssignment}
+                submissions={submissions}
                 onClose={() => setViewSheetOpen(false)}
                 onEdit={handleEdit}
             />

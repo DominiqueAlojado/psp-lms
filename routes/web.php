@@ -172,11 +172,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->middleware('permission:delete-assignments')
         ->name('assignments.destroy');
 
+    // API endpoint for fetching submissions (returns JSON)
+    Route::get('api/assignments/{assignment}/submissions', [App\Http\Controllers\AssignmentController::class, 'getSubmissions'])
+        ->middleware('permission:view-assignments')
+        ->name('api.assignments.submissions');
+
     // Resident Assignment Portal
     Route::get('my-assignments', [App\Http\Controllers\AssignmentController::class, 'myAssignments'])
         ->name('assignments.my-assignments');
-    Route::get('assignments/{assignment}/submit', [App\Http\Controllers\AssignmentController::class, 'submit'])
-        ->name('assignments.submit');
     Route::post('assignments/{assignment}/submit', [App\Http\Controllers\AssignmentController::class, 'storeSubmission'])
         ->name('assignments.submit.store');
 

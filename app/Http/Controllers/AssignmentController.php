@@ -158,6 +158,48 @@ class AssignmentController extends Controller
     }
 
     /**
+     * Get submissions for an assignment (API endpoint).
+     */
+    public function getSubmissions(Request $request, Assignment $assignment): \Illuminate\Http\JsonResponse
+    {
+        $user = $request->user();
+
+        // Verify assignment belongs to user's organization
+        if ($assignment->organization_id !== $user->currentOrganization?->id) {
+            abort(403, 'You do not have access to this assignment.');
+        }
+
+        $submissions = Submission::with(['user', 'files'])
+            ->where('assignment_id', $assignment->id)
+            ->whereIn('status', ['submitted', 'graded', 'returned'])
+            ->orderBy('submitted_at', 'desc')
+            ->get()
+            ->map(fn ($submission) => [
+                'id' => $submission->id,
+                'resident_name' => $submission->user->name,
+                'year_level' => $submission->year_level,
+                'submitted_at' => $submission->submitted_at?->format('Y-m-d H:i:s'),
+                'status' => $submission->status,
+                'score' => $submission->score,
+                'max_score' => $submission->max_score,
+                'percentage' => $submission->score ? round($submission->percentage, 2) : null,
+                'is_late' => $submission->is_late,
+                'late_days' => $submission->late_days,
+                'files_count' => $submission->files->count(),
+                'has_feedback' => ! empty($submission->grader_feedback),
+                'files' => $submission->files->map(fn ($file) => [
+                    'id' => $file->id,
+                    'original_name' => $file->original_name,
+                    'file_path' => $file->file_path,
+                    'file_size' => $file->file_size,
+                    'mime_type' => $file->mime_type,
+                ]),
+            ]);
+
+        return response()->json($submissions);
+    }
+
+    /**
      * Display assignment details for training officers.
      */
     public function show(Request $request, Assignment $assignment): Response
@@ -187,6 +229,13 @@ class AssignmentController extends Controller
                 'late_days' => $submission->late_days,
                 'files_count' => $submission->files->count(),
                 'has_feedback' => ! empty($submission->grader_feedback),
+                'files' => $submission->files->map(fn ($file) => [
+                    'id' => $file->id,
+                    'original_name' => $file->original_name,
+                    'file_path' => $file->file_path,
+                    'file_size' => $file->file_size,
+                    'mime_type' => $file->mime_type,
+                ]),
             ]);
 
         return Inertia::render('assignments/show', [
@@ -320,7 +369,7 @@ class AssignmentController extends Controller
                     ->orWhereJsonContains('target_year_levels', $formattedYearLevel);
             })
             ->with(['submissions' => function ($query) use ($user) {
-                $query->where('user_id', $user->id);
+                $query->where('user_id', $user->id)->with('files');
             }])
             ->orderBy('due_date', 'asc')
             ->get();
@@ -339,9 +388,13 @@ class AssignmentController extends Controller
                 'id' => $assignment->id,
                 'title' => $assignment->title,
                 'description' => $assignment->description,
+                'instructions' => $assignment->instructions,
                 'assignment_type' => $assignment->assignment_type,
                 'due_date' => $assignment->due_date?->format('Y-m-d H:i:s'),
                 'max_score' => $assignment->max_score,
+                'allowed_file_types' => $assignment->allowed_file_types,
+                'max_file_size_mb' => $assignment->max_file_size_mb,
+                'max_files' => $assignment->max_files,
                 'is_overdue' => $assignment->isOverdue(),
                 'can_still_submit' => $assignment->canStillSubmit(),
                 'has_submitted' => $assignment->hasUserSubmitted($user),
@@ -355,55 +408,20 @@ class AssignmentController extends Controller
                     'submitted_at' => $userSubmission->submitted_at?->format('Y-m-d H:i:s'),
                     'is_late' => $userSubmission->is_late,
                     'grader_feedback' => $userSubmission->grader_feedback,
+                    'submission_text' => $userSubmission->submission_text,
+                    'files' => $userSubmission->files->map(fn ($file) => [
+                        'id' => $file->id,
+                        'original_name' => $file->original_name,
+                        'file_path' => $file->file_path,
+                        'file_size' => $file->file_size,
+                        'mime_type' => $file->mime_type,
+                    ]),
                 ] : null,
             ];
         });
 
         return Inertia::render('assignments/my-assignments', [
             'assignments' => $assignments,
-        ]);
-    }
-
-    /**
-     * Show assignment submission form for resident.
-     */
-    public function submit(Request $request, Assignment $assignment): Response
-    {
-        $user = $request->user();
-
-        // Verify assignment belongs to user's organization
-        if ($assignment->organization_id !== $user->currentOrganization?->id) {
-            abort(403, 'You do not have access to this assignment.');
-        }
-
-        // Check if can still submit
-        if (! $assignment->canStillSubmit()) {
-            return redirect()->route('assignments.my-assignments')
-                ->with('error', 'This assignment is no longer accepting submissions.');
-        }
-
-        // Check submission count
-        $submissionCount = $assignment->getUserSubmissionCount($user);
-        if ($submissionCount >= $assignment->max_submissions) {
-            return redirect()->route('assignments.my-assignments')
-                ->with('error', 'You have reached the maximum number of submissions for this assignment.');
-        }
-
-        return Inertia::render('assignments/submit', [
-            'assignment' => [
-                'id' => $assignment->id,
-                'title' => $assignment->title,
-                'description' => $assignment->description,
-                'instructions' => $assignment->instructions,
-                'assignment_type' => $assignment->assignment_type,
-                'due_date' => $assignment->due_date?->format('Y-m-d H:i:s'),
-                'max_score' => $assignment->max_score,
-                'allowed_file_types' => $assignment->allowed_file_types,
-                'max_file_size_mb' => $assignment->max_file_size_mb,
-                'max_files' => $assignment->max_files,
-                'is_overdue' => $assignment->isOverdue(),
-                'can_still_submit' => $assignment->canStillSubmit(),
-            ],
         ]);
     }
 

@@ -10,7 +10,7 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
-import { Head, Link } from '@inertiajs/react';
+import { Head } from '@inertiajs/react';
 import {
     AlertCircle,
     Calendar,
@@ -19,6 +19,19 @@ import {
     FileText,
     Pencil,
 } from 'lucide-react';
+import { useState } from 'react';
+import {
+    SubmitAssignmentSheet,
+    ViewSubmissionSheet,
+} from '@/components/assignments';
+
+interface SubmissionFile {
+    id: number;
+    original_name: string;
+    file_path: string;
+    file_size: number;
+    mime_type: string;
+}
 
 interface SubmissionInfo {
     id: number;
@@ -27,15 +40,21 @@ interface SubmissionInfo {
     submitted_at: string;
     is_late: boolean;
     grader_feedback: string | null;
+    files?: SubmissionFile[];
+    submission_text?: string | null;
 }
 
 interface Assignment {
     id: number;
     title: string;
     description: string;
+    instructions: string;
     assignment_type: string;
     due_date: string | null;
     max_score: number;
+    allowed_file_types: string[];
+    max_file_size_mb: number;
+    max_files: number;
     is_overdue: boolean;
     can_still_submit: boolean;
     has_submitted: boolean;
@@ -67,6 +86,12 @@ const statusLabels: Record<string, { label: string; variant: 'default' | 'second
 };
 
 export default function MyAssignments({ assignments }: Props) {
+    const [submitSheetOpen, setSubmitSheetOpen] = useState(false);
+    const [viewSubmissionSheetOpen, setViewSubmissionSheetOpen] =
+        useState(false);
+    const [selectedAssignment, setSelectedAssignment] =
+        useState<Assignment | null>(null);
+
     const pendingAssignments = assignments.filter(
         (a) => !a.has_submitted && a.can_still_submit,
     );
@@ -74,6 +99,16 @@ export default function MyAssignments({ assignments }: Props) {
     const overdueAssignments = assignments.filter(
         (a) => !a.has_submitted && a.is_overdue,
     );
+
+    const handleSubmit = (assignment: Assignment) => {
+        setSelectedAssignment(assignment);
+        setSubmitSheetOpen(true);
+    };
+
+    const handleViewSubmission = (assignment: Assignment) => {
+        setSelectedAssignment(assignment);
+        setViewSubmissionSheetOpen(true);
+    };
 
     return (
         <AppLayout>
@@ -244,13 +279,14 @@ export default function MyAssignments({ assignments }: Props) {
                                             <TableCell className="text-right">
                                                 {!assignment.has_submitted &&
                                                 assignment.can_still_submit ? (
-                                                    <Button size="sm" asChild>
-                                                        <Link
-                                                            href={`/assignments/${assignment.id}/submit`}
-                                                        >
-                                                            <FileText className="mr-2 size-4" />
-                                                            Submit
-                                                        </Link>
+                                                    <Button
+                                                        size="sm"
+                                                        onClick={() =>
+                                                            handleSubmit(assignment)
+                                                        }
+                                                    >
+                                                        <FileText className="mr-2 size-4" />
+                                                        Submit
                                                     </Button>
                                                 ) : assignment.allow_resubmission &&
                                                   assignment.submission_count <
@@ -258,22 +294,25 @@ export default function MyAssignments({ assignments }: Props) {
                                                     <Button
                                                         size="sm"
                                                         variant="outline"
-                                                        asChild
+                                                        onClick={() =>
+                                                            handleSubmit(assignment)
+                                                        }
                                                     >
-                                                        <Link
-                                                            href={`/assignments/${assignment.id}/submit`}
-                                                        >
-                                                            <FileText className="mr-2 size-4" />
-                                                            Resubmit
-                                                        </Link>
+                                                        <FileText className="mr-2 size-4" />
+                                                        Resubmit
                                                     </Button>
                                                 ) : assignment.submission ? (
                                                     <Button
                                                         size="sm"
-                                                        variant="ghost"
-                                                        disabled
+                                                        variant="outline"
+                                                        onClick={() =>
+                                                            handleViewSubmission(
+                                                                assignment,
+                                                            )
+                                                        }
                                                     >
-                                                        Submitted
+                                                        <FileText className="mr-2 size-4" />
+                                                        View
                                                     </Button>
                                                 ) : (
                                                     <Button
@@ -304,6 +343,20 @@ export default function MyAssignments({ assignments }: Props) {
                     </CardContent>
                 </Card>
             </div>
+
+            {/* Submit Assignment Sheet */}
+            <SubmitAssignmentSheet
+                open={submitSheetOpen}
+                assignment={selectedAssignment}
+                onClose={() => setSubmitSheetOpen(false)}
+            />
+
+            {/* View Submission Sheet */}
+            <ViewSubmissionSheet
+                open={viewSubmissionSheetOpen}
+                assignment={selectedAssignment}
+                onClose={() => setViewSubmissionSheetOpen(false)}
+            />
         </AppLayout>
     );
 }
