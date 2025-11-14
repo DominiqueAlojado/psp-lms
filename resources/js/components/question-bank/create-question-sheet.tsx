@@ -41,7 +41,7 @@ export function CreateQuestionSheet({ open, onOpenChange }: Props) {
         setErrors({});
 
         const data = new FormData();
-        
+
         if (formData.topic_id) {
             data.append('topic_id', formData.topic_id.toString());
         }
@@ -54,7 +54,10 @@ export function CreateQuestionSheet({ open, onOpenChange }: Props) {
         // Add choices
         formData.choices.forEach((choice, index) => {
             data.append(`choices[${index}][choice_text]`, choice.choice_text);
-            data.append(`choices[${index}][is_correct]`, choice.is_correct ? '1' : '0');
+            data.append(
+                `choices[${index}][is_correct]`,
+                choice.is_correct ? '1' : '0',
+            );
         });
 
         if (formData.image) {
@@ -96,12 +99,17 @@ export function CreateQuestionSheet({ open, onOpenChange }: Props) {
                 <SheetHeader>
                     <SheetTitle>Create Question</SheetTitle>
                     <SheetDescription>
-                        Add a new question to your question bank. This question can be reused in multiple exams.
+                        Add a new question to your question bank. This question
+                        can be reused in multiple exams.
                     </SheetDescription>
                 </SheetHeader>
 
-                <form onSubmit={handleSubmit} className="mt-6 space-y-6">
-                    <QuestionFormFields data={formData} setData={setFormData} errors={errors} />
+                <form onSubmit={handleSubmit} className="p-4">
+                    <QuestionFormFields
+                        data={formData}
+                        setData={setFormData}
+                        errors={errors}
+                    />
 
                     <div className="flex justify-end gap-3 border-t pt-6">
                         <Button
@@ -121,4 +129,3 @@ export function CreateQuestionSheet({ open, onOpenChange }: Props) {
         </Sheet>
     );
 }
-

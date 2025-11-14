@@ -61,7 +61,9 @@ export function EditQuestionSheet({ question, open, onOpenChange }: Props) {
                 difficulty_level: question.difficulty_level || 'medium',
                 choices: question.choices,
                 image: null,
-                existing_image: question.image_path ? `/storage/${question.image_path}` : null,
+                existing_image: question.image_path
+                    ? `/storage/${question.image_path}`
+                    : null,
             });
         }
     }, [question]);
@@ -75,7 +77,7 @@ export function EditQuestionSheet({ question, open, onOpenChange }: Props) {
 
         const data = new FormData();
         data.append('_method', 'PATCH');
-        
+
         if (formData.topic_id) {
             data.append('topic_id', formData.topic_id.toString());
         }
@@ -88,7 +90,10 @@ export function EditQuestionSheet({ question, open, onOpenChange }: Props) {
         // Add choices
         formData.choices.forEach((choice, index) => {
             data.append(`choices[${index}][choice_text]`, choice.choice_text);
-            data.append(`choices[${index}][is_correct]`, choice.is_correct ? '1' : '0');
+            data.append(
+                `choices[${index}][is_correct]`,
+                choice.is_correct ? '1' : '0',
+            );
         });
 
         if (formData.image) {
@@ -115,12 +120,17 @@ export function EditQuestionSheet({ question, open, onOpenChange }: Props) {
                 <SheetHeader>
                     <SheetTitle>Edit Question</SheetTitle>
                     <SheetDescription>
-                        Update this question. Changes will not affect existing exams using this question.
+                        Update this question. Changes will not affect existing
+                        exams using this question.
                     </SheetDescription>
                 </SheetHeader>
 
-                <form onSubmit={handleSubmit} className="mt-6 space-y-6">
-                    <QuestionFormFields data={formData} setData={setFormData} errors={errors} />
+                <form onSubmit={handleSubmit} className="p-4">
+                    <QuestionFormFields
+                        data={formData}
+                        setData={setFormData}
+                        errors={errors}
+                    />
 
                     <div className="flex justify-end gap-3 border-t pt-6">
                         <Button
@@ -140,4 +150,3 @@ export function EditQuestionSheet({ question, open, onOpenChange }: Props) {
         </Sheet>
     );
 }
-
