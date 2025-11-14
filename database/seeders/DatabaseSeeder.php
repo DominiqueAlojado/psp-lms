@@ -24,6 +24,7 @@ class DatabaseSeeder extends Seeder
             StaffSeeder::class,          // Create staff members
             ResidentSeeder::class,       // Seed residents with user accounts
             TopicSeeder::class,          // Create topics for questions
+            QuestionBankSeeder::class,   // Populate the question bank
             BataanGeneralHospitalExamsSeeder::class, // Create dummy exams
             LongFormQuestionsExamSeeder::class,      // Create exam with long questions
             AnnouncementSeeder::class,   // Create sample announcements

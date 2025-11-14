@@ -80,7 +80,7 @@ export default function CreateAssessment({
 }: PageProps) {
     const [title, setTitle] = useState('');
     const [examCategory, setExamCategory] = useState('');
-    const [passingScore, setPassingScore] = useState(0);
+    const [passingScore, setPassingScore] = useState<number | ''>('');
     const [duration, setDuration] = useState<number | ''>('');
     const [questions, setQuestions] = useState<DraftQuestion[]>([]);
     const [openQuestions, setOpenQuestions] = useState<Record<number, boolean>>(
@@ -208,7 +208,7 @@ export default function CreateAssessment({
             {
                 title,
                 exam_category: examCategory || null,
-                passing_score: passingScore,
+                passing_score: passingScore === '' ? 0 : passingScore,
                 duration_minutes: duration || null,
                 randomize_questions: false,
                 randomize_choices: false,
@@ -376,11 +376,14 @@ export default function CreateAssessment({
                             <Input
                                 type="number"
                                 value={passingScore}
-                                onChange={(e) =>
+                                onChange={(e) => {
+                                    const value = e.target.value;
                                     setPassingScore(
-                                        parseInt(e.target.value || '0'),
-                                    )
-                                }
+                                        value === ''
+                                            ? ''
+                                            : parseInt(value, 10),
+                                    );
+                                }}
                                 min={0}
                                 disabled={!!assessmentId}
                             />

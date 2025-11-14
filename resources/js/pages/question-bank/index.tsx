@@ -147,9 +147,16 @@ export default function QuestionBankIndex({ questions, filters }: PageProps) {
                 method: 'POST',
                 body: formData,
                 headers: {
+                    Accept: 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
                 },
             });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(errorText || 'Failed to preview import.');
+            }
 
             const data = await response.json();
             setPreviewData(data);

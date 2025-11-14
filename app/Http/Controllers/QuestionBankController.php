@@ -73,6 +73,57 @@ class QuestionBankController extends Controller
     }
 
     /**
+     * Return question bank data as JSON (used by selectors).
+     */
+    public function list(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $organizationId = $user->currentOrganization?->id;
+
+        $query = QuestionBank::query()
+            ->with(['topic:id,name', 'statistics', 'choices'])
+            ->forOrganization($organizationId);
+
+        if ($request->filled('search')) {
+            $query->where('question_text', 'like', '%'.$request->search.'%');
+        }
+
+        if ($request->filled('topic')) {
+            $query->where('topic_id', $request->topic);
+        }
+
+        if ($request->filled('type')) {
+            $query->where('question_type', $request->type);
+        }
+
+        if ($request->filled('difficulty')) {
+            if ($request->difficulty === 'manual') {
+                $query->whereNotNull('difficulty_level');
+            } else {
+                $query->whereHas('statistics', function ($q) use ($request) {
+                    $q->where('computed_difficulty', $request->difficulty);
+                });
+            }
+        }
+
+        if ($request->filled('approval')) {
+            if ($request->approval === 'approved') {
+                $query->where('is_approved', true);
+            } elseif ($request->approval === 'pending') {
+                $query->where('is_approved', false);
+            }
+        }
+
+        $questions = $query->orderBy('created_at', 'desc')
+            ->limit(100)
+            ->get();
+
+        return response()->json([
+            'data' => $questions,
+        ]);
+    }
+
+    /**
      * Store a new question in the bank.
      */
     public function store(Request $request): RedirectResponse

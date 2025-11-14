@@ -313,6 +313,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('question-bank', [App\Http\Controllers\QuestionBankController::class, 'index'])
         ->middleware('permission:view-assessments')
         ->name('question-bank.index');
+    Route::get('question-bank/list', [App\Http\Controllers\QuestionBankController::class, 'list'])
+        ->middleware('permission:view-assessments')
+        ->name('question-bank.list');
     Route::post('question-bank', [App\Http\Controllers\QuestionBankController::class, 'store'])
         ->middleware('permission:create-assessments')
         ->name('question-bank.store');

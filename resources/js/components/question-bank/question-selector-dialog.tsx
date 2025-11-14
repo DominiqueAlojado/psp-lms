@@ -73,14 +73,19 @@ export function QuestionSelectorDialog({ open, onOpenChange, assessmentId, onQue
             if (filters.type) params.append('type', filters.type);
             if (filters.approval) params.append('approval', filters.approval);
             
-            const response = await fetch(`/question-bank?${params.toString()}`, {
+            const response = await fetch(`/question-bank/list?${params.toString()}`, {
                 headers: {
                     'X-Requested-With': 'XMLHttpRequest',
-                    'Accept': 'application/json',
+                    Accept: 'application/json',
                 },
             });
+
+            if (!response.ok) {
+                throw new Error('Failed to load question bank.');
+            }
+
             const data = await response.json();
-            setQuestions(data.props.questions.data || []);
+            setQuestions(data.data || []);
         } catch (error) {
             console.error('Error loading questions:', error);
         } finally {
