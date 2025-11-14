@@ -7,6 +7,7 @@ import {
     CollapsibleContent,
     CollapsibleTrigger,
 } from '@/components/ui/collapsible';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -16,6 +17,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import AppLayout from '@/layouts/app-layout';
 import { Head, router } from '@inertiajs/react';
 import {
@@ -78,10 +80,24 @@ const EXAM_CATEGORIES = [
 export default function CreateAssessment({
     assessmentId: propAssessmentId,
 }: PageProps) {
+    const csrfToken =
+        typeof document !== 'undefined'
+            ? document
+                  .querySelector('meta[name="csrf-token"]')
+                  ?.getAttribute('content') ?? ''
+            : '';
     const [title, setTitle] = useState('');
+    const [description, setDescription] = useState('');
     const [examCategory, setExamCategory] = useState('');
     const [passingScore, setPassingScore] = useState<number | ''>('');
     const [duration, setDuration] = useState<number | ''>('');
+    const [randomizeQuestions, setRandomizeQuestions] = useState(false);
+    const [randomizeChoices, setRandomizeChoices] = useState(false);
+    const [showResultsImmediately, setShowResultsImmediately] = useState(true);
+    const [allowReview, setAllowReview] = useState(true);
+    const [isPublished, setIsPublished] = useState(false);
+    const [availableFrom, setAvailableFrom] = useState('');
+    const [availableUntil, setAvailableUntil] = useState('');
     const [questions, setQuestions] = useState<DraftQuestion[]>([]);
     const [openQuestions, setOpenQuestions] = useState<Record<number, boolean>>(
         {},
@@ -206,14 +222,19 @@ export default function CreateAssessment({
         router.post(
             '/assessments',
             {
+                _token: csrfToken,
                 title,
+                description: description || null,
                 exam_category: examCategory || null,
                 passing_score: passingScore === '' ? 0 : passingScore,
-                duration_minutes: duration || null,
-                randomize_questions: false,
-                randomize_choices: false,
-                show_results_immediately: true,
-                allow_review: true,
+                duration_minutes: duration === '' ? null : duration,
+                randomize_questions: randomizeQuestions,
+                randomize_choices: randomizeChoices,
+                show_results_immediately: showResultsImmediately,
+                allow_review: allowReview,
+                is_published: isPublished,
+                available_from: availableFrom || null,
+                available_until: availableUntil || null,
             },
             {
                 preserveScroll: true,
@@ -244,7 +265,10 @@ export default function CreateAssessment({
 
         router.post(
             `/assessments/${assessmentId}/questions/save-one`,
-            question as any,
+            {
+                _token: csrfToken,
+                ...question,
+            } as any,
             {
                 preserveState: true,
                 preserveScroll: true,
@@ -352,6 +376,15 @@ export default function CreateAssessment({
                         />
                     </div>
                     <div className="space-y-2">
+                        <Label>Description</Label>
+                        <Textarea
+                            value={description}
+                            onChange={(e) => setDescription(e.target.value)}
+                            placeholder="Describe the exam (optional)"
+                            disabled={!!assessmentId}
+                        />
+                    </div>
+                    <div className="space-y-2">
                         <Label>Exam Category</Label>
                         <Select
                             value={examCategory}
@@ -403,6 +436,93 @@ export default function CreateAssessment({
                                 min={1}
                                 disabled={!!assessmentId}
                             />
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                        <div className="space-y-2">
+                            <Label>Available From</Label>
+                            <Input
+                                type="datetime-local"
+                                value={availableFrom}
+                                onChange={(e) => setAvailableFrom(e.target.value)}
+                                disabled={!!assessmentId}
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Available Until</Label>
+                            <Input
+                                type="datetime-local"
+                                value={availableUntil}
+                                onChange={(e) => setAvailableUntil(e.target.value)}
+                                disabled={!!assessmentId}
+                            />
+                        </div>
+                    </div>
+                    <div className="space-y-3">
+                        <div className="flex items-center space-x-2">
+                            <Checkbox
+                                id="randomize-questions"
+                                checked={randomizeQuestions}
+                                onCheckedChange={(checked) =>
+                                    setRandomizeQuestions(checked as boolean)
+                                }
+                                disabled={!!assessmentId}
+                            />
+                            <Label htmlFor="randomize-questions">
+                                Randomize questions
+                            </Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                            <Checkbox
+                                id="randomize-choices"
+                                checked={randomizeChoices}
+                                onCheckedChange={(checked) =>
+                                    setRandomizeChoices(checked as boolean)
+                                }
+                                disabled={!!assessmentId}
+                            />
+                            <Label htmlFor="randomize-choices">
+                                Randomize answer choices
+                            </Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                            <Checkbox
+                                id="show-results"
+                                checked={showResultsImmediately}
+                                onCheckedChange={(checked) =>
+                                    setShowResultsImmediately(checked as boolean)
+                                }
+                                disabled={!!assessmentId}
+                            />
+                            <Label htmlFor="show-results">
+                                Show results immediately after submission
+                            </Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                            <Checkbox
+                                id="allow-review"
+                                checked={allowReview}
+                                onCheckedChange={(checked) =>
+                                    setAllowReview(checked as boolean)
+                                }
+                                disabled={!!assessmentId}
+                            />
+                            <Label htmlFor="allow-review">
+                                Allow residents to review answers
+                            </Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                            <Checkbox
+                                id="is-published"
+                                checked={isPublished}
+                                onCheckedChange={(checked) =>
+                                    setIsPublished(checked as boolean)
+                                }
+                                disabled={!!assessmentId}
+                            />
+                            <Label htmlFor="is-published">
+                                Publish exam (make it visible to residents)
+                            </Label>
                         </div>
                     </div>
                     {!assessmentId && (

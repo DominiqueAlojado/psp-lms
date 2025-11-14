@@ -128,6 +128,7 @@ class InstitutionExamController extends Controller
                 'allow_review' => ['boolean'],
                 'available_from' => ['nullable', 'date'],
                 'available_until' => ['nullable', 'date', 'after:available_from'],
+                'is_published' => ['boolean'],
             ]);
 
             $assessment = InstitutionAssessment::create([
@@ -145,13 +146,16 @@ class InstitutionExamController extends Controller
                 'allow_review' => $validated['allow_review'] ?? true,
                 'available_from' => $validated['available_from'] ?? null,
                 'available_until' => $validated['available_until'] ?? null,
+                'is_published' => $validated['is_published'] ?? false,
             ]);
 
             \Log::info('Exam created successfully', ['id' => $assessment->id]);
 
-            return redirect("/institution-exams/create?assessment_id={$assessment->id}")->with([
-                'success' => 'Exam created successfully! Now add questions.',
-            ]);
+            return redirect()
+                ->route('institution-exams.edit', $assessment)
+                ->with([
+                    'success' => 'Exam created successfully! Now add questions.',
+                ]);
         } catch (\Exception $e) {
             \Log::error('Error creating exam: '.$e->getMessage());
 
