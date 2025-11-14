@@ -308,6 +308,55 @@ class InstitutionExamController extends Controller
     }
 
     /**
+     * Duplicate an existing assessment and its questions.
+     */
+    public function duplicate(Request $request, InstitutionAssessment $assessment): RedirectResponse
+    {
+        if ($assessment->organization_id !== $request->user()->current_organization_id) {
+            abort(403, 'You do not have access to this assessment.');
+        }
+
+        $validated = $request->validate([
+            'title' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $assessment->load('questions.choices');
+
+        $duplicate = $assessment->replicate();
+        $duplicate->title = $validated['title'] ?? $this->generateDuplicateTitle($assessment->title, $assessment->organization_id);
+        $duplicate->is_published = false;
+        $duplicate->available_from = null;
+        $duplicate->available_until = null;
+        $duplicate->created_by = $request->user()->id;
+        $duplicate->total_points = 0;
+        $duplicate->save();
+
+        $totalPoints = 0;
+
+        foreach ($assessment->questions as $question) {
+            $newQuestion = $question->replicate();
+            $newQuestion->assessment_id = $duplicate->id;
+            $newQuestion->save();
+
+            foreach ($question->choices as $choice) {
+                $newQuestion->choices()->create([
+                    'choice_text' => $choice->choice_text,
+                    'is_correct' => $choice->is_correct,
+                    'order' => $choice->order,
+                ]);
+            }
+
+            $totalPoints += $newQuestion->points;
+        }
+
+        $duplicate->update(['total_points' => $totalPoints]);
+
+        return redirect()
+            ->route('institution-exams.edit', $duplicate)
+            ->with('success', 'Exam duplicated successfully. You can now make changes.');
+    }
+
+    /**
      * Store questions for an assessment (MCQ, multiple_select, true_false).
      */
     public function storeQuestions(Request $request, InstitutionAssessment $assessment): RedirectResponse
@@ -652,5 +701,19 @@ class InstitutionExamController extends Controller
         }
 
         return back()->with('success', "Successfully added {$addedCount} questions from question bank!");
+    }
+
+    private function generateDuplicateTitle(string $originalTitle, int $organizationId): string
+    {
+        $baseTitle = $originalTitle.' (Copy)';
+        $candidate = $baseTitle;
+        $suffix = 2;
+
+        while (InstitutionAssessment::where('organization_id', $organizationId)->where('title', $candidate)->exists()) {
+            $candidate = $originalTitle.' (Copy '.$suffix.')';
+            $suffix++;
+        }
+
+        return $candidate;
     }
 }

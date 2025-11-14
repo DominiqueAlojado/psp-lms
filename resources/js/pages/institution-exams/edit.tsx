@@ -26,6 +26,7 @@ import {
     Check,
     ChevronDown,
     ChevronRight,
+    Copy,
     Download,
     Save,
     Search,
@@ -147,6 +148,7 @@ export default function EditAssessment() {
     const [deletingQuestionIndex, setDeletingQuestionIndex] = useState<
         number | null
     >(null);
+    const [duplicating, setDuplicating] = useState(false);
 
     // Import preview state
     const [showImportPreview, setShowImportPreview] = useState(false);
@@ -213,6 +215,27 @@ export default function EditAssessment() {
                 });
             }
         }, 100);
+    };
+
+    const handleDuplicateExam = () => {
+        if (duplicating) {
+            return;
+        }
+
+        setDuplicating(true);
+        router.post(
+            `/assessments/${assessment.id}/duplicate`,
+            {},
+            {
+                preserveScroll: true,
+                onError: () => {
+                    toast.error('Failed to duplicate exam.');
+                },
+                onFinish: () => {
+                    setDuplicating(false);
+                },
+            },
+        );
     };
 
     const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -476,7 +499,19 @@ export default function EditAssessment() {
             <div className="space-y-8 p-6">
                 {/* Exam Metadata */}
                 <div className="space-y-4 rounded-lg border p-6">
-                    <h3 className="text-lg font-semibold">Exam Details</h3>
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                        <h3 className="text-lg font-semibold">Exam Details</h3>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={handleDuplicateExam}
+                            disabled={duplicating}
+                        >
+                            <Copy className="mr-2 h-4 w-4" />
+                            {duplicating ? 'Duplicating...' : 'Duplicate Exam'}
+                        </Button>
+                    </div>
                     <div className="space-y-2">
                         <Label>Title</Label>
                         <Input

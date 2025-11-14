@@ -9,7 +9,8 @@ import {
 import { StaffFormFields } from './staff-form-fields';
 import { staffEditSchema } from './validation-schemas';
 import { router, usePage } from '@inertiajs/react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import { ZodError } from 'zod';
 
 interface Role {
     id: number;
@@ -40,6 +41,10 @@ interface EditStaffSheetProps {
     organizations: Organization[];
 }
 
+type InertiaPageProps = {
+    errors?: Record<string, string>;
+};
+
 export function EditStaffSheet({
     staff,
     open,
@@ -47,7 +52,8 @@ export function EditStaffSheet({
     roles,
     organizations,
 }: EditStaffSheetProps) {
-    const { errors: serverErrors } = usePage<any>().props;
+    const { errors: inertiaErrors } = usePage<InertiaPageProps>().props;
+    const serverErrors = inertiaErrors ?? {};
     const [clientValidationErrors, setClientValidationErrors] = useState<
         Record<string, string>
     >({});
@@ -80,6 +86,14 @@ export function EditStaffSheet({
         setStaffDetails(null);
         onOpenChange(false);
     };
+
+    const sortedOrganizations = useMemo(
+        () =>
+            [...organizations].sort((a, b) =>
+                a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }),
+            ),
+        [organizations],
+    );
 
     const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -138,13 +152,18 @@ export function EditStaffSheet({
                     console.error('Server errors:', errors);
                 },
             });
-        } catch (error: any) {
-            if (error.errors) {
+        } catch (error: unknown) {
+            if (error instanceof ZodError) {
                 const errors: Record<string, string> = {};
-                error.errors.forEach((err: any) => {
-                    errors[err.path[0]] = err.message;
+                error.issues.forEach((issue) => {
+                    const pathKey = issue.path.at(0);
+                    if (pathKey && typeof pathKey === 'string') {
+                        errors[pathKey] = issue.message;
+                    }
                 });
                 setClientValidationErrors(errors);
+            } else {
+                console.error(error);
             }
         }
     };
@@ -183,7 +202,7 @@ export function EditStaffSheet({
                             }
                             validationErrors={validationErrors}
                             roles={roles}
-                            organizations={organizations}
+                            organizations={sortedOrganizations}
                             isEdit={true}
                         />
 

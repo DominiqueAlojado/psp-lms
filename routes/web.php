@@ -262,6 +262,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::delete('assessments/{assessment}', [App\Http\Controllers\InstitutionExamController::class, 'destroy'])
         ->middleware('permission:delete-assessments')
         ->name('assessments.destroy');
+    Route::post('assessments/{assessment}/duplicate', [App\Http\Controllers\InstitutionExamController::class, 'duplicate'])
+        ->middleware('permission:create-assessments')
+        ->name('assessments.duplicate');
     Route::post('assessments/{assessment}/questions', [App\Http\Controllers\InstitutionExamController::class, 'storeQuestions'])
         ->middleware('permission:edit-assessments')
         ->name('assessments.questions.store');

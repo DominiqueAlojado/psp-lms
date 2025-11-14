@@ -6,10 +6,11 @@ import {
     SheetHeader,
     SheetTitle,
 } from '@/components/ui/sheet';
+import { router, usePage } from '@inertiajs/react';
+import { useMemo, useState } from 'react';
+import { ZodError } from 'zod';
 import { StaffFormFields } from './staff-form-fields';
 import { staffSchema } from './validation-schemas';
-import { router, usePage } from '@inertiajs/react';
-import { useState } from 'react';
 
 interface Role {
     id: number;
@@ -28,13 +29,18 @@ interface CreateStaffSheetProps {
     organizations: Organization[];
 }
 
+type InertiaPageProps = {
+    errors?: Record<string, string>;
+};
+
 export function CreateStaffSheet({
     open,
     onOpenChange,
     roles,
     organizations,
 }: CreateStaffSheetProps) {
-    const { errors: serverErrors } = usePage<any>().props;
+    const { errors: inertiaErrors } = usePage<InertiaPageProps>().props;
+    const serverErrors = inertiaErrors ?? {};
     const [clientValidationErrors, setClientValidationErrors] = useState<
         Record<string, string>
     >({});
@@ -48,6 +54,16 @@ export function CreateStaffSheet({
         setClientValidationErrors({});
         onOpenChange(false);
     };
+
+    const sortedOrganizations = useMemo(
+        () =>
+            [...organizations].sort((a, b) =>
+                a.name.localeCompare(b.name, undefined, {
+                    sensitivity: 'base',
+                }),
+            ),
+        [organizations],
+    );
 
     const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -103,13 +119,18 @@ export function CreateStaffSheet({
                     console.error('Server errors:', errors);
                 },
             });
-        } catch (error: any) {
-            if (error.errors) {
+        } catch (error: unknown) {
+            if (error instanceof ZodError) {
                 const errors: Record<string, string> = {};
-                error.errors.forEach((err: any) => {
-                    errors[err.path[0]] = err.message;
+                error.issues.forEach((issue) => {
+                    const pathKey = issue.path.at(0);
+                    if (pathKey && typeof pathKey === 'string') {
+                        errors[pathKey] = issue.message;
+                    }
                 });
                 setClientValidationErrors(errors);
+            } else {
+                console.error(error);
             }
         }
     };
@@ -129,7 +150,7 @@ export function CreateStaffSheet({
                     <StaffFormFields
                         validationErrors={validationErrors}
                         roles={roles}
-                        organizations={organizations}
+                        organizations={sortedOrganizations}
                     />
 
                     <div className="flex justify-end gap-3 border-t pt-6">
@@ -147,4 +168,3 @@ export function CreateStaffSheet({
         </Sheet>
     );
 }
-

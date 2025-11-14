@@ -1,18 +1,28 @@
 import HeadingSmall from '@/components/heading-small';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
     Tooltip,
     TooltipContent,
     TooltipProvider,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
+import {
+    Dialog,
+    DialogContent,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
 import { usePermissions } from '@/hooks/use-permissions';
 import AppLayout from '@/layouts/app-layout';
 import InstitutionExamsLayout from '@/layouts/exams/institution-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { ClipboardList, Pencil, Plus, Trash2 } from 'lucide-react';
+import { ClipboardList, Copy, Pencil, Plus, Trash2 } from 'lucide-react';
+import { useState } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -53,6 +63,37 @@ interface PageProps {
 export default function Active() {
     const { hasPermission } = usePermissions();
     const { exams } = usePage<PageProps>().props;
+    const [duplicateExam, setDuplicateExam] = useState<Exam | null>(null);
+    const [duplicateTitle, setDuplicateTitle] = useState('');
+    const [submittingDuplicate, setSubmittingDuplicate] = useState(false);
+
+    const openDuplicateModal = (exam: Exam) => {
+        setDuplicateExam(exam);
+        setDuplicateTitle(`${exam.title} (Copy)`);
+    };
+
+    const closeDuplicateModal = () => {
+        setDuplicateExam(null);
+        setDuplicateTitle('');
+        setSubmittingDuplicate(false);
+    };
+
+    const handleDuplicate = () => {
+        if (!duplicateExam || submittingDuplicate) {
+            return;
+        }
+
+        setSubmittingDuplicate(true);
+        router.post(
+            `/assessments/${duplicateExam.id}/duplicate`,
+            {
+                title: duplicateTitle.trim() || undefined,
+            },
+            {
+                onFinish: closeDuplicateModal,
+            },
+        );
+    };
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -222,6 +263,49 @@ export default function Active() {
                                                         <span
                                                             className={
                                                                 !hasPermission(
+                                                                    'create-assessments',
+                                                                )
+                                                                    ? 'inline-block'
+                                                                    : ''
+                                                            }
+                                                        >
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                disabled={
+                                                                    !hasPermission(
+                                                                        'create-assessments',
+                                                                    )
+                                                                }
+                                                                onClick={() =>
+                                                                    openDuplicateModal(
+                                                                        exam,
+                                                                    )
+                                                                }
+                                                            >
+                                                                <Copy className="h-4 w-4 text-muted-foreground" />
+                                                            </Button>
+                                                        </span>
+                                                    </TooltipTrigger>
+                                                    {!hasPermission(
+                                                        'create-assessments',
+                                                    ) && (
+                                                        <TooltipContent>
+                                                            <p>
+                                                                You don't have
+                                                                permission to
+                                                                duplicate exams
+                                                            </p>
+                                                        </TooltipContent>
+                                                    )}
+                                                </Tooltip>
+                                            </TooltipProvider>
+                                            <TooltipProvider>
+                                                <Tooltip>
+                                                    <TooltipTrigger asChild>
+                                                        <span
+                                                            className={
+                                                                !hasPermission(
                                                                     'delete-assessments',
                                                                 )
                                                                     ? 'inline-block'
@@ -274,6 +358,41 @@ export default function Active() {
                     )}
                 </div>
             </InstitutionExamsLayout>
+
+            <Dialog open={duplicateExam !== null} onOpenChange={(open) => (!open ? closeDuplicateModal() : undefined)}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Duplicate Exam</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-2">
+                        <Label htmlFor="duplicate-exam-title">
+                            New Exam Title
+                        </Label>
+                        <Input
+                            id="duplicate-exam-title"
+                            value={duplicateTitle}
+                            onChange={(e) => setDuplicateTitle(e.target.value)}
+                            autoFocus
+                        />
+                    </div>
+                    <DialogFooter>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={closeDuplicateModal}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            type="button"
+                            onClick={handleDuplicate}
+                            disabled={submittingDuplicate}
+                        >
+                            {submittingDuplicate ? 'Duplicating…' : 'Duplicate'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </AppLayout>
     );
 }
