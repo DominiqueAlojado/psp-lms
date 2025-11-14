@@ -310,6 +310,34 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->middleware('permission:view-assessments')
         ->name('institution-exams.drafts');
 
+    Route::get('question-bank', [App\Http\Controllers\QuestionBankController::class, 'index'])
+        ->middleware('permission:view-assessments')
+        ->name('question-bank.index');
+    Route::post('question-bank', [App\Http\Controllers\QuestionBankController::class, 'store'])
+        ->middleware('permission:create-assessments')
+        ->name('question-bank.store');
+    Route::patch('question-bank/{question}', [App\Http\Controllers\QuestionBankController::class, 'update'])
+        ->middleware('permission:edit-assessments')
+        ->name('question-bank.update');
+    Route::delete('question-bank/{question}', [App\Http\Controllers\QuestionBankController::class, 'destroy'])
+        ->middleware('permission:delete-assessments')
+        ->name('question-bank.destroy');
+    Route::post('question-bank/{question}/approve', [App\Http\Controllers\QuestionBankController::class, 'approve'])
+        ->middleware('permission:edit-assessments')
+        ->name('question-bank.approve');
+    Route::get('question-bank/statistics', [App\Http\Controllers\QuestionBankController::class, 'statistics'])
+        ->middleware('permission:view-assessments')
+        ->name('question-bank.statistics');
+    Route::post('question-bank/preview-import', [App\Http\Controllers\QuestionBankController::class, 'previewImport'])
+        ->middleware('permission:create-assessments')
+        ->name('question-bank.preview-import');
+    Route::post('question-bank/import', [App\Http\Controllers\QuestionBankController::class, 'import'])
+        ->middleware('permission:create-assessments')
+        ->name('question-bank.import');
+    Route::post('assessments/{assessment}/questions/from-bank', [App\Http\Controllers\InstitutionExamController::class, 'addFromBank'])
+        ->middleware('permission:create-assessments')
+        ->name('assessments.questions.from-bank');
+
     // In-Service Exams (frontend pages)
     Route::redirect('inservice-exams', '/inservice-exams/active')->name('inservice-exams');
     Route::get('inservice-exams/active', function () {

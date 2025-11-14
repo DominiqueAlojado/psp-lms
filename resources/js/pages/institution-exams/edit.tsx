@@ -1,4 +1,5 @@
 import { DeleteConfirmationDialog } from '@/components/delete-confirmation-dialog';
+import { QuestionSelectorDialog } from '@/components/question-bank/question-selector-dialog';
 import { QuestionsImportPreviewDialog } from '@/components/questions-import-preview-dialog';
 import { RichTextEditor } from '@/components/rich-text-editor';
 import { TopicSelector } from '@/components/topic-selector';
@@ -153,6 +154,7 @@ export default function EditAssessment() {
     const [previewData, setPreviewData] = useState<any>(null);
     const [isLoadingPreview, setIsLoadingPreview] = useState(false);
     const [isImporting, setIsImporting] = useState(false);
+    const [showQuestionSelector, setShowQuestionSelector] = useState(false);
 
     // Fetch topics once on page load
     useEffect(() => {
@@ -633,6 +635,14 @@ export default function EditAssessment() {
                     <div className="flex items-center justify-between">
                         <h3 className="text-lg font-semibold">Questions</h3>
                         <div className="flex gap-2">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setShowQuestionSelector(true)}
+                            >
+                                <Search className="mr-2 h-4 w-4" />
+                                Add from Bank
+                            </Button>
                             <Button
                                 variant="outline"
                                 size="sm"
@@ -1205,6 +1215,13 @@ export default function EditAssessment() {
                     isImporting={isImporting}
                 />
             )}
+
+            <QuestionSelectorDialog
+                open={showQuestionSelector}
+                onOpenChange={setShowQuestionSelector}
+                assessmentId={assessment.id}
+                onQuestionsAdded={() => router.reload({ only: ['assessment'] })}
+            />
         </AppLayout>
     );
 }

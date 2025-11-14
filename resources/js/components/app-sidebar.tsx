@@ -26,6 +26,7 @@ import {
     Folder,
     FolderOpen,
     GraduationCap,
+    HelpCircle,
     LayoutGrid,
     Megaphone,
     Pencil,
@@ -94,6 +95,12 @@ const mainNavItems: NavItem[] = [
         title: 'Institution Exams',
         href: '/institution-exams',
         icon: ClipboardList,
+        permission: 'view-assessments',
+    },
+    {
+        title: 'Question Bank',
+        href: '/question-bank',
+        icon: HelpCircle,
         permission: 'view-assessments',
     },
 ];

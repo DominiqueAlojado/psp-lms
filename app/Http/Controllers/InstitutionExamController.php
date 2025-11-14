@@ -6,6 +6,8 @@ use App\Exports\QuestionsTemplateExport;
 use App\Imports\QuestionsImport;
 use App\Models\Institution\InstitutionAssessment;
 use App\Models\Institution\InstitutionQuestion;
+use App\Models\Institution\InstitutionQuestionChoice;
+use App\Models\QuestionBank;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -589,5 +591,62 @@ class InstitutionExamController extends Controller
 
             return back()->withErrors(['file' => 'Import failed: '.$e->getMessage()]);
         }
+    }
+
+    /**
+     * Add questions from question bank to assessment.
+     */
+    public function addFromBank(Request $request, InstitutionAssessment $assessment): RedirectResponse
+    {
+        // Verify user has access
+        if ($assessment->organization_id !== $request->user()->current_organization_id) {
+            abort(403, 'You do not have access to this assessment.');
+        }
+
+        $request->validate([
+            'question_ids' => ['required', 'array', 'min:1'],
+            'question_ids.*' => ['required', 'integer', 'exists:question_bank,id'],
+        ]);
+
+        $bankQuestions = QuestionBank::with('choices')
+            ->whereIn('id', $request->question_ids)
+            ->where('organization_id', $assessment->organization_id)
+            ->get();
+
+        if ($bankQuestions->isEmpty()) {
+            return back()->with('error', 'No valid questions found.');
+        }
+
+        $addedCount = 0;
+
+        foreach ($bankQuestions as $bankQuestion) {
+            // Create a copy of the question in the assessment
+            $question = InstitutionQuestion::create([
+                'assessment_id' => $assessment->id,
+                'topic_id' => $bankQuestion->topic_id,
+                'question_type' => $bankQuestion->question_type,
+                'question_text' => $bankQuestion->question_text,
+                'points' => $bankQuestion->points,
+                'explanation' => $bankQuestion->explanation,
+                'image_path' => $bankQuestion->image_path, // Reuse the same image
+            ]);
+
+            // Copy choices
+            foreach ($bankQuestion->choices as $bankChoice) {
+                InstitutionQuestionChoice::create([
+                    'question_id' => $question->id,
+                    'choice_text' => $bankChoice->choice_text,
+                    'is_correct' => $bankChoice->is_correct,
+                    'order' => $bankChoice->order,
+                ]);
+            }
+
+            // Increment usage counter in question bank
+            $bankQuestion->incrementUsage();
+
+            $addedCount++;
+        }
+
+        return back()->with('success', "Successfully added {$addedCount} questions from question bank!");
     }
 }
