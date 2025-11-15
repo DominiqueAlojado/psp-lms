@@ -314,34 +314,34 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('institution-exams.drafts');
 
     Route::get('question-bank', [App\Http\Controllers\QuestionBankController::class, 'index'])
-        ->middleware('permission:view-assessments')
+        ->middleware(['permission:view-assessments', 'role:System Admin|Admin|Training Officer|BOP'])
         ->name('question-bank.index');
     Route::get('question-bank/list', [App\Http\Controllers\QuestionBankController::class, 'list'])
-        ->middleware('permission:view-assessments')
+        ->middleware(['permission:view-assessments', 'role:System Admin|Admin|Training Officer|BOP'])
         ->name('question-bank.list');
     Route::post('question-bank', [App\Http\Controllers\QuestionBankController::class, 'store'])
-        ->middleware('permission:create-assessments')
+        ->middleware(['permission:create-assessments', 'role:System Admin|Admin|Training Officer|BOP'])
         ->name('question-bank.store');
     Route::patch('question-bank/{question}', [App\Http\Controllers\QuestionBankController::class, 'update'])
-        ->middleware('permission:edit-assessments')
+        ->middleware(['permission:edit-assessments', 'role:System Admin|Admin|Training Officer|BOP'])
         ->name('question-bank.update');
     Route::delete('question-bank/{question}', [App\Http\Controllers\QuestionBankController::class, 'destroy'])
-        ->middleware('permission:delete-assessments')
+        ->middleware(['permission:delete-assessments', 'role:System Admin|Admin|Training Officer|BOP'])
         ->name('question-bank.destroy');
     Route::post('question-bank/{question}/approve', [App\Http\Controllers\QuestionBankController::class, 'approve'])
-        ->middleware('permission:edit-assessments')
+        ->middleware(['permission:edit-assessments', 'role:System Admin|Admin|Training Officer|BOP'])
         ->name('question-bank.approve');
     Route::get('question-bank/statistics', [App\Http\Controllers\QuestionBankController::class, 'statistics'])
-        ->middleware('permission:view-assessments')
+        ->middleware(['permission:view-assessments', 'role:System Admin|Admin|Training Officer|BOP'])
         ->name('question-bank.statistics');
     Route::post('question-bank/preview-import', [App\Http\Controllers\QuestionBankController::class, 'previewImport'])
-        ->middleware('permission:create-assessments')
+        ->middleware(['permission:create-assessments', 'role:System Admin|Admin|Training Officer|BOP'])
         ->name('question-bank.preview-import');
     Route::post('question-bank/import', [App\Http\Controllers\QuestionBankController::class, 'import'])
-        ->middleware('permission:create-assessments')
+        ->middleware(['permission:create-assessments', 'role:System Admin|Admin|Training Officer|BOP'])
         ->name('question-bank.import');
     Route::post('assessments/{assessment}/questions/from-bank', [App\Http\Controllers\InstitutionExamController::class, 'addFromBank'])
-        ->middleware('permission:create-assessments')
+        ->middleware(['permission:create-assessments', 'role:System Admin|Admin|Training Officer|BOP'])
         ->name('assessments.questions.from-bank');
 
     // In-Service Exams (frontend pages)

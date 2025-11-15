@@ -59,19 +59,23 @@ const pillars = [
 const workflow = [
     {
         title: 'Design',
-        description: 'Blueprint institution exams, competency checks, and in-service drills.',
+        description:
+            'Blueprint institution exams, competency checks, and in-service drills.',
     },
     {
         title: 'Deliver',
-        description: 'Launch timed exams, assignments, and invigilated sessions with one click.',
+        description:
+            'Launch timed exams, assignments, and invigilated sessions with one click.',
     },
     {
         title: 'Evaluate',
-        description: 'Auto-grade where possible, publish feedback, and compare cohorts.',
+        description:
+            'Auto-grade where possible, publish feedback, and compare cohorts.',
     },
     {
         title: 'Elevate',
-        description: 'Turn analytics into readiness plans and accreditation-ready reports.',
+        description:
+            'Turn analytics into readiness plans and accreditation-ready reports.',
     },
 ];
 
@@ -94,7 +98,7 @@ export default function Welcome({
 
             <div className="min-h-screen bg-background text-foreground">
                 <header className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-6">
-                    <div className="text-sm font-semibold uppercase tracking-[0.3em] text-muted-foreground">
+                    <div className="text-sm font-semibold tracking-[0.3em] text-muted-foreground uppercase">
                         PSP-LMS
                     </div>
                     <nav className="flex items-center gap-3 text-sm">
@@ -129,17 +133,20 @@ export default function Welcome({
                 <main className="mx-auto flex w-full max-w-6xl flex-col gap-12 px-6 pb-16">
                     <section className="grid gap-8 rounded-3xl border border-border bg-card/80 p-8 shadow-sm backdrop-blur lg:grid-cols-2">
                         <div className="space-y-6">
-                            <p className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-1 text-xs font-semibold uppercase tracking-[0.35em] text-primary">
+                            <p className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-1 text-xs font-semibold tracking-[0.35em] text-primary uppercase">
                                 Comprehensive Residency Platform
                             </p>
                             <div>
-                                <h1 className="text-4xl font-semibold leading-tight">
-                                    Assess, teach, and certify every resident in one workspace.
+                                <h1 className="text-4xl leading-tight font-semibold">
+                                    Assess, teach, and certify every resident in
+                                    one workspace.
                                 </h1>
                                 <p className="mt-4 text-lg text-muted-foreground">
-                                    PSP-LMS unifies institution exams, daily LMS operations, and
-                                    in-service readiness tracking. Coordinate national cohorts,
-                                    manage assignments, and prove competency with defensible data.
+                                    PSP-LMS unifies institution exams, daily LMS
+                                    operations, and in-service readiness
+                                    tracking. Coordinate national cohorts,
+                                    manage assignments, and prove competency
+                                    with defensible data.
                                 </p>
                             </div>
                             <div className="flex flex-wrap items-center gap-3">
@@ -147,7 +154,9 @@ export default function Welcome({
                                     href={auth.user ? dashboard() : login()}
                                     className="inline-flex items-center gap-2 rounded-full bg-foreground px-5 py-3 font-medium text-background transition hover:opacity-90"
                                 >
-                                    {auth.user ? 'Go to dashboard' : 'Launch platform'}
+                                    {auth.user
+                                        ? 'Go to dashboard'
+                                        : 'Launch platform'}
                                     <ArrowRight className="h-4 w-4" />
                                 </Link>
                                 {canRegister && !auth.user && (
@@ -162,16 +171,18 @@ export default function Welcome({
                             <dl className="grid grid-cols-2 gap-5 sm:grid-cols-3">
                                 {stats.map((stat) => (
                                     <div key={stat.label}>
-                                        <dt className="text-xs uppercase tracking-[0.35em] text-muted-foreground">
+                                        <dt className="text-xs tracking-[0.35em] text-muted-foreground uppercase">
                                             {stat.label}
                                         </dt>
-                                        <dd className="mt-2 text-2xl font-semibold">{stat.value}</dd>
+                                        <dd className="mt-2 text-2xl font-semibold">
+                                            {stat.value}
+                                        </dd>
                                     </div>
                                 ))}
                             </dl>
                         </div>
                         <div className="space-y-4 rounded-3xl border border-border bg-muted/40 p-6">
-                            <p className="text-sm font-semibold uppercase tracking-[0.35em] text-muted-foreground">
+                            <p className="text-sm font-semibold tracking-[0.35em] text-muted-foreground uppercase">
                                 Platform Modes
                             </p>
                             <div className="space-y-4">
@@ -182,7 +193,9 @@ export default function Welcome({
                                     >
                                         <experience.icon className="h-10 w-10 rounded-xl bg-primary/10 p-2 text-primary" />
                                         <div>
-                                            <p className="text-base font-semibold">{experience.title}</p>
+                                            <p className="text-base font-semibold">
+                                                {experience.title}
+                                            </p>
                                             <p className="text-sm text-muted-foreground">
                                                 {experience.description}
                                             </p>
@@ -210,8 +223,12 @@ export default function Welcome({
                     <section className="grid gap-6 rounded-2xl border border-border bg-card/70 p-6 shadow-sm backdrop-blur lg:grid-cols-3">
                         {pillars.map((pillar) => (
                             <div key={pillar.title} className="space-y-3">
-                                <h3 className="text-lg font-semibold">{pillar.title}</h3>
-                                <p className="text-sm text-muted-foreground">{pillar.description}</p>
+                                <h3 className="text-lg font-semibold">
+                                    {pillar.title}
+                                </h3>
+                                <p className="text-sm text-muted-foreground">
+                                    {pillar.description}
+                                </p>
                             </div>
                         ))}
                     </section>
@@ -219,16 +236,17 @@ export default function Welcome({
                     <section className="rounded-3xl border border-border bg-foreground p-8 text-background shadow-lg">
                         <div className="flex flex-col gap-8 lg:flex-row lg:justify-between">
                             <div className="space-y-3">
-                                <p className="text-sm uppercase tracking-[0.35em] text-background/70">
+                                <p className="text-sm tracking-[0.35em] text-background/70 uppercase">
                                     Integrated Workflow
                                 </p>
                                 <h2 className="text-3xl font-semibold">
-                                    One lifecycle for institution exams, LMS delivery, and national
-                                    in-service cycles.
+                                    One lifecycle for institution exams, LMS
+                                    delivery, and national in-service cycles.
                                 </h2>
                                 <p className="text-background/80">
-                                    Build assets once, reuse across organizations, and surface insights
-                                    the moment attempts finish.
+                                    Build assets once, reuse across
+                                    organizations, and surface insights the
+                                    moment attempts finish.
                                 </p>
                             </div>
                             <div className="grid gap-4 text-sm">
@@ -241,14 +259,18 @@ export default function Welcome({
                                             {index + 1}
                                         </span>
                                         <div>
-                                            <p className="font-medium">{step.title}</p>
-                                            <p className="text-background/80">{step.description}</p>
+                                            <p className="font-medium">
+                                                {step.title}
+                                            </p>
+                                            <p className="text-background/80">
+                                                {step.description}
+                                            </p>
                                         </div>
                                     </div>
                                 ))}
                             </div>
                         </div>
-                        <div className="mt-8 flex flex-wrap items-center gap-3 text-xs uppercase tracking-[0.35em] text-background/70">
+                        <div className="mt-8 flex flex-wrap items-center gap-3 text-xs tracking-[0.35em] text-background/70 uppercase">
                             <span className="inline-flex items-center gap-2 rounded-full border border-background/20 px-4 py-1">
                                 <ClipboardList className="h-4 w-4" />
                                 Institution Exams
@@ -267,38 +289,49 @@ export default function Welcome({
                     <section className="rounded-3xl border border-border bg-card p-8 shadow-sm">
                         <div className="grid gap-8 lg:grid-cols-2">
                             <div className="space-y-4">
-                                <p className="text-sm uppercase tracking-[0.3em] text-muted-foreground">
+                                <p className="text-sm tracking-[0.3em] text-muted-foreground uppercase">
                                     Ready to modernize residency?
                                 </p>
                                 <h2 className="text-3xl font-semibold">
-                                    PSP-LMS brings institution exams, LMS tasks, and in-service standards
-                                    together so every resident can prove mastery.
+                                    PSP-LMS brings institution exams, LMS tasks,
+                                    and in-service standards together so every
+                                    resident can prove mastery.
                                 </h2>
                                 <p className="text-muted-foreground">
-                                    Whether you are a national board, teaching hospital, or training program,
-                                    you can run the same playbook with confidence.
+                                    Whether you are a national board, teaching
+                                    hospital, or training program, you can run
+                                    the same playbook with confidence.
                                 </p>
                             </div>
                             <div className="space-y-4">
                                 <div className="rounded-2xl border border-border bg-background p-4">
-                                    <p className="text-sm font-medium">System Admin + Admin visibility</p>
+                                    <p className="text-sm font-medium">
+                                        System Admin + Admin visibility
+                                    </p>
                                     <p className="text-sm text-muted-foreground">
-                                        Residents directory is reserved for leadership, keeping sensitive data
-                                        out of general staff views.
+                                        Residents directory is reserved for
+                                        leadership, keeping sensitive data out
+                                        of general staff views.
                                     </p>
                                 </div>
                                 <div className="rounded-2xl border border-border bg-background p-4">
-                                    <p className="text-sm font-medium">Institution + National support</p>
+                                    <p className="text-sm font-medium">
+                                        Institution + National support
+                                    </p>
                                     <p className="text-sm text-muted-foreground">
-                                        Switch between local organizations and national in-service contexts
-                                        without leaving the platform.
+                                        Switch between local organizations and
+                                        national in-service contexts without
+                                        leaving the platform.
                                     </p>
                                 </div>
                                 <div className="rounded-2xl border border-border bg-background p-4">
-                                    <p className="text-sm font-medium">Evidence-based reporting</p>
+                                    <p className="text-sm font-medium">
+                                        Evidence-based reporting
+                                    </p>
                                     <p className="text-sm text-muted-foreground">
-                                        Generate audit-ready packets showing exam coverage, outcomes, and
-                                        remediation plans.
+                                        Generate audit-ready packets showing
+                                        exam coverage, outcomes, and remediation
+                                        plans.
                                     </p>
                                 </div>
                             </div>

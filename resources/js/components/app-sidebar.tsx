@@ -100,6 +100,7 @@ const mainNavItems: NavItem[] = [
         href: '/question-bank',
         icon: HelpCircle,
         permission: 'view-assessments',
+        excludeRoles: ['Resident'],
     },
 ];
 
@@ -137,6 +138,14 @@ export function AppSidebar() {
                 item.title === 'My Grades' ||
                 item.title === 'My Assignments') &&
             hasPermission('view-residents')
+        ) {
+            return false;
+        }
+
+        if (
+            item.excludeRoles &&
+            auth?.roles &&
+            item.excludeRoles.some((role) => auth.roles.includes(role))
         ) {
             return false;
         }

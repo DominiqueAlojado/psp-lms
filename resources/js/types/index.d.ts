@@ -14,6 +14,7 @@ export interface Auth {
     organizations: Organization[];
     currentOrganization: Organization | null;
     permissions: string[];
+    roles: string[];
 }
 
 export interface BreadcrumbItem {
@@ -33,6 +34,7 @@ export interface NavItem {
     isActive?: boolean;
     permission?: string;
     excludeOrgTypes?: string[]; // Hide menu item for specific organization types
+    excludeRoles?: string[];
 }
 
 export interface SharedData {
