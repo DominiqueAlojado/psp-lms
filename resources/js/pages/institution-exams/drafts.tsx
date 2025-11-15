@@ -1,3 +1,4 @@
+import { DeleteConfirmationDialog } from '@/components/delete-confirmation-dialog';
 import HeadingSmall from '@/components/heading-small';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -13,6 +14,7 @@ import InstitutionExamsLayout from '@/layouts/exams/institution-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { ClipboardList, Pencil, Plus, Trash2 } from 'lucide-react';
+import { useState } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -52,6 +54,18 @@ interface PageProps {
 export default function Drafts() {
     const { hasPermission } = usePermissions();
     const { exams } = usePage<PageProps>().props;
+    const [deletingExam, setDeletingExam] = useState<Exam | null>(null);
+
+    const confirmDeleteExam = () => {
+        if (!deletingExam) {
+            return;
+        }
+
+        router.delete(`/assessments/${deletingExam.id}`, {
+            preserveScroll: true,
+            onFinish: () => setDeletingExam(null),
+        });
+    };
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -232,17 +246,11 @@ export default function Drafts() {
                                                                         'delete-assessments',
                                                                     )
                                                                 }
-                                                                onClick={() => {
-                                                                    if (
-                                                                        confirm(
-                                                                            'Are you sure you want to delete this draft exam?',
-                                                                        )
-                                                                    ) {
-                                                                        router.delete(
-                                                                            `/assessments/${exam.id}`,
-                                                                        );
-                                                                    }
-                                                                }}
+                                                                onClick={() =>
+                                                                    setDeletingExam(
+                                                                        exam,
+                                                                    )
+                                                                }
                                                             >
                                                                 <Trash2 className="h-4 w-4 text-destructive" />
                                                             </Button>
@@ -270,6 +278,17 @@ export default function Drafts() {
                     )}
                 </div>
             </InstitutionExamsLayout>
+
+            <DeleteConfirmationDialog
+                open={!!deletingExam}
+                title="Delete Draft Exam?"
+                itemName={deletingExam?.title}
+                description={deletingExam?.description ?? undefined}
+                warningMessage="This action cannot be undone. This will permanently delete this draft exam and its associated data."
+                confirmText="Delete Draft Exam"
+                onConfirm={confirmDeleteExam}
+                onCancel={() => setDeletingExam(null)}
+            />
         </AppLayout>
     );
 }
