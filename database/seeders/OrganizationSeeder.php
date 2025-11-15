@@ -22,6 +22,14 @@ class OrganizationSeeder extends Seeder
                 'is_active' => true,
             ],
             [
+                'name' => 'In-Service Exams',
+                'slug' => 'in-service-exams',
+                'description' => 'National organization dedicated to managing in-service exams',
+                'type' => 'national',
+                'is_active' => true,
+                'training_officers' => [],
+            ],
+            [
                 'name' => 'Manila Chapter',
                 'slug' => 'manila-chapter',
                 'description' => 'PSP Manila Chapter',
