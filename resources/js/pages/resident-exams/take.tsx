@@ -73,7 +73,7 @@ interface PageProps {
 
 function ExamContent({ exam, attempt, savedAnswers }: PageProps) {
     const { setOpen } = useSidebar();
-    
+
     // Capture exam metadata on page load
     useCaptureExamMetadata({
         examType: exam.type,
@@ -115,6 +115,14 @@ function ExamContent({ exam, attempt, savedAnswers }: PageProps) {
     const questionRefs = useRef<(HTMLButtonElement | null)[]>([]);
     const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const lastSaveTimeRef = useRef<number>(0);
+    const MAGNIFIER_SIZE = 180;
+    const [isMagnifierVisible, setIsMagnifierVisible] = useState(false);
+    const [magnifierConfig, setMagnifierConfig] = useState({
+        backgroundPosition: '0% 0%',
+        backgroundSize: 'contain',
+        top: 0,
+        left: 0,
+    });
 
     const currentQuestion = exam.questions[currentQuestionIndex];
 
@@ -164,10 +172,13 @@ function ExamContent({ exam, attempt, savedAnswers }: PageProps) {
             if (remaining === 0 && !autoSubmitted) {
                 autoSubmitted = true;
                 clearInterval(interval);
-                
-                toast.warning('⏱️ Time is up! Exam is being submitted automatically...', {
-                    duration: 5000,
-                });
+
+                toast.warning(
+                    '⏱️ Time is up! Exam is being submitted automatically...',
+                    {
+                        duration: 5000,
+                    },
+                );
 
                 // Auto-submit without confirmation (time expired)
                 setTimeout(() => {
@@ -348,6 +359,23 @@ function ExamContent({ exam, attempt, savedAnswers }: PageProps) {
                 newSet.add(questionId);
             }
             return newSet;
+        });
+    };
+
+    const handleMagnifierMove = (
+        event: React.MouseEvent<HTMLImageElement, MouseEvent>,
+    ) => {
+        const img = event.currentTarget;
+        const { offsetX, offsetY } = event.nativeEvent;
+
+        const xPercent = (offsetX / img.width) * 100;
+        const yPercent = (offsetY / img.height) * 100;
+
+        setMagnifierConfig({
+            backgroundPosition: `${xPercent}% ${yPercent}%`,
+            backgroundSize: `${img.naturalWidth}px ${img.naturalHeight}px`,
+            top: offsetY - MAGNIFIER_SIZE / 2,
+            left: offsetX - MAGNIFIER_SIZE / 2,
         });
     };
 
@@ -570,13 +598,50 @@ function ExamContent({ exam, attempt, savedAnswers }: PageProps) {
                                                     }}
                                                 />
                                                 {currentQuestion.image_url && (
-                                                    <img
-                                                        src={
-                                                            currentQuestion.image_url
-                                                        }
-                                                        alt="Question"
-                                                        className="mt-4 max-w-md rounded-lg border"
-                                                    />
+                                                    <div className="relative mt-4 inline-block rounded-lg border bg-muted/10 p-3">
+                                                        <img
+                                                            src={
+                                                                currentQuestion.image_url
+                                                            }
+                                                            alt="Question"
+                                                            className="max-w-md rounded-md border bg-white"
+                                                            onMouseEnter={() =>
+                                                                setIsMagnifierVisible(
+                                                                    true,
+                                                                )
+                                                            }
+                                                            onMouseLeave={() =>
+                                                                setIsMagnifierVisible(
+                                                                    false,
+                                                                )
+                                                            }
+                                                            onMouseMove={
+                                                                handleMagnifierMove
+                                                            }
+                                                        />
+                                                        {isMagnifierVisible && (
+                                                            <div
+                                                                className="pointer-events-none absolute hidden rounded-full border-2 border-primary shadow-lg md:block"
+                                                                style={{
+                                                                    width: MAGNIFIER_SIZE,
+                                                                    height: MAGNIFIER_SIZE,
+                                                                    top: magnifierConfig.top,
+                                                                    left: magnifierConfig.left,
+                                                                    backgroundImage: `url(${currentQuestion.image_url})`,
+                                                                    backgroundRepeat:
+                                                                        'no-repeat',
+                                                                    backgroundPosition:
+                                                                        magnifierConfig.backgroundPosition,
+                                                                    backgroundSize:
+                                                                        magnifierConfig.backgroundSize,
+                                                                }}
+                                                            />
+                                                        )}
+                                                        <p className="mt-2 text-xs text-muted-foreground">
+                                                            Hover to magnify
+                                                            image
+                                                        </p>
+                                                    </div>
                                                 )}
                                             </div>
                                             <div className="flex flex-col items-end gap-2">
