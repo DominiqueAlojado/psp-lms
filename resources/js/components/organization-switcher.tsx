@@ -85,6 +85,7 @@ export function OrganizationSwitcher({
                         placeholder="Search organizations..."
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
+                        onKeyDown={(event) => event.stopPropagation()}
                         className="h-9 pl-8"
                     />
                 </div>
