@@ -43,32 +43,38 @@ const mainNavItems: NavItem[] = [
         title: 'My Exams',
         href: '/resident-exams',
         icon: FileText,
+        permission: 'take-assessments',
     },
     {
         title: 'My Grades',
         href: '/my-grades',
         icon: Award,
+        permission: 'view-resident-grades',
     },
     {
         title: 'My Assignments',
         href: '/my-assignments',
         icon: Pencil,
+        permission: 'view-resident-assignments',
         excludeOrgTypes: ['national'], // Hide when in national org
     },
     {
         title: 'Learning Resources',
         href: '/resources',
         icon: FolderOpen,
+        permission: 'view-materials',
     },
     {
         title: 'Announcements',
         href: '/announcements',
         icon: Megaphone,
+        permission: 'view-announcements',
     },
     {
         title: 'Events',
         href: '/events',
         icon: CalendarDays,
+        permission: 'view-events',
     },
     {
         title: 'Assignments',
@@ -133,16 +139,6 @@ export function AppSidebar() {
 
     // Filter main nav items based on permissions and organization type
     const filteredMainNavItems = mainNavItems.filter((item) => {
-        // Hide "My Exams", "My Grades", and "My Assignments" for staff/admins (show only for residents)
-        if (
-            (item.title === 'My Exams' ||
-                item.title === 'My Grades' ||
-                item.title === 'My Assignments') &&
-            hasPermission('view-residents')
-        ) {
-            return false;
-        }
-
         if (
             item.excludeRoles &&
             auth?.roles &&

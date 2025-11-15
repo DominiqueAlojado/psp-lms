@@ -219,6 +219,10 @@ class RolePermissionSeeder extends Seeder
             // View enrolled courses
             'view-courses',
 
+            // Resident experience
+            'view-resident-grades',
+            'view-resident-assignments',
+
             // Materials
             'view-materials',
             'download-materials',

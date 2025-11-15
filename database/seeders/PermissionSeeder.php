@@ -36,6 +36,10 @@ class PermissionSeeder extends Seeder
             ['name' => 'approve-residents', 'category' => 'Resident Management', 'display_order' => 7],
             ['name' => 'deactivate-residents', 'category' => 'Resident Management', 'display_order' => 8],
 
+            // Resident Experience
+            ['name' => 'view-resident-grades', 'category' => 'Resident Experience', 'display_order' => 1],
+            ['name' => 'view-resident-assignments', 'category' => 'Resident Experience', 'display_order' => 2],
+
             // Staff Management
             ['name' => 'view-staff', 'category' => 'Staff Management', 'display_order' => 1],
             ['name' => 'create-staff', 'category' => 'Staff Management', 'display_order' => 2],
