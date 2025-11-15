@@ -124,12 +124,6 @@ class RolePermissionSeeder extends Seeder
             'manage-course-content',
             'assign-instructors',
 
-            // Residents
-            'view-residents',
-            'create-residents',
-            'edit-residents',
-            'view-resident-progress',
-
             // Materials
             'view-materials',
             'upload-materials',
@@ -185,9 +179,6 @@ class RolePermissionSeeder extends Seeder
         $bop->givePermissionTo([
             // View/Review focus
             'view-courses',
-            'view-residents',
-            'view-resident-progress',
-            'approve-residents',
 
             'view-materials',
             'download-materials',
