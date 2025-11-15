@@ -18,12 +18,10 @@ import { Link, usePage } from '@inertiajs/react';
 import {
     Award,
     BarChart3,
-    BookOpen,
     Building2,
     CalendarDays,
     ClipboardList,
     FileText,
-    Folder,
     FolderOpen,
     GraduationCap,
     HelpCircle,
@@ -124,16 +122,6 @@ const footerNavItems: NavItem[] = [
         icon: Building2,
         permission: 'view-institutions',
     },
-    {
-        title: 'Repository',
-        href: 'https://github.com/laravel/react-starter-kit',
-        icon: Folder,
-    },
-    {
-        title: 'Documentation',
-        href: 'https://laravel.com/docs/starter-kits#react',
-        icon: BookOpen,
-    },
 ];
 
 export function AppSidebar() {
@@ -144,12 +132,21 @@ export function AppSidebar() {
     // Filter main nav items based on permissions and organization type
     const filteredMainNavItems = mainNavItems.filter((item) => {
         // Hide "My Exams", "My Grades", and "My Assignments" for staff/admins (show only for residents)
-        if ((item.title === 'My Exams' || item.title === 'My Grades' || item.title === 'My Assignments') && hasPermission('view-residents')) {
+        if (
+            (item.title === 'My Exams' ||
+                item.title === 'My Grades' ||
+                item.title === 'My Assignments') &&
+            hasPermission('view-residents')
+        ) {
             return false;
         }
 
         // Hide items with excludeOrgTypes matching current org
-        if (item.excludeOrgTypes && currentOrganization?.type && item.excludeOrgTypes.includes(currentOrganization.type)) {
+        if (
+            item.excludeOrgTypes &&
+            currentOrganization?.type &&
+            item.excludeOrgTypes.includes(currentOrganization.type)
+        ) {
             return false;
         }
 
