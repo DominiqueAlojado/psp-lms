@@ -110,6 +110,7 @@ const footerNavItems: NavItem[] = [
         href: '/residents',
         icon: Users,
         permission: 'view-residents',
+        excludeRoles: ['Resident', 'Training Officer'],
     },
     {
         title: 'Staff',
