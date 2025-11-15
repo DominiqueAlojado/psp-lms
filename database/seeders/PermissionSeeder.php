@@ -71,6 +71,8 @@ class PermissionSeeder extends Seeder
             ['name' => 'grade-assessments', 'category' => 'Assessments', 'display_order' => 6],
             ['name' => 'view-assessment-results', 'category' => 'Assessments', 'display_order' => 7],
             ['name' => 'export-assessment-results', 'category' => 'Assessments', 'display_order' => 8],
+            ['name' => 'view-inservice-exams', 'category' => 'Assessments', 'display_order' => 9],
+            ['name' => 'view-institution-exams', 'category' => 'Assessments', 'display_order' => 10],
 
             // Case Studies
             ['name' => 'view-cases', 'category' => 'Case Studies', 'display_order' => 1],
@@ -138,6 +140,6 @@ class PermissionSeeder extends Seeder
             );
         }
 
-        $this->command->info('Created/Updated '.count($permissions).' permissions with categories');
+        $this->command->info('Created/Updated ' . count($permissions) . ' permissions with categories');
     }
 }

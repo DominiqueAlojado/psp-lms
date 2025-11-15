@@ -55,6 +55,8 @@ class RolePermissionSeeder extends Seeder
             'create-assessments',
             'edit-assessments',
             'delete-assessments',
+            'view-inservice-exams',
+            'view-institution-exams',
             'grade-assessments',
             'view-assessment-results',
             'export-assessment-results',
@@ -136,6 +138,8 @@ class RolePermissionSeeder extends Seeder
             'create-assessments',
             'edit-assessments',
             'grade-assessments',
+            'view-inservice-exams',
+            'view-institution-exams',
             'view-assessment-results',
             'export-assessment-results',
             'view-assessment-reports',
@@ -186,6 +190,8 @@ class RolePermissionSeeder extends Seeder
 
             'view-assessments',
             'grade-assessments',
+            'view-inservice-exams',
+            'view-institution-exams',
             'view-assessment-results',
 
             // Case review is important for BOP

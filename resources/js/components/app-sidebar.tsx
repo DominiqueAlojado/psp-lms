@@ -93,13 +93,13 @@ const mainNavItems: NavItem[] = [
         title: 'In-Service Exams',
         href: '/inservice-exams',
         icon: GraduationCap,
-        permission: 'view-assessments',
+        permission: 'view-inservice-exams',
     },
     {
         title: 'Institution Exams',
         href: '/institution-exams',
         icon: ClipboardList,
-        permission: 'view-assessments',
+        permission: 'view-institution-exams',
     },
     {
         title: 'Question Bank',
