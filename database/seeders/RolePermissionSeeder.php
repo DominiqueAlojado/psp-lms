@@ -16,9 +16,15 @@ class RolePermissionSeeder extends Seeder
         // Reset cached roles and permissions
         app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
 
-        // System Admin - All permissions
+        // System Admin - All permissions except sensitive resident-only actions
         $systemAdmin = Role::findByName('System Admin');
-        $systemAdmin->givePermissionTo(Permission::all());
+        $excludedPermissions = [
+            'take-assessments',
+            'view-resident-grades',
+        ];
+        $systemAdminPermissions = Permission::whereNotIn('name', $excludedPermissions)->get();
+        // Use sync to ensure excluded permissions are removed if previously assigned
+        $systemAdmin->syncPermissions($systemAdminPermissions);
 
         // Admin - All permissions except system-wide user/permission management
         $admin = Role::findByName('Admin');
