@@ -52,13 +52,6 @@ class QuestionBank extends Model
                 Storage::disk('public')->delete($question->image_path);
             }
         });
-
-        // Initialize statistics when question created
-        static::created(function (QuestionBank $question) {
-            $question->statistics()->create([
-                'question_id' => $question->id,
-            ]);
-        });
     }
 
     public function organization(): BelongsTo

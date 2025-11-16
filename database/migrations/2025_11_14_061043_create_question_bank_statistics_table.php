@@ -14,6 +14,9 @@ return new class extends Migration
         Schema::create('question_bank_statistics', function (Blueprint $table) {
             $table->id();
             $table->foreignId('question_id')->constrained('question_bank')->onDelete('cascade');
+            // Scope: track stats distinctly for national vs institution usage
+            $table->enum('scope', ['national', 'institution'])->default('national');
+            $table->foreignId('institution_id')->nullable()->constrained('organizations')->nullOnDelete();
 
             // Usage tracking
             $table->integer('times_used_in_exams')->default(0); // How many exams include this question
@@ -36,8 +39,9 @@ return new class extends Migration
 
             $table->timestamps();
 
-            // Unique - one stats record per question
-            $table->unique('question_id');
+            // Unique - one stats record per question per scope
+            $table->unique(['question_id', 'scope', 'institution_id']);
+            $table->index(['scope', 'institution_id']);
         });
     }
 

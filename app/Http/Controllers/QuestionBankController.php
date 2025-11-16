@@ -29,7 +29,7 @@ class QuestionBankController extends Controller
 
         // Search
         if ($request->filled('search')) {
-            $query->where('question_text', 'like', '%'.$request->search.'%');
+            $query->where('question_text', 'like', '%' . $request->search . '%');
         }
 
         // Filter by topic
@@ -85,7 +85,7 @@ class QuestionBankController extends Controller
             ->forOrganization($organizationId);
 
         if ($request->filled('search')) {
-            $query->where('question_text', 'like', '%'.$request->search.'%');
+            $query->where('question_text', 'like', '%' . $request->search . '%');
         }
 
         if ($request->filled('topic')) {
@@ -131,6 +131,12 @@ class QuestionBankController extends Controller
         $user = $request->user();
         $organizationId = $user->currentOrganization?->id;
 
+        // Determine scope based on URL param 'org'
+        // If org=in-service-exams => national, else institution
+        $orgParam = (string) $request->query('org', '');
+        $isNational = $orgParam === 'in-service-exams';
+        $scope = $isNational ? 'national' : 'institution';
+
         $validated = $request->validate([
             'topic_id' => ['nullable', 'exists:topics,id'],
             'question_type' => ['required', 'in:multiple_choice,multiple_select,true_false'],
@@ -148,7 +154,7 @@ class QuestionBankController extends Controller
         $imagePath = null;
         if ($request->hasFile('image')) {
             $file = $request->file('image');
-            $fileName = Str::uuid().'.'.$file->getClientOriginalExtension();
+            $fileName = Str::uuid() . '.' . $file->getClientOriginalExtension();
             $imagePath = $file->storeAs('question-images', $fileName, 'public');
         }
 
@@ -158,6 +164,13 @@ class QuestionBankController extends Controller
             'organization_id' => $organizationId,
             'created_by' => $user->id,
             'image_path' => $imagePath,
+        ]);
+
+        // Initialize statistics with proper scope
+        $question->statistics()->create([
+            'question_id' => $question->id,
+            'scope' => $scope,
+            'institution_id' => $isNational ? null : $organizationId,
         ]);
 
         // Create choices
@@ -208,7 +221,7 @@ class QuestionBankController extends Controller
             }
 
             $file = $request->file('image');
-            $fileName = Str::uuid().'.'.$file->getClientOriginalExtension();
+            $fileName = Str::uuid() . '.' . $file->getClientOriginalExtension();
             $validated['image_path'] = $file->storeAs('question-images', $fileName, 'public');
         }
 
@@ -455,7 +468,7 @@ class QuestionBankController extends Controller
                         if (! $topic) {
                             $topic = \App\Models\Topic::create([
                                 'name' => $rowData['topic'],
-                                'slug' => $topicSlug.'-'.uniqid(),
+                                'slug' => $topicSlug . '-' . uniqid(),
                                 'organization_id' => $organizationId,
                             ]);
                         }
@@ -493,16 +506,16 @@ class QuestionBankController extends Controller
 
                     $successCount++;
                 } catch (\Exception $e) {
-                    $errors[] = "Row {$rowNumber}: ".$e->getMessage();
+                    $errors[] = "Row {$rowNumber}: " . $e->getMessage();
                 }
             }
 
             if (! empty($errors)) {
-                $errorMessage = "Imported {$successCount} questions with ".count($errors).' errors: ';
+                $errorMessage = "Imported {$successCount} questions with " . count($errors) . ' errors: ';
                 $errorMessage .= implode('; ', array_slice($errors, 0, 3));
 
                 if (count($errors) > 3) {
-                    $errorMessage .= '... and '.(count($errors) - 3).' more errors.';
+                    $errorMessage .= '... and ' . (count($errors) - 3) . ' more errors.';
                 }
 
                 return back()->with('warning', $errorMessage);
@@ -512,7 +525,7 @@ class QuestionBankController extends Controller
         } catch (\Exception $e) {
             \Log::error('Question Bank import failed', ['error' => $e->getMessage()]);
 
-            return back()->withErrors(['file' => 'Import failed: '.$e->getMessage()]);
+            return back()->withErrors(['file' => 'Import failed: ' . $e->getMessage()]);
         }
     }
 }

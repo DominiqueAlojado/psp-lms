@@ -12,6 +12,8 @@ class QuestionBankStatistic extends Model
 
     protected $fillable = [
         'question_id',
+        'scope',
+        'institution_id',
         'times_used_in_exams',
         'times_answered',
         'times_correct',
