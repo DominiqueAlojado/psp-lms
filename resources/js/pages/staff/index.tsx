@@ -17,7 +17,7 @@ import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, router, usePage } from '@inertiajs/react';
 import { Plus, Search, UserCog } from 'lucide-react';
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -86,6 +86,15 @@ export default function StaffIndex() {
     const [searchQuery, setSearchQuery] = useState(filters.search || '');
     const [roleFilter, setRoleFilter] = useState(filters.role || '');
     const [orgFilter, setOrgFilter] = useState(filters.organization || '');
+    const sortedOrganizations = useMemo(
+        () =>
+            [...organizations].sort((a, b) =>
+                a.name.localeCompare(b.name, undefined, {
+                    sensitivity: 'base',
+                }),
+            ),
+        [organizations],
+    );
 
     const handleSearch = useCallback(() => {
         router.get(
@@ -206,7 +215,7 @@ export default function StaffIndex() {
                             className="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
                         >
                             <option value="">All Organizations</option>
-                            {organizations.map((org) => (
+                            {sortedOrganizations.map((org) => (
                                 <option key={org.id} value={org.id}>
                                     {org.name}
                                 </option>
@@ -260,7 +269,7 @@ export default function StaffIndex() {
                 open={createOpen}
                 onOpenChange={setCreateOpen}
                 roles={roles}
-                organizations={organizations}
+                organizations={sortedOrganizations}
             />
 
             {/* Edit Staff Sheet */}
@@ -269,7 +278,7 @@ export default function StaffIndex() {
                 open={!!editingStaff}
                 onOpenChange={(open) => !open && setEditingStaff(null)}
                 roles={roles}
-                organizations={organizations}
+                organizations={sortedOrganizations}
             />
         </AppLayout>
     );
