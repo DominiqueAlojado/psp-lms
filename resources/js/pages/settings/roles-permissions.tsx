@@ -42,8 +42,8 @@ import AppLayout from '@/layouts/app-layout';
 import SettingsLayout from '@/layouts/settings/layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, router, usePage } from '@inertiajs/react';
-import { Edit, Plus, Shield, Trash2 } from 'lucide-react';
-import { useState } from 'react';
+import { Edit, Plus, Search, Shield, Trash2 } from 'lucide-react';
+import { useMemo, useState } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -86,6 +86,8 @@ export default function RolesPermissions() {
     const [selectedPermissions, setSelectedPermissions] = useState<number[]>(
         [],
     );
+    const [permissionSearch, setPermissionSearch] = useState('');
+    const [assignPermissionSearch, setAssignPermissionSearch] = useState('');
     const [deletingRole, setDeletingRole] = useState<{
         id: number;
         name: string;
@@ -94,6 +96,33 @@ export default function RolesPermissions() {
         id: number;
         name: string;
     } | null>(null);
+
+    const filteredPermissions = useMemo(
+        () =>
+            permissions.filter((p) =>
+                p.name
+                    .toLowerCase()
+                    .includes(permissionSearch.trim().toLowerCase()),
+            ),
+        [permissions, permissionSearch],
+    );
+
+    const filteredGroupedPermissions = useMemo(() => {
+        const query = assignPermissionSearch.trim().toLowerCase();
+        if (!query) {
+            return groupedPermissions;
+        }
+        const result: Record<string, Permission[]> = {};
+        for (const [category, perms] of Object.entries(groupedPermissions)) {
+            const filtered = perms.filter((p) =>
+                p.name.toLowerCase().includes(query),
+            );
+            if (filtered.length > 0) {
+                result[category] = filtered;
+            }
+        }
+        return result;
+    }, [groupedPermissions, assignPermissionSearch]);
 
     const confirmDeleteRole = () => {
         if (!deletingRole) return;
@@ -260,21 +289,36 @@ export default function RolesPermissions() {
                         >
                             <Card>
                                 <CardHeader>
-                                    <div className="flex items-center justify-between">
+                                    <div className="flex items-center justify-between gap-4">
                                         <div>
                                             <CardTitle>Permissions</CardTitle>
                                             <CardDescription>
                                                 Manage system permissions
                                             </CardDescription>
                                         </div>
-                                        <Button
-                                            onClick={() =>
-                                                setAddingPermission(true)
-                                            }
-                                        >
-                                            <Plus className="mr-2 h-4 w-4" />
-                                            Add Permission
-                                        </Button>
+                                        <div className="flex items-center gap-2">
+                                            <div className="relative">
+                                                <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                                                <Input
+                                                    placeholder="Search permissions..."
+                                                    value={permissionSearch}
+                                                    onChange={(e) =>
+                                                        setPermissionSearch(
+                                                            e.target.value,
+                                                        )
+                                                    }
+                                                    className="w-64 pl-9"
+                                                />
+                                            </div>
+                                            <Button
+                                                onClick={() =>
+                                                    setAddingPermission(true)
+                                                }
+                                            >
+                                                <Plus className="mr-2 h-4 w-4" />
+                                                Add Permission
+                                            </Button>
+                                        </div>
                                     </div>
                                 </CardHeader>
                                 <CardContent>
@@ -290,42 +334,46 @@ export default function RolesPermissions() {
                                             </TableRow>
                                         </TableHeader>
                                         <TableBody>
-                                            {permissions.map((permission) => (
-                                                <TableRow key={permission.id}>
-                                                    <TableCell className="font-medium">
-                                                        {permission.name}
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        <div className="flex gap-2">
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="sm"
-                                                                onClick={() =>
-                                                                    setEditingPermission(
-                                                                        permission,
-                                                                    )
-                                                                }
-                                                            >
-                                                                <Edit className="h-4 w-4" />
-                                                            </Button>
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="sm"
-                                                                onClick={() =>
-                                                                    setDeletingPermission(
-                                                                        {
-                                                                            id: permission.id,
-                                                                            name: permission.name,
-                                                                        },
-                                                                    )
-                                                                }
-                                                            >
-                                                                <Trash2 className="h-4 w-4 text-destructive" />
-                                                            </Button>
-                                                        </div>
-                                                    </TableCell>
-                                                </TableRow>
-                                            ))}
+                                            {filteredPermissions.map(
+                                                (permission) => (
+                                                    <TableRow
+                                                        key={permission.id}
+                                                    >
+                                                        <TableCell className="font-medium">
+                                                            {permission.name}
+                                                        </TableCell>
+                                                        <TableCell>
+                                                            <div className="flex gap-2">
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    onClick={() =>
+                                                                        setEditingPermission(
+                                                                            permission,
+                                                                        )
+                                                                    }
+                                                                >
+                                                                    <Edit className="h-4 w-4" />
+                                                                </Button>
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    onClick={() =>
+                                                                        setDeletingPermission(
+                                                                            {
+                                                                                id: permission.id,
+                                                                                name: permission.name,
+                                                                            },
+                                                                        )
+                                                                    }
+                                                                >
+                                                                    <Trash2 className="h-4 w-4 text-destructive" />
+                                                                </Button>
+                                                            </div>
+                                                        </TableCell>
+                                                    </TableRow>
+                                                ),
+                                            )}
                                         </TableBody>
                                     </Table>
                                 </CardContent>
@@ -790,36 +838,98 @@ export default function RolesPermissions() {
                                                     permissions selected
                                                 </p>
                                             </div>
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                onClick={() => {
-                                                    if (
-                                                        selectedPermissions.length ===
-                                                        permissions.length
-                                                    ) {
-                                                        setSelectedPermissions(
-                                                            [],
-                                                        );
-                                                    } else {
-                                                        setSelectedPermissions(
-                                                            permissions.map(
-                                                                (p) => p.id,
-                                                            ),
-                                                        );
-                                                    }
-                                                }}
-                                            >
-                                                {selectedPermissions.length ===
-                                                permissions.length
-                                                    ? 'Deselect All'
-                                                    : 'Select All'}
-                                            </Button>
+                                            <div className="flex items-center gap-2">
+                                                <div className="relative">
+                                                    <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                                                    <Input
+                                                        placeholder="Search permissions..."
+                                                        value={
+                                                            assignPermissionSearch
+                                                        }
+                                                        onChange={(e) =>
+                                                            setAssignPermissionSearch(
+                                                                e.target.value,
+                                                            )
+                                                        }
+                                                        className="w-64 pl-9"
+                                                    />
+                                                </div>
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() => {
+                                                        const visibleIds =
+                                                            Object.values(
+                                                                filteredGroupedPermissions,
+                                                            ).flatMap((arr) =>
+                                                                arr.map(
+                                                                    (p) => p.id,
+                                                                ),
+                                                            );
+                                                        const allVisibleSelected =
+                                                            visibleIds.every(
+                                                                (id) =>
+                                                                    selectedPermissions.includes(
+                                                                        id,
+                                                                    ),
+                                                            ) &&
+                                                            visibleIds.length >
+                                                                0;
+                                                        if (
+                                                            allVisibleSelected
+                                                        ) {
+                                                            setSelectedPermissions(
+                                                                (prev) =>
+                                                                    prev.filter(
+                                                                        (id) =>
+                                                                            !visibleIds.includes(
+                                                                                id,
+                                                                            ),
+                                                                    ),
+                                                            );
+                                                        } else {
+                                                            setSelectedPermissions(
+                                                                (prev) => [
+                                                                    ...new Set([
+                                                                        ...prev,
+                                                                        ...visibleIds,
+                                                                    ]),
+                                                                ],
+                                                            );
+                                                        }
+                                                    }}
+                                                >
+                                                    {(() => {
+                                                        const visibleIds =
+                                                            Object.values(
+                                                                filteredGroupedPermissions,
+                                                            ).flatMap((arr) =>
+                                                                arr.map(
+                                                                    (p) => p.id,
+                                                                ),
+                                                            );
+                                                        const allVisibleSelected =
+                                                            visibleIds.every(
+                                                                (id) =>
+                                                                    selectedPermissions.includes(
+                                                                        id,
+                                                                    ),
+                                                            ) &&
+                                                            visibleIds.length >
+                                                                0;
+                                                        return allVisibleSelected
+                                                            ? 'Deselect Filtered'
+                                                            : 'Select Filtered';
+                                                    })()}
+                                                </Button>
+                                            </div>
                                         </div>
                                     </div>
 
                                     <div className="max-h-[500px] space-y-4 overflow-y-auto rounded-lg border p-4">
-                                        {Object.entries(groupedPermissions).map(
+                                        {Object.entries(
+                                            filteredGroupedPermissions,
+                                        ).map(
                                             ([
                                                 category,
                                                 categoryPermissions,
