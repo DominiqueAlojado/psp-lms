@@ -280,7 +280,7 @@ export default function EditInServiceAssessment() {
             {
                 title,
                 description: description || null,
-                exam_category: examCategory || null,
+                category: examCategory || null,
                 passing_score: passingScore,
                 duration_minutes: duration || null,
                 randomize_questions: randomizeQuestions,

@@ -428,9 +428,9 @@ class NationalAssessmentController extends Controller
         $validated = $request->validate([
             'title' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
-            'exam_year' => ['required', 'integer', 'min:2000', 'max:3000'],
-            'exam_period' => ['required', 'string', 'max:100'],
-            'category' => ['required', 'in:anatomic-pathology-theoretical,anatomic-pathology-projection,clinical-pathology-theoretical,clinical-pathology-projection'],
+            'exam_year' => ['sometimes', 'integer', 'min:2000', 'max:3000'],
+            'exam_period' => ['sometimes', 'string', 'max:100'],
+            'category' => ['sometimes', 'nullable', 'in:anatomic-pathology-theoretical,anatomic-pathology-projection,clinical-pathology-theoretical,clinical-pathology-projection'],
             'duration_minutes' => ['nullable', 'integer', 'min:1'],
             'passing_score' => ['required', 'integer', 'min:0'],
             'randomize_questions' => ['boolean'],
@@ -438,8 +438,8 @@ class NationalAssessmentController extends Controller
             'show_results_immediately' => ['boolean'],
             'allow_review' => ['boolean'],
             'is_published' => ['boolean'],
-            'national_ranking_enabled' => ['boolean'],
-            'institution_comparison_enabled' => ['boolean'],
+            'national_ranking_enabled' => ['sometimes', 'boolean'],
+            'institution_comparison_enabled' => ['sometimes', 'boolean'],
             'scheduled_date' => ['nullable', 'date'],
             'results_release_date' => ['nullable', 'date'],
         ]);
