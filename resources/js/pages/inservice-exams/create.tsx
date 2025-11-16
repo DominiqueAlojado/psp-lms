@@ -209,8 +209,13 @@ export default function CreateNationalAssessment() {
 
         router.post('/in-service', parsed.data, {
             preserveScroll: true,
-            onSuccess: () => {
-                // Assessment ID will be set from flash session
+            onSuccess: (page: {
+                props?: { flash?: { assessment_id?: number } };
+            }) => {
+                const id = page.props?.flash?.assessment_id;
+                if (id) {
+                    router.visit(`/inservice-exams/${id}/edit`);
+                }
             },
             onError: (errors) => {
                 console.error('Error creating national exam:', errors);

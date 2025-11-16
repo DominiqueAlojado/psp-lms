@@ -1,11 +1,14 @@
 import HeadingSmall from '@/components/heading-small';
+import { DeleteConfirmationDialog } from '@/components/delete-confirmation-dialog';
 import { Button } from '@/components/ui/button';
 import AppLayout from '@/layouts/app-layout';
 import InServiceExamsLayout from '@/layouts/exams/inservice-layout';
 import { type BreadcrumbItem } from '@/types';
-import { Head, Link, usePage } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import { FileClock, Plus } from 'lucide-react';
 import { type Paginated } from '@/types';
+import { useState } from 'react';
+import { toast } from 'sonner';
 
 const breadcrumbs: BreadcrumbItem[] = [
 	{
@@ -36,6 +39,32 @@ interface PageProps {
 
 export default function Drafts() {
 	const { exams } = usePage<PageProps>().props;
+	const [deletingId, setDeletingId] = useState<number | null>(null);
+	const [deletingTitle, setDeletingTitle] = useState<string | undefined>(undefined);
+
+	const askDelete = (exam: DraftExam) => {
+		setDeletingId(exam.id);
+		setDeletingTitle(exam.title);
+	};
+
+	const confirmDelete = () => {
+		if (deletingId === null) return;
+		router.delete(`/in-service/${deletingId}`, {
+			preserveScroll: true,
+			onSuccess: () => {
+				toast.success('Exam deleted');
+				router.reload({ only: ['exams'] });
+			},
+			onError: () => {
+				toast.error('Failed to delete exam');
+			},
+			onFinish: () => {
+				setDeletingId(null);
+				setDeletingTitle(undefined);
+			},
+		});
+	};
+
 	return (
 		<AppLayout breadcrumbs={breadcrumbs}>
 			<Head title="In-Service Exams – Drafts" />
@@ -81,6 +110,9 @@ export default function Drafts() {
 										<Button asChild size="sm" variant="outline">
 											<Link href={`/inservice-exams/${exam.id}/edit`}>Edit</Link>
 										</Button>
+										<Button size="sm" variant="destructive" onClick={() => askDelete(exam)}>
+											Delete
+										</Button>
 									</div>
 								</div>
 							))}
@@ -88,6 +120,19 @@ export default function Drafts() {
 					)}
 				</div>
 			</InServiceExamsLayout>
+			<DeleteConfirmationDialog
+				open={deletingId !== null}
+				title="Delete Exam?"
+				itemIdentifier={deletingId !== null ? `Exam #${deletingId}` : undefined}
+				itemName={deletingTitle}
+				warningMessage="This action cannot be undone. This will permanently delete the exam and all its questions."
+				confirmText="Delete Exam"
+				onConfirm={confirmDelete}
+				onCancel={() => {
+					setDeletingId(null);
+					setDeletingTitle(undefined);
+				}}
+			/>
 		</AppLayout>
 	);
 }
