@@ -288,12 +288,26 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('in-service', [App\Http\Controllers\NationalAssessmentController::class, 'index'])
         ->middleware('permission:view-assessments')
         ->name('in-service.index');
-    Route::get('in-service/create', function () {
-        return Inertia::render('in-service/create');
-    })->middleware('role:System Admin|BOP')->name('in-service.create');
+    // Back-compat: redirect old create path to new one
+    Route::redirect('in-service/create', '/inservice-exams/create')->middleware('role:System Admin|BOP');
+    Route::get('inservice-exams/create', function () {
+        return Inertia::render('inservice-exams/create');
+    })->middleware('role:System Admin|BOP')->name('inservice-exams.create');
     Route::post('in-service', [App\Http\Controllers\NationalAssessmentController::class, 'store'])
         ->middleware('role:System Admin|BOP')
         ->name('in-service.store');
+    Route::post('in-service/{assessment}/questions', [App\Http\Controllers\NationalAssessmentController::class, 'storeQuestions'])
+        ->middleware('role:System Admin|BOP')
+        ->name('in-service.questions.store');
+    Route::get('inservice-exams/{assessment}/edit', [App\Http\Controllers\NationalAssessmentController::class, 'edit'])
+        ->middleware('role:System Admin|BOP')
+        ->name('inservice-exams.edit');
+    Route::post('in-service/{assessment}/questions/save-one', [App\Http\Controllers\NationalAssessmentController::class, 'saveOneQuestion'])
+        ->middleware('role:System Admin|BOP')
+        ->name('in-service.questions.save-one');
+    Route::delete('in-service/{assessment}/questions/{question}', [App\Http\Controllers\NationalAssessmentController::class, 'deleteQuestion'])
+        ->middleware('role:System Admin|BOP')
+        ->name('in-service.questions.delete');
     Route::get('in-service/{assessment}', [App\Http\Controllers\NationalAssessmentController::class, 'show'])
         ->middleware('permission:view-assessments')
         ->name('in-service.show');
@@ -349,6 +363,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('inservice-exams/active', function () {
         return Inertia::render('inservice-exams/active');
     })->middleware('permission:view-assessments')->name('inservice-exams.active');
+    Route::get('inservice-exams/drafts', [App\Http\Controllers\NationalAssessmentController::class, 'drafts'])
+        ->middleware('permission:view-assessments')
+        ->name('inservice-exams.drafts');
 
     // Organization switching
     Route::post('organization/{organization}/switch', [App\Http\Controllers\OrganizationController::class, 'switch'])

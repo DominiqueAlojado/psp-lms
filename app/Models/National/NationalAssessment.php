@@ -18,6 +18,7 @@ class NationalAssessment extends Model
         'description',
         'exam_year',
         'exam_period',
+        'category',
         'duration_minutes',
         'total_points',
         'passing_score',
@@ -37,6 +38,7 @@ class NationalAssessment extends Model
     {
         return [
             'exam_year' => 'integer',
+            'category' => 'string',
             'randomize_questions' => 'boolean',
             'randomize_choices' => 'boolean',
             'show_results_immediately' => 'boolean',

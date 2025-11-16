@@ -2,12 +2,6 @@ import HeadingSmall from '@/components/heading-small';
 import { StatCard } from '@/components/stat-card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import {
-    Tooltip,
-    TooltipContent,
-    TooltipProvider,
-    TooltipTrigger,
-} from '@/components/ui/tooltip';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, router, usePage } from '@inertiajs/react';
@@ -17,7 +11,7 @@ import { useCallback, useState } from 'react';
 const breadcrumbs: BreadcrumbItem[] = [
     {
         title: 'In-Service Exams',
-        href: '/in-service',
+        href: '/inservice-exams/active',
     },
 ];
 
@@ -63,8 +57,8 @@ interface PageProps {
 export default function InServiceIndex() {
     const { assessments, filters, years } = usePage<PageProps>().props;
     const { auth } = usePage<{ auth: { user: any } }>().props;
-    const canManage = auth.user?.roles?.some((role: any) => 
-        ['System Admin', 'BOP'].includes(role)
+    const canManage = auth.user?.roles?.some((role: any) =>
+        ['System Admin', 'BOP'].includes(role),
     );
 
     const [searchQuery, setSearchQuery] = useState(filters.search || '');
@@ -90,7 +84,11 @@ export default function InServiceIndex() {
         setSearchQuery('');
         setYearFilter('');
         setStatusFilter('');
-        router.get('/in-service', {}, { preserveState: true, preserveScroll: true });
+        router.get(
+            '/in-service',
+            {},
+            { preserveState: true, preserveScroll: true },
+        );
     };
 
     const hasActiveFilters = searchQuery || yearFilter || statusFilter;
@@ -107,11 +105,12 @@ export default function InServiceIndex() {
                             National In-Service Exams
                         </HeadingSmall>
                         <p className="text-sm text-muted-foreground">
-                            Standardized national examinations for all pathology residents
+                            Standardized national examinations for all pathology
+                            residents
                         </p>
                     </div>
                     {canManage && (
-                        <Button onClick={() => {}}>
+                        <Button onClick={() => router.visit('/inservice-exams/create')}>
                             <Plus className="mr-2 h-4 w-4" />
                             Create In-Service Exam
                         </Button>
@@ -128,21 +127,25 @@ export default function InServiceIndex() {
                     <StatCard
                         title="Published"
                         value={
-                            assessments.data.filter((a) => a.is_published).length
+                            assessments.data.filter((a) => a.is_published)
+                                .length
                         }
                         icon={GraduationCap}
                     />
                     <StatCard
                         title="Available Now"
                         value={
-                            assessments.data.filter((a) => a.is_available).length
+                            assessments.data.filter((a) => a.is_available)
+                                .length
                         }
                         icon={GraduationCap}
                     />
                     <StatCard
                         title="With Rankings"
                         value={
-                            assessments.data.filter((a) => a.national_ranking_enabled).length
+                            assessments.data.filter(
+                                (a) => a.national_ranking_enabled,
+                            ).length
                         }
                         icon={GraduationCap}
                     />
@@ -152,7 +155,7 @@ export default function InServiceIndex() {
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div className="flex flex-1 gap-3">
                         <div className="relative flex-1">
-                            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                            <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                             <Input
                                 placeholder="Search exams..."
                                 value={searchQuery}
@@ -188,7 +191,10 @@ export default function InServiceIndex() {
                         </select>
                         <Button onClick={handleSearch}>Search</Button>
                         {hasActiveFilters && (
-                            <Button variant="outline" onClick={handleClearFilters}>
+                            <Button
+                                variant="outline"
+                                onClick={handleClearFilters}
+                            >
                                 Clear
                             </Button>
                         )}
@@ -224,7 +230,8 @@ export default function InServiceIndex() {
                                                         {assessment.title}
                                                     </h3>
                                                     <span className="rounded bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-                                                        {assessment.exam_year} - {assessment.exam_period}
+                                                        {assessment.exam_year} -{' '}
+                                                        {assessment.exam_period}
                                                     </span>
                                                 </div>
                                                 {assessment.description && (
@@ -234,22 +241,37 @@ export default function InServiceIndex() {
                                                 )}
                                                 <div className="mt-2 flex flex-wrap gap-4 text-sm text-muted-foreground">
                                                     <span>
-                                                        {assessment.questions_count} questions
+                                                        {
+                                                            assessment.questions_count
+                                                        }{' '}
+                                                        questions
                                                     </span>
                                                     <span>
-                                                        {assessment.total_points} points
+                                                        {
+                                                            assessment.total_points
+                                                        }{' '}
+                                                        points
                                                     </span>
                                                     {assessment.duration_minutes && (
                                                         <span>
-                                                            {assessment.duration_minutes} min
+                                                            {
+                                                                assessment.duration_minutes
+                                                            }{' '}
+                                                            min
                                                         </span>
                                                     )}
                                                     <span>
-                                                        Pass: {assessment.passing_score}
+                                                        Pass:{' '}
+                                                        {
+                                                            assessment.passing_score
+                                                        }
                                                     </span>
                                                     {assessment.scheduled_date && (
                                                         <span>
-                                                            Scheduled: {assessment.scheduled_date}
+                                                            Scheduled:{' '}
+                                                            {
+                                                                assessment.scheduled_date
+                                                            }
                                                         </span>
                                                     )}
                                                 </div>
@@ -281,13 +303,18 @@ export default function InServiceIndex() {
                 {/* Pagination Info */}
                 {assessments.total > 0 && (
                     <div className="text-sm text-muted-foreground">
-                        Showing {(assessments.current_page - 1) * assessments.per_page + 1} to{' '}
-                        {Math.min(assessments.current_page * assessments.per_page, assessments.total)} of{' '}
-                        {assessments.total} exams
+                        Showing{' '}
+                        {(assessments.current_page - 1) * assessments.per_page +
+                            1}{' '}
+                        to{' '}
+                        {Math.min(
+                            assessments.current_page * assessments.per_page,
+                            assessments.total,
+                        )}{' '}
+                        of {assessments.total} exams
                     </div>
                 )}
             </div>
         </AppLayout>
     );
 }
-
