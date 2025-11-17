@@ -292,6 +292,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('inservice-exams', [App\Http\Controllers\NationalAssessmentController::class, 'index'])
         ->middleware('permission:view-assessments')
         ->name('inservice-exams.index');
+    Route::get('inservice-exams/active', [App\Http\Controllers\NationalAssessmentController::class, 'index'])
+        ->middleware('permission:view-assessments')
+        ->name('inservice-exams.active');
+    Route::get('inservice-exams/drafts', [App\Http\Controllers\NationalAssessmentController::class, 'drafts'])
+        ->middleware('role:System Admin|BOP')
+        ->name('inservice-exams.drafts');
     Route::get('inservice-exams/create', function () {
         return Inertia::render('inservice-exams/create');
     })->middleware('role:System Admin|BOP')->name('inservice-exams.create');
