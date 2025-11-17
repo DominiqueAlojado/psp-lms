@@ -26,7 +26,7 @@ class InServiceExamResidentSeeder extends Seeder
             return;
         }
 
-        // Get all active in-service exams (Anatomic Pathology and Clinical Pathology Theoretical)
+        // Get all active in-service exams (Anatomic Pathology and Clinical Pathology Theoretical, including Part 2)
         $exams = NationalAssessment::whereIn('category', [
             'anatomic-pathology-theoretical',
             'clinical-pathology-theoretical',

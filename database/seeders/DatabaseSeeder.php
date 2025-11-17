@@ -29,6 +29,7 @@ class DatabaseSeeder extends Seeder
             QuestionBankSeeder::class,   // Populate the question bank (institution questions)
             InServiceQuestionBankSeeder::class, // Populate national in-service exam question bank
             InServiceExamSeeder::class,  // Seed in-service (national) exams
+            InServiceExamPart2Seeder::class, // Seed additional in-service exams (Part 2) with questions from bank
             InServiceExamResidentSeeder::class, // Enroll all residents in in-service exams
             BataanGeneralHospitalExamsSeeder::class, // Create dummy exams
             LongFormQuestionsExamSeeder::class,      // Create exam with long questions

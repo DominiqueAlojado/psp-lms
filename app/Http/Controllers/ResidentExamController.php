@@ -33,30 +33,49 @@ class ResidentExamController extends Controller
                 abort(403, 'This exam is not currently available.');
             }
 
-            // Check for existing in-progress attempt
+            // Check for existing in-progress attempt (must have started_at to be considered in progress)
             $attempt = $assessment->attempts()
                 ->where('user_id', $user->id)
                 ->where('status', 'in_progress')
+                ->whereNotNull('started_at')
                 ->first();
 
-            // If no in-progress attempt, create a new one
+            // If no in-progress attempt, check for an unstarted attempt (from seeder) and reuse it
             if (! $attempt) {
-                $attempt = $assessment->attempts()->create([
-                    'user_id' => $user->id,
-                    'year_level' => $user->resident?->year_level,
-                    'organization_id' => $user->current_organization_id,
-                    'started_at' => now(),
-                    'total_points' => $assessment->total_points,
-                    'status' => 'in_progress',
-                    'ip_address' => $request->ip(),
-                    'user_agent' => $request->userAgent(),
-                    'last_activity_at' => now(),
-                ]);
+                $unstartedAttempt = $assessment->attempts()
+                    ->where('user_id', $user->id)
+                    ->where('status', 'in_progress')
+                    ->whereNull('started_at')
+                    ->first();
+
+                if ($unstartedAttempt) {
+                    // Reuse the unstarted attempt and mark it as started
+                    $unstartedAttempt->update([
+                        'started_at' => now(),
+                        'ip_address' => $request->ip(),
+                        'user_agent' => $request->userAgent(),
+                        'last_activity_at' => now(),
+                    ]);
+                    $attempt = $unstartedAttempt;
+                } else {
+                    // Create a new attempt
+                    $attempt = $assessment->attempts()->create([
+                        'user_id' => $user->id,
+                        'year_level' => $user->resident?->year_level,
+                        'organization_id' => $user->current_organization_id,
+                        'started_at' => now(),
+                        'total_points' => $assessment->total_points,
+                        'status' => 'in_progress',
+                        'ip_address' => $request->ip(),
+                        'user_agent' => $request->userAgent(),
+                        'last_activity_at' => now(),
+                    ]);
+                }
             }
 
             // Load questions with choices in proper order
             $questions = $assessment->questions()
-                ->with(['choices' => fn($query) => $query->orderBy('order')])
+                ->with(['choices' => fn ($query) => $query->orderBy('order')])
                 ->orderBy('order')
                 ->get();
 
@@ -127,7 +146,7 @@ class ResidentExamController extends Controller
                             'question_text' => $q->question_text,
                             'points' => $q->points,
                             'image_url' => $q->image_path ? \Storage::disk('public')->url($q->image_path) : null,
-                            'choices' => $choices->map(fn($c) => [
+                            'choices' => $choices->map(fn ($c) => [
                                 'id' => $c->id,
                                 'choice_text' => $c->choice_text,
                             ])->values(),
@@ -148,33 +167,55 @@ class ResidentExamController extends Controller
                 abort(403, 'This exam is not currently available.');
             }
 
-            // Check for existing in-progress attempt
+            // Check for existing in-progress attempt (must have started_at to be considered in progress)
             $attempt = $assessment->attempts()
                 ->where('user_id', $user->id)
                 ->where('status', 'in_progress')
+                ->whereNotNull('started_at')
                 ->first();
 
-            // If no in-progress attempt, create a new one
+            // If no in-progress attempt, check for an unstarted attempt (from seeder) and reuse it
             if (! $attempt) {
-                $attempt = $assessment->attempts()->create([
-                    'user_id' => $user->id,
-                    'year_level' => $user->resident?->year_level,
-                    'organization_id' => $user->current_organization_id,
-                    'started_at' => now(),
-                    'total_points' => $assessment->total_points,
-                    'status' => 'in_progress',
-                    'ip_address' => $request->ip(),
-                    'user_agent' => $request->userAgent(),
-                    'browser_metadata' => $request->input('browser_metadata'),
-                    'connection_type' => $request->input('connection_type'),
-                    'connection_speed' => $request->input('connection_speed'),
-                    'last_activity_at' => now(),
-                ]);
+                $unstartedAttempt = $assessment->attempts()
+                    ->where('user_id', $user->id)
+                    ->where('status', 'in_progress')
+                    ->whereNull('started_at')
+                    ->first();
+
+                if ($unstartedAttempt) {
+                    // Reuse the unstarted attempt and mark it as started
+                    $unstartedAttempt->update([
+                        'started_at' => now(),
+                        'ip_address' => $request->ip(),
+                        'user_agent' => $request->userAgent(),
+                        'browser_metadata' => $request->input('browser_metadata'),
+                        'connection_type' => $request->input('connection_type'),
+                        'connection_speed' => $request->input('connection_speed'),
+                        'last_activity_at' => now(),
+                    ]);
+                    $attempt = $unstartedAttempt;
+                } else {
+                    // Create a new attempt
+                    $attempt = $assessment->attempts()->create([
+                        'user_id' => $user->id,
+                        'year_level' => $user->resident?->year_level,
+                        'organization_id' => $user->current_organization_id,
+                        'started_at' => now(),
+                        'total_points' => $assessment->total_points,
+                        'status' => 'in_progress',
+                        'ip_address' => $request->ip(),
+                        'user_agent' => $request->userAgent(),
+                        'browser_metadata' => $request->input('browser_metadata'),
+                        'connection_type' => $request->input('connection_type'),
+                        'connection_speed' => $request->input('connection_speed'),
+                        'last_activity_at' => now(),
+                    ]);
+                }
             }
 
             // Load questions with choices in proper order
             $questions = $assessment->questions()
-                ->with(['choices' => fn($query) => $query->orderBy('order')])
+                ->with(['choices' => fn ($query) => $query->orderBy('order')])
                 ->orderBy('order')
                 ->get();
 
@@ -245,7 +286,7 @@ class ResidentExamController extends Controller
                             'question_text' => $q->question_text,
                             'points' => $q->points,
                             'image_url' => $q->image_path ? \Storage::disk('public')->url($q->image_path) : null,
-                            'choices' => $choices->map(fn($c) => [
+                            'choices' => $choices->map(fn ($c) => [
                                 'id' => $c->id,
                                 'choice_text' => $c->choice_text,
                             ])->values(),
@@ -417,7 +458,7 @@ class ResidentExamController extends Controller
                 'status' => 'completed',
             ]);
 
-            return redirect('/resident-exams')->with('success', 'Exam submitted successfully! Score: ' . $attemptModel->percentage . '%');
+            return redirect('/resident-exams')->with('success', 'Exam submitted successfully! Score: '.$attemptModel->percentage.'%');
         } elseif ($type === 'inservice') {
             $attemptModel = \App\Models\National\NationalAttempt::findOrFail($attempt);
 
@@ -443,7 +484,7 @@ class ResidentExamController extends Controller
                 'status' => 'completed',
             ]);
 
-            return redirect('/resident-exams')->with('success', 'Exam submitted successfully! Score: ' . $attemptModel->percentage . '%');
+            return redirect('/resident-exams')->with('success', 'Exam submitted successfully! Score: '.$attemptModel->percentage.'%');
         }
 
         abort(404);
@@ -477,7 +518,7 @@ class ResidentExamController extends Controller
 
             // Get answers with their questions to show in the order they were answered
             $answers = $attempt->answers()
-                ->with(['question.choices' => fn($query) => $query->orderBy('order')])
+                ->with(['question.choices' => fn ($query) => $query->orderBy('order')])
                 ->orderBy('id')
                 ->get();
 
@@ -500,7 +541,7 @@ class ResidentExamController extends Controller
                     'explanation' => $question->explanation,
                     'image_url' => $question->image_url,
                     'order' => $question->order,
-                    'choices' => $question->choices->map(fn($choice) => [
+                    'choices' => $question->choices->map(fn ($choice) => [
                         'id' => $choice->id,
                         'choice_text' => $choice->choice_text,
                         'is_correct' => $choice->is_correct,
@@ -550,7 +591,7 @@ class ResidentExamController extends Controller
 
             // Load questions with choices and answers
             $questions = $assessment->questions()
-                ->with(['choices' => fn($query) => $query->orderBy('order')])
+                ->with(['choices' => fn ($query) => $query->orderBy('order')])
                 ->orderBy('order')
                 ->get();
 
@@ -583,7 +624,7 @@ class ResidentExamController extends Controller
                     'explanation' => $question->explanation,
                     'image_url' => $question->image_url,
                     'order' => $question->order,
-                    'choices' => $question->choices->map(fn($choice) => [
+                    'choices' => $question->choices->map(fn ($choice) => [
                         'id' => $choice->id,
                         'choice_text' => $choice->choice_text,
                         'is_correct' => $choice->is_correct,
@@ -648,7 +689,7 @@ class ResidentExamController extends Controller
 
             // Get answers with their questions to show in the order they were answered
             $answers = $attempt->answers()
-                ->with(['question.choices' => fn($query) => $query->orderBy('order')])
+                ->with(['question.choices' => fn ($query) => $query->orderBy('order')])
                 ->orderBy('id')
                 ->get();
 
@@ -670,7 +711,7 @@ class ResidentExamController extends Controller
                     'explanation' => $question->explanation,
                     'image_url' => $question->image_url,
                     'order' => $question->order,
-                    'choices' => $question->choices->map(fn($choice) => [
+                    'choices' => $question->choices->map(fn ($choice) => [
                         'id' => $choice->id,
                         'choice_text' => $choice->choice_text,
                         'is_correct' => $choice->is_correct,
@@ -729,10 +770,11 @@ class ResidentExamController extends Controller
             ->get();
 
         foreach ($institutionExams as $exam) {
-            // Check for in-progress attempt
+            // Check for in-progress attempt (must have started_at to be considered in progress)
             $inProgressAttempt = $exam->attempts()
                 ->where('user_id', $user->id)
                 ->where('status', 'in_progress')
+                ->whereNotNull('started_at')
                 ->exists();
 
             // Get user's completed/graded attempts for this exam
@@ -782,10 +824,11 @@ class ResidentExamController extends Controller
             ->get();
 
         foreach ($nationalExams as $exam) {
-            // Check for in-progress attempt
+            // Check for in-progress attempt (must have started_at to be considered in progress)
             $inProgressAttempt = $exam->attempts()
                 ->where('user_id', $user->id)
                 ->where('status', 'in_progress')
+                ->whereNotNull('started_at')
                 ->exists();
 
             // Get user's completed/graded attempts
