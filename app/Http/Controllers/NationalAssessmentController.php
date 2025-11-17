@@ -3,14 +3,16 @@
 namespace App\Http\Controllers;
 
 use App\Models\National\NationalAssessment;
-use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
-use Inertia\Inertia;
-use Inertia\Response;
-use Illuminate\Support\Facades\DB;
 use App\Models\National\NationalQuestion;
 use App\Models\National\NationalQuestionChoice;
+use App\Models\QuestionBank;
+use App\Models\Topic;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Inertia\Inertia;
+use Inertia\Response;
 
 class NationalAssessmentController extends Controller
 {
@@ -221,22 +223,32 @@ class NationalAssessmentController extends Controller
                 'is_published' => $assessment->is_published,
                 'available_from' => $assessment->scheduled_date?->format('Y-m-d\TH:i'),
                 'available_until' => $assessment->results_release_date?->format('Y-m-d\TH:i'),
-                'questions' => $assessment->questions->map(fn($q) => [
-                    'id' => $q->id,
-                    'question_type' => $q->question_type,
-                    'question_text' => $q->question_text,
-                    'points' => $q->points,
-                    'topic' => $q->topic,
-                    'order' => $q->order,
-                    'image_path' => $q->image_path,
-                    'image_url' => $q->image_path ? Storage::url($q->image_path) : null,
-                    'choices' => $q->choices->map(fn($c) => [
-                        'id' => $c->id,
-                        'choice_text' => $c->choice_text,
-                        'is_correct' => $c->is_correct,
-                        'order' => $c->order,
-                    ]),
-                ]),
+                'questions' => $assessment->questions->map(function ($q) {
+                    // Find topic_id from topic name if topic exists
+                    $topicId = null;
+                    if ($q->topic) {
+                        $topic = Topic::where('name', $q->topic)->first();
+                        $topicId = $topic?->id;
+                    }
+
+                    return [
+                        'id' => $q->id,
+                        'question_type' => $q->question_type,
+                        'question_text' => $q->question_text,
+                        'points' => $q->points,
+                        'topic' => $q->topic,
+                        'topic_id' => $topicId,
+                        'order' => $q->order,
+                        'image_path' => $q->image_path,
+                        'image_url' => $q->image_path ? Storage::url($q->image_path) : null,
+                        'choices' => $q->choices->map(fn($c) => [
+                            'id' => $c->id,
+                            'choice_text' => $c->choice_text,
+                            'is_correct' => $c->is_correct,
+                            'order' => $c->order,
+                        ]),
+                    ];
+                }),
                 'created_by' => $assessment->creator?->name,
                 'created_at' => $assessment->created_at?->format('Y-m-d'),
             ],
@@ -254,6 +266,7 @@ class NationalAssessmentController extends Controller
             'question_text' => ['required', 'string'],
             'points' => ['required', 'integer', 'min:1'],
             'topic' => ['nullable', 'string', 'max:255'],
+            'topic_id' => ['nullable', 'integer', 'exists:topics,id'],
             'choices' => ['nullable', 'array'],
             'choices.*.id' => ['nullable', 'integer', 'exists:national_question_choices,id'],
             'choices.*.choice_text' => ['required_with:choices', 'string'],
@@ -267,6 +280,8 @@ class NationalAssessmentController extends Controller
             ->when($validated['id'] ?? null, fn($q) => $q->where('id', $validated['id']))
             ->first();
 
+        $isNewQuestion = ! $question;
+
         if (! $question) {
             $nextOrder = ($assessment->questions()->max('order') ?? 0) + 1;
             $question = new NationalQuestion([
@@ -278,9 +293,17 @@ class NationalAssessmentController extends Controller
         $question->question_type = $validated['question_type'];
         $question->question_text = $validated['question_text'];
         $question->points = $validated['points'];
-        $question->topic = $validated['topic'] ?? null;
+
+        // Handle topic: prefer topic_id (convert to name), fallback to topic string
+        if (! empty($validated['topic_id'])) {
+            $topic = Topic::find($validated['topic_id']);
+            $question->topic = $topic?->name;
+        } else {
+            $question->topic = $validated['topic'] ?? null;
+        }
 
         // Handle base64 image upload
+        $imagePath = null;
         if (! empty($validated['image']) && str_starts_with($validated['image'], 'data:image')) {
             $data = explode(',', $validated['image'], 2)[1] ?? null;
             if ($data) {
@@ -288,12 +311,14 @@ class NationalAssessmentController extends Controller
                 $path = 'national-questions/' . uniqid() . '_' . time() . '.png';
                 Storage::disk('public')->put($path, $binary);
                 $question->image_path = $path;
+                $imagePath = $path;
             }
         }
 
         $question->save();
 
-        // Sync choices
+        // Sync choices and collect choices data for question bank
+        $choicesData = [];
         if (in_array($question->question_type, ['multiple_choice', 'multiple_select'])) {
             $choiceOrder = 1;
             $question->choices()->delete();
@@ -303,6 +328,10 @@ class NationalAssessmentController extends Controller
                     'is_correct' => (bool) $choice['is_correct'],
                     'order' => $choiceOrder++,
                 ]);
+                $choicesData[] = [
+                    'choice_text' => $choice['choice_text'],
+                    'is_correct' => (bool) $choice['is_correct'],
+                ];
             }
         } elseif ($question->question_type === 'true_false') {
             $question->choices()->delete();
@@ -311,6 +340,17 @@ class NationalAssessmentController extends Controller
                 ['choice_text' => 'True', 'is_correct' => $answer === true, 'order' => 1],
                 ['choice_text' => 'False', 'is_correct' => $answer === false, 'order' => 2],
             ]);
+            $choicesData = [
+                ['choice_text' => 'True', 'is_correct' => $answer === true],
+                ['choice_text' => 'False', 'is_correct' => $answer === false],
+            ];
+        }
+
+        // Save to question bank if this is a new question
+        if ($isNewQuestion) {
+            $topicId = $validated['topic_id'] ?? null;
+            $topicName = $question->topic; // Already converted from topic_id if needed
+            $this->saveToQuestionBank($question, $choicesData, $imagePath, $topicId, $topicName, $request->user());
         }
 
         // Recompute total points
@@ -461,5 +501,57 @@ class NationalAssessmentController extends Controller
         $assessment->delete();
 
         return redirect()->route('in-service.index')->with('success', 'Assessment deleted successfully');
+    }
+
+    /**
+     * Save a question created in a national exam to the question bank.
+     */
+    private function saveToQuestionBank(
+        NationalQuestion $question,
+        array $choicesData,
+        ?string $imagePath,
+        ?int $topicId,
+        ?string $topicName,
+        $user
+    ): void {
+        try {
+            // Use topic_id if provided, otherwise try to find by name
+            if (! $topicId && $topicName) {
+                $topic = Topic::where('name', $topicName)->first();
+                $topicId = $topic?->id;
+            }
+
+            // Create question in question bank
+            $bankQuestion = QuestionBank::create([
+                'organization_id' => null, // National questions don't belong to a specific organization
+                'owner_type' => 'national',
+                'topic_id' => $topicId,
+                'created_by' => $user->id,
+                'question_type' => $question->question_type,
+                'question_text' => $question->question_text,
+                'points' => $question->points,
+                'image_path' => $imagePath,
+                'is_approved' => false, // New questions need approval
+            ]);
+
+            // Create choices in question bank
+            foreach ($choicesData as $idx => $choice) {
+                $bankQuestion->choices()->create([
+                    'choice_text' => $choice['choice_text'],
+                    'is_correct' => $choice['is_correct'],
+                    'order' => $idx,
+                ]);
+            }
+
+            // Initialize statistics
+            $bankQuestion->statistics()->create([
+                'question_id' => $bankQuestion->id,
+                'scope' => 'national',
+                'institution_id' => null,
+            ]);
+        } catch (\Exception $e) {
+            // Log error but don't fail the question creation
+            \Log::error('Failed to save question to question bank: ' . $e->getMessage());
+        }
     }
 }

@@ -69,6 +69,7 @@ class QuestionBankSeeder extends Seeder
 
             $question = QuestionBank::create([
                 'organization_id' => $organization->id,
+                'owner_type' => 'institution', // Question bank seeder creates institution questions
                 'topic_id' => $topicId,
                 'created_by' => $creator->id,
                 'question_type' => 'multiple_choice',

@@ -40,7 +40,7 @@ class InstitutionExamController extends Controller
             ->orderBy($request->input('sort', 'created_at'), $request->input('direction', 'desc'))
             ->paginate(15)
             ->withQueryString()
-            ->through(fn ($assessment) => [
+            ->through(fn($assessment) => [
                 'id' => $assessment->id,
                 'title' => $assessment->title,
                 'description' => $assessment->description,
@@ -86,7 +86,7 @@ class InstitutionExamController extends Controller
             ->orderBy($request->input('sort', 'created_at'), $request->input('direction', 'desc'))
             ->paginate(15)
             ->withQueryString()
-            ->through(fn ($assessment) => [
+            ->through(fn($assessment) => [
                 'id' => $assessment->id,
                 'title' => $assessment->title,
                 'description' => $assessment->description,
@@ -157,9 +157,9 @@ class InstitutionExamController extends Controller
                     'success' => 'Exam created successfully! Now add questions.',
                 ]);
         } catch (\Exception $e) {
-            \Log::error('Error creating exam: '.$e->getMessage());
+            \Log::error('Error creating exam: ' . $e->getMessage());
 
-            return back()->withErrors(['error' => 'Failed to create exam: '.$e->getMessage()]);
+            return back()->withErrors(['error' => 'Failed to create exam: ' . $e->getMessage()]);
         }
     }
 
@@ -191,7 +191,7 @@ class InstitutionExamController extends Controller
                 'is_published' => $assessment->is_published,
                 'available_from' => $assessment->available_from?->format('Y-m-d\TH:i'),
                 'available_until' => $assessment->available_until?->format('Y-m-d\TH:i'),
-                'questions' => $assessment->questions->map(fn ($q) => [
+                'questions' => $assessment->questions->map(fn($q) => [
                     'id' => $q->id,
                     'topic_id' => $q->topic_id,
                     'question_type' => $q->question_type,
@@ -201,7 +201,7 @@ class InstitutionExamController extends Controller
                     'image_path' => $q->image_path,
                     'image_url' => $q->image_path ? Storage::disk('public')->url($q->image_path) : null,
                     'order' => $q->order,
-                    'choices' => $q->choices->map(fn ($c) => [
+                    'choices' => $q->choices->map(fn($c) => [
                         'id' => $c->id,
                         'choice_text' => $c->choice_text,
                         'is_correct' => $c->is_correct,
@@ -235,14 +235,14 @@ class InstitutionExamController extends Controller
                 'total_points' => $assessment->total_points,
                 'passing_score' => $assessment->passing_score,
                 'is_published' => $assessment->is_published,
-                'questions' => $assessment->questions->map(fn ($q) => [
+                'questions' => $assessment->questions->map(fn($q) => [
                     'id' => $q->id,
                     'question_type' => $q->question_type,
                     'question_text' => $q->question_text,
                     'points' => $q->points,
                     'explanation' => $q->explanation,
                     'order' => $q->order,
-                    'choices' => $q->choices->map(fn ($c) => [
+                    'choices' => $q->choices->map(fn($c) => [
                         'id' => $c->id,
                         'choice_text' => $c->choice_text,
                         'is_correct' => $c->is_correct,
@@ -398,14 +398,14 @@ class InstitutionExamController extends Controller
 
                         $imageData = base64_decode($imageData);
                         if ($imageData !== false) {
-                            $filename = 'question_'.uniqid().'.'.$type;
-                            $path = 'question-images/'.$filename;
+                            $filename = 'question_' . uniqid() . '.' . $type;
+                            $path = 'question-images/' . $filename;
                             Storage::disk('public')->put($path, $imageData);
                             $imagePath = $path;
                         }
                     }
                 } catch (\Exception $e) {
-                    \Log::error('Error uploading question image: '.$e->getMessage());
+                    \Log::error('Error uploading question image: ' . $e->getMessage());
                 }
             }
 
@@ -503,14 +503,14 @@ class InstitutionExamController extends Controller
 
                     $imageData = base64_decode($imageData);
                     if ($imageData !== false) {
-                        $filename = 'question_'.uniqid().'.'.$type;
-                        $path = 'question-images/'.$filename;
+                        $filename = 'question_' . uniqid() . '.' . $type;
+                        $path = 'question-images/' . $filename;
                         Storage::disk('public')->put($path, $imageData);
                         $imagePath = $path;
                     }
                 }
             } catch (\Exception $e) {
-                \Log::error('Error uploading question image: '.$e->getMessage());
+                \Log::error('Error uploading question image: ' . $e->getMessage());
             }
         }
 
@@ -526,8 +526,10 @@ class InstitutionExamController extends Controller
             $questionData['image_path'] = $imagePath;
         }
 
+        $isNewQuestion = empty($validated['id']);
+
         // Update existing question or create new one
-        if (! empty($validated['id'])) {
+        if (! $isNewQuestion) {
             $question = $assessment->questions()->find($validated['id']);
             if ($question) {
                 $question->update($questionData);
@@ -538,13 +540,18 @@ class InstitutionExamController extends Controller
         }
 
         // Handle choices for MCQ and Multiple Select
+        $choicesData = [];
         if (in_array($validated['question_type'], ['multiple_choice', 'multiple_select'])) {
             foreach ($validated['choices'] ?? [] as $idx => $c) {
-                $question->choices()->create([
+                $choice = $question->choices()->create([
                     'choice_text' => $c['choice_text'],
                     'is_correct' => (bool) ($c['is_correct'] ?? false),
                     'order' => $idx,
                 ]);
+                $choicesData[] = [
+                    'choice_text' => $c['choice_text'],
+                    'is_correct' => (bool) ($c['is_correct'] ?? false),
+                ];
             }
         }
 
@@ -555,6 +562,15 @@ class InstitutionExamController extends Controller
                 ['choice_text' => 'True', 'is_correct' => $answer === true, 'order' => 0],
                 ['choice_text' => 'False', 'is_correct' => $answer === false, 'order' => 1],
             ]);
+            $choicesData = [
+                ['choice_text' => 'True', 'is_correct' => $answer === true],
+                ['choice_text' => 'False', 'is_correct' => $answer === false],
+            ];
+        }
+
+        // Save to question bank if this is a new question
+        if ($isNewQuestion) {
+            $this->saveToQuestionBank($question, $assessment, $choicesData, $imagePath, $request->user());
         }
 
         // Recalculate total points
@@ -630,9 +646,9 @@ class InstitutionExamController extends Controller
             $errors = $import->getErrors();
 
             if (count($errors) > 0) {
-                $errorMessage = "Imported {$successCount} questions with ".count($errors).' errors: '.implode('; ', array_slice($errors, 0, 3));
+                $errorMessage = "Imported {$successCount} questions with " . count($errors) . ' errors: ' . implode('; ', array_slice($errors, 0, 3));
                 if (count($errors) > 3) {
-                    $errorMessage .= '... and '.(count($errors) - 3).' more errors.';
+                    $errorMessage .= '... and ' . (count($errors) - 3) . ' more errors.';
                 }
 
                 return back()->with('warning', $errorMessage);
@@ -642,7 +658,7 @@ class InstitutionExamController extends Controller
         } catch (\Exception $e) {
             \Log::error('Question import failed', ['error' => $e->getMessage()]);
 
-            return back()->withErrors(['file' => 'Import failed: '.$e->getMessage()]);
+            return back()->withErrors(['file' => 'Import failed: ' . $e->getMessage()]);
         }
     }
 
@@ -705,15 +721,60 @@ class InstitutionExamController extends Controller
 
     private function generateDuplicateTitle(string $originalTitle, int $organizationId): string
     {
-        $baseTitle = $originalTitle.' (Copy)';
+        $baseTitle = $originalTitle . ' (Copy)';
         $candidate = $baseTitle;
         $suffix = 2;
 
         while (InstitutionAssessment::where('organization_id', $organizationId)->where('title', $candidate)->exists()) {
-            $candidate = $originalTitle.' (Copy '.$suffix.')';
+            $candidate = $originalTitle . ' (Copy ' . $suffix . ')';
             $suffix++;
         }
 
         return $candidate;
+    }
+
+    /**
+     * Save a question created in an exam to the question bank.
+     */
+    private function saveToQuestionBank(
+        InstitutionQuestion $question,
+        InstitutionAssessment $assessment,
+        array $choicesData,
+        ?string $imagePath,
+        $user
+    ): void {
+        try {
+            // Create question in question bank
+            $bankQuestion = QuestionBank::create([
+                'organization_id' => $assessment->organization_id,
+                'owner_type' => 'institution',
+                'topic_id' => $question->topic_id,
+                'created_by' => $user->id,
+                'question_type' => $question->question_type,
+                'question_text' => $question->question_text,
+                'points' => $question->points,
+                'image_path' => $imagePath,
+                'is_approved' => false, // New questions need approval
+            ]);
+
+            // Create choices in question bank
+            foreach ($choicesData as $idx => $choice) {
+                $bankQuestion->choices()->create([
+                    'choice_text' => $choice['choice_text'],
+                    'is_correct' => $choice['is_correct'],
+                    'order' => $idx,
+                ]);
+            }
+
+            // Initialize statistics
+            $bankQuestion->statistics()->create([
+                'question_id' => $bankQuestion->id,
+                'scope' => 'institution',
+                'institution_id' => $assessment->organization_id,
+            ]);
+        } catch (\Exception $e) {
+            // Log error but don't fail the question creation
+            \Log::error('Failed to save question to question bank: ' . $e->getMessage());
+        }
     }
 }

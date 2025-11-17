@@ -20,6 +20,7 @@ class QuestionBank extends Model
 
     protected $fillable = [
         'organization_id',
+        'owner_type',
         'topic_id',
         'created_by',
         'question_type',
@@ -175,5 +176,29 @@ class QuestionBank extends Model
     public function scopeForOrganization($query, int $organizationId)
     {
         return $query->where('organization_id', $organizationId);
+    }
+
+    /**
+     * Scope to filter by owner type (national or institution).
+     */
+    public function scopeForOwnerType($query, string $ownerType)
+    {
+        return $query->where('owner_type', $ownerType);
+    }
+
+    /**
+     * Scope to get only national questions.
+     */
+    public function scopeNational($query)
+    {
+        return $query->where('owner_type', 'national');
+    }
+
+    /**
+     * Scope to get only institution questions.
+     */
+    public function scopeInstitution($query)
+    {
+        return $query->where('owner_type', 'institution');
     }
 }

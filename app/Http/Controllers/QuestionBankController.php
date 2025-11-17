@@ -162,6 +162,7 @@ class QuestionBankController extends Controller
         $question = QuestionBank::create([
             ...$validated,
             'organization_id' => $organizationId,
+            'owner_type' => $isNational ? 'national' : 'institution',
             'created_by' => $user->id,
             'image_path' => $imagePath,
         ]);
