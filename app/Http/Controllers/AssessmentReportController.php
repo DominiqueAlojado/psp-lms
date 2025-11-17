@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\ExamSessionChange;
 use App\Models\Institution\InstitutionAssessment;
 use App\Models\Institution\InstitutionAttempt;
+use App\Models\National\NationalAssessment;
+use App\Models\National\NationalAttempt;
 use App\Models\Organization;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -21,7 +23,8 @@ class AssessmentReportController extends Controller
         $organizationId = $user->current_organization_id;
         $isSystemAdmin = $user->hasRole(['System Admin', 'BOP']);
 
-        $query = InstitutionAttempt::query()
+        // Get institution attempts
+        $institutionQuery = InstitutionAttempt::query()
             ->with([
                 'user:id,name,email',
                 'assessment:id,title,total_points,passing_score,exam_category',
@@ -31,57 +34,60 @@ class AssessmentReportController extends Controller
 
         // System admins see all organizations, others see only their org
         if (! $isSystemAdmin) {
-            $query->where('organization_id', $organizationId);
+            $institutionQuery->where('organization_id', $organizationId);
         }
 
         // Filter by search (resident name or email)
         if ($request->filled('search')) {
             $search = $request->input('search');
-            $query->whereHas('user', function ($q) use ($search) {
+            $institutionQuery->whereHas('user', function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
                     ->orWhere('email', 'like', "%{$search}%");
             });
         }
 
-        // Filter by exam
+        // Filter by exam (only if it's an institution exam)
         if ($request->filled('exam')) {
-            $query->where('assessment_id', $request->input('exam'));
+            $examId = $request->input('exam');
+            // Check if it's an institution exam
+            if (InstitutionAssessment::where('id', $examId)->exists()) {
+                $institutionQuery->where('assessment_id', $examId);
+            }
         }
 
         // Filter by institution (for system admins)
         if ($request->filled('organization') && $isSystemAdmin) {
-            $query->where('organization_id', $request->input('organization'));
+            $institutionQuery->where('organization_id', $request->input('organization'));
         }
 
         // Filter by year level
         if ($request->filled('year_level')) {
-            $query->where('year_level', $request->input('year_level'));
+            $institutionQuery->where('year_level', $request->input('year_level'));
         }
 
         // Filter by status
         if ($request->filled('status')) {
             $status = $request->input('status');
             if ($status === 'passed') {
-                $query->whereRaw('score >= (SELECT passing_score FROM institution_assessments WHERE id = assessment_id)');
+                $institutionQuery->whereRaw('score >= (SELECT passing_score FROM institution_assessments WHERE id = assessment_id)');
             } elseif ($status === 'failed') {
-                $query->whereRaw('score < (SELECT passing_score FROM institution_assessments WHERE id = assessment_id)');
+                $institutionQuery->whereRaw('score < (SELECT passing_score FROM institution_assessments WHERE id = assessment_id)');
             }
         }
 
         // Filter by date range
         if ($request->filled('date_from')) {
-            $query->whereDate('submitted_at', '>=', $request->input('date_from'));
+            $institutionQuery->whereDate('submitted_at', '>=', $request->input('date_from'));
         }
         if ($request->filled('date_to')) {
-            $query->whereDate('submitted_at', '<=', $request->input('date_to'));
+            $institutionQuery->whereDate('submitted_at', '<=', $request->input('date_to'));
         }
 
-        $attempts = $query
-            ->orderBy('submitted_at', 'desc')
-            ->paginate(20)
-            ->withQueryString()
-            ->through(fn ($attempt) => [
+        $institutionAttempts = $institutionQuery
+            ->get()
+            ->map(fn($attempt) => [
                 'id' => $attempt->id,
+                'type' => 'institution',
                 'resident_name' => $attempt->user->name,
                 'resident_email' => $attempt->user->email,
                 'year_level' => $attempt->year_level,
@@ -93,24 +99,150 @@ class AssessmentReportController extends Controller
                 'passing_score' => $attempt->assessment->passing_score,
                 'status' => $attempt->isPassed() ? 'Passed' : 'Failed',
                 'organization_name' => $attempt->organization->name,
-                'submitted_at' => $attempt->submitted_at?->format('M d, Y h:i A'),
+                'submitted_at' => $attempt->submitted_at,
                 'time_spent' => $attempt->started_at && $attempt->submitted_at
-                    ? $attempt->started_at->diffInMinutes($attempt->submitted_at).' mins'
-                    : 'N/A',
+                    ? $attempt->started_at->diffInMinutes($attempt->submitted_at)
+                    : null,
             ]);
+
+        // Get national attempts (in-service exams)
+        $nationalQuery = NationalAttempt::query()
+            ->with([
+                'user:id,name,email',
+                'assessment:id,title,total_points,passing_score,category',
+                'organization:id,name',
+            ])
+            ->whereIn('status', ['completed', 'graded']);
+
+        // System admins see all organizations, others see only their org
+        if (! $isSystemAdmin) {
+            $nationalQuery->where('organization_id', $organizationId);
+        }
+
+        // Filter by search (resident name or email)
+        if ($request->filled('search')) {
+            $search = $request->input('search');
+            $nationalQuery->whereHas('user', function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%");
+            });
+        }
+
+        // Filter by exam (only if it's a national exam)
+        if ($request->filled('exam')) {
+            $examId = $request->input('exam');
+            // Check if it's a national exam
+            if (NationalAssessment::where('id', $examId)->exists()) {
+                $nationalQuery->where('assessment_id', $examId);
+            }
+        }
+
+        // Filter by institution (for system admins)
+        if ($request->filled('organization') && $isSystemAdmin) {
+            $nationalQuery->where('organization_id', $request->input('organization'));
+        }
+
+        // Filter by year level
+        if ($request->filled('year_level')) {
+            $nationalQuery->where('year_level', $request->input('year_level'));
+        }
+
+        // Filter by status
+        if ($request->filled('status')) {
+            $status = $request->input('status');
+            if ($status === 'passed') {
+                $nationalQuery->whereRaw('score >= (SELECT passing_score FROM national_assessments WHERE id = assessment_id)');
+            } elseif ($status === 'failed') {
+                $nationalQuery->whereRaw('score < (SELECT passing_score FROM national_assessments WHERE id = assessment_id)');
+            }
+        }
+
+        // Filter by date range
+        if ($request->filled('date_from')) {
+            $nationalQuery->whereDate('submitted_at', '>=', $request->input('date_from'));
+        }
+        if ($request->filled('date_to')) {
+            $nationalQuery->whereDate('submitted_at', '<=', $request->input('date_to'));
+        }
+
+        $nationalAttempts = $nationalQuery
+            ->get()
+            ->map(fn($attempt) => [
+                'id' => $attempt->id,
+                'type' => 'inservice',
+                'resident_name' => $attempt->user->name,
+                'resident_email' => $attempt->user->email,
+                'year_level' => $attempt->year_level,
+                'exam_title' => $attempt->assessment->title,
+                'exam_category' => $attempt->assessment->category,
+                'score' => $attempt->score,
+                'total_points' => $attempt->total_points,
+                'percentage' => $attempt->percentage,
+                'passing_score' => $attempt->assessment->passing_score,
+                'status' => $attempt->isPassed() ? 'Passed' : 'Failed',
+                'organization_name' => $attempt->organization->name,
+                'submitted_at' => $attempt->submitted_at,
+                'time_spent' => $attempt->started_at && $attempt->submitted_at
+                    ? $attempt->started_at->diffInMinutes($attempt->submitted_at)
+                    : null,
+            ]);
+
+        // Combine and sort all attempts
+        $allAttempts = $institutionAttempts->concat($nationalAttempts)
+            ->sortByDesc('submitted_at')
+            ->values();
+
+        // Manual pagination
+        $page = $request->input('page', 1);
+        $perPage = 20;
+        $total = $allAttempts->count();
+        $offset = ($page - 1) * $perPage;
+        $paginatedAttempts = $allAttempts->slice($offset, $perPage);
+
+        $attempts = [
+            'data' => $paginatedAttempts->map(fn($attempt) => [
+                'id' => $attempt['id'],
+                'resident_name' => $attempt['resident_name'],
+                'resident_email' => $attempt['resident_email'],
+                'year_level' => $attempt['year_level'],
+                'exam_title' => $attempt['exam_title'],
+                'exam_category' => $attempt['exam_category'],
+                'score' => $attempt['score'],
+                'total_points' => $attempt['total_points'],
+                'percentage' => $attempt['percentage'],
+                'passing_score' => $attempt['passing_score'],
+                'status' => $attempt['status'],
+                'organization_name' => $attempt['organization_name'],
+                'submitted_at' => $attempt['submitted_at']?->format('M d, Y h:i A'),
+                'time_spent' => $attempt['time_spent'] ? $attempt['time_spent'] . ' mins' : 'N/A',
+            ])->values(),
+            'total' => $total,
+            'current_page' => (int) $page,
+            'last_page' => (int) ceil($total / $perPage),
+        ];
 
         // Get filter options
         $organizations = $isSystemAdmin
             ? Organization::select('id', 'name')->orderBy('name')->get()
             : collect();
 
-        $exams = InstitutionAssessment::query()
+        // Get both institution and national exams
+        $institutionExams = InstitutionAssessment::query()
             ->when(! $isSystemAdmin, function ($q) use ($organizationId) {
                 $q->where('organization_id', $organizationId);
             })
             ->where('is_published', true)
             ->orderBy('title')
-            ->get(['id', 'title']);
+            ->get(['id', 'title'])
+            ->map(fn($exam) => ['id' => $exam->id, 'title' => $exam->title, 'type' => 'institution']);
+
+        $nationalExams = NationalAssessment::query()
+            ->where('is_published', true)
+            ->orderBy('title')
+            ->get(['id', 'title'])
+            ->map(fn($exam) => ['id' => $exam->id, 'title' => $exam->title, 'type' => 'inservice']);
+
+        $exams = $institutionExams->concat($nationalExams)->sortBy('title')->values();
 
         return Inertia::render('assessment-reports/by-resident', [
             'attempts' => $attempts,
@@ -191,11 +323,11 @@ class AssessmentReportController extends Controller
                     ->get()
                     ->unique(function ($change) {
                         // Deduplicate by combining user agents and timestamp (rounded to minute)
-                        return $change->previous_user_agent.
-                            '|'.$change->new_user_agent.
-                            '|'.$change->detected_at->format('Y-m-d H:i');
+                        return $change->previous_user_agent .
+                            '|' . $change->new_user_agent .
+                            '|' . $change->detected_at->format('Y-m-d H:i');
                     })
-                    ->map(fn ($change) => [
+                    ->map(fn($change) => [
                         'from' => $this->extractBrowserName($change->previous_user_agent),
                         'to' => $change->browser_info['browser'] ?? $this->extractBrowserName($change->new_user_agent),
                         'time' => $change->detected_at->format('h:i A'),
@@ -210,11 +342,11 @@ class AssessmentReportController extends Controller
                     ->get()
                     ->unique(function ($change) {
                         // Deduplicate by IP addresses and timestamp (rounded to minute)
-                        return $change->previous_ip_address.
-                            '|'.$change->new_ip_address.
-                            '|'.$change->detected_at->format('Y-m-d H:i');
+                        return $change->previous_ip_address .
+                            '|' . $change->new_ip_address .
+                            '|' . $change->detected_at->format('Y-m-d H:i');
                     })
-                    ->map(fn ($change) => [
+                    ->map(fn($change) => [
                         'from' => $change->previous_ip_address ?? 'Unknown',
                         'to' => $change->new_ip_address ?? 'Unknown',
                         'time' => $change->detected_at->format('h:i A'),
@@ -226,7 +358,7 @@ class AssessmentReportController extends Controller
                     ->where('attempt_id', $attempt->id)
                     ->orderBy('started_at', 'asc')
                     ->get()
-                    ->map(fn ($period) => [
+                    ->map(fn($period) => [
                         'started_at' => $period->started_at->format('M d, h:i A'),
                         'ended_at' => $period->ended_at->format('M d, h:i A'),
                         'duration' => gmdate('H:i:s', $period->duration_seconds),
@@ -241,7 +373,7 @@ class AssessmentReportController extends Controller
                     'exam_category' => $attempt->assessment->exam_category,
                     'organization_name' => $attempt->organization->name,
                     'started_at' => $attempt->started_at?->format('M d, Y h:i A'),
-                    'time_elapsed' => $attempt->started_at?->diffInMinutes(now()).' mins',
+                    'time_elapsed' => $attempt->started_at?->diffInMinutes(now()) . ' mins',
                     'last_activity' => $attempt->last_activity_at
                         ? $attempt->last_activity_at->diffForHumans()
                         : 'No activity yet',
@@ -250,7 +382,7 @@ class AssessmentReportController extends Controller
                     'browser' => $attempt->browser_metadata['browser'] ?? 'Unknown',
                     'device' => $attempt->browser_metadata['device'] ?? 'Unknown',
                     'connection' => $attempt->connection_type,
-                    'speed' => $attempt->connection_speed ? round($attempt->connection_speed, 1).' Mbps' : 'N/A',
+                    'speed' => $attempt->connection_speed ? round($attempt->connection_speed, 1) . ' Mbps' : 'N/A',
                     'ip_changes' => $ipChanges->count(), // Use actual deduplicated count
                     'ip_change_details' => $ipChanges,
                     'browser_changes' => $browserChanges->count(), // Use actual deduplicated count
@@ -295,10 +427,12 @@ class AssessmentReportController extends Controller
         }
 
         // Check most specific browsers first (Edge has multiple identifiers)
-        if (str_contains($userAgent, 'Edg/') ||
+        if (
+            str_contains($userAgent, 'Edg/') ||
             str_contains($userAgent, 'Edge/') ||
             str_contains($userAgent, 'EdgA/') ||
-            str_contains($userAgent, 'EdgiOS/')) {
+            str_contains($userAgent, 'EdgiOS/')
+        ) {
             return 'Edge';
         } elseif (str_contains($userAgent, 'OPR/') || str_contains($userAgent, 'Opera/')) {
             return 'Opera';
