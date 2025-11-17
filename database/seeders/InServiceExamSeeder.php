@@ -48,7 +48,7 @@ class InServiceExamSeeder extends Seeder
                     'randomize_choices' => false,
                     'show_results_immediately' => true,
                     'allow_review' => true,
-                    'is_published' => false,
+                    'is_published' => true, // Set to true to make exams active
                     'national_ranking_enabled' => true,
                     'institution_comparison_enabled' => true,
                     'scheduled_date' => null,
@@ -56,6 +56,11 @@ class InServiceExamSeeder extends Seeder
                     'created_by' => $creatorId,
                 ],
             );
+
+            // Ensure existing exams are also set to published/active
+            if (! $assessment->is_published) {
+                $assessment->update(['is_published' => true]);
+            }
 
             // Seed 50 realistic MCQ items if none exist yet
             if ($assessment->questions()->count() === 0) {
