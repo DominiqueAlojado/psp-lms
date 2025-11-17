@@ -2,8 +2,8 @@
 
 namespace App\Imports;
 
-use App\Models\Institution\InstitutionQuestion;
-use App\Models\Institution\InstitutionQuestionChoice;
+use App\Models\National\NationalQuestion;
+use App\Models\National\NationalQuestionChoice;
 use App\Models\QuestionBank;
 use App\Models\Topic;
 use Illuminate\Support\Collection;
@@ -12,11 +12,9 @@ use Illuminate\Support\Facades\Log;
 use Maatwebsite\Excel\Concerns\ToCollection;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 
-class QuestionsImport implements ToCollection, WithHeadingRow
+class NationalQuestionsImport implements ToCollection, WithHeadingRow
 {
     protected int $assessmentId;
-
-    protected int $organizationId;
 
     protected $user;
 
@@ -24,10 +22,9 @@ class QuestionsImport implements ToCollection, WithHeadingRow
 
     protected int $successCount = 0;
 
-    public function __construct(int $assessmentId, int $organizationId, $user = null)
+    public function __construct(int $assessmentId, $user = null)
     {
         $this->assessmentId = $assessmentId;
-        $this->organizationId = $organizationId;
         $this->user = $user;
     }
 
@@ -37,7 +34,7 @@ class QuestionsImport implements ToCollection, WithHeadingRow
 
         try {
             // Get the current max order for questions
-            $maxOrder = InstitutionQuestion::where('assessment_id', $this->assessmentId)
+            $maxOrder = NationalQuestion::where('assessment_id', $this->assessmentId)
                 ->max('order') ?? 0;
 
             foreach ($rows as $index => $row) {
@@ -65,7 +62,7 @@ class QuestionsImport implements ToCollection, WithHeadingRow
 
                     if ($type === 'true_false') {
                         if (! in_array(strtolower($choice1), ['true', 'false'])) {
-                            $this->errors[] = "Row {$rowNumber}: True/False questions must have 'True' as Choice 1";
+                            $this->errors[] = "Row {$rowNumber}: True/False questions must have 'True' or 'False' as Choice 1";
 
                             continue;
                         }
@@ -77,52 +74,41 @@ class QuestionsImport implements ToCollection, WithHeadingRow
                         }
                     }
 
-                    // Find or create topic if provided
+                    // Find topic by name if provided (national exams use topic as string, not topic_id)
+                    $topicName = null;
                     $topicId = null;
                     if (! empty($row['topic_optional'])) {
                         $topicName = trim($row['topic_optional']);
-                        $slug = \Str::slug($topicName);
-
-                        // Try to find existing topic (global or organization-specific)
-                        $topic = Topic::where('slug', $slug)
-                            ->where(function ($query) {
-                                $query->where('organization_id', $this->organizationId)
-                                    ->orWhere('is_global', true);
-                            })
-                            ->first();
-
-                        // If not found, create organization-specific topic
-                        if (! $topic) {
-                            $topic = Topic::create([
-                                'name' => $topicName,
-                                'organization_id' => $this->organizationId,
-                                'slug' => $slug.'-'.uniqid(), // Add unique suffix to avoid conflicts
-                                'is_global' => false,
-                            ]);
-                        }
-
-                        $topicId = $topic->id;
+                        // Try to find existing topic
+                        $topic = Topic::where('name', $topicName)->first();
+                        $topicId = $topic?->id;
                     }
 
                     // Create the question
                     $maxOrder++;
-                    $question = InstitutionQuestion::create([
+                    $question = NationalQuestion::create([
                         'assessment_id' => $this->assessmentId,
-                        'topic_id' => $topicId,
                         'question_type' => $type,
                         'question_text' => trim($row['question_text']),
                         'points' => (int) $row['points'],
-                        'explanation' => ! empty($row['explanation_optional']) ? trim($row['explanation_optional']) : null,
+                        'topic' => $topicName,
                         'order' => $maxOrder,
                     ]);
 
                     // Create choices
-                    $choices = [
-                        ['text' => $choice1, 'is_correct' => true, 'order' => 1],
-                        ['text' => $choice2, 'is_correct' => false, 'order' => 2],
-                    ];
+                    $choices = [];
+                    if ($type === 'true_false') {
+                        $answer = strtolower($choice1) === 'true';
+                        $choices = [
+                            ['text' => 'True', 'is_correct' => $answer === true, 'order' => 1],
+                            ['text' => 'False', 'is_correct' => $answer === false, 'order' => 2],
+                        ];
+                    } else {
+                        $choices = [
+                            ['text' => $choice1, 'is_correct' => true, 'order' => 1],
+                            ['text' => $choice2, 'is_correct' => false, 'order' => 2],
+                        ];
 
-                    if ($type !== 'true_false') {
                         $choice3 = trim($row['choice_3'] ?? '');
                         $choice4 = trim($row['choice_4'] ?? '');
 
@@ -137,7 +123,7 @@ class QuestionsImport implements ToCollection, WithHeadingRow
                     // Insert choices
                     foreach ($choices as $choice) {
                         if (! empty($choice['text'])) {
-                            InstitutionQuestionChoice::create([
+                            NationalQuestionChoice::create([
                                 'question_id' => $question->id,
                                 'choice_text' => $choice['text'],
                                 'is_correct' => $choice['is_correct'],
@@ -148,12 +134,12 @@ class QuestionsImport implements ToCollection, WithHeadingRow
 
                     // Save to question bank if user is provided
                     if ($this->user) {
-                        $this->saveToQuestionBank($question, $choices, $topicId);
+                        $this->saveToQuestionBank($question, $choices, $topicId, $topicName);
                     }
 
                     $this->successCount++;
                 } catch (\Exception $e) {
-                    Log::error("Error importing question at row {$rowNumber}", [
+                    Log::error("Error importing national question at row {$rowNumber}", [
                         'error' => $e->getMessage(),
                         'row' => $row->toArray(),
                     ]);
@@ -164,7 +150,7 @@ class QuestionsImport implements ToCollection, WithHeadingRow
             DB::commit();
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Questions import failed', ['error' => $e->getMessage()]);
+            Log::error('National questions import failed', ['error' => $e->getMessage()]);
             throw $e;
         }
     }
@@ -182,27 +168,32 @@ class QuestionsImport implements ToCollection, WithHeadingRow
     /**
      * Save imported question to question bank.
      */
-    private function saveToQuestionBank(InstitutionQuestion $question, array $choices, ?int $topicId): void
+    private function saveToQuestionBank(NationalQuestion $question, array $choices, ?int $topicId, ?string $topicName): void
     {
         try {
             // Check if question already exists in question bank
             $existsInBank = QuestionBank::where('question_text', $question->question_text)
-                ->where('owner_type', 'institution')
-                ->where('organization_id', $this->organizationId)
+                ->where('owner_type', 'national')
                 ->where('created_by', $this->user->id)
                 ->exists();
 
             if ($existsInBank) {
-                Log::info('Question already exists in question bank, skipping', [
+                Log::info('National question already exists in question bank, skipping', [
                     'question_text' => substr($question->question_text, 0, 50),
                 ]);
                 return;
             }
 
+            // Use topic_id if available, otherwise try to find by name
+            if (! $topicId && $topicName) {
+                $topic = Topic::where('name', $topicName)->first();
+                $topicId = $topic?->id;
+            }
+
             // Create question in question bank
             $bankQuestion = QuestionBank::create([
-                'organization_id' => $this->organizationId,
-                'owner_type' => 'institution',
+                'organization_id' => null, // National questions don't belong to a specific organization
+                'owner_type' => 'national',
                 'topic_id' => $topicId,
                 'created_by' => $this->user->id,
                 'question_type' => $question->question_type,
@@ -226,17 +217,17 @@ class QuestionsImport implements ToCollection, WithHeadingRow
             // Initialize statistics
             $bankQuestion->statistics()->create([
                 'question_id' => $bankQuestion->id,
-                'scope' => 'institution',
-                'institution_id' => $this->organizationId,
+                'scope' => 'national',
+                'institution_id' => null,
             ]);
 
-            Log::info('Imported question saved to question bank', [
+            Log::info('Imported national question saved to question bank', [
                 'bank_question_id' => $bankQuestion->id,
                 'question_id' => $question->id,
             ]);
         } catch (\Exception $e) {
             // Log error but don't fail the import
-            Log::error('Failed to save imported question to question bank', [
+            Log::error('Failed to save imported national question to question bank', [
                 'error' => $e->getMessage(),
                 'question_id' => $question->id,
                 'trace' => $e->getTraceAsString(),

@@ -67,7 +67,7 @@ export default function InServiceIndex() {
 
     const handleSearch = useCallback(() => {
         router.get(
-            '/in-service',
+            '/inservice-exams',
             {
                 search: searchQuery || undefined,
                 year: yearFilter || undefined,
@@ -85,7 +85,7 @@ export default function InServiceIndex() {
         setYearFilter('');
         setStatusFilter('');
         router.get(
-            '/in-service',
+            '/inservice-exams',
             {},
             { preserveState: true, preserveScroll: true },
         );
@@ -110,7 +110,11 @@ export default function InServiceIndex() {
                         </p>
                     </div>
                     {canManage && (
-                        <Button onClick={() => router.visit('/inservice-exams/create')}>
+                        <Button
+                            onClick={() =>
+                                router.visit('/inservice-exams/create')
+                            }
+                        >
                             <Plus className="mr-2 h-4 w-4" />
                             Create In-Service Exam
                         </Button>

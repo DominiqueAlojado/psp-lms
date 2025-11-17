@@ -148,7 +148,7 @@ class QuestionImportController extends Controller
         ]);
 
         try {
-            $import = new QuestionsImport($assessment->id, $assessment->organization_id);
+            $import = new QuestionsImport($assessment->id, $assessment->organization_id, $request->user());
             Excel::import($import, $request->file('file'));
 
             $successCount = $import->getSuccessCount();

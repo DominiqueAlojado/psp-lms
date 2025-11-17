@@ -34,7 +34,7 @@ export default function Active() {
                         />
                         {canCreate && (
                             <Button asChild>
-                                <Link href="/in-service/create">
+                                <Link href="/inservice-exams/create">
                                     <Plus className="mr-2 h-4 w-4" />
                                     Create National Exam
                                 </Link>
@@ -49,7 +49,7 @@ export default function Active() {
                         </p>
                         <div className="mt-4">
                             <Button asChild>
-                                <a href="/in-service">
+                                <a href="/inservice-exams">
                                     View all in-service exams
                                 </a>
                             </Button>

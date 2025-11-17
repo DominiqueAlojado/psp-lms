@@ -197,7 +197,7 @@ export default function EditInServiceAssessment() {
         if (duplicating) return;
         setDuplicating(true);
         router.post(
-            `/in-service/${assessment.id}/duplicate`,
+            `/inservice-exams/${assessment.id}/duplicate`,
             {},
             {
                 preserveScroll: true,
@@ -219,7 +219,7 @@ export default function EditInServiceAssessment() {
         formData.append('file', file);
         try {
             const response = await fetch(
-                `/in-service/${assessment.id}/questions/preview`,
+                `/inservice-exams/${assessment.id}/questions/preview`,
                 {
                     method: 'POST',
                     body: formData,
@@ -251,23 +251,27 @@ export default function EditInServiceAssessment() {
         setIsImporting(true);
         const formData = new FormData();
         formData.append('file', importFile);
-        router.post(`/in-service/${assessment.id}/questions/import`, formData, {
-            forceFormData: true,
-            preserveScroll: true,
-            onSuccess: () => {
-                setShowImportPreview(false);
-                setImportFile(null);
-                setPreviewData(null);
-                router.reload({ only: ['assessment'] });
+        router.post(
+            `/inservice-exams/${assessment.id}/questions/import`,
+            formData,
+            {
+                forceFormData: true,
+                preserveScroll: true,
+                onSuccess: () => {
+                    setShowImportPreview(false);
+                    setImportFile(null);
+                    setPreviewData(null);
+                    router.reload({ only: ['assessment'] });
+                },
+                onError: (errors) => {
+                    console.error('Import errors:', errors);
+                    toast.error('Import failed');
+                },
+                onFinish: () => {
+                    setIsImporting(false);
+                },
             },
-            onError: (errors) => {
-                console.error('Import errors:', errors);
-                toast.error('Import failed');
-            },
-            onFinish: () => {
-                setIsImporting(false);
-            },
-        });
+        );
     };
 
     const updateExam = () => {
@@ -276,7 +280,7 @@ export default function EditInServiceAssessment() {
             return;
         }
         router.patch(
-            `/in-service/${assessment.id}`,
+            `/inservice-exams/${assessment.id}`,
             {
                 title,
                 description: description || null,
@@ -313,7 +317,7 @@ export default function EditInServiceAssessment() {
         }
         setSavingQuestion(qi);
         router.post(
-            `/in-service/${assessment.id}/questions/save-one`,
+            `/inservice-exams/${assessment.id}/questions/save-one`,
             question as never,
             {
                 preserveState: true,
@@ -351,7 +355,7 @@ export default function EditInServiceAssessment() {
         const question = questions[qi];
         if (question.id) {
             router.delete(
-                `/in-service/${assessment.id}/questions/${question.id}`,
+                `/inservice-exams/${assessment.id}/questions/${question.id}`,
                 {
                     preserveState: true,
                     preserveScroll: true,
@@ -633,7 +637,7 @@ export default function EditInServiceAssessment() {
                                 size="sm"
                                 onClick={() =>
                                     window.open(
-                                        '/in-service/questions/template',
+                                        '/inservice-exams/questions/template',
                                         '_blank',
                                     )
                                 }

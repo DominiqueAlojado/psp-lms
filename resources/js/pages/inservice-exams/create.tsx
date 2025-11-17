@@ -207,7 +207,7 @@ export default function CreateNationalAssessment() {
             return;
         }
 
-        router.post('/in-service', parsed.data, {
+        router.post('/inservice-exams', parsed.data, {
             preserveScroll: true,
             onSuccess: (page: {
                 props?: { flash?: { assessment_id?: number } };
@@ -245,7 +245,7 @@ export default function CreateNationalAssessment() {
         }
 
         router.post(
-            `/in-service/${assessmentId}/questions`,
+            `/inservice-exams/${assessmentId}/questions`,
             parsed.data as never,
             {
                 preserveScroll: true,

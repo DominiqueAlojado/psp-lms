@@ -285,38 +285,49 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('assessments.questions.import');
 
     // National In-Service Exams
-    Route::get('in-service', [App\Http\Controllers\NationalAssessmentController::class, 'index'])
-        ->middleware('permission:view-assessments')
-        ->name('in-service.index');
-    // Back-compat: redirect old create path to new one
+    // Back-compat: redirect old in-service paths to inservice-exams
+    Route::redirect('in-service', '/inservice-exams')->middleware('permission:view-assessments');
     Route::redirect('in-service/create', '/inservice-exams/create')->middleware('role:System Admin|BOP');
+
+    Route::get('inservice-exams', [App\Http\Controllers\NationalAssessmentController::class, 'index'])
+        ->middleware('permission:view-assessments')
+        ->name('inservice-exams.index');
     Route::get('inservice-exams/create', function () {
         return Inertia::render('inservice-exams/create');
     })->middleware('role:System Admin|BOP')->name('inservice-exams.create');
-    Route::post('in-service', [App\Http\Controllers\NationalAssessmentController::class, 'store'])
+    Route::post('inservice-exams', [App\Http\Controllers\NationalAssessmentController::class, 'store'])
         ->middleware('role:System Admin|BOP')
-        ->name('in-service.store');
-    Route::post('in-service/{assessment}/questions', [App\Http\Controllers\NationalAssessmentController::class, 'storeQuestions'])
+        ->name('inservice-exams.store');
+    Route::post('inservice-exams/{assessment}/questions', [App\Http\Controllers\NationalAssessmentController::class, 'storeQuestions'])
         ->middleware('role:System Admin|BOP')
-        ->name('in-service.questions.store');
+        ->name('inservice-exams.questions.store');
     Route::get('inservice-exams/{assessment}/edit', [App\Http\Controllers\NationalAssessmentController::class, 'edit'])
         ->middleware('role:System Admin|BOP')
         ->name('inservice-exams.edit');
-    Route::post('in-service/{assessment}/questions/save-one', [App\Http\Controllers\NationalAssessmentController::class, 'saveOneQuestion'])
+    Route::post('inservice-exams/{assessment}/questions/save-one', [App\Http\Controllers\NationalAssessmentController::class, 'saveOneQuestion'])
         ->middleware('role:System Admin|BOP')
-        ->name('in-service.questions.save-one');
-    Route::delete('in-service/{assessment}/questions/{question}', [App\Http\Controllers\NationalAssessmentController::class, 'deleteQuestion'])
+        ->name('inservice-exams.questions.save-one');
+    Route::delete('inservice-exams/{assessment}/questions/{question}', [App\Http\Controllers\NationalAssessmentController::class, 'deleteQuestion'])
         ->middleware('role:System Admin|BOP')
-        ->name('in-service.questions.delete');
-    Route::get('in-service/{assessment}', [App\Http\Controllers\NationalAssessmentController::class, 'show'])
+        ->name('inservice-exams.questions.delete');
+    Route::get('inservice-exams/{assessment}', [App\Http\Controllers\NationalAssessmentController::class, 'show'])
         ->middleware('permission:view-assessments')
-        ->name('in-service.show');
-    Route::patch('in-service/{assessment}', [App\Http\Controllers\NationalAssessmentController::class, 'update'])
+        ->name('inservice-exams.show');
+    Route::patch('inservice-exams/{assessment}', [App\Http\Controllers\NationalAssessmentController::class, 'update'])
         ->middleware('role:System Admin|BOP')
-        ->name('in-service.update');
-    Route::delete('in-service/{assessment}', [App\Http\Controllers\NationalAssessmentController::class, 'destroy'])
+        ->name('inservice-exams.update');
+    Route::delete('inservice-exams/{assessment}', [App\Http\Controllers\NationalAssessmentController::class, 'destroy'])
         ->middleware('role:System Admin|BOP')
-        ->name('in-service.destroy');
+        ->name('inservice-exams.destroy');
+    Route::get('inservice-exams/questions/template', [App\Http\Controllers\NationalAssessmentController::class, 'downloadTemplate'])
+        ->middleware('role:System Admin|BOP')
+        ->name('inservice-exams.questions.template');
+    Route::post('inservice-exams/{assessment}/questions/preview', [App\Http\Controllers\NationalAssessmentController::class, 'previewQuestions'])
+        ->middleware('role:System Admin|BOP')
+        ->name('inservice-exams.questions.preview');
+    Route::post('inservice-exams/{assessment}/questions/import', [App\Http\Controllers\NationalAssessmentController::class, 'importQuestions'])
+        ->middleware('role:System Admin|BOP')
+        ->name('inservice-exams.questions.import');
 
     // Institution Exams (frontend pages)
     Route::redirect('institution-exams', '/institution-exams/active')->name('institution-exams');
@@ -372,4 +383,4 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('organization.switch');
 });
 
-require __DIR__.'/settings.php';
+require __DIR__ . '/settings.php';

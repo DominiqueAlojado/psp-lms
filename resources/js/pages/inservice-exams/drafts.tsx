@@ -49,7 +49,7 @@ export default function Drafts() {
 
 	const confirmDelete = () => {
 		if (deletingId === null) return;
-		router.delete(`/in-service/${deletingId}`, {
+		router.delete(`/inservice-exams/${deletingId}`, {
 			preserveScroll: true,
 			onSuccess: () => {
 				toast.success('Exam deleted');
@@ -77,7 +77,7 @@ export default function Drafts() {
 							description="Exams saved as drafts"
 						/>
 						<Button asChild>
-							<Link href="/in-service/create">
+							<Link href="/inservice-exams/create">
 								<Plus className="mr-2 h-4 w-4" />
 								Create National Exam
 							</Link>

@@ -588,7 +588,7 @@ class InstitutionExamController extends Controller
             ->where('organization_id', $assessment->organization_id)
             ->where('created_by', $request->user()->id)
             ->exists();
-        
+
         if ($isNewQuestion || !$existsInBank) {
             try {
                 $this->saveToQuestionBank($question, $assessment, $choicesData, $imagePath, $request->user());
@@ -679,7 +679,7 @@ class InstitutionExamController extends Controller
         ]);
 
         try {
-            $import = new QuestionsImport($assessment->id, $assessment->organization_id);
+            $import = new QuestionsImport($assessment->id, $assessment->organization_id, $request->user());
             Excel::import($import, $request->file('file'));
 
             $successCount = $import->getSuccessCount();
