@@ -292,7 +292,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('inservice-exams', [App\Http\Controllers\NationalAssessmentController::class, 'index'])
         ->middleware('permission:view-assessments')
         ->name('inservice-exams.index');
-    Route::get('inservice-exams/active', [App\Http\Controllers\NationalAssessmentController::class, 'index'])
+    Route::get('inservice-exams/active', [App\Http\Controllers\NationalAssessmentController::class, 'active'])
         ->middleware('permission:view-assessments')
         ->name('inservice-exams.active');
     Route::get('inservice-exams/drafts', [App\Http\Controllers\NationalAssessmentController::class, 'drafts'])
@@ -316,6 +316,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::delete('inservice-exams/{assessment}/questions/{question}', [App\Http\Controllers\NationalAssessmentController::class, 'deleteQuestion'])
         ->middleware('role:System Admin|BOP')
         ->name('inservice-exams.questions.delete');
+    Route::post('inservice-exams/{assessment}/duplicate', [App\Http\Controllers\NationalAssessmentController::class, 'duplicate'])
+        ->middleware('role:System Admin|BOP')
+        ->name('inservice-exams.duplicate');
     Route::get('inservice-exams/{assessment}', [App\Http\Controllers\NationalAssessmentController::class, 'show'])
         ->middleware('permission:view-assessments')
         ->name('inservice-exams.show');
@@ -377,9 +380,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // In-Service Exams (frontend pages)
     Route::redirect('inservice-exams', '/inservice-exams/active')->name('inservice-exams');
-    Route::get('inservice-exams/active', function () {
-        return Inertia::render('inservice-exams/active');
-    })->middleware('permission:view-assessments')->name('inservice-exams.active');
     Route::get('inservice-exams/drafts', [App\Http\Controllers\NationalAssessmentController::class, 'drafts'])
         ->middleware('permission:view-assessments')
         ->name('inservice-exams.drafts');

@@ -88,6 +88,61 @@ class NationalAssessmentController extends Controller
     }
 
     /**
+     * Display active (published) in-service exams.
+     */
+    public function active(Request $request): Response
+    {
+        $query = NationalAssessment::query()
+            ->where('is_published', true) // Only published exams
+            ->with(['questions', 'creator:id,name'])
+            ->withCount('questions')
+            ->when($request->input('search'), function ($query, $search) {
+                $query->where(function ($q) use ($search) {
+                    $q->where('title', 'like', "%{$search}%")
+                        ->orWhere('description', 'like', "%{$search}%");
+                });
+            })
+            ->orderBy($request->input('sort', 'created_at'), $request->input('direction', 'desc'));
+
+        $assessments = $query
+            ->paginate(15)
+            ->withQueryString()
+            ->through(function (NationalAssessment $assessment) {
+                return [
+                    'id' => $assessment->id,
+                    'title' => $assessment->title,
+                    'description' => $assessment->description,
+                    'exam_year' => $assessment->exam_year,
+                    'exam_period' => $assessment->exam_period,
+                    'questions_count' => $assessment->questions_count,
+                    'total_points' => $assessment->total_points,
+                    'passing_score' => $assessment->passing_score,
+                    'duration_minutes' => $assessment->duration_minutes,
+                    'is_published' => $assessment->is_published,
+                    'is_available' => $assessment->isAvailable(),
+                    'scheduled_date' => $assessment->scheduled_date?->format('Y-m-d H:i'),
+                    'results_release_date' => $assessment->results_release_date?->format('Y-m-d H:i'),
+                    'can_view_results' => $assessment->canViewResults(),
+                    'national_ranking_enabled' => $assessment->national_ranking_enabled,
+                    'created_by' => $assessment->creator?->name,
+                    'created_at' => $assessment->created_at?->format('Y-m-d'),
+                    'updated_at' => $assessment->updated_at?->diffForHumans(),
+                ];
+            });
+
+        \Log::info('Active exams query result', [
+            'count' => $assessments->count(),
+            'total' => $assessments->total(),
+            'data_count' => count($assessments->items()),
+        ]);
+
+        return Inertia::render('inservice-exams/active', [
+            'exams' => $assessments,
+            'filters' => $request->only(['search']),
+        ]);
+    }
+
+    /**
      * Store a newly created national in-service exam.
      */
     public function store(Request $request): RedirectResponse
@@ -427,6 +482,47 @@ class NationalAssessmentController extends Controller
         $assessment->update(['total_points' => $total]);
 
         return back()->with('success', 'Question deleted');
+    }
+
+    /**
+     * Duplicate an existing national assessment and its questions.
+     */
+    public function duplicate(Request $request, NationalAssessment $assessment): RedirectResponse
+    {
+        $validated = $request->validate([
+            'title' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $duplicate = $assessment->replicate();
+        $duplicate->title = $validated['title'] ?? $assessment->title . ' (Copy)';
+        $duplicate->is_published = false;
+        $duplicate->scheduled_date = null;
+        $duplicate->results_release_date = null;
+        $duplicate->created_by = $request->user()->id;
+        $duplicate->total_points = 0;
+        $duplicate->save();
+
+        // Duplicate questions
+        foreach ($assessment->questions as $question) {
+            $newQuestion = $question->replicate();
+            $newQuestion->assessment_id = $duplicate->id;
+            $newQuestion->save();
+
+            // Duplicate choices
+            foreach ($question->choices as $choice) {
+                $newChoice = $choice->replicate();
+                $newChoice->question_id = $newQuestion->id;
+                $newChoice->save();
+            }
+        }
+
+        // Recompute total points
+        $totalPoints = $duplicate->questions()->sum('points');
+        $duplicate->update(['total_points' => $totalPoints]);
+
+        return redirect()
+            ->route('inservice-exams.edit', $duplicate)
+            ->with('success', 'Exam duplicated successfully. You can now make changes.');
     }
 
     /**
