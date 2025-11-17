@@ -275,12 +275,28 @@ class NationalAssessmentController extends Controller
             'image' => ['nullable', 'string'], // base64
         ]);
 
-        $question = NationalQuestion::query()
-            ->where('assessment_id', $assessment->id)
-            ->when($validated['id'] ?? null, fn($q) => $q->where('id', $validated['id']))
-            ->first();
+        // Check if this is a new question (no ID provided or ID is 0/null) or existing (ID provided)
+        // Handle cases where frontend might send id: 0, id: null, id: undefined, or no id field
+        $hasValidId = !empty($validated['id']) && $validated['id'] > 0;
+        $isNewQuestion = !$hasValidId;
 
-        $isNewQuestion = ! $question;
+        \Log::info('Saving question', [
+            'is_new' => $isNewQuestion,
+            'has_id' => !empty($validated['id']),
+            'question_id' => $validated['id'] ?? 'none',
+            'question_id_type' => gettype($validated['id'] ?? null),
+            'assessment_id' => $assessment->id,
+            'question_text_preview' => substr($validated['question_text'] ?? '', 0, 50),
+        ]);
+
+        $question = null;
+        if (! $isNewQuestion) {
+            // Look for existing question by ID
+            $question = NationalQuestion::query()
+                ->where('assessment_id', $assessment->id)
+                ->where('id', $validated['id'])
+                ->first();
+        }
 
         if (! $question) {
             $nextOrder = ($assessment->questions()->max('order') ?? 0) + 1;
@@ -346,11 +362,38 @@ class NationalAssessmentController extends Controller
             ];
         }
 
-        // Save to question bank if this is a new question
-        if ($isNewQuestion) {
-            $topicId = $validated['topic_id'] ?? null;
-            $topicName = $question->topic; // Already converted from topic_id if needed
-            $this->saveToQuestionBank($question, $choicesData, $imagePath, $topicId, $topicName, $request->user());
+        // Save to question bank if this is a new question OR if it doesn't exist in question bank yet
+        $topicId = $validated['topic_id'] ?? null;
+        $topicName = $question->topic; // Already converted from topic_id if needed
+
+        // Check if this question already exists in question bank (by text and owner)
+        $existsInBank = QuestionBank::where('question_text', $question->question_text)
+            ->where('owner_type', 'national')
+            ->where('created_by', $request->user()->id)
+            ->exists();
+
+        if ($isNewQuestion || !$existsInBank) {
+            try {
+                $this->saveToQuestionBank($question, $choicesData, $imagePath, $topicId, $topicName, $request->user());
+                \Log::info('Question saved to question bank', [
+                    'question_id' => $question->id,
+                    'assessment_id' => $assessment->id,
+                    'is_new' => $isNewQuestion,
+                    'exists_in_bank' => $existsInBank,
+                ]);
+            } catch (\Exception $e) {
+                \Log::error('Failed to save question to question bank', [
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString(),
+                    'question_id' => $question->id,
+                ]);
+            }
+        } else {
+            \Log::info('Question not saved to question bank - already exists', [
+                'question_id' => $question->id,
+                'has_id' => !empty($validated['id']),
+                'exists_in_bank' => $existsInBank,
+            ]);
         }
 
         // Recompute total points
@@ -551,7 +594,13 @@ class NationalAssessmentController extends Controller
             ]);
         } catch (\Exception $e) {
             // Log error but don't fail the question creation
-            \Log::error('Failed to save question to question bank: ' . $e->getMessage());
+            \Log::error('Failed to save question to question bank', [
+                'error' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            throw $e; // Re-throw so outer try-catch can log it
         }
     }
 }
