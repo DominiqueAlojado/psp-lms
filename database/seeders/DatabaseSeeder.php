@@ -31,6 +31,7 @@ class DatabaseSeeder extends Seeder
             InServiceExamSeeder::class,  // Seed in-service (national) exams
             InServiceExamPart2Seeder::class, // Seed additional in-service exams (Part 2) with questions from bank
             InServiceExamResidentSeeder::class, // Enroll all residents in in-service exams
+            InServiceExamCompletedAttemptsSeeder::class, // Create completed exam attempts with answers for statistics
             BataanGeneralHospitalExamsSeeder::class, // Create dummy exams
             LongFormQuestionsExamSeeder::class,      // Create exam with long questions
             AnnouncementSeeder::class,   // Create sample announcements
