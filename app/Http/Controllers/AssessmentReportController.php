@@ -48,11 +48,25 @@ class AssessmentReportController extends Controller
         }
 
         // Filter by exam (only if it's an institution exam)
+        $isInstitutionExam = false;
         if ($request->filled('exam')) {
-            $examId = $request->input('exam');
-            // Check if it's an institution exam
-            if (InstitutionAssessment::where('id', $examId)->exists()) {
-                $institutionQuery->where('assessment_id', $examId);
+            $examFilter = $request->input('exam');
+            // Check if it's prefixed with 'institution_' or 'national_'
+            if (str_starts_with($examFilter, 'institution_')) {
+                $examId = (int) str_replace('institution_', '', $examFilter);
+                $isInstitutionExam = InstitutionAssessment::where('id', $examId)->exists();
+                if ($isInstitutionExam) {
+                    $institutionQuery->where('assessment_id', $examId);
+                }
+            } elseif (str_starts_with($examFilter, 'national_')) {
+                // This will be handled in the national exam section
+            } else {
+                // Legacy support: try to determine by checking both tables
+                $examId = (int) $examFilter;
+                $isInstitutionExam = InstitutionAssessment::where('id', $examId)->exists();
+                if ($isInstitutionExam) {
+                    $institutionQuery->where('assessment_id', $examId);
+                }
             }
         }
 
@@ -84,27 +98,31 @@ class AssessmentReportController extends Controller
             $institutionQuery->whereDate('submitted_at', '<=', $request->input('date_to'));
         }
 
-        $institutionAttempts = $institutionQuery
-            ->get()
-            ->map(fn($attempt) => [
-                'id' => $attempt->id,
-                'type' => 'institution',
-                'resident_name' => $attempt->user->name,
-                'resident_email' => $attempt->user->email,
-                'year_level' => $attempt->year_level,
-                'exam_title' => $attempt->assessment->title,
-                'exam_category' => $attempt->assessment->exam_category,
-                'score' => $attempt->score,
-                'total_points' => $attempt->total_points,
-                'percentage' => $attempt->percentage,
-                'passing_score' => $attempt->assessment->passing_score,
-                'status' => $attempt->isPassed() ? 'Passed' : 'Failed',
-                'organization_name' => $attempt->organization->name,
-                'submitted_at' => $attempt->submitted_at,
-                'time_spent' => $attempt->started_at && $attempt->submitted_at
-                    ? $attempt->started_at->diffInMinutes($attempt->submitted_at)
-                    : null,
-            ]);
+        // Only get institution attempts if no exam filter OR if it's an institution exam
+        $institutionAttempts = collect();
+        if (! $request->filled('exam') || $isInstitutionExam) {
+            $institutionAttempts = $institutionQuery
+                ->get()
+                ->map(fn($attempt) => [
+                    'id' => $attempt->id,
+                    'type' => 'institution',
+                    'resident_name' => $attempt->user->name,
+                    'resident_email' => $attempt->user->email,
+                    'year_level' => $attempt->year_level,
+                    'exam_title' => $attempt->assessment->title,
+                    'exam_category' => $attempt->assessment->exam_category,
+                    'score' => $attempt->score,
+                    'total_points' => $attempt->total_points,
+                    'percentage' => $attempt->percentage,
+                    'passing_score' => $attempt->assessment->passing_score,
+                    'status' => $attempt->isPassed() ? 'Passed' : 'Failed',
+                    'organization_name' => $attempt->organization->name,
+                    'submitted_at' => $attempt->submitted_at,
+                    'time_spent' => $attempt->started_at && $attempt->submitted_at
+                        ? $attempt->started_at->diffInMinutes($attempt->submitted_at)
+                        : null,
+                ]);
+        }
 
         // Get national attempts (in-service exams)
         $nationalQuery = NationalAttempt::query()
@@ -130,11 +148,25 @@ class AssessmentReportController extends Controller
         }
 
         // Filter by exam (only if it's a national exam)
+        $isNationalExam = false;
         if ($request->filled('exam')) {
-            $examId = $request->input('exam');
-            // Check if it's a national exam
-            if (NationalAssessment::where('id', $examId)->exists()) {
-                $nationalQuery->where('assessment_id', $examId);
+            $examFilter = $request->input('exam');
+            // Check if it's prefixed with 'national_'
+            if (str_starts_with($examFilter, 'national_')) {
+                $examId = (int) str_replace('national_', '', $examFilter);
+                $isNationalExam = NationalAssessment::where('id', $examId)->exists();
+                if ($isNationalExam) {
+                    $nationalQuery->where('assessment_id', $examId);
+                }
+            } elseif (! str_starts_with($examFilter, 'institution_')) {
+                // Legacy support: check if it's a national exam (and not an institution exam)
+                if (! $isInstitutionExam) {
+                    $examId = (int) $examFilter;
+                    $isNationalExam = NationalAssessment::where('id', $examId)->exists();
+                    if ($isNationalExam) {
+                        $nationalQuery->where('assessment_id', $examId);
+                    }
+                }
             }
         }
 
@@ -166,27 +198,31 @@ class AssessmentReportController extends Controller
             $nationalQuery->whereDate('submitted_at', '<=', $request->input('date_to'));
         }
 
-        $nationalAttempts = $nationalQuery
-            ->get()
-            ->map(fn($attempt) => [
-                'id' => $attempt->id,
-                'type' => 'inservice',
-                'resident_name' => $attempt->user->name,
-                'resident_email' => $attempt->user->email,
-                'year_level' => $attempt->year_level,
-                'exam_title' => $attempt->assessment->title,
-                'exam_category' => $attempt->assessment->category,
-                'score' => $attempt->score,
-                'total_points' => $attempt->total_points,
-                'percentage' => $attempt->percentage,
-                'passing_score' => $attempt->assessment->passing_score,
-                'status' => $attempt->isPassed() ? 'Passed' : 'Failed',
-                'organization_name' => $attempt->organization->name,
-                'submitted_at' => $attempt->submitted_at,
-                'time_spent' => $attempt->started_at && $attempt->submitted_at
-                    ? $attempt->started_at->diffInMinutes($attempt->submitted_at)
-                    : null,
-            ]);
+        // Only get national attempts if no exam filter OR if it's a national exam
+        $nationalAttempts = collect();
+        if (! $request->filled('exam') || $isNationalExam) {
+            $nationalAttempts = $nationalQuery
+                ->get()
+                ->map(fn($attempt) => [
+                    'id' => $attempt->id,
+                    'type' => 'inservice',
+                    'resident_name' => $attempt->user->name,
+                    'resident_email' => $attempt->user->email,
+                    'year_level' => $attempt->year_level,
+                    'exam_title' => $attempt->assessment->title,
+                    'exam_category' => $attempt->assessment->category,
+                    'score' => $attempt->score,
+                    'total_points' => $attempt->total_points,
+                    'percentage' => $attempt->percentage,
+                    'passing_score' => $attempt->assessment->passing_score,
+                    'status' => $attempt->isPassed() ? 'Passed' : 'Failed',
+                    'organization_name' => $attempt->organization->name,
+                    'submitted_at' => $attempt->submitted_at,
+                    'time_spent' => $attempt->started_at && $attempt->submitted_at
+                        ? $attempt->started_at->diffInMinutes($attempt->submitted_at)
+                        : null,
+                ]);
+        }
 
         // Combine and sort all attempts
         $allAttempts = $institutionAttempts->concat($nationalAttempts)
@@ -236,13 +272,13 @@ class AssessmentReportController extends Controller
             ->where('is_published', true)
             ->orderBy('title')
             ->get(['id', 'title'])
-            ->map(fn($exam) => ['id' => $exam->id, 'title' => $exam->title, 'type' => 'institution']);
+            ->map(fn($exam) => ['id' => 'institution_' . $exam->id, 'title' => $exam->title, 'type' => 'institution', 'original_id' => $exam->id]);
 
         $nationalExams = NationalAssessment::query()
             ->where('is_published', true)
             ->orderBy('title')
             ->get(['id', 'title'])
-            ->map(fn($exam) => ['id' => $exam->id, 'title' => $exam->title, 'type' => 'inservice']);
+            ->map(fn($exam) => ['id' => 'national_' . $exam->id, 'title' => $exam->title, 'type' => 'inservice', 'original_id' => $exam->id]);
 
         $exams = $institutionExams->concat($nationalExams)->sortBy('title')->values();
 

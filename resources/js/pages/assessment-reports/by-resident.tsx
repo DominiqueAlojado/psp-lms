@@ -33,7 +33,14 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
 ];
 
-const YEAR_LEVELS = ['PGY-1', 'PGY-2', 'PGY-3', 'PGY-4', 'PGY-5'];
+const YEAR_LEVELS = [
+    'Pre-resident',
+    'First Year',
+    'Second Year',
+    'Third Year',
+    'Fourth Year',
+    'Graduate',
+];
 
 interface Attempt {
     id: number;
@@ -93,7 +100,7 @@ export default function ByResidentReport() {
 
     const [search, setSearch] = useState(filters.search || '');
     const [examFilter, setExamFilter] = useState(
-        filters.exam?.toString() || '',
+        filters.exam?.toString() || 'all',
     );
     const [organizationFilter, setOrganizationFilter] = useState(
         filters.organization?.toString() || '',
@@ -110,7 +117,10 @@ export default function ByResidentReport() {
             '/assessment-reports/by-resident',
             {
                 search: search || undefined,
-                exam: examFilter || undefined,
+                exam:
+                    examFilter && examFilter !== '' && examFilter !== 'all'
+                        ? examFilter
+                        : undefined,
                 organization: organizationFilter || undefined,
                 year_level: yearLevelFilter || undefined,
                 status: statusFilter || undefined,
@@ -123,7 +133,7 @@ export default function ByResidentReport() {
 
     const clearFilters = () => {
         setSearch('');
-        setExamFilter('');
+        setExamFilter('all');
         setOrganizationFilter('');
         setYearLevelFilter('');
         setStatusFilter('');
@@ -187,16 +197,21 @@ export default function ByResidentReport() {
                                         <Label>Exam</Label>
                                         <Select
                                             value={examFilter}
-                                            onValueChange={setExamFilter}
+                                            onValueChange={(value) => {
+                                                setExamFilter(value);
+                                            }}
                                         >
                                             <SelectTrigger>
                                                 <SelectValue placeholder="All Exams" />
                                             </SelectTrigger>
                                             <SelectContent>
+                                                <SelectItem value="all">
+                                                    All Exams
+                                                </SelectItem>
                                                 {exams.map((exam) => (
                                                     <SelectItem
                                                         key={exam.id}
-                                                        value={exam.id.toString()}
+                                                        value={String(exam.id)}
                                                     >
                                                         {exam.title}
                                                     </SelectItem>
