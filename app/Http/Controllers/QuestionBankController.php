@@ -21,15 +21,27 @@ class QuestionBankController extends Controller
     public function index(Request $request): Response
     {
         $user = $request->user();
-        $organizationId = $user->currentOrganization?->id;
+        $currentOrganization = $user->currentOrganization;
+        $organizationId = $currentOrganization?->id;
+
+        // Determine scope based on current organization type
+        // If organization type is 'national' => show national questions, else institution questions
+        $isNational = $currentOrganization?->type === 'national';
 
         $query = QuestionBank::query()
-            ->with(['topic:id,name', 'creator:id,name', 'statistics', 'choices'])
-            ->forOrganization($organizationId);
+            ->with(['topic:id,name', 'creator:id,name', 'statistics', 'choices']);
+
+        if ($isNational) {
+            // Show national questions (owner_type = 'national', organization_id = null)
+            $query->national();
+        } else {
+            // Show institution questions (owner_type = 'institution', organization_id = current org)
+            $query->institution()->forOrganization($organizationId);
+        }
 
         // Search
         if ($request->filled('search')) {
-            $query->where('question_text', 'like', '%' . $request->search . '%');
+            $query->where('question_text', 'like', '%'.$request->search.'%');
         }
 
         // Filter by topic
@@ -78,14 +90,26 @@ class QuestionBankController extends Controller
     public function list(Request $request): JsonResponse
     {
         $user = $request->user();
-        $organizationId = $user->currentOrganization?->id;
+        $currentOrganization = $user->currentOrganization;
+        $organizationId = $currentOrganization?->id;
+
+        // Determine scope based on current organization type
+        // If organization type is 'national' => show national questions, else institution questions
+        $isNational = $currentOrganization?->type === 'national';
 
         $query = QuestionBank::query()
-            ->with(['topic:id,name', 'statistics', 'choices'])
-            ->forOrganization($organizationId);
+            ->with(['topic:id,name', 'statistics', 'choices']);
+
+        if ($isNational) {
+            // Show national questions (owner_type = 'national', organization_id = null)
+            $query->national();
+        } else {
+            // Show institution questions (owner_type = 'institution', organization_id = current org)
+            $query->institution()->forOrganization($organizationId);
+        }
 
         if ($request->filled('search')) {
-            $query->where('question_text', 'like', '%' . $request->search . '%');
+            $query->where('question_text', 'like', '%'.$request->search.'%');
         }
 
         if ($request->filled('topic')) {
@@ -129,12 +153,12 @@ class QuestionBankController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $user = $request->user();
-        $organizationId = $user->currentOrganization?->id;
+        $currentOrganization = $user->currentOrganization;
+        $organizationId = $currentOrganization?->id;
 
-        // Determine scope based on URL param 'org'
-        // If org=in-service-exams => national, else institution
-        $orgParam = (string) $request->query('org', '');
-        $isNational = $orgParam === 'in-service-exams';
+        // Determine scope based on current organization type
+        // If organization type is 'national' => create national questions, else institution questions
+        $isNational = $currentOrganization?->type === 'national';
         $scope = $isNational ? 'national' : 'institution';
 
         $validated = $request->validate([
@@ -154,7 +178,7 @@ class QuestionBankController extends Controller
         $imagePath = null;
         if ($request->hasFile('image')) {
             $file = $request->file('image');
-            $fileName = Str::uuid() . '.' . $file->getClientOriginalExtension();
+            $fileName = Str::uuid().'.'.$file->getClientOriginalExtension();
             $imagePath = $file->storeAs('question-images', $fileName, 'public');
         }
 
@@ -194,11 +218,21 @@ class QuestionBankController extends Controller
     public function update(Request $request, QuestionBank $question): RedirectResponse
     {
         $user = $request->user();
-        $organizationId = $user->currentOrganization?->id;
+        $currentOrganization = $user->currentOrganization;
+        $organizationId = $currentOrganization?->id;
+        $isNational = $currentOrganization?->type === 'national';
 
-        // Check access
-        if ($question->organization_id !== $organizationId) {
-            abort(403, 'You do not have access to this question.');
+        // Check access based on question owner type
+        if ($question->owner_type === 'national') {
+            // National questions can only be edited when in national organization context
+            if (! $isNational) {
+                abort(403, 'You do not have access to this question.');
+            }
+        } else {
+            // Institution questions can only be edited by users from the same organization
+            if ($question->organization_id !== $organizationId) {
+                abort(403, 'You do not have access to this question.');
+            }
         }
 
         $validated = $request->validate([
@@ -222,7 +256,7 @@ class QuestionBankController extends Controller
             }
 
             $file = $request->file('image');
-            $fileName = Str::uuid() . '.' . $file->getClientOriginalExtension();
+            $fileName = Str::uuid().'.'.$file->getClientOriginalExtension();
             $validated['image_path'] = $file->storeAs('question-images', $fileName, 'public');
         }
 
@@ -249,11 +283,21 @@ class QuestionBankController extends Controller
     public function destroy(Request $request, QuestionBank $question): RedirectResponse
     {
         $user = $request->user();
-        $organizationId = $user->currentOrganization?->id;
+        $currentOrganization = $user->currentOrganization;
+        $organizationId = $currentOrganization?->id;
+        $isNational = $currentOrganization?->type === 'national';
 
-        // Check access
-        if ($question->organization_id !== $organizationId) {
-            abort(403, 'You do not have access to this question.');
+        // Check access based on question owner type
+        if ($question->owner_type === 'national') {
+            // National questions can only be deleted when in national organization context
+            if (! $isNational) {
+                abort(403, 'You do not have access to this question.');
+            }
+        } else {
+            // Institution questions can only be deleted by users from the same organization
+            if ($question->organization_id !== $organizationId) {
+                abort(403, 'You do not have access to this question.');
+            }
         }
 
         // Check if question is used in any exams
@@ -272,11 +316,21 @@ class QuestionBankController extends Controller
     public function approve(Request $request, QuestionBank $question): RedirectResponse
     {
         $user = $request->user();
-        $organizationId = $user->currentOrganization?->id;
+        $currentOrganization = $user->currentOrganization;
+        $organizationId = $currentOrganization?->id;
+        $isNational = $currentOrganization?->type === 'national';
 
-        // Check access
-        if ($question->organization_id !== $organizationId) {
-            abort(403, 'You do not have access to this question.');
+        // Check access based on question owner type
+        if ($question->owner_type === 'national') {
+            // National questions can only be approved when in national organization context
+            if (! $isNational) {
+                abort(403, 'You do not have access to this question.');
+            }
+        } else {
+            // Institution questions can only be approved by users from the same organization
+            if ($question->organization_id !== $organizationId) {
+                abort(403, 'You do not have access to this question.');
+            }
         }
 
         $question->update([
@@ -294,17 +348,29 @@ class QuestionBankController extends Controller
     public function statistics(Request $request): Response
     {
         $user = $request->user();
-        $organizationId = $user->currentOrganization?->id;
+        $currentOrganization = $user->currentOrganization;
+        $organizationId = $currentOrganization?->id;
 
-        $totalQuestions = QuestionBank::forOrganization($organizationId)->count();
-        $approvedQuestions = QuestionBank::forOrganization($organizationId)->approved()->count();
+        // Determine scope based on current organization type
+        // If organization type is 'national' => show national questions, else institution questions
+        $isNational = $currentOrganization?->type === 'national';
 
-        $byType = QuestionBank::forOrganization($organizationId)
+        $baseQuery = QuestionBank::query();
+        if ($isNational) {
+            $baseQuery->national();
+        } else {
+            $baseQuery->institution()->forOrganization($organizationId);
+        }
+
+        $totalQuestions = (clone $baseQuery)->count();
+        $approvedQuestions = (clone $baseQuery)->approved()->count();
+
+        $byType = (clone $baseQuery)
             ->selectRaw('question_type, COUNT(*) as count')
             ->groupBy('question_type')
             ->get();
 
-        $topPerforming = QuestionBank::forOrganization($organizationId)
+        $topPerforming = (clone $baseQuery)
             ->with(['topic', 'statistics'])
             ->whereHas('statistics', function ($q) {
                 $q->where('times_answered', '>', 10);
@@ -313,7 +379,7 @@ class QuestionBankController extends Controller
             ->sortByDesc('statistics.success_rate')
             ->take(10);
 
-        $needsReview = QuestionBank::forOrganization($organizationId)
+        $needsReview = (clone $baseQuery)
             ->with(['topic', 'statistics'])
             ->whereHas('statistics', function ($q) {
                 $q->where('times_answered', '>', 10)
@@ -469,7 +535,7 @@ class QuestionBankController extends Controller
                         if (! $topic) {
                             $topic = \App\Models\Topic::create([
                                 'name' => $rowData['topic'],
-                                'slug' => $topicSlug . '-' . uniqid(),
+                                'slug' => $topicSlug.'-'.uniqid(),
                                 'organization_id' => $organizationId,
                             ]);
                         }
@@ -507,16 +573,16 @@ class QuestionBankController extends Controller
 
                     $successCount++;
                 } catch (\Exception $e) {
-                    $errors[] = "Row {$rowNumber}: " . $e->getMessage();
+                    $errors[] = "Row {$rowNumber}: ".$e->getMessage();
                 }
             }
 
             if (! empty($errors)) {
-                $errorMessage = "Imported {$successCount} questions with " . count($errors) . ' errors: ';
+                $errorMessage = "Imported {$successCount} questions with ".count($errors).' errors: ';
                 $errorMessage .= implode('; ', array_slice($errors, 0, 3));
 
                 if (count($errors) > 3) {
-                    $errorMessage .= '... and ' . (count($errors) - 3) . ' more errors.';
+                    $errorMessage .= '... and '.(count($errors) - 3).' more errors.';
                 }
 
                 return back()->with('warning', $errorMessage);
@@ -526,7 +592,7 @@ class QuestionBankController extends Controller
         } catch (\Exception $e) {
             \Log::error('Question Bank import failed', ['error' => $e->getMessage()]);
 
-            return back()->withErrors(['file' => 'Import failed: ' . $e->getMessage()]);
+            return back()->withErrors(['file' => 'Import failed: '.$e->getMessage()]);
         }
     }
 }

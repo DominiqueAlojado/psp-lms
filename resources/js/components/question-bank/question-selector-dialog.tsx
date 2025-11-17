@@ -73,6 +73,9 @@ export function QuestionSelectorDialog({ open, onOpenChange, assessmentId, onQue
             if (filters.type) params.append('type', filters.type);
             if (filters.approval) params.append('approval', filters.approval);
             
+            // The backend will automatically determine if we're in national context
+            // based on the current organization type, so we don't need to pass org param
+            
             const response = await fetch(`/question-bank/list?${params.toString()}`, {
                 headers: {
                     'X-Requested-With': 'XMLHttpRequest',
