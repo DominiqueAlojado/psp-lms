@@ -109,6 +109,41 @@ class InServiceExamCompletedAttemptsSeeder extends Seeder
             ->whereNull('started_at')
             ->delete();
 
+        // Also delete any started attempts with no answers (abandoned attempts)
+        NationalAttempt::where('assessment_id', $exam->id)
+            ->where('user_id', $user->id)
+            ->where('status', 'in_progress')
+            ->whereNotNull('started_at')
+            ->whereDoesntHave('answers')
+            ->delete();
+
+        // Get all questions with choices FIRST before creating attempt
+        $questions = $exam->questions()->with('choices')->orderBy('order')->get();
+
+        if ($questions->isEmpty()) {
+            $this->command->warn("No questions found for exam: {$exam->title}, skipping...");
+
+            return null;
+        }
+
+        // Validate we can create answers before creating the attempt
+        $validQuestionsCount = 0;
+        foreach ($questions as $question) {
+            if (in_array($question->question_type, ['multiple_choice', 'multiple_select', 'true_false'])) {
+                if ($question->choices->isNotEmpty()) {
+                    $validQuestionsCount++;
+                }
+            } else {
+                $validQuestionsCount++; // Other question types don't need choices
+            }
+        }
+
+        if ($validQuestionsCount === 0) {
+            $this->command->warn("No valid questions with choices found for exam: {$exam->title}, skipping...");
+
+            return null;
+        }
+
         // Create a new completed attempt
         $startedAt = now()->subMinutes(rand(30, 60)); // Started 30-60 minutes ago
         $submittedAt = $startedAt->copy()->addMinutes(rand(20, 50)); // Submitted 20-50 minutes after start
@@ -127,16 +162,6 @@ class InServiceExamCompletedAttemptsSeeder extends Seeder
             'user_agent' => 'Seeder/1.0',
             'last_activity_at' => $submittedAt,
         ]);
-
-        // Get all questions with choices
-        $questions = $exam->questions()->with('choices')->orderBy('order')->get();
-
-        if ($questions->isEmpty()) {
-            $this->command->warn("No questions found for exam: {$exam->title}");
-            $attempt->delete(); // Delete the attempt if no questions
-
-            return null;
-        }
 
         $answersCreated = 0;
 
