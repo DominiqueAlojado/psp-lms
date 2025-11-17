@@ -74,10 +74,8 @@ export default function InServiceExamsLayout({ children }: PropsWithChildren) {
 
                 <Separator className="my-6 lg:hidden" />
 
-                <div className={cn('flex-1', 'md:max-w-2xl')}>
-                    <section className={cn('space-y-12', 'max-w-xl')}>
-                        {children}
-                    </section>
+                <div className={cn('flex-1')}>
+                    <section className={cn('space-y-12')}>{children}</section>
                 </div>
             </div>
         </div>
