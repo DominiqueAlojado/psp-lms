@@ -21,7 +21,8 @@ class AssessmentReportController extends Controller
     {
         $user = $request->user();
         $organizationId = $user->current_organization_id;
-        $isSystemAdmin = $user->hasRole(['System Admin', 'BOP']);
+        // Check if user has permission to view all organizations' assessment reports
+        $canViewAllOrganizations = $user->hasPermissionTo('view-all-assessment-reports');
 
         // Get institution attempts
         $institutionQuery = InstitutionAttempt::query()
@@ -32,8 +33,8 @@ class AssessmentReportController extends Controller
             ])
             ->where('status', 'completed');
 
-        // System admins see all organizations, others see only their org
-        if (! $isSystemAdmin) {
+        // Users with system-wide permissions see all organizations, others see only their org
+        if (! $canViewAllOrganizations) {
             $institutionQuery->where('organization_id', $organizationId);
         }
 
@@ -55,8 +56,8 @@ class AssessmentReportController extends Controller
             }
         }
 
-        // Filter by institution (for system admins)
-        if ($request->filled('organization') && $isSystemAdmin) {
+        // Filter by institution (for users with system-wide permissions)
+        if ($request->filled('organization') && $canViewAllOrganizations) {
             $institutionQuery->where('organization_id', $request->input('organization'));
         }
 
@@ -114,8 +115,8 @@ class AssessmentReportController extends Controller
             ])
             ->whereIn('status', ['completed', 'graded']);
 
-        // System admins see all organizations, others see only their org
-        if (! $isSystemAdmin) {
+        // Users with system-wide permissions see all organizations, others see only their org
+        if (! $canViewAllOrganizations) {
             $nationalQuery->where('organization_id', $organizationId);
         }
 
@@ -137,8 +138,8 @@ class AssessmentReportController extends Controller
             }
         }
 
-        // Filter by institution (for system admins)
-        if ($request->filled('organization') && $isSystemAdmin) {
+        // Filter by institution (for users with system-wide permissions)
+        if ($request->filled('organization') && $canViewAllOrganizations) {
             $nationalQuery->where('organization_id', $request->input('organization'));
         }
 
@@ -219,16 +220,17 @@ class AssessmentReportController extends Controller
             'total' => $total,
             'current_page' => (int) $page,
             'last_page' => (int) ceil($total / $perPage),
+            'per_page' => $perPage,
         ];
 
         // Get filter options
-        $organizations = $isSystemAdmin
+        $organizations = $canViewAllOrganizations
             ? Organization::select('id', 'name')->orderBy('name')->get()
             : collect();
 
         // Get both institution and national exams
         $institutionExams = InstitutionAssessment::query()
-            ->when(! $isSystemAdmin, function ($q) use ($organizationId) {
+            ->when(! $canViewAllOrganizations, function ($q) use ($organizationId) {
                 $q->where('organization_id', $organizationId);
             })
             ->where('is_published', true)
@@ -257,7 +259,7 @@ class AssessmentReportController extends Controller
             ]),
             'organizations' => $organizations,
             'exams' => $exams,
-            'isSystemAdmin' => $isSystemAdmin,
+            'isSystemAdmin' => $canViewAllOrganizations,
         ]);
     }
 
@@ -268,7 +270,8 @@ class AssessmentReportController extends Controller
     {
         $user = $request->user();
         $organizationId = $user->current_organization_id;
-        $isSystemAdmin = $user->hasRole(['System Admin', 'BOP']);
+        // Check if user has permission to view all organizations' assessment reports
+        $canViewAllOrganizations = $user->hasPermissionTo('view-all-assessment-reports');
 
         $query = InstitutionAttempt::query()
             ->with([
@@ -278,8 +281,8 @@ class AssessmentReportController extends Controller
             ])
             ->where('status', 'in_progress');
 
-        // System admins see all, others see only their org
-        if (! $isSystemAdmin) {
+        // Users with system-wide permissions see all, others see only their org
+        if (! $canViewAllOrganizations) {
             $query->where('organization_id', $organizationId);
         }
 
@@ -289,7 +292,7 @@ class AssessmentReportController extends Controller
         }
 
         // Filter by institution
-        if ($request->filled('organization') && $isSystemAdmin) {
+        if ($request->filled('organization') && $canViewAllOrganizations) {
             $query->where('organization_id', $request->input('organization'));
         }
 
@@ -395,12 +398,12 @@ class AssessmentReportController extends Controller
             });
 
         // Filter options
-        $organizations = $isSystemAdmin
+        $organizations = $canViewAllOrganizations
             ? Organization::select('id', 'name')->orderBy('name')->get()
             : collect();
 
         $exams = InstitutionAssessment::query()
-            ->when(! $isSystemAdmin, function ($q) use ($organizationId) {
+            ->when(! $canViewAllOrganizations, function ($q) use ($organizationId) {
                 $q->where('organization_id', $organizationId);
             })
             ->where('is_published', true)
@@ -412,7 +415,7 @@ class AssessmentReportController extends Controller
             'filters' => $request->only(['exam', 'organization', 'activity_status']),
             'organizations' => $organizations,
             'exams' => $exams,
-            'isSystemAdmin' => $isSystemAdmin,
+            'isSystemAdmin' => $canViewAllOrganizations,
             'lastUpdate' => now()->format('h:i:s A'),
         ]);
     }

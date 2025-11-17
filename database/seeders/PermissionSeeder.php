@@ -94,6 +94,7 @@ class PermissionSeeder extends Seeder
             ['name' => 'export-reports', 'category' => 'Reports & Analytics', 'display_order' => 3],
             ['name' => 'view-analytics', 'category' => 'Reports & Analytics', 'display_order' => 4],
             ['name' => 'view-organization-analytics', 'category' => 'Reports & Analytics', 'display_order' => 5],
+            ['name' => 'view-all-assessment-reports', 'category' => 'Reports & Analytics', 'display_order' => 6],
 
             // Organization
             ['name' => 'manage-organization', 'category' => 'Organization', 'display_order' => 1],
@@ -140,6 +141,6 @@ class PermissionSeeder extends Seeder
             );
         }
 
-        $this->command->info('Created/Updated ' . count($permissions) . ' permissions with categories');
+        $this->command->info('Created/Updated '.count($permissions).' permissions with categories');
     }
 }

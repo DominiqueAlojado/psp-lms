@@ -57,6 +57,7 @@ interface PaginatedAttempts {
     total: number;
     current_page: number;
     last_page: number;
+    per_page: number;
 }
 
 interface Organization {
@@ -454,11 +455,144 @@ export default function ByResidentReport() {
                         </Card>
                     )}
 
-                    {/* Pagination Info */}
+                    {/* Pagination */}
                     {attempts.data.length > 0 && (
-                        <div className="text-center text-sm text-muted-foreground">
-                            Showing {attempts.data.length} of {attempts.total}{' '}
-                            results
+                        <div className="space-y-4">
+                            {/* Pagination Info */}
+                            <div className="text-center text-sm text-muted-foreground">
+                                Showing{' '}
+                                {(attempts.current_page - 1) *
+                                    attempts.per_page +
+                                    1}{' '}
+                                to{' '}
+                                {Math.min(
+                                    attempts.current_page * attempts.per_page,
+                                    attempts.total,
+                                )}{' '}
+                                of {attempts.total} results
+                            </div>
+
+                            {/* Pagination Controls */}
+                            {attempts.last_page > 1 && (
+                                <div className="flex items-center justify-center gap-2">
+                                    {/* Previous Button */}
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        disabled={attempts.current_page === 1}
+                                        onClick={() => {
+                                            router.get(
+                                                '/assessment-reports/by-resident',
+                                                {
+                                                    ...filters,
+                                                    page:
+                                                        attempts.current_page -
+                                                        1,
+                                                },
+                                                {
+                                                    preserveState: true,
+                                                    preserveScroll: true,
+                                                },
+                                            );
+                                        }}
+                                    >
+                                        Previous
+                                    </Button>
+
+                                    {/* Page Numbers */}
+                                    {Array.from(
+                                        { length: attempts.last_page },
+                                        (_, i) => i + 1,
+                                    )
+                                        .filter((page) => {
+                                            // Show first page, last page, current page, and pages around current
+                                            if (page === 1) {
+                                                return true;
+                                            }
+                                            if (page === attempts.last_page) {
+                                                return true;
+                                            }
+                                            if (
+                                                page >=
+                                                    attempts.current_page - 1 &&
+                                                page <=
+                                                    attempts.current_page + 1
+                                            ) {
+                                                return true;
+                                            }
+                                            return false;
+                                        })
+                                        .map((page, index, array) => {
+                                            // Add ellipsis if there's a gap
+                                            const showEllipsisBefore =
+                                                index > 0 &&
+                                                array[index - 1] < page - 1;
+                                            return (
+                                                <div
+                                                    key={page}
+                                                    className="flex items-center gap-2"
+                                                >
+                                                    {showEllipsisBefore && (
+                                                        <span className="px-2 text-muted-foreground">
+                                                            ...
+                                                        </span>
+                                                    )}
+                                                    <Button
+                                                        variant={
+                                                            page ===
+                                                            attempts.current_page
+                                                                ? 'default'
+                                                                : 'outline'
+                                                        }
+                                                        size="sm"
+                                                        onClick={() => {
+                                                            router.get(
+                                                                '/assessment-reports/by-resident',
+                                                                {
+                                                                    ...filters,
+                                                                    page,
+                                                                },
+                                                                {
+                                                                    preserveState: true,
+                                                                    preserveScroll: true,
+                                                                },
+                                                            );
+                                                        }}
+                                                    >
+                                                        {page}
+                                                    </Button>
+                                                </div>
+                                            );
+                                        })}
+
+                                    {/* Next Button */}
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        disabled={
+                                            attempts.current_page ===
+                                            attempts.last_page
+                                        }
+                                        onClick={() => {
+                                            router.get(
+                                                '/assessment-reports/by-resident',
+                                                {
+                                                    ...filters,
+                                                    page:
+                                                        attempts.current_page +
+                                                        1,
+                                                },
+                                                {
+                                                    preserveState: true,
+                                                    preserveScroll: true,
+                                                },
+                                            );
+                                        }}
+                                    >
+                                        Next
+                                    </Button>
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>
@@ -466,4 +600,3 @@ export default function ByResidentReport() {
         </AppLayout>
     );
 }
-
