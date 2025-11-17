@@ -526,9 +526,22 @@ class InstitutionExamController extends Controller
             $questionData['image_path'] = $imagePath;
         }
 
-        $isNewQuestion = empty($validated['id']);
+        // Check if this is a new question (no ID provided or ID is 0/null) or existing (ID provided)
+        // Handle cases where frontend might send id: 0, id: null, id: undefined, or no id field
+        $hasValidId = !empty($validated['id']) && $validated['id'] > 0;
+        $isNewQuestion = !$hasValidId;
+
+        \Log::info('Saving institution question', [
+            'is_new' => $isNewQuestion,
+            'has_id' => !empty($validated['id']),
+            'question_id' => $validated['id'] ?? 'none',
+            'question_id_type' => gettype($validated['id'] ?? null),
+            'assessment_id' => $assessment->id,
+            'question_text_preview' => substr($validated['question_text'] ?? '', 0, 50),
+        ]);
 
         // Update existing question or create new one
+        $question = null;
         if (! $isNewQuestion) {
             $question = $assessment->questions()->find($validated['id']);
             if ($question) {
@@ -568,9 +581,36 @@ class InstitutionExamController extends Controller
             ];
         }
 
-        // Save to question bank if this is a new question
-        if ($isNewQuestion) {
-            $this->saveToQuestionBank($question, $assessment, $choicesData, $imagePath, $request->user());
+        // Save to question bank if this is a new question OR if it doesn't exist in question bank yet
+        // Check if this question already exists in question bank (by text, owner, and organization)
+        $existsInBank = QuestionBank::where('question_text', $question->question_text)
+            ->where('owner_type', 'institution')
+            ->where('organization_id', $assessment->organization_id)
+            ->where('created_by', $request->user()->id)
+            ->exists();
+        
+        if ($isNewQuestion || !$existsInBank) {
+            try {
+                $this->saveToQuestionBank($question, $assessment, $choicesData, $imagePath, $request->user());
+                \Log::info('Institution question saved to question bank', [
+                    'question_id' => $question->id,
+                    'assessment_id' => $assessment->id,
+                    'is_new' => $isNewQuestion,
+                    'exists_in_bank' => $existsInBank,
+                ]);
+            } catch (\Exception $e) {
+                \Log::error('Failed to save institution question to question bank', [
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString(),
+                    'question_id' => $question->id,
+                ]);
+            }
+        } else {
+            \Log::info('Institution question not saved to question bank - already exists', [
+                'question_id' => $question->id,
+                'has_id' => !empty($validated['id']),
+                'exists_in_bank' => $existsInBank,
+            ]);
         }
 
         // Recalculate total points
@@ -744,6 +784,14 @@ class InstitutionExamController extends Controller
         $user
     ): void {
         try {
+            \Log::info('Attempting to save institution question to question bank', [
+                'question_text' => substr($question->question_text, 0, 50),
+                'topic_id' => $question->topic_id,
+                'organization_id' => $assessment->organization_id,
+                'user_id' => $user->id,
+                'choices_count' => count($choicesData),
+            ]);
+
             // Create question in question bank
             $bankQuestion = QuestionBank::create([
                 'organization_id' => $assessment->organization_id,
@@ -757,6 +805,8 @@ class InstitutionExamController extends Controller
                 'is_approved' => false, // New questions need approval
             ]);
 
+            \Log::info('Institution question bank entry created', ['bank_question_id' => $bankQuestion->id]);
+
             // Create choices in question bank
             foreach ($choicesData as $idx => $choice) {
                 $bankQuestion->choices()->create([
@@ -766,15 +816,25 @@ class InstitutionExamController extends Controller
                 ]);
             }
 
+            \Log::info('Choices created in institution question bank', ['count' => count($choicesData)]);
+
             // Initialize statistics
             $bankQuestion->statistics()->create([
                 'question_id' => $bankQuestion->id,
                 'scope' => 'institution',
                 'institution_id' => $assessment->organization_id,
             ]);
+
+            \Log::info('Statistics initialized for institution question bank entry');
         } catch (\Exception $e) {
             // Log error but don't fail the question creation
-            \Log::error('Failed to save question to question bank: ' . $e->getMessage());
+            \Log::error('Failed to save institution question to question bank', [
+                'error' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            throw $e; // Re-throw so outer try-catch can log it
         }
     }
 }
