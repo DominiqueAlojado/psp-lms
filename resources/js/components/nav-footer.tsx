@@ -6,8 +6,8 @@ import {
     SidebarMenuButton,
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
-import { resolveUrl } from '@/lib/utils';
-import { type NavItem } from '@/types';
+import { preserveOrgParam, resolveUrl } from '@/lib/utils';
+import { type NavItem, type SharedData } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
 import { type ComponentPropsWithoutRef } from 'react';
 
@@ -18,7 +18,9 @@ export function NavFooter({
 }: ComponentPropsWithoutRef<typeof SidebarGroup> & {
     items: NavItem[];
 }) {
-    const page = usePage();
+    const page = usePage<SharedData>();
+    const { auth } = page.props;
+    const currentOrgSlug = auth.currentOrganization?.slug;
 
     return (
         <SidebarGroup
@@ -29,11 +31,18 @@ export function NavFooter({
                 <SidebarMenu>
                     {items.map((item) => {
                         const isExternal =
-                            item.href.startsWith('http://') ||
-                            item.href.startsWith('https://');
+                            typeof item.href === 'string' &&
+                            (item.href.startsWith('http://') ||
+                                item.href.startsWith('https://'));
 
                         // Check if current page URL starts with this menu item's href
-                        const isActive = !isExternal && page.url.startsWith(resolveUrl(item.href));
+                        const isActive =
+                            !isExternal &&
+                            page.url.startsWith(resolveUrl(item.href));
+
+                        const hrefWithOrg = isExternal
+                            ? item.href
+                            : preserveOrgParam(item.href, currentOrgSlug);
 
                         return (
                             <SidebarMenuItem key={item.title}>
@@ -58,7 +67,7 @@ export function NavFooter({
                                             <span>{item.title}</span>
                                         </a>
                                     ) : (
-                                        <Link href={item.href}>
+                                        <Link href={hrefWithOrg}>
                                             {item.icon && (
                                                 <Icon
                                                     iconNode={item.icon}
