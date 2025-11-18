@@ -7,6 +7,9 @@ use App\Models\Institution\InstitutionAttempt;
 use App\Models\National\NationalAssessment;
 use App\Models\National\NationalAttempt;
 use App\Models\Organization;
+use App\Models\QuestionBank;
+use App\Models\QuestionBankStatistic;
+use App\Models\Topic;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -771,8 +774,8 @@ class AnalyticsController extends Controller
         $itemMean = array_sum($itemScores) / $n;
         $totalMean = array_sum($totalScores) / $n;
 
-        $itemStd = sqrt(array_sum(array_map(fn ($x) => pow($x - $itemMean, 2), $itemScores)) / ($n - 1));
-        $totalStd = sqrt(array_sum(array_map(fn ($x) => pow($x - $totalMean, 2), $totalScores)) / ($n - 1));
+        $itemStd = sqrt(array_sum(array_map(fn($x) => pow($x - $itemMean, 2), $itemScores)) / ($n - 1));
+        $totalStd = sqrt(array_sum(array_map(fn($x) => pow($x - $totalMean, 2), $totalScores)) / ($n - 1));
 
         if ($itemStd == 0 || $totalStd == 0) {
             return 0;
@@ -856,7 +859,190 @@ class AnalyticsController extends Controller
 
     public function questionBank(Request $request): Response
     {
-        return Inertia::render('analytics/question-bank', []);
+        $user = $request->user();
+        $currentOrganization = $user->currentOrganization;
+        $organizationId = $currentOrganization?->id;
+        $isNational = $currentOrganization?->type === 'national';
+
+        // Build query based on organization type
+        $query = QuestionBank::query()
+            ->with([
+                'topic:id,name',
+                'choices',
+                'creator:id,name',
+            ])
+            ->with(['allStatistics' => function ($q) use ($isNational, $organizationId) {
+                $q->where('scope', $isNational ? 'national' : 'institution');
+                if (! $isNational) {
+                    $q->where('institution_id', $organizationId);
+                } else {
+                    $q->whereNull('institution_id');
+                }
+            }])
+            ->withCount('assessments');
+
+        if ($isNational) {
+            $query->national();
+        } else {
+            $query->institution()->forOrganization($organizationId);
+        }
+
+        // Filters
+        if ($request->filled('search')) {
+            $query->where('question_text', 'like', '%' . $request->input('search') . '%');
+        }
+
+        if ($request->filled('topic')) {
+            $query->where('topic_id', $request->input('topic'));
+        }
+
+        if ($request->filled('question_type')) {
+            $query->where('question_type', $request->input('question_type'));
+        }
+
+        if ($request->filled('difficulty')) {
+            if ($request->input('difficulty') === 'computed') {
+                // Filter by computed difficulty from statistics
+                $query->whereHas('statistics', function ($q) use ($isNational, $organizationId) {
+                    $q->where('scope', $isNational ? 'national' : 'institution')
+                        ->whereNotNull('computed_difficulty');
+                    if (! $isNational) {
+                        $q->where('institution_id', $organizationId);
+                    }
+                });
+            } else {
+                $query->where('difficulty_level', $request->input('difficulty'));
+            }
+        }
+
+        if ($request->filled('approval_status')) {
+            if ($request->input('approval_status') === 'approved') {
+                $query->where('is_approved', true);
+            } elseif ($request->input('approval_status') === 'pending') {
+                $query->where('is_approved', false);
+            }
+        }
+
+        if ($request->filled('performance_filter')) {
+            $perfFilter = $request->input('performance_filter');
+            $query->whereHas('statistics', function ($q) use ($perfFilter, $isNational, $organizationId) {
+                $q->where('scope', $isNational ? 'national' : 'institution');
+                if (! $isNational) {
+                    $q->where('institution_id', $organizationId);
+                }
+                if ($perfFilter === 'needs_review') {
+                    // Low discrimination or high skip rate or low success rate
+                    $q->where(function ($subQ) {
+                        $subQ->where('discrimination_index', '<', 0.1)
+                            ->orWhere('skip_count', '>', 10)
+                            ->orWhere('success_rate', '<', 30);
+                    });
+                } elseif ($perfFilter === 'excellent') {
+                    // High discrimination and good success rate
+                    $q->where('discrimination_index', '>=', 0.3)
+                        ->where('success_rate', '>=', 40)
+                        ->where('success_rate', '<=', 70);
+                } elseif ($perfFilter === 'never_used') {
+                    $q->where('times_answered', 0);
+                }
+            });
+        }
+
+        // Sorting
+        $sortBy = $request->input('sort_by', 'created_at');
+        $sortOrder = $request->input('sort_order', 'desc');
+
+        if (in_array($sortBy, ['success_rate', 'discrimination_index', 'times_answered'])) {
+            $query->leftJoin('question_bank_statistics', function ($join) {
+                $join->on('question_bank.id', '=', 'question_bank_statistics.question_id');
+            })
+                ->select('question_bank.*')
+                ->orderBy("question_bank_statistics.{$sortBy}", $sortOrder);
+        } else {
+            $query->orderBy($sortBy, $sortOrder);
+        }
+
+        $questions = $query->paginate(20);
+
+        // Map questions to add the correct statistics for the current scope
+        $questions->getCollection()->transform(function ($question) use ($isNational, $organizationId) {
+            // Get the statistics for the current scope
+            $statistics = $question->allStatistics
+                ->where('scope', $isNational ? 'national' : 'institution')
+                ->when(! $isNational, function ($collection) use ($organizationId) {
+                    return $collection->where('institution_id', $organizationId);
+                })
+                ->when($isNational, function ($collection) {
+                    return $collection->whereNull('institution_id');
+                })
+                ->first();
+
+            // Add statistics as a single object (for backward compatibility with frontend)
+            $question->statistics = $statistics;
+
+            return $question;
+        });
+
+        // Calculate summary statistics
+        $summaryQuery = QuestionBank::query();
+        if ($isNational) {
+            $summaryQuery->national();
+        } else {
+            $summaryQuery->institution()->forOrganization($organizationId);
+        }
+
+        $totalQuestions = $summaryQuery->count();
+        $approvedQuestions = (clone $summaryQuery)->where('is_approved', true)->count();
+        $pendingQuestions = $totalQuestions - $approvedQuestions;
+
+        // Average success rate
+        $avgSuccessRate = QuestionBankStatistic::query()
+            ->where('scope', $isNational ? 'national' : 'institution')
+            ->when(! $isNational, function ($q) use ($organizationId) {
+                $q->where('institution_id', $organizationId);
+            })
+            ->whereHas('question', function ($q) use ($isNational, $organizationId) {
+                if ($isNational) {
+                    $q->national();
+                } else {
+                    $q->institution()->forOrganization($organizationId);
+                }
+            })
+            ->where('times_answered', '>', 0)
+            ->avg('success_rate');
+
+        // Get topics for filter - get topics from questions that exist
+        $topicIds = QuestionBank::query()
+            ->when($isNational, fn($q) => $q->national(), fn($q) => $q->institution()->forOrganization($organizationId))
+            ->whereNotNull('topic_id')
+            ->distinct()
+            ->pluck('topic_id');
+
+        $topics = Topic::whereIn('id', $topicIds)
+            ->select('id', 'name')
+            ->orderBy('name')
+            ->get();
+
+        return Inertia::render('analytics/question-bank', [
+            'questions' => $questions,
+            'summary' => [
+                'total_questions' => $totalQuestions,
+                'approved_questions' => $approvedQuestions,
+                'pending_questions' => $pendingQuestions,
+                'average_success_rate' => round($avgSuccessRate ?? 0, 2),
+            ],
+            'topics' => $topics,
+            'filters' => [
+                'search' => $request->input('search'),
+                'topic' => $request->input('topic'),
+                'question_type' => $request->input('question_type'),
+                'difficulty' => $request->input('difficulty'),
+                'approval_status' => $request->input('approval_status'),
+                'performance_filter' => $request->input('performance_filter'),
+                'sort_by' => $sortBy,
+                'sort_order' => $sortOrder,
+            ],
+        ]);
     }
 
     public function categoryPerformance(Request $request): Response
@@ -869,4 +1055,3 @@ class AnalyticsController extends Controller
         return Inertia::render('analytics/trends', []);
     }
 }
-

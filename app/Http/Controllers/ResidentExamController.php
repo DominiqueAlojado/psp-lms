@@ -7,6 +7,7 @@ use App\Models\Institution\InstitutionAssessment;
 use App\Models\Institution\InstitutionAttempt;
 use App\Models\National\NationalAssessment;
 use App\Models\National\NationalAttempt;
+use App\Models\QuestionBank;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -475,6 +476,60 @@ class ResidentExamController extends Controller
             // Auto-grade all answers
             foreach ($attemptModel->answers as $answer) {
                 $answer->autoGrade();
+            }
+
+            // Update question bank statistics for each answer
+            foreach ($attemptModel->answers as $answer) {
+                $question = $answer->question;
+                
+                if (! $question) {
+                    continue;
+                }
+
+                // Try exact match first
+                $bankQuestion = QuestionBank::where('question_text', $question->question_text)
+                    ->where('owner_type', 'national')
+                    ->first();
+
+                // If exact match fails, try fuzzy matching by question type and topic
+                if (! $bankQuestion && $question->topic) {
+                    $bankQuestion = QuestionBank::where('owner_type', 'national')
+                        ->where('question_type', $question->question_type)
+                        ->whereHas('topic', function ($q) use ($question) {
+                            $q->where('name', 'like', '%'.$question->topic.'%');
+                        })
+                        ->first();
+                }
+
+                // If still not found, try matching by first part of question text (first 50 chars)
+                if (! $bankQuestion) {
+                    $questionStart = mb_substr(trim($question->question_text), 0, 50);
+                    $bankQuestion = QuestionBank::where('owner_type', 'national')
+                        ->where('question_type', $question->question_type)
+                        ->whereRaw('SUBSTRING(TRIM(question_text), 1, 50) = ?', [$questionStart])
+                        ->first();
+                }
+
+                if ($bankQuestion) {
+                    // Calculate time spent (if available, otherwise use a default)
+                    $timeSeconds = null; // Could be calculated from attempt timestamps if needed
+                    
+                    // Update statistics for national scope
+                    $bankQuestion->updateStatistics(
+                        $answer->is_correct ?? false,
+                        $timeSeconds,
+                        'national',
+                        null
+                    );
+                } else {
+                    // Log when question is not found for debugging
+                    \Log::warning('Question bank entry not found for national question', [
+                        'question_id' => $question->id,
+                        'question_text_preview' => mb_substr($question->question_text, 0, 100),
+                        'question_type' => $question->question_type,
+                        'topic' => $question->topic,
+                    ]);
+                }
             }
 
             // Calculate final score and mark as completed

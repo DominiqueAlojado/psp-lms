@@ -85,6 +85,30 @@ class QuestionBank extends Model
         return $this->hasOne(QuestionBankStatistic::class, 'question_id');
     }
 
+    /**
+     * Get all statistics for this question (one per scope/institution).
+     */
+    public function allStatistics(): HasMany
+    {
+        return $this->hasMany(QuestionBankStatistic::class, 'question_id');
+    }
+
+    /**
+     * Get statistics for a specific scope and institution.
+     */
+    public function getStatisticsForScope(string $scope, ?int $institutionId = null): ?QuestionBankStatistic
+    {
+        return $this->allStatistics()
+            ->where('scope', $scope)
+            ->when($institutionId !== null, function ($q) use ($institutionId) {
+                $q->where('institution_id', $institutionId);
+            })
+            ->when($institutionId === null, function ($q) {
+                $q->whereNull('institution_id');
+            })
+            ->first();
+    }
+
     public function assessments(): BelongsToMany
     {
         return $this->belongsToMany(
@@ -107,9 +131,40 @@ class QuestionBank extends Model
     /**
      * Update statistics when exam is completed.
      */
-    public function updateStatistics(bool $wasCorrect, ?float $timeSeconds = null): void
+    public function updateStatistics(bool $wasCorrect, ?float $timeSeconds = null, ?string $scope = null, ?int $institutionId = null): void
     {
-        $stats = $this->statistics;
+        // Determine scope if not provided
+        if ($scope === null) {
+            $scope = $this->owner_type === 'national' ? 'national' : 'institution';
+        }
+        if ($institutionId === null && $scope === 'institution') {
+            $institutionId = $this->organization_id;
+        }
+
+        // Get or create statistics for the specific scope
+        $stats = $this->allStatistics()
+            ->where('scope', $scope)
+            ->when($institutionId !== null, function ($q) use ($institutionId) {
+                $q->where('institution_id', $institutionId);
+            })
+            ->when($institutionId === null, function ($q) {
+                $q->whereNull('institution_id');
+            })
+            ->first();
+
+        // Create statistics if they don't exist
+        if (! $stats) {
+            $stats = $this->allStatistics()->create([
+                'question_id' => $this->id,
+                'scope' => $scope,
+                'institution_id' => $institutionId,
+                'times_used_in_exams' => 0,
+                'times_answered' => 0,
+                'times_correct' => 0,
+                'times_incorrect' => 0,
+                'success_rate' => 0,
+            ]);
+        }
 
         $stats->increment('times_answered');
 
