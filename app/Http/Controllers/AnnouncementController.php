@@ -115,6 +115,12 @@ class AnnouncementController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $user = $request->user();
+
+        // Check if user has permission to create announcements
+        if (! $user->hasPermissionTo('create-announcements')) {
+            abort(403, 'You do not have permission to create announcements.');
+        }
+
         $canCreateSystem = $user->hasPermissionTo('create-system-announcements');
 
         $validated = $request->validate([
@@ -156,6 +162,12 @@ class AnnouncementController extends Controller
     public function update(Request $request, Announcement $announcement): RedirectResponse
     {
         $user = $request->user();
+
+        // Check if user has permission to edit announcements
+        if (! $user->hasPermissionTo('edit-announcements')) {
+            abort(403, 'You do not have permission to edit announcements.');
+        }
+
         $canCreateSystem = $user->hasPermissionTo('create-system-announcements');
 
         // Verify user has access (either their org or system admin)
@@ -205,6 +217,12 @@ class AnnouncementController extends Controller
     public function destroy(Announcement $announcement): RedirectResponse
     {
         $user = auth()->user();
+
+        // Check if user has permission to delete announcements
+        if (! $user->hasPermissionTo('delete-announcements')) {
+            abort(403, 'You do not have permission to delete announcements.');
+        }
+
         $canCreateSystem = $user->hasPermissionTo('create-system-announcements');
 
         // Verify user has access (either their org or system admin)

@@ -20,34 +20,43 @@ class GradebookController extends Controller
     public function myGrades(Request $request): Response
     {
         $user = $request->user();
+        $currentOrganization = $user->currentOrganization;
+        $isNational = $currentOrganization?->type === 'national';
 
-        // Get all completed attempts for this user
-        $institutionAttempts = InstitutionAttempt::with(['assessment'])
-            ->where('user_id', $user->id)
-            ->where('status', 'completed')
-            ->orderBy('submitted_at', 'desc')
-            ->get();
+        // Get completed attempts based on current organization type
+        $institutionAttempts = collect();
+        $nationalAttempts = collect();
 
-        $nationalAttempts = NationalAttempt::with(['assessment'])
-            ->where('user_id', $user->id)
-            ->where('status', 'completed')
-            ->orderBy('submitted_at', 'desc')
-            ->get();
+        if ($isNational) {
+            // If current org is national, only show national/in-service exams
+            $nationalAttempts = NationalAttempt::with(['assessment'])
+                ->where('user_id', $user->id)
+                ->where('status', 'completed')
+                ->orderBy('submitted_at', 'desc')
+                ->get();
+        } else {
+            // If current org is institution, only show institution exams
+            $institutionAttempts = InstitutionAttempt::with(['assessment'])
+                ->where('user_id', $user->id)
+                ->where('status', 'completed')
+                ->orderBy('submitted_at', 'desc')
+                ->get();
+        }
 
-        // Calculate overall statistics
-        $stats = $this->calculateUserStats($user->id);
+        // Calculate overall statistics (filtered by org type)
+        $stats = $this->calculateUserStats($user->id, $isNational);
 
-        // Performance by category (Institution exams only)
-        $categoryPerformance = $this->getCategoryPerformance($user->id);
+        // Performance by category (only for institution exams)
+        $categoryPerformance = $isNational ? [] : $this->getCategoryPerformance($user->id);
 
-        // Performance by topic
-        $topicPerformance = $this->getTopicPerformance($user->id);
+        // Performance by topic (filtered by org type)
+        $topicPerformance = $this->getTopicPerformance($user->id, $isNational);
 
-        // Recent exam history
-        $recentExams = $this->getRecentExams($user->id);
+        // Recent exam history (filtered by org type)
+        $recentExams = $this->getRecentExams($user->id, 10, $isNational);
 
-        // Performance trends (last 10 exams)
-        $performanceTrend = $this->getPerformanceTrend($user->id);
+        // Performance trends (filtered by org type)
+        $performanceTrend = $this->getPerformanceTrend($user->id, $isNational);
 
         return Inertia::render('gradebook/my-grades', [
             'stats' => $stats,
@@ -171,15 +180,22 @@ class GradebookController extends Controller
     /**
      * Calculate overall statistics for a user.
      */
-    private function calculateUserStats(int $userId): array
+    private function calculateUserStats(int $userId, bool $isNational = false): array
     {
-        $institutionAttempts = InstitutionAttempt::where('user_id', $userId)
-            ->where('status', 'completed')
-            ->get();
+        $institutionAttempts = collect();
+        $nationalAttempts = collect();
 
-        $nationalAttempts = NationalAttempt::where('user_id', $userId)
-            ->where('status', 'completed')
-            ->get();
+        if ($isNational) {
+            // Only get national attempts
+            $nationalAttempts = NationalAttempt::where('user_id', $userId)
+                ->where('status', 'completed')
+                ->get();
+        } else {
+            // Only get institution attempts
+            $institutionAttempts = InstitutionAttempt::where('user_id', $userId)
+                ->where('status', 'completed')
+                ->get();
+        }
 
         $allAttempts = $institutionAttempts->merge($nationalAttempts);
 
@@ -250,48 +266,54 @@ class GradebookController extends Controller
     /**
      * Get performance breakdown by topic.
      */
-    private function getTopicPerformance(int $userId): array
+    private function getTopicPerformance(int $userId, bool $isNational = false): array
     {
-        // Get all answers with their questions and topics for this user
-        $institutionTopics = DB::table('institution_answers as a')
-            ->join('institution_attempts as at', 'a.attempt_id', '=', 'at.id')
-            ->join('institution_questions as q', 'a.question_id', '=', 'q.id')
-            ->leftJoin('topics as t', 'q.topic_id', '=', 't.id')
-            ->where('at.user_id', $userId)
-            ->where('at.status', 'completed')
-            ->whereNull('a.deleted_at')
-            ->whereNull('at.deleted_at')
-            ->whereNull('q.deleted_at')
-            ->select([
-                't.name as topic_name',
-                't.id as topic_id',
-                DB::raw('COUNT(*) as total_questions'),
-                DB::raw('SUM(CASE WHEN a.is_correct THEN 1 ELSE 0 END) as correct_answers'),
-                DB::raw('SUM(a.points_earned) as total_points_earned'),
-                DB::raw('SUM(q.points) as total_possible_points'),
-            ])
-            ->groupBy('t.id', 't.name')
-            ->get();
+        $institutionTopics = collect();
+        $nationalTopics = collect();
 
-        $nationalTopics = DB::table('national_answers as a')
-            ->join('national_attempts as at', 'a.attempt_id', '=', 'at.id')
-            ->join('national_questions as q', 'a.question_id', '=', 'q.id')
-            ->leftJoin('topics as t', 'q.topic_id', '=', 't.id')
-            ->where('at.user_id', $userId)
-            ->where('at.status', 'completed')
-            ->whereNull('a.deleted_at')
-            ->whereNull('at.deleted_at')
-            ->whereNull('q.deleted_at')
-            ->select([
-                't.name as topic_name',
-                't.id as topic_id',
-                DB::raw('COUNT(*) as total_questions'),
-                DB::raw('SUM(CASE WHEN a.is_correct THEN 1 ELSE 0 END) as correct_answers'),
-                DB::raw('SUM(a.points_earned) as total_points_earned'),
-                DB::raw('SUM(q.points) as total_possible_points'),
-            ])
-            ->groupBy('t.id', 't.name')
-            ->get();
+        if ($isNational) {
+            // Only get national topics
+            $nationalTopics = DB::table('national_answers as a')
+                ->join('national_attempts as at', 'a.attempt_id', '=', 'at.id')
+                ->join('national_questions as q', 'a.question_id', '=', 'q.id')
+                ->leftJoin('topics as t', 'q.topic_id', '=', 't.id')
+                ->where('at.user_id', $userId)
+                ->where('at.status', 'completed')
+                ->whereNull('a.deleted_at')
+                ->whereNull('at.deleted_at')
+                ->whereNull('q.deleted_at')
+                ->select([
+                    't.name as topic_name',
+                    't.id as topic_id',
+                    DB::raw('COUNT(*) as total_questions'),
+                    DB::raw('SUM(CASE WHEN a.is_correct THEN 1 ELSE 0 END) as correct_answers'),
+                    DB::raw('SUM(a.points_earned) as total_points_earned'),
+                    DB::raw('SUM(q.points) as total_possible_points'),
+                ])
+                ->groupBy('t.id', 't.name')
+                ->get();
+        } else {
+            // Only get institution topics
+            $institutionTopics = DB::table('institution_answers as a')
+                ->join('institution_attempts as at', 'a.attempt_id', '=', 'at.id')
+                ->join('institution_questions as q', 'a.question_id', '=', 'q.id')
+                ->leftJoin('topics as t', 'q.topic_id', '=', 't.id')
+                ->where('at.user_id', $userId)
+                ->where('at.status', 'completed')
+                ->whereNull('a.deleted_at')
+                ->whereNull('at.deleted_at')
+                ->whereNull('q.deleted_at')
+                ->select([
+                    't.name as topic_name',
+                    't.id as topic_id',
+                    DB::raw('COUNT(*) as total_questions'),
+                    DB::raw('SUM(CASE WHEN a.is_correct THEN 1 ELSE 0 END) as correct_answers'),
+                    DB::raw('SUM(a.points_earned) as total_points_earned'),
+                    DB::raw('SUM(q.points) as total_possible_points'),
+                ])
+                ->groupBy('t.id', 't.name')
+                ->get();
+        }
 
         // Merge and aggregate both
         $topicMap = [];
@@ -343,68 +365,88 @@ class GradebookController extends Controller
     /**
      * Get recent exam attempts.
      */
-    private function getRecentExams(int $userId, int $limit = 10): array
+    private function getRecentExams(int $userId, int $limit = 10, bool $isNational = false): array
     {
-        $institutionAttempts = InstitutionAttempt::with('assessment')
-            ->where('user_id', $userId)
-            ->where('status', 'completed')
-            ->get()
-            ->map(fn ($attempt) => [
-                'type' => 'Institution',
-                'title' => $attempt->assessment->title,
-                'category' => $attempt->assessment->exam_category,
-                'score' => $attempt->score,
-                'total_points' => $attempt->total_points,
-                'percentage' => round($attempt->percentage, 2),
-                'passed' => $attempt->isPassed(),
-                'submitted_at' => $attempt->submitted_at,
-            ]);
+        $institutionAttempts = collect();
+        $nationalAttempts = collect();
 
-        $nationalAttempts = NationalAttempt::with('assessment')
-            ->where('user_id', $userId)
-            ->where('status', 'completed')
-            ->get()
-            ->map(fn ($attempt) => [
-                'type' => 'National',
-                'title' => $attempt->assessment->title,
-                'category' => 'In-Service Exam',
-                'score' => $attempt->score,
-                'total_points' => $attempt->total_points,
-                'percentage' => round($attempt->percentage, 2),
-                'passed' => $attempt->isPassed(),
-                'submitted_at' => $attempt->submitted_at,
-            ]);
+        if ($isNational) {
+            // Only get national attempts
+            $nationalAttempts = NationalAttempt::with('assessment')
+                ->where('user_id', $userId)
+                ->where('status', 'completed')
+                ->get()
+                ->filter(fn ($attempt) => $attempt->assessment !== null) // Filter out attempts without assessments
+                ->map(fn ($attempt) => [
+                    'type' => 'National',
+                    'title' => $attempt->assessment->title,
+                    'category' => 'In-Service Exam',
+                    'score' => $attempt->score,
+                    'total_points' => $attempt->total_points,
+                    'percentage' => round($attempt->percentage, 2),
+                    'passed' => $attempt->isPassed(),
+                    'submitted_at' => $attempt->submitted_at,
+                ]);
+        } else {
+            // Only get institution attempts
+            $institutionAttempts = InstitutionAttempt::with('assessment')
+                ->where('user_id', $userId)
+                ->where('status', 'completed')
+                ->get()
+                ->filter(fn ($attempt) => $attempt->assessment !== null) // Filter out attempts without assessments
+                ->map(fn ($attempt) => [
+                    'type' => 'Institution',
+                    'title' => $attempt->assessment->title,
+                    'category' => $attempt->assessment->exam_category,
+                    'score' => $attempt->score,
+                    'total_points' => $attempt->total_points,
+                    'percentage' => round($attempt->percentage, 2),
+                    'passed' => $attempt->isPassed(),
+                    'submitted_at' => $attempt->submitted_at,
+                ]);
+        }
 
-        return $institutionAttempts
-            ->merge($nationalAttempts)
-            ->sortByDesc('submitted_at')
+        // Merge both collections and sort by submitted_at (handle nulls)
+        $allAttempts = $institutionAttempts->concat($nationalAttempts)
+            ->sortByDesc(function ($attempt) {
+                return $attempt['submitted_at'] ?? '1970-01-01 00:00:00';
+            })
             ->take($limit)
             ->values()
             ->toArray();
+
+        return $allAttempts;
     }
 
     /**
      * Get performance trend over time.
      */
-    private function getPerformanceTrend(int $userId): array
+    private function getPerformanceTrend(int $userId, bool $isNational = false): array
     {
-        $institutionAttempts = InstitutionAttempt::where('user_id', $userId)
-            ->where('status', 'completed')
-            ->select(['id', 'score', 'total_points', 'submitted_at'])
-            ->get()
-            ->map(fn ($attempt) => [
-                'date' => $attempt->submitted_at?->format('Y-m-d'),
-                'percentage' => round($attempt->percentage, 2),
-            ]);
+        $institutionAttempts = collect();
+        $nationalAttempts = collect();
 
-        $nationalAttempts = NationalAttempt::where('user_id', $userId)
-            ->where('status', 'completed')
-            ->select(['id', 'score', 'total_points', 'submitted_at'])
-            ->get()
-            ->map(fn ($attempt) => [
-                'date' => $attempt->submitted_at?->format('Y-m-d'),
-                'percentage' => round($attempt->percentage, 2),
-            ]);
+        if ($isNational) {
+            // Only get national attempts
+            $nationalAttempts = NationalAttempt::where('user_id', $userId)
+                ->where('status', 'completed')
+                ->select(['id', 'score', 'total_points', 'submitted_at'])
+                ->get()
+                ->map(fn ($attempt) => [
+                    'date' => $attempt->submitted_at?->format('Y-m-d'),
+                    'percentage' => round($attempt->percentage, 2),
+                ]);
+        } else {
+            // Only get institution attempts
+            $institutionAttempts = InstitutionAttempt::where('user_id', $userId)
+                ->where('status', 'completed')
+                ->select(['id', 'score', 'total_points', 'submitted_at'])
+                ->get()
+                ->map(fn ($attempt) => [
+                    'date' => $attempt->submitted_at?->format('Y-m-d'),
+                    'percentage' => round($attempt->percentage, 2),
+                ]);
+        }
 
         return $institutionAttempts
             ->merge($nationalAttempts)

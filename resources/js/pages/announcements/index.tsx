@@ -9,12 +9,12 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
+import { usePermissions } from '@/hooks/use-permissions';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
-import { usePermissions } from '@/hooks/use-permissions';
 import { Head, Link, usePage } from '@inertiajs/react';
-import { AlertCircle, Eye, Megaphone, Pin, Settings } from 'lucide-react';
 import axios from 'axios';
+import { AlertCircle, Eye, Megaphone, Pin, Settings } from 'lucide-react';
 import { useState } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -70,7 +70,7 @@ const priorityIcons = {
 export default function AnnouncementsIndex() {
     const { announcements } = usePage<PageProps>().props;
     const { hasPermission } = usePermissions();
-    const canManage = hasPermission('view-announcements');
+    const canManage = hasPermission('create-announcements');
     const [selectedAnnouncement, setSelectedAnnouncement] =
         useState<Announcement | null>(null);
 
@@ -218,11 +218,15 @@ export default function AnnouncementsIndex() {
                                                 <div className="flex flex-wrap items-center gap-3 pt-2 text-sm text-muted-foreground">
                                                     <span>
                                                         Posted by{' '}
-                                                        {announcement.created_by}
+                                                        {
+                                                            announcement.created_by
+                                                        }
                                                     </span>
                                                     <span>•</span>
                                                     <span>
-                                                        {announcement.created_at}
+                                                        {
+                                                            announcement.created_at
+                                                        }
                                                     </span>
                                                     {announcement.expires_at && (
                                                         <>
@@ -301,7 +305,8 @@ export default function AnnouncementsIndex() {
                                             {selectedAnnouncement.priority.toUpperCase()}
                                         </Badge>
                                     )}
-                                    {selectedAnnouncement.scope === 'system' && (
+                                    {selectedAnnouncement.scope ===
+                                        'system' && (
                                         <Badge variant="outline">
                                             System-wide
                                         </Badge>
@@ -323,13 +328,17 @@ export default function AnnouncementsIndex() {
                                         {selectedAnnouncement.created_by}
                                     </span>
                                     <span>•</span>
-                                    <span>{selectedAnnouncement.created_at}</span>
+                                    <span>
+                                        {selectedAnnouncement.created_at}
+                                    </span>
                                     {selectedAnnouncement.expires_at && (
                                         <>
                                             <span>•</span>
                                             <span>
                                                 Expires on{' '}
-                                                {selectedAnnouncement.expires_at}
+                                                {
+                                                    selectedAnnouncement.expires_at
+                                                }
                                             </span>
                                         </>
                                     )}
@@ -371,4 +380,3 @@ export default function AnnouncementsIndex() {
         </AppLayout>
     );
 }
-

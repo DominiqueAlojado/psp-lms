@@ -94,7 +94,7 @@ export default function ResourcesIndex() {
                         title="Learning Resources"
                         description="Study materials, notes, and references for your training"
                     />
-                    {hasPermission('view-materials') && (
+                    {hasPermission('upload-materials') && (
                         <Button asChild variant="outline">
                             <Link href="/resources/manage">
                                 <Settings className="mr-2 h-4 w-4" />
