@@ -19,24 +19,33 @@ class AnalyticsController extends Controller
     public function examAnalytics(Request $request): Response
     {
         $user = $request->user();
+        $currentOrganization = $user->currentOrganization;
         $organizationId = $user->current_organization_id;
         $canViewAllOrganizations = $user->hasPermissionTo('view-all-assessment-reports');
+        $isNational = $currentOrganization?->type === 'national';
 
-        // Get all exams for the dropdown
-        $institutionExams = InstitutionAssessment::query()
-            ->select('id', 'title', 'exam_category', 'total_points', 'passing_score')
-            ->when(! $canViewAllOrganizations, function ($q) use ($organizationId) {
-                $q->where('organization_id', $organizationId);
-            })
-            ->where('is_published', true)
-            ->orderBy('title')
-            ->get();
+        // Get exams based on current organization type
+        $institutionExams = collect();
+        $nationalExams = collect();
 
-        $nationalExams = NationalAssessment::query()
-            ->select('id', 'title', 'category', 'total_points', 'passing_score')
-            ->where('is_published', true)
-            ->orderBy('title')
-            ->get();
+        if ($isNational) {
+            // If current org is national, show only national exams
+            $nationalExams = NationalAssessment::query()
+                ->select('id', 'title', 'category', 'total_points', 'passing_score')
+                ->where('is_published', true)
+                ->orderBy('title')
+                ->get();
+        } else {
+            // If current org is institution, show only institution exams
+            $institutionExams = InstitutionAssessment::query()
+                ->select('id', 'title', 'exam_category', 'total_points', 'passing_score')
+                ->when(! $canViewAllOrganizations, function ($q) use ($organizationId) {
+                    $q->where('organization_id', $organizationId);
+                })
+                ->where('is_published', true)
+                ->orderBy('title')
+                ->get();
+        }
 
         // Combine exams with prefixes
         $exams = collect();
@@ -414,6 +423,427 @@ class AnalyticsController extends Controller
         }
 
         return array_values($yearLevelStats);
+    }
+
+    /**
+     * Display item analysis report for a specific exam.
+     */
+    public function itemAnalysis(Request $request): Response
+    {
+        $user = $request->user();
+        $currentOrganization = $user->currentOrganization;
+        $organizationId = $user->current_organization_id;
+        $canViewAllOrganizations = $user->hasPermissionTo('view-all-assessment-reports');
+        $isNational = $currentOrganization?->type === 'national';
+
+        // Get exams based on current organization type
+        $institutionExams = collect();
+        $nationalExams = collect();
+
+        if ($isNational) {
+            // If current org is national, show only national exams
+            $nationalExams = NationalAssessment::query()
+                ->select('id', 'title', 'category', 'total_points', 'passing_score')
+                ->where('is_published', true)
+                ->orderBy('title')
+                ->get();
+        } else {
+            // If current org is institution, show only institution exams
+            $institutionExams = InstitutionAssessment::query()
+                ->select('id', 'title', 'exam_category', 'total_points', 'passing_score')
+                ->when(! $canViewAllOrganizations, function ($q) use ($organizationId) {
+                    $q->where('organization_id', $organizationId);
+                })
+                ->where('is_published', true)
+                ->orderBy('title')
+                ->get();
+        }
+
+        // Combine exams with prefixes
+        $exams = collect();
+        foreach ($institutionExams as $exam) {
+            $exams->push([
+                'id' => 'institution_' . $exam->id,
+                'title' => $exam->title,
+                'category' => $exam->exam_category,
+                'type' => 'institution',
+            ]);
+        }
+        foreach ($nationalExams as $exam) {
+            $exams->push([
+                'id' => 'national_' . $exam->id,
+                'title' => $exam->title,
+                'category' => $exam->category,
+                'type' => 'national',
+            ]);
+        }
+
+        // Get organizations for filter (if user has permission)
+        $organizations = collect();
+        if ($canViewAllOrganizations) {
+            $organizations = Organization::where('type', 'institution')
+                ->where('is_active', true)
+                ->select('id', 'name')
+                ->orderBy('name')
+                ->get();
+        }
+
+        // If exam is selected, calculate item analysis
+        $itemAnalysis = null;
+        if ($request->filled('exam')) {
+            $examFilter = $request->input('exam');
+            $itemAnalysis = $this->calculateItemAnalysis($examFilter, $organizationId, $canViewAllOrganizations, $request);
+        }
+
+        return Inertia::render('analytics/item-analysis', [
+            'exams' => $exams,
+            'organizations' => $organizations,
+            'itemAnalysis' => $itemAnalysis,
+            'filters' => [
+                'exam' => $request->input('exam'),
+                'organization' => $request->input('organization'),
+                'date_from' => $request->input('date_from'),
+                'date_to' => $request->input('date_to'),
+            ],
+        ]);
+    }
+
+    /**
+     * Calculate item analysis for a specific exam.
+     */
+    private function calculateItemAnalysis(
+        string $examFilter,
+        ?int $organizationId,
+        bool $canViewAllOrganizations,
+        Request $request
+    ): array {
+        $isInstitution = str_starts_with($examFilter, 'institution_');
+        $isNational = str_starts_with($examFilter, 'national_');
+
+        if ($isInstitution) {
+            $examId = (int) str_replace('institution_', '', $examFilter);
+            return $this->calculateInstitutionItemAnalysis($examId, $organizationId, $canViewAllOrganizations, $request);
+        } elseif ($isNational) {
+            $examId = (int) str_replace('national_', '', $examFilter);
+            return $this->calculateNationalItemAnalysis($examId, $canViewAllOrganizations, $request);
+        }
+
+        return [];
+    }
+
+    /**
+     * Calculate item analysis for institution exam.
+     */
+    private function calculateInstitutionItemAnalysis(
+        int $examId,
+        ?int $organizationId,
+        bool $canViewAllOrganizations,
+        Request $request
+    ): array {
+        $exam = InstitutionAssessment::with(['questions.choices', 'questions.topic'])
+            ->findOrFail($examId);
+
+        $query = InstitutionAttempt::query()
+            ->where('assessment_id', $examId)
+            ->where('status', 'completed')
+            ->with(['answers', 'user']);
+
+        if (! $canViewAllOrganizations) {
+            $query->where('organization_id', $organizationId);
+        }
+
+        if ($request->filled('organization')) {
+            $query->where('organization_id', $request->input('organization'));
+        }
+
+        if ($request->filled('date_from')) {
+            $query->whereDate('submitted_at', '>=', $request->input('date_from'));
+        }
+        if ($request->filled('date_to')) {
+            $query->whereDate('submitted_at', '<=', $request->input('date_to'));
+        }
+
+        $attempts = $query->get();
+
+        if ($attempts->isEmpty()) {
+            return [
+                'exam' => [
+                    'id' => $exam->id,
+                    'title' => $exam->title,
+                    'category' => $exam->exam_category,
+                ],
+                'total_attempts' => 0,
+                'items' => [],
+            ];
+        }
+
+        return $this->performItemAnalysis($attempts, $exam);
+    }
+
+    /**
+     * Calculate item analysis for national exam.
+     */
+    private function calculateNationalItemAnalysis(
+        int $examId,
+        bool $canViewAllOrganizations,
+        Request $request
+    ): array {
+        $exam = NationalAssessment::with(['questions.choices'])
+            ->findOrFail($examId);
+
+        $query = NationalAttempt::query()
+            ->where('assessment_id', $examId)
+            ->where('status', 'completed')
+            ->with(['answers', 'user']);
+
+        if ($request->filled('date_from')) {
+            $query->whereDate('submitted_at', '>=', $request->input('date_from'));
+        }
+        if ($request->filled('date_to')) {
+            $query->whereDate('submitted_at', '<=', $request->input('date_to'));
+        }
+
+        $attempts = $query->get();
+
+        if ($attempts->isEmpty()) {
+            return [
+                'exam' => [
+                    'id' => $exam->id,
+                    'title' => $exam->title,
+                    'category' => $exam->category,
+                ],
+                'total_attempts' => 0,
+                'items' => [],
+            ];
+        }
+
+        return $this->performItemAnalysis($attempts, $exam);
+    }
+
+    /**
+     * Perform item analysis calculations.
+     */
+    private function performItemAnalysis($attempts, $exam): array
+    {
+        $totalAttempts = $attempts->count();
+        $items = [];
+
+        // Calculate total scores for discrimination
+        $totalScores = $attempts->pluck('score')->toArray();
+        sort($totalScores);
+        $highGroupThreshold = (int) ceil($totalAttempts * 0.27); // Top 27%
+        $lowGroupThreshold = (int) floor($totalAttempts * 0.27); // Bottom 27%
+        $highGroupScores = array_slice($totalScores, -$highGroupThreshold);
+        $lowGroupScores = array_slice($totalScores, 0, $lowGroupThreshold);
+        $highGroupMin = $highGroupScores[0] ?? 0;
+        $lowGroupMax = $lowGroupScores[count($lowGroupScores) - 1] ?? 0;
+
+        foreach ($exam->questions as $question) {
+            $correctCount = 0;
+            $highGroupCorrect = 0;
+            $lowGroupCorrect = 0;
+            $highGroupCount = 0;
+            $lowGroupCount = 0;
+            $itemScores = [];
+            $distractorAnalysis = [];
+
+            // Initialize distractor analysis for each choice
+            foreach ($question->choices as $choice) {
+                $distractorAnalysis[$choice->id] = [
+                    'choice_id' => $choice->id,
+                    'choice_text' => $choice->choice_text,
+                    'is_correct' => $choice->is_correct,
+                    'count' => 0,
+                    'percentage' => 0,
+                ];
+            }
+
+            foreach ($attempts as $attempt) {
+                $answer = $attempt->answers->firstWhere('question_id', $question->id);
+                $isCorrect = $answer?->is_correct ?? false;
+                $itemScore = $isCorrect ? $question->points : 0;
+                $itemScores[] = $itemScore;
+
+                if ($isCorrect) {
+                    $correctCount++;
+                }
+
+                // Track distractor selection
+                if ($answer && isset($answer->answer_data['choice_id'])) {
+                    $choiceId = $answer->answer_data['choice_id'];
+                    if (isset($distractorAnalysis[$choiceId])) {
+                        $distractorAnalysis[$choiceId]['count']++;
+                    }
+                } elseif ($answer && isset($answer->answer_data['choice_ids'])) {
+                    // For multiple select, count each selected choice
+                    foreach ($answer->answer_data['choice_ids'] as $choiceId) {
+                        if (isset($distractorAnalysis[$choiceId])) {
+                            $distractorAnalysis[$choiceId]['count']++;
+                        }
+                    }
+                }
+
+                // Group for discrimination
+                if ($attempt->score >= $highGroupMin) {
+                    $highGroupCount++;
+                    if ($isCorrect) {
+                        $highGroupCorrect++;
+                    }
+                } elseif ($attempt->score <= $lowGroupMax) {
+                    $lowGroupCount++;
+                    if ($isCorrect) {
+                        $lowGroupCorrect++;
+                    }
+                }
+            }
+
+            // Calculate metrics
+            $difficultyIndex = $totalAttempts > 0 ? ($correctCount / $totalAttempts) : 0;
+            $discriminationIndex = 0;
+            if ($highGroupCount > 0 && $lowGroupCount > 0) {
+                $highGroupProportion = $highGroupCorrect / $highGroupCount;
+                $lowGroupProportion = $lowGroupCorrect / $lowGroupCount;
+                $discriminationIndex = $highGroupProportion - $lowGroupProportion;
+            }
+
+            // Calculate point biserial correlation
+            $pointBiserial = $this->calculatePointBiserial($itemScores, $totalScores);
+
+            // Update distractor percentages
+            foreach ($distractorAnalysis as &$distractor) {
+                $distractor['percentage'] = $totalAttempts > 0
+                    ? round(($distractor['count'] / $totalAttempts) * 100, 2)
+                    : 0;
+            }
+
+            // Determine item quality
+            $quality = $this->assessItemQuality($difficultyIndex, $discriminationIndex, $pointBiserial);
+
+            // Handle topic differently for institution vs national
+            $topicName = 'No Topic';
+            if ($exam instanceof InstitutionAssessment) {
+                $topicName = $question->topic?->name ?? 'No Topic';
+            } elseif ($exam instanceof NationalAssessment) {
+                $topicName = $question->topic ?? 'No Topic';
+            }
+
+            $items[] = [
+                'question_id' => $question->id,
+                'question_text' => $question->question_text,
+                'question_type' => $question->question_type,
+                'topic' => $topicName,
+                'points' => $question->points,
+                'order' => $question->order,
+                'difficulty_index' => round($difficultyIndex, 3),
+                'difficulty_label' => $this->getDifficultyLabel($difficultyIndex),
+                'discrimination_index' => round($discriminationIndex, 3),
+                'discrimination_label' => $this->getDiscriminationLabel($discriminationIndex),
+                'point_biserial' => round($pointBiserial, 3),
+                'correct_count' => $correctCount,
+                'incorrect_count' => $totalAttempts - $correctCount,
+                'total_responses' => $totalAttempts,
+                'quality' => $quality,
+                'distractor_analysis' => array_values($distractorAnalysis),
+            ];
+        }
+
+        return [
+            'exam' => [
+                'id' => $exam->id,
+                'title' => $exam->title,
+                'category' => $exam instanceof InstitutionAssessment ? $exam->exam_category : $exam->category,
+            ],
+            'total_attempts' => $totalAttempts,
+            'items' => $items,
+        ];
+    }
+
+    /**
+     * Calculate point biserial correlation.
+     */
+    private function calculatePointBiserial(array $itemScores, array $totalScores): float
+    {
+        if (count($itemScores) !== count($totalScores) || count($itemScores) < 2) {
+            return 0;
+        }
+
+        $n = count($itemScores);
+        $itemMean = array_sum($itemScores) / $n;
+        $totalMean = array_sum($totalScores) / $n;
+
+        $itemStd = sqrt(array_sum(array_map(fn ($x) => pow($x - $itemMean, 2), $itemScores)) / ($n - 1));
+        $totalStd = sqrt(array_sum(array_map(fn ($x) => pow($x - $totalMean, 2), $totalScores)) / ($n - 1));
+
+        if ($itemStd == 0 || $totalStd == 0) {
+            return 0;
+        }
+
+        $covariance = 0;
+        for ($i = 0; $i < $n; $i++) {
+            $covariance += ($itemScores[$i] - $itemMean) * ($totalScores[$i] - $totalMean);
+        }
+        $covariance /= ($n - 1);
+
+        return $covariance / ($itemStd * $totalStd);
+    }
+
+    /**
+     * Get difficulty label.
+     */
+    private function getDifficultyLabel(float $difficulty): string
+    {
+        if ($difficulty >= 0.8) {
+            return 'Very Easy';
+        } elseif ($difficulty >= 0.6) {
+            return 'Easy';
+        } elseif ($difficulty >= 0.4) {
+            return 'Moderate';
+        } elseif ($difficulty >= 0.2) {
+            return 'Difficult';
+        } else {
+            return 'Very Difficult';
+        }
+    }
+
+    /**
+     * Get discrimination label.
+     */
+    private function getDiscriminationLabel(float $discrimination): string
+    {
+        if ($discrimination >= 0.4) {
+            return 'Excellent';
+        } elseif ($discrimination >= 0.3) {
+            return 'Good';
+        } elseif ($discrimination >= 0.2) {
+            return 'Fair';
+        } elseif ($discrimination >= 0.1) {
+            return 'Poor';
+        } else {
+            return 'Very Poor';
+        }
+    }
+
+    /**
+     * Assess overall item quality.
+     */
+    private function assessItemQuality(float $difficulty, float $discrimination, float $pointBiserial): string
+    {
+        // Good items: moderate difficulty (0.3-0.7) and good discrimination (>0.2)
+        if ($difficulty >= 0.3 && $difficulty <= 0.7 && $discrimination >= 0.2) {
+            return 'Good';
+        }
+
+        // Acceptable: moderate difficulty or good discrimination
+        if (($difficulty >= 0.3 && $difficulty <= 0.7) || $discrimination >= 0.2) {
+            return 'Acceptable';
+        }
+
+        // Needs review: too easy/difficult or poor discrimination
+        if ($discrimination < 0.1) {
+            return 'Needs Review';
+        }
+
+        return 'Marginal';
     }
 
     /**

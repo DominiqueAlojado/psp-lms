@@ -243,6 +243,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('analytics/exam-analytics', [App\Http\Controllers\AnalyticsController::class, 'examAnalytics'])
         ->middleware('permission:view-analytics')
         ->name('analytics.exam-analytics');
+    Route::get('analytics/item-analysis', [App\Http\Controllers\AnalyticsController::class, 'itemAnalysis'])
+        ->middleware('permission:view-analytics')
+        ->name('analytics.item-analysis');
     Route::get('analytics/topic-performance', [App\Http\Controllers\AnalyticsController::class, 'topicPerformance'])
         ->middleware('permission:view-analytics')
         ->name('analytics.topic-performance');

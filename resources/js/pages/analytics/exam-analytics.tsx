@@ -92,11 +92,9 @@ interface ExamAnalytics {
 
 interface PageProps {
     exams: Exam[];
-    organizations: Organization[];
     analytics: ExamAnalytics | null;
     filters: {
         exam?: string;
-        organization?: number;
         date_from?: string;
         date_to?: string;
     };
@@ -104,14 +102,11 @@ interface PageProps {
 }
 
 export default function ExamAnalytics() {
-    const { exams, organizations, analytics, filters } =
+    const { exams, analytics, filters } =
         usePage<PageProps>().props;
 
     const [examFilter, setExamFilter] = useState(
         filters.exam?.toString() || '',
-    );
-    const [organizationFilter, setOrganizationFilter] = useState(
-        filters.organization?.toString() || '',
     );
     const [dateFrom, setDateFrom] = useState(filters.date_from || '');
     const [dateTo, setDateTo] = useState(filters.date_to || '');
@@ -121,7 +116,6 @@ export default function ExamAnalytics() {
             '/analytics/exam-analytics',
             {
                 exam: examFilter || undefined,
-                organization: organizationFilter || undefined,
                 date_from: dateFrom || undefined,
                 date_to: dateTo || undefined,
             },
@@ -131,14 +125,13 @@ export default function ExamAnalytics() {
 
     const clearFilters = () => {
         setExamFilter('');
-        setOrganizationFilter('');
         setDateFrom('');
         setDateTo('');
         router.get('/analytics/exam-analytics', {}, { preserveState: true });
     };
 
     const hasActiveFilters =
-        filters.exam || filters.organization || filters.date_from || filters.date_to;
+        filters.exam || filters.date_from || filters.date_to;
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -160,7 +153,7 @@ export default function ExamAnalytics() {
                             <CardTitle>Filters</CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+                            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                                 <div className="space-y-2">
                                     <Label htmlFor="exam">Select Exam</Label>
                                     <Select
@@ -193,35 +186,6 @@ export default function ExamAnalytics() {
                                         </SelectContent>
                                     </Select>
                                 </div>
-
-                                {organizations.length > 0 && (
-                                    <div className="space-y-2">
-                                        <Label htmlFor="organization">
-                                            Organization
-                                        </Label>
-                                        <Select
-                                            value={organizationFilter}
-                                            onValueChange={setOrganizationFilter}
-                                        >
-                                            <SelectTrigger id="organization">
-                                                <SelectValue placeholder="All Organizations" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="all">
-                                                    All Organizations
-                                                </SelectItem>
-                                                {organizations.map((org) => (
-                                                    <SelectItem
-                                                        key={org.id}
-                                                        value={org.id.toString()}
-                                                    >
-                                                        {org.name}
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                )}
 
                                 <div className="space-y-2">
                                     <Label htmlFor="date_from">Date From</Label>

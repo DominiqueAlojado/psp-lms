@@ -15,6 +15,11 @@ const sidebarNavItems: NavItem[] = [
         icon: null,
     },
     {
+        title: 'Item Analysis',
+        href: { url: '/analytics/item-analysis', method: 'get' },
+        icon: null,
+    },
+    {
         title: 'Topic Performance',
         href: { url: '/analytics/topic-performance', method: 'get' },
         icon: null,
