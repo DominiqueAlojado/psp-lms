@@ -200,6 +200,112 @@ class QuestionBank extends Model
 
         $stats->statistics_updated_at = now();
         $stats->save();
+
+        // Recalculate discrimination index when we have enough attempts (minimum 10)
+        if ($stats->times_answered >= 10) {
+            $this->recalculateDiscriminationIndex($stats, $scope, $institutionId);
+        }
+    }
+
+    /**
+     * Recalculate discrimination index for a question statistic.
+     * Discrimination index = (High group correct % - Low group correct %)
+     * High group = top 27% of exam scores, Low group = bottom 27% of exam scores
+     */
+    public function recalculateDiscriminationIndex($stats, string $scope, ?int $institutionId): void
+    {
+        // Get all exam attempts that include this question
+        $attempts = collect();
+        
+        if ($scope === 'national') {
+            // Get national exam attempts
+            $nationalAttempts = \App\Models\National\NationalAttempt::query()
+                ->where('status', 'completed')
+                ->with(['answers', 'assessment.questions'])
+                ->get()
+                ->filter(function ($attempt) {
+                    // Check if this question is in the exam
+                    return $attempt->assessment->questions->contains(function ($q) {
+                        return $q->question_text === $this->question_text;
+                    });
+                });
+
+            foreach ($nationalAttempts as $attempt) {
+                $question = $attempt->assessment->questions->firstWhere('question_text', $this->question_text);
+                if ($question) {
+                    $answer = $attempt->answers->firstWhere('question_id', $question->id);
+                    $attempts->push([
+                        'score' => $attempt->score,
+                        'is_correct' => $answer?->is_correct ?? false,
+                    ]);
+                }
+            }
+        } else {
+            // Get institution exam attempts
+            // First, get all assessments that use this question from question bank
+            $assessmentsWithQuestion = \App\Models\Institution\InstitutionAssessment::query()
+                ->whereHas('questions', function ($q) {
+                    $q->where('question_text', $this->question_text);
+                })
+                ->when($institutionId !== null, function ($q) use ($institutionId) {
+                    $q->where('organization_id', $institutionId);
+                })
+                ->pluck('id');
+
+            if ($assessmentsWithQuestion->isNotEmpty()) {
+                $institutionAttempts = \App\Models\Institution\InstitutionAttempt::query()
+                    ->where('status', 'completed')
+                    ->whereIn('assessment_id', $assessmentsWithQuestion)
+                    ->with(['answers', 'assessment.questions'])
+                    ->get();
+
+                foreach ($institutionAttempts as $attempt) {
+                    $question = $attempt->assessment->questions->firstWhere('question_text', $this->question_text);
+                    if ($question) {
+                        $answer = $attempt->answers->firstWhere('question_id', $question->id);
+                        $attempts->push([
+                            'score' => $attempt->score,
+                            'is_correct' => $answer?->is_correct ?? false,
+                        ]);
+                    }
+                }
+            }
+        }
+
+        if ($attempts->count() < 10) {
+            return; // Need at least 10 attempts to calculate discrimination
+        }
+
+        // Sort attempts by total score
+        $sortedAttempts = $attempts->sortBy('score')->values();
+        $totalAttempts = $sortedAttempts->count();
+
+        // Calculate high and low group thresholds (top 27% and bottom 27%)
+        $highGroupThreshold = (int) ceil($totalAttempts * 0.27);
+        $lowGroupThreshold = (int) floor($totalAttempts * 0.27);
+
+        if ($highGroupThreshold < 1 || $lowGroupThreshold < 1) {
+            return; // Need at least one attempt in each group
+        }
+
+        // Get high and low groups
+        $highGroup = $sortedAttempts->slice(-$highGroupThreshold);
+        $lowGroup = $sortedAttempts->slice(0, $lowGroupThreshold);
+
+        // Calculate correct answers in each group
+        $highGroupCorrect = $highGroup->where('is_correct', true)->count();
+        $lowGroupCorrect = $lowGroup->where('is_correct', true)->count();
+
+        // Calculate discrimination index
+        $highGroupProportion = $highGroup->count() > 0 ? $highGroupCorrect / $highGroup->count() : 0;
+        $lowGroupProportion = $lowGroup->count() > 0 ? $lowGroupCorrect / $lowGroup->count() : 0;
+        
+        $discriminationIndex = $highGroupProportion - $lowGroupProportion;
+
+        // Update statistics
+        $stats->discrimination_index = round($discriminationIndex, 2);
+        $stats->statistics_updated_at = now();
+        $stats->save();
     }
 
     /**

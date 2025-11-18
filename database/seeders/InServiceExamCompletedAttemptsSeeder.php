@@ -86,6 +86,64 @@ class InServiceExamCompletedAttemptsSeeder extends Seeder
         $this->command->info("✅ Created {$totalAttemptsCreated} completed exam attempts");
         $this->command->info("✅ Created {$totalAnswersCreated} answers");
         $this->command->info('✅ Question bank statistics have been updated');
+
+        // Recalculate discrimination indices for all questions with enough attempts
+        $this->command->newLine();
+        $this->command->info('Calculating discrimination indices...');
+        $this->recalculateDiscriminationIndices();
+    }
+
+    /**
+     * Recalculate discrimination indices for all questions with 10+ attempts.
+     */
+    private function recalculateDiscriminationIndices(): void
+    {
+        // Process national questions
+        $nationalStats = \App\Models\QuestionBankStatistic::where('scope', 'national')
+            ->whereNull('institution_id')
+            ->where('times_answered', '>=', 10)
+            ->with('question')
+            ->get();
+
+        // Process institution questions
+        $institutionStats = \App\Models\QuestionBankStatistic::where('scope', 'institution')
+            ->whereNotNull('institution_id')
+            ->where('times_answered', '>=', 10)
+            ->with('question')
+            ->get();
+
+        $totalStats = $nationalStats->count() + $institutionStats->count();
+        $this->command->info("Found {$totalStats} question statistics with 10+ attempts to process ({$nationalStats->count()} national, {$institutionStats->count()} institution).");
+
+        $processed = 0;
+        $updated = 0;
+
+        // Process all statistics (national and institution)
+        foreach ($nationalStats->concat($institutionStats) as $stat) {
+            $question = $stat->question;
+
+            if (! $question) {
+                continue;
+            }
+
+            try {
+                // Call the public method to recalculate discrimination index
+                $question->recalculateDiscriminationIndex($stat, $stat->scope, $stat->institution_id);
+
+                $processed++;
+
+                // Reload to check if it was updated
+                $stat->refresh();
+                if ($stat->discrimination_index !== null) {
+                    $updated++;
+                }
+            } catch (\Exception $e) {
+                $this->command->warn("Failed to calculate discrimination for question {$question->id}: {$e->getMessage()}");
+                continue;
+            }
+        }
+
+        $this->command->info("✅ Processed {$processed} statistics and updated discrimination indices for {$updated} questions.");
     }
 
     /**

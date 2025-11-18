@@ -452,6 +452,62 @@ class ResidentExamController extends Controller
                 $answer->autoGrade();
             }
 
+            // Update question bank statistics for each answer
+            $organizationId = $attemptModel->organization_id;
+            foreach ($attemptModel->answers as $answer) {
+                $question = $answer->question;
+
+                if (! $question) {
+                    continue;
+                }
+
+                // Try exact match first
+                $bankQuestion = QuestionBank::where('question_text', $question->question_text)
+                    ->where('owner_type', 'institution')
+                    ->where('organization_id', $organizationId)
+                    ->first();
+
+                // If exact match fails, try fuzzy matching by question type and topic
+                if (! $bankQuestion && $question->topic_id) {
+                    $bankQuestion = QuestionBank::where('owner_type', 'institution')
+                        ->where('organization_id', $organizationId)
+                        ->where('question_type', $question->question_type)
+                        ->where('topic_id', $question->topic_id)
+                        ->first();
+                }
+
+                // If still not found, try matching by first part of question text (first 50 chars)
+                if (! $bankQuestion) {
+                    $questionStart = mb_substr(trim($question->question_text), 0, 50);
+                    $bankQuestion = QuestionBank::where('owner_type', 'institution')
+                        ->where('organization_id', $organizationId)
+                        ->where('question_type', $question->question_type)
+                        ->whereRaw('SUBSTRING(TRIM(question_text), 1, 50) = ?', [$questionStart])
+                        ->first();
+                }
+
+                if ($bankQuestion) {
+                    // Calculate time spent (if available, otherwise use a default)
+                    $timeSeconds = null; // Could be calculated from attempt timestamps if needed
+
+                    // Update statistics for institution scope
+                    $bankQuestion->updateStatistics(
+                        $answer->is_correct ?? false,
+                        $timeSeconds,
+                        'institution',
+                        $organizationId
+                    );
+                } else {
+                    // Log when question is not found for debugging
+                    \Log::warning('Question bank entry not found for institution question', [
+                        'question_id' => $question->id,
+                        'question_text_preview' => mb_substr($question->question_text, 0, 100),
+                        'question_type' => $question->question_type,
+                        'organization_id' => $organizationId,
+                    ]);
+                }
+            }
+
             // Calculate final score and mark as completed
             $attemptModel->calculateScore();
             $attemptModel->update([
