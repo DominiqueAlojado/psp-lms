@@ -54,10 +54,10 @@ class DiagnoseAbandonedAttemptsSeeder extends Seeder
             $this->command->line("    Exam: {$attempt->assessment->title}");
             $this->command->line("    Status: {$attempt->status}");
             $this->command->line("    Started: {$attempt->started_at}");
-            $this->command->line("    Submitted: ".($attempt->submitted_at ?? 'Not submitted'));
-            $this->command->line("    User Agent: ".($attempt->user_agent ?? 'N/A'));
-            $this->command->line("    IP: ".($attempt->ip_address ?? 'N/A'));
-            $this->command->line("    Age: ".$attempt->started_at->diffForHumans());
+            $this->command->line("    Submitted: " . ($attempt->submitted_at ?? 'Not submitted'));
+            $this->command->line("    User Agent: " . ($attempt->user_agent ?? 'N/A'));
+            $this->command->line("    IP: " . ($attempt->ip_address ?? 'N/A'));
+            $this->command->line("    Age: " . $attempt->started_at->diffForHumans());
             $this->command->newLine();
         }
 
@@ -76,4 +76,3 @@ class DiagnoseAbandonedAttemptsSeeder extends Seeder
         $this->command->warn('💡 Tip: Run CleanupAbandonedAttemptsSeeder to clean up these attempts.');
     }
 }
-
