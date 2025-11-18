@@ -27,6 +27,7 @@ import {
     GraduationCap,
     HelpCircle,
     LayoutGrid,
+    LineChart,
     Megaphone,
     Pencil,
     UserCog,
@@ -89,6 +90,12 @@ const mainNavItems: NavItem[] = [
         href: '/assessment-reports',
         icon: BarChart3,
         permission: 'view-assessment-reports',
+    },
+    {
+        title: 'Analytics',
+        href: '/analytics',
+        icon: LineChart,
+        permission: 'view-analytics',
     },
     {
         title: 'In-Service Exams',

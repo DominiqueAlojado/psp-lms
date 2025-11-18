@@ -238,6 +238,24 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->middleware('permission:view-assessment-reports')
         ->name('assessment-reports.live-monitor'); // Real-time monitoring
 
+    // Analytics
+    Route::redirect('analytics', '/analytics/exam-analytics')->name('analytics');
+    Route::get('analytics/exam-analytics', [App\Http\Controllers\AnalyticsController::class, 'examAnalytics'])
+        ->middleware('permission:view-analytics')
+        ->name('analytics.exam-analytics');
+    Route::get('analytics/topic-performance', [App\Http\Controllers\AnalyticsController::class, 'topicPerformance'])
+        ->middleware('permission:view-analytics')
+        ->name('analytics.topic-performance');
+    Route::get('analytics/question-bank', [App\Http\Controllers\AnalyticsController::class, 'questionBank'])
+        ->middleware('permission:view-analytics')
+        ->name('analytics.question-bank');
+    Route::get('analytics/category-performance', [App\Http\Controllers\AnalyticsController::class, 'categoryPerformance'])
+        ->middleware('permission:view-analytics')
+        ->name('analytics.category-performance');
+    Route::get('analytics/trends', [App\Http\Controllers\AnalyticsController::class, 'trends'])
+        ->middleware('permission:view-analytics')
+        ->name('analytics.trends');
+
     // Institution Exams
     Route::get('assessments', [App\Http\Controllers\InstitutionExamController::class, 'index'])
         ->middleware('permission:view-assessments')
