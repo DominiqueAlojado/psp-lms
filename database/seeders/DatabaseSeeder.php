@@ -27,6 +27,7 @@ class DatabaseSeeder extends Seeder
             ResidentSeeder::class,       // Seed residents with user accounts
             TopicSeeder::class,          // Create topics for questions
             QuestionBankSeeder::class,   // Populate the question bank (institution questions)
+            InstitutionQuestionBankSeeder::class, // Populate question bank for all institutions
             InServiceQuestionBankSeeder::class, // Populate national in-service exam question bank
             InServiceExamSeeder::class,  // Seed in-service (national) exams
             InServiceExamPart2Seeder::class, // Seed additional in-service exams (Part 2) with questions from bank
