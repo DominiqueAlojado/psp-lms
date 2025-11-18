@@ -835,19 +835,24 @@ class ResidentExamController extends Controller
     public function index(Request $request): Response
     {
         $user = $request->user();
+        $currentOrganization = $user->currentOrganization;
         $organizationId = $user->current_organization_id;
+        $isNational = $currentOrganization?->type === 'national';
 
         $availableExams = [];
         $upcomingExams = [];
         $completedExams = [];
 
-        // Get Institution Exams from the resident's organization
-        $institutionExams = InstitutionAssessment::query()
-            ->where('organization_id', $organizationId)
-            ->where('is_published', true)
-            ->with(['questions'])
-            ->withCount('questions')
-            ->get();
+        // Get Institution Exams only if current organization is NOT national
+        $institutionExams = collect();
+        if (! $isNational) {
+            $institutionExams = InstitutionAssessment::query()
+                ->where('organization_id', $organizationId)
+                ->where('is_published', true)
+                ->with(['questions'])
+                ->withCount('questions')
+                ->get();
+        }
 
         foreach ($institutionExams as $exam) {
             // Check for in-progress attempt (must have started_at to be considered in progress)
@@ -896,12 +901,15 @@ class ResidentExamController extends Controller
             }
         }
 
-        // Get National In-Service Exams (if applicable)
-        $nationalExams = NationalAssessment::query()
-            ->where('is_published', true)
-            ->with(['questions'])
-            ->withCount('questions')
-            ->get();
+        // Get National In-Service Exams only if current organization IS national
+        $nationalExams = collect();
+        if ($isNational) {
+            $nationalExams = NationalAssessment::query()
+                ->where('is_published', true)
+                ->with(['questions'])
+                ->withCount('questions')
+                ->get();
+        }
 
         foreach ($nationalExams as $exam) {
             // Check for in-progress attempt (must have started_at to be considered in progress)
