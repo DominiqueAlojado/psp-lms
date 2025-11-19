@@ -19,8 +19,8 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
-import AppLayout from '@/layouts/app-layout';
 import AnalyticsLayout from '@/layouts/analytics/analytics-layout';
+import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, router, usePage } from '@inertiajs/react';
 import { BarChart3, CheckCircle2, TrendingUp, Users, X } from 'lucide-react';
@@ -38,11 +38,6 @@ interface Exam {
     title: string;
     category: string | null;
     type: 'institution' | 'national';
-}
-
-interface Organization {
-    id: number;
-    name: string;
 }
 
 interface QuestionStat {
@@ -102,8 +97,7 @@ interface PageProps {
 }
 
 export default function ExamAnalytics() {
-    const { exams, analytics, filters } =
-        usePage<PageProps>().props;
+    const { exams, analytics, filters } = usePage<PageProps>().props;
 
     const [examFilter, setExamFilter] = useState(
         filters.exam?.toString() || '',
@@ -138,7 +132,7 @@ export default function ExamAnalytics() {
             <Head title="Exam Analytics" />
 
             <AnalyticsLayout>
-                <div className="flex h-full flex-1 flex-col gap-6 overflow-x-auto rounded-xl p-6">
+                <div className="space-y-6">
                     {/* Header */}
                     <div className="flex items-start justify-between gap-4">
                         <HeadingSmall
@@ -173,7 +167,8 @@ export default function ExamAnalytics() {
                                                     value={exam.id}
                                                 >
                                                     {exam.title}
-                                                    {exam.type === 'national' && (
+                                                    {exam.type ===
+                                                        'national' && (
                                                         <Badge
                                                             variant="secondary"
                                                             className="ml-2"
@@ -300,16 +295,24 @@ export default function ExamAnalytics() {
                             {analytics.question_stats.length > 0 && (
                                 <Card>
                                     <CardHeader>
-                                        <CardTitle>Question Performance</CardTitle>
+                                        <CardTitle>
+                                            Question Performance
+                                        </CardTitle>
                                     </CardHeader>
                                     <CardContent>
                                         <div className="overflow-x-auto">
                                             <Table>
                                                 <TableHeader>
                                                     <TableRow>
-                                                        <TableHead>Question</TableHead>
-                                                        <TableHead>Topic</TableHead>
-                                                        <TableHead>Points</TableHead>
+                                                        <TableHead>
+                                                            Question
+                                                        </TableHead>
+                                                        <TableHead>
+                                                            Topic
+                                                        </TableHead>
+                                                        <TableHead>
+                                                            Points
+                                                        </TableHead>
                                                         <TableHead>
                                                             Times Answered
                                                         </TableHead>
@@ -359,14 +362,15 @@ export default function ExamAnalytics() {
                                                                             70
                                                                                 ? 'default'
                                                                                 : stat.success_rate >=
-                                                                                  50
+                                                                                    50
                                                                                   ? 'secondary'
                                                                                   : 'destructive'
                                                                         }
                                                                     >
                                                                         {
                                                                             stat.success_rate
-                                                                        }%
+                                                                        }
+                                                                        %
                                                                     </Badge>
                                                                 </TableCell>
                                                             </TableRow>
@@ -390,7 +394,9 @@ export default function ExamAnalytics() {
                                             <Table>
                                                 <TableHeader>
                                                     <TableRow>
-                                                        <TableHead>Topic</TableHead>
+                                                        <TableHead>
+                                                            Topic
+                                                        </TableHead>
                                                         <TableHead>
                                                             Questions
                                                         </TableHead>
@@ -415,7 +421,9 @@ export default function ExamAnalytics() {
                                                                 key={index}
                                                             >
                                                                 <TableCell>
-                                                                    {topic.topic}
+                                                                    {
+                                                                        topic.topic
+                                                                    }
                                                                 </TableCell>
                                                                 <TableCell>
                                                                     {
@@ -444,14 +452,15 @@ export default function ExamAnalytics() {
                                                                             70
                                                                                 ? 'default'
                                                                                 : topic.success_rate >=
-                                                                                  50
+                                                                                    50
                                                                                   ? 'secondary'
                                                                                   : 'destructive'
                                                                         }
                                                                     >
                                                                         {
                                                                             topic.success_rate
-                                                                        }%
+                                                                        }
+                                                                        %
                                                                     </Badge>
                                                                 </TableCell>
                                                             </TableRow>
@@ -525,14 +534,15 @@ export default function ExamAnalytics() {
                                                                             70
                                                                                 ? 'default'
                                                                                 : stat.pass_rate >=
-                                                                                  50
+                                                                                    50
                                                                                   ? 'secondary'
                                                                                   : 'destructive'
                                                                         }
                                                                     >
                                                                         {
                                                                             stat.pass_rate
-                                                                        }%
+                                                                        }
+                                                                        %
                                                                     </Badge>
                                                                 </TableCell>
                                                             </TableRow>
@@ -563,4 +573,3 @@ export default function ExamAnalytics() {
         </AppLayout>
     );
 }
-

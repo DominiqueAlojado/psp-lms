@@ -19,18 +19,17 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
-import AppLayout from '@/layouts/app-layout';
 import AnalyticsLayout from '@/layouts/analytics/analytics-layout';
+import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, router, usePage } from '@inertiajs/react';
 import {
     BarChart3,
+    CheckCircle2,
     ChevronDown,
     ChevronUp,
-    X,
-    AlertTriangle,
-    CheckCircle2,
     HelpCircle,
+    X,
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -46,11 +45,6 @@ interface Exam {
     title: string;
     category: string | null;
     type: 'institution' | 'national';
-}
-
-interface Organization {
-    id: number;
-    name: string;
 }
 
 interface Distractor {
@@ -102,8 +96,7 @@ interface PageProps {
 }
 
 export default function ItemAnalysis() {
-    const { exams, itemAnalysis, filters } =
-        usePage<PageProps>().props;
+    const { exams, itemAnalysis, filters } = usePage<PageProps>().props;
 
     const [examFilter, setExamFilter] = useState(
         filters.exam?.toString() || '',
@@ -132,9 +125,7 @@ export default function ItemAnalysis() {
     };
 
     const hasActiveFilters =
-        filters.exam ||
-        filters.date_from ||
-        filters.date_to;
+        filters.exam || filters.date_from || filters.date_to;
 
     const toggleItem = (questionId: number) => {
         const newExpanded = new Set(expandedItems);
@@ -186,7 +177,7 @@ export default function ItemAnalysis() {
             <Head title="Item Analysis" />
 
             <AnalyticsLayout>
-                <div className="flex h-full flex-1 flex-col gap-6 overflow-x-auto rounded-xl p-6">
+                <div className="space-y-6">
                     {/* Header */}
                     <div className="flex items-start justify-between gap-4">
                         <HeadingSmall
@@ -218,7 +209,8 @@ export default function ItemAnalysis() {
                                                     value={exam.id}
                                                 >
                                                     {exam.title}
-                                                    {exam.type === 'national' && (
+                                                    {exam.type ===
+                                                        'national' && (
                                                         <Badge
                                                             variant="secondary"
                                                             className="ml-2"
@@ -332,8 +324,12 @@ export default function ItemAnalysis() {
                                             <TableHeader>
                                                 <TableRow>
                                                     <TableHead className="w-12"></TableHead>
-                                                    <TableHead>Item #</TableHead>
-                                                    <TableHead>Question</TableHead>
+                                                    <TableHead>
+                                                        Item #
+                                                    </TableHead>
+                                                    <TableHead>
+                                                        Question
+                                                    </TableHead>
                                                     <TableHead>Topic</TableHead>
                                                     <TableHead>
                                                         Difficulty
@@ -381,9 +377,7 @@ export default function ItemAnalysis() {
                                                                     </Button>
                                                                 </TableCell>
                                                                 <TableCell>
-                                                                    {
-                                                                        item.order
-                                                                    }
+                                                                    {item.order}
                                                                 </TableCell>
                                                                 <TableCell className="max-w-md truncate">
                                                                     {
@@ -460,13 +454,16 @@ export default function ItemAnalysis() {
                                                             ) && (
                                                                 <TableRow>
                                                                     <TableCell
-                                                                        colSpan={9}
+                                                                        colSpan={
+                                                                            9
+                                                                        }
                                                                         className="bg-muted/50"
                                                                     >
                                                                         <div className="space-y-4 p-4">
                                                                             <div>
-                                                                                <h4 className="font-semibold mb-2">
-                                                                                    Full Question
+                                                                                <h4 className="mb-2 font-semibold">
+                                                                                    Full
+                                                                                    Question
                                                                                 </h4>
                                                                                 <p className="text-sm">
                                                                                     {
@@ -475,7 +472,7 @@ export default function ItemAnalysis() {
                                                                                 </p>
                                                                             </div>
                                                                             <div>
-                                                                                <h4 className="font-semibold mb-2">
+                                                                                <h4 className="mb-2 font-semibold">
                                                                                     Distractor
                                                                                     Analysis
                                                                                 </h4>
@@ -488,7 +485,7 @@ export default function ItemAnalysis() {
                                                                                                 key={
                                                                                                     distractor.choice_id
                                                                                                 }
-                                                                                                className="flex items-center justify-between p-2 rounded border"
+                                                                                                className="flex items-center justify-between rounded border p-2"
                                                                                             >
                                                                                                 <div className="flex items-center gap-2">
                                                                                                     {distractor.is_correct ? (
@@ -556,4 +553,3 @@ export default function ItemAnalysis() {
         </AppLayout>
     );
 }
-

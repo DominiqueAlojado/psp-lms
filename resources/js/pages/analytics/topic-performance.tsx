@@ -1,7 +1,7 @@
 import HeadingSmall from '@/components/heading-small';
 import { Card, CardContent } from '@/components/ui/card';
-import AppLayout from '@/layouts/app-layout';
 import AnalyticsLayout from '@/layouts/analytics/analytics-layout';
+import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head } from '@inertiajs/react';
 
@@ -18,11 +18,13 @@ export default function TopicPerformance() {
             <Head title="Topic Performance" />
 
             <AnalyticsLayout>
-                <div className="flex h-full flex-1 flex-col gap-6 overflow-x-auto rounded-xl p-6">
-                    <HeadingSmall
-                        title="Topic Performance"
-                        description="Analyze performance across different topics"
-                    />
+                <div className="space-y-6">
+                    <div className="flex items-start justify-between gap-4">
+                        <HeadingSmall
+                            title="Topic Performance"
+                            description="Analyze performance across different topics"
+                        />
+                    </div>
 
                     <Card>
                         <CardContent className="py-8 text-center">
@@ -36,4 +38,3 @@ export default function TopicPerformance() {
         </AppLayout>
     );
 }
-

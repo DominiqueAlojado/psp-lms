@@ -18,11 +18,13 @@ export default function Trends() {
             <Head title="Trends" />
 
             <AnalyticsLayout>
-                <div className="flex h-full flex-1 flex-col gap-6 overflow-x-auto rounded-xl p-6">
-                    <HeadingSmall
-                        title="Trends"
-                        description="Performance trends over time"
-                    />
+                <div className="space-y-6">
+                    <div className="flex items-start justify-between gap-4">
+                        <HeadingSmall
+                            title="Trends"
+                            description="Performance trends over time"
+                        />
+                    </div>
 
                     <Card>
                         <CardContent className="py-8 text-center">
