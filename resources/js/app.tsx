@@ -7,11 +7,14 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { initializeTheme } from './hooks/use-appearance';
 
-// Function to update CSRF token
-const updateCsrfToken = () => {
-    const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
-    if (token) {
-        axios.defaults.headers.common['X-CSRF-TOKEN'] = token;
+// Function to update CSRF token in meta tag and axios
+const updateCsrfToken = (token?: string) => {
+    const metaTag = document.querySelector('meta[name="csrf-token"]');
+    const newToken = token || metaTag?.getAttribute('content') || '';
+    
+    if (newToken && metaTag) {
+        metaTag.setAttribute('content', newToken);
+        axios.defaults.headers.common['X-CSRF-TOKEN'] = newToken;
     }
 };
 
@@ -25,11 +28,7 @@ axios.interceptors.response.use(
         // Update CSRF token from response headers if available
         const newToken = response.headers['x-csrf-token'];
         if (newToken) {
-            const metaTag = document.querySelector('meta[name="csrf-token"]');
-            if (metaTag) {
-                metaTag.setAttribute('content', newToken);
-                updateCsrfToken();
-            }
+            updateCsrfToken(newToken);
         }
         return response;
     },
@@ -46,6 +45,20 @@ axios.interceptors.response.use(
         return Promise.reject(error);
     },
 );
+
+// Intercept all fetch requests (including Inertia's) to update CSRF token from responses
+const originalFetch = window.fetch;
+window.fetch = async (...args) => {
+    const response = await originalFetch(...args);
+    
+    // Update CSRF token from response headers if available
+    const csrfToken = response.headers.get('X-CSRF-Token');
+    if (csrfToken) {
+        updateCsrfToken(csrfToken);
+    }
+    
+    return response;
+};
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 

@@ -72,4 +72,20 @@ class HandleInertiaRequests extends Middleware
     {
         return parent::rootView($request);
     }
+
+    /**
+     * Handle Inertia responses and add CSRF token to headers.
+     */
+    public function handle(Request $request, \Closure $next): \Symfony\Component\HttpFoundation\Response
+    {
+        $response = parent::handle($request, $next);
+
+        // Add CSRF token to response headers for Inertia requests
+        // This allows the frontend to update the CSRF token after each request
+        if ($request->header('X-Inertia')) {
+            $response->headers->set('X-CSRF-Token', csrf_token());
+        }
+
+        return $response;
+    }
 }
