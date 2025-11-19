@@ -41,9 +41,7 @@ const sidebarNavItems: NavItem[] = [
     },
 ];
 
-export default function AnalyticsLayout({
-    children,
-}: PropsWithChildren) {
+export default function AnalyticsLayout({ children }: PropsWithChildren) {
     const { hasPermission } = usePermissions();
     const [isCollapsed, setIsCollapsed] = useState(false);
 
@@ -63,72 +61,68 @@ export default function AnalyticsLayout({
     });
 
     return (
-        <div className="px-4 py-6">
-            <Heading
-                title="Analytics"
-                description="Deep insights and analysis of exam performance and trends"
-            />
-
-            <div className="flex flex-col lg:flex-row lg:space-x-12">
-                <aside
-                    className={cn(
-                        'w-full transition-all duration-300',
-                        isCollapsed ? 'lg:w-12' : 'max-w-xl lg:w-48',
-                    )}
-                >
-                    <div className="flex items-center justify-between gap-2">
-                        <nav
-                            className={cn(
-                                'flex flex-col space-y-1 space-x-0 flex-1',
-                                isCollapsed && 'lg:hidden',
-                            )}
-                        >
-                            {filteredSidebarNavItems.map((item, index) => (
-                                <Button
-                                    key={`${resolveUrl(item.href)}-${index}`}
-                                    size="sm"
-                                    variant="ghost"
-                                    asChild
-                                    className={cn('w-full justify-start', {
-                                        'bg-muted': isSameUrl(
-                                            currentPath,
-                                            item.href,
-                                        ),
-                                    })}
-                                >
-                                    <Link href={item.href}>
-                                        {item.icon && (
-                                            <item.icon className="h-4 w-4" />
-                                        )}
-                                        {item.title}
-                                    </Link>
-                                </Button>
-                            ))}
-                        </nav>
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setIsCollapsed(!isCollapsed)}
-                            className="hidden h-8 w-8 p-0 lg:flex"
-                        >
-                            {isCollapsed ? (
-                                <ChevronRight className="h-4 w-4" />
-                            ) : (
-                                <ChevronLeft className="h-4 w-4" />
-                            )}
-                        </Button>
-                    </div>
-                </aside>
-
-                <Separator className="my-6 lg:hidden" />
-
-                <div className="flex-1">
-                    <section className="space-y-6">
-                        {children}
-                    </section>
+        <div className="flex flex-col lg:flex-row lg:space-x-12">
+            <aside
+                className={cn(
+                    'w-full transition-all duration-300',
+                    isCollapsed ? 'lg:w-12' : 'max-w-xl lg:w-48',
+                )}
+            >
+                <div className="flex items-center justify-between gap-2">
+                    <nav
+                        className={cn(
+                            'flex flex-1 flex-col space-y-1 space-x-0',
+                            isCollapsed && 'lg:hidden',
+                        )}
+                    >
+                        {filteredSidebarNavItems.map((item, index) => (
+                            <Button
+                                key={`${resolveUrl(item.href)}-${index}`}
+                                size="sm"
+                                variant="ghost"
+                                asChild
+                                className={cn('w-full justify-start', {
+                                    'bg-muted': isSameUrl(
+                                        currentPath,
+                                        item.href,
+                                    ),
+                                })}
+                            >
+                                <Link href={item.href}>
+                                    {item.icon && (
+                                        <item.icon className="h-4 w-4" />
+                                    )}
+                                    {item.title}
+                                </Link>
+                            </Button>
+                        ))}
+                    </nav>
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setIsCollapsed(!isCollapsed)}
+                        className="hidden h-8 w-8 p-0 lg:flex"
+                    >
+                        {isCollapsed ? (
+                            <ChevronRight className="h-4 w-4" />
+                        ) : (
+                            <ChevronLeft className="h-4 w-4" />
+                        )}
+                    </Button>
                 </div>
+            </aside>
+
+            <Separator className="my-6 lg:hidden" />
+
+            <div className="flex min-w-0 flex-1 flex-col">
+                <div className="mb-0 p-6">
+                    <Heading
+                        title="Analytics"
+                        description="Deep insights and analysis of exam performance and trends"
+                    />
+                </div>
+                <div className="w-full p-4">{children}</div>
             </div>
         </div>
     );
 }
-

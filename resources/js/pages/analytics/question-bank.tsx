@@ -19,15 +19,12 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
-import AppLayout from '@/layouts/app-layout';
 import AnalyticsLayout from '@/layouts/analytics/analytics-layout';
+import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, router, usePage } from '@inertiajs/react';
 import {
-    AlertTriangle,
     BarChart3,
-    CheckCircle2,
-    Clock,
     FileQuestion,
     Search,
     TrendingDown,
@@ -108,8 +105,7 @@ interface PageProps {
 }
 
 export default function QuestionBank() {
-    const { questions, summary, topics, filters } =
-        usePage<PageProps>().props;
+    const { questions, summary, topics, filters } = usePage<PageProps>().props;
 
     const [search, setSearch] = useState(filters.search || '');
     const [topicFilter, setTopicFilter] = useState(
@@ -135,11 +131,26 @@ export default function QuestionBank() {
             '/analytics/question-bank',
             {
                 search: search || undefined,
-                topic: topicFilter && topicFilter !== 'all' ? topicFilter : undefined,
-                question_type: questionTypeFilter && questionTypeFilter !== 'all' ? questionTypeFilter : undefined,
-                difficulty: difficultyFilter && difficultyFilter !== 'all' ? difficultyFilter : undefined,
-                approval_status: approvalFilter && approvalFilter !== 'all' ? approvalFilter : undefined,
-                performance_filter: performanceFilter && performanceFilter !== 'all' ? performanceFilter : undefined,
+                topic:
+                    topicFilter && topicFilter !== 'all'
+                        ? topicFilter
+                        : undefined,
+                question_type:
+                    questionTypeFilter && questionTypeFilter !== 'all'
+                        ? questionTypeFilter
+                        : undefined,
+                difficulty:
+                    difficultyFilter && difficultyFilter !== 'all'
+                        ? difficultyFilter
+                        : undefined,
+                approval_status:
+                    approvalFilter && approvalFilter !== 'all'
+                        ? approvalFilter
+                        : undefined,
+                performance_filter:
+                    performanceFilter && performanceFilter !== 'all'
+                        ? performanceFilter
+                        : undefined,
                 sort_by: sortBy,
                 sort_order: sortOrder,
             },
@@ -177,13 +188,16 @@ export default function QuestionBank() {
 
     const hasActiveFilters =
         filters.search ||
-        (filters.topic && filters.topic !== 'all') ||
+        (filters.topic && filters.topic.toString() !== 'all') ||
         (filters.question_type && filters.question_type !== 'all') ||
         (filters.difficulty && filters.difficulty !== 'all') ||
         (filters.approval_status && filters.approval_status !== 'all') ||
         (filters.performance_filter && filters.performance_filter !== 'all');
 
-    const getDifficultyBadge = (difficulty: string | null, computed: string | null) => {
+    const getDifficultyBadge = (
+        difficulty: string | null,
+        computed: string | null,
+    ) => {
         const finalDifficulty = computed || difficulty;
         if (!finalDifficulty) {
             return <Badge variant="outline">Not Set</Badge>;
@@ -209,7 +223,7 @@ export default function QuestionBank() {
             <Head title="Question Bank Analytics" />
 
             <AnalyticsLayout>
-                <div className="flex h-full flex-1 flex-col gap-6 overflow-x-auto rounded-xl p-6">
+                <div className="space-y-6">
                     {/* Header */}
                     <div className="flex items-start justify-between gap-4">
                         <HeadingSmall
@@ -231,23 +245,6 @@ export default function QuestionBank() {
                                 <div className="text-2xl font-bold">
                                     {summary.total_questions}
                                 </div>
-                            </CardContent>
-                        </Card>
-
-                        <Card>
-                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-sm font-medium">
-                                    Approved
-                                </CardTitle>
-                                <CheckCircle2 className="h-4 w-4 text-green-600" />
-                            </CardHeader>
-                            <CardContent>
-                                <div className="text-2xl font-bold">
-                                    {summary.approved_questions}
-                                </div>
-                                <p className="text-xs text-muted-foreground">
-                                    {summary.pending_questions} pending
-                                </p>
                             </CardContent>
                         </Card>
 
@@ -276,7 +273,9 @@ export default function QuestionBank() {
                                 <div className="text-2xl font-bold">
                                     {
                                         questions.data.filter(
-                                            (q) => q.statistics?.times_answered > 0,
+                                            (q) =>
+                                                (q.statistics?.times_answered ??
+                                                    0) > 0,
                                         ).length
                                     }
                                 </div>
@@ -293,11 +292,11 @@ export default function QuestionBank() {
                             <CardTitle>Filters</CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-                                <div className="space-y-2">
+                            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                <div className="space-y-2 sm:col-span-2">
                                     <Label htmlFor="search">Search</Label>
                                     <div className="relative">
-                                        <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                                        <Search className="absolute top-2.5 left-2 h-4 w-4 text-muted-foreground" />
                                         <Input
                                             id="search"
                                             placeholder="Search questions..."
@@ -305,7 +304,7 @@ export default function QuestionBank() {
                                             onChange={(e) =>
                                                 setSearch(e.target.value)
                                             }
-                                            className="pl-8"
+                                            className="w-full pl-8"
                                         />
                                     </div>
                                 </div>
@@ -320,7 +319,9 @@ export default function QuestionBank() {
                                             <SelectValue placeholder="All Topics" />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value="all">All Topics</SelectItem>
+                                            <SelectItem value="all">
+                                                All Topics
+                                            </SelectItem>
                                             {topics.map((topic) => (
                                                 <SelectItem
                                                     key={topic.id}
@@ -345,7 +346,9 @@ export default function QuestionBank() {
                                             <SelectValue placeholder="All Types" />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value="all">All Types</SelectItem>
+                                            <SelectItem value="all">
+                                                All Types
+                                            </SelectItem>
                                             <SelectItem value="multiple_choice">
                                                 Multiple Choice
                                             </SelectItem>
@@ -360,7 +363,9 @@ export default function QuestionBank() {
                                 </div>
 
                                 <div className="space-y-2">
-                                    <Label htmlFor="difficulty">Difficulty</Label>
+                                    <Label htmlFor="difficulty">
+                                        Difficulty
+                                    </Label>
                                     <Select
                                         value={difficultyFilter}
                                         onValueChange={setDifficultyFilter}
@@ -369,35 +374,20 @@ export default function QuestionBank() {
                                             <SelectValue placeholder="All Difficulties" />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value="all">All Difficulties</SelectItem>
-                                            <SelectItem value="easy">Easy</SelectItem>
-                                            <SelectItem value="medium">Medium</SelectItem>
-                                            <SelectItem value="hard">Hard</SelectItem>
+                                            <SelectItem value="all">
+                                                All Difficulties
+                                            </SelectItem>
+                                            <SelectItem value="easy">
+                                                Easy
+                                            </SelectItem>
+                                            <SelectItem value="medium">
+                                                Medium
+                                            </SelectItem>
+                                            <SelectItem value="hard">
+                                                Hard
+                                            </SelectItem>
                                             <SelectItem value="computed">
                                                 Computed Only
-                                            </SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-
-                                <div className="space-y-2">
-                                    <Label htmlFor="approval_status">
-                                        Approval Status
-                                    </Label>
-                                    <Select
-                                        value={approvalFilter}
-                                        onValueChange={setApprovalFilter}
-                                    >
-                                        <SelectTrigger id="approval_status">
-                                            <SelectValue placeholder="All Status" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="all">All Status</SelectItem>
-                                            <SelectItem value="approved">
-                                                Approved
-                                            </SelectItem>
-                                            <SelectItem value="pending">
-                                                Pending
                                             </SelectItem>
                                         </SelectContent>
                                     </Select>
@@ -415,7 +405,9 @@ export default function QuestionBank() {
                                             <SelectValue placeholder="All Performance" />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value="all">All Performance</SelectItem>
+                                            <SelectItem value="all">
+                                                All Performance
+                                            </SelectItem>
                                             <SelectItem value="excellent">
                                                 Excellent
                                             </SelectItem>
@@ -453,222 +445,283 @@ export default function QuestionBank() {
                         <CardHeader>
                             <CardTitle>Question Performance</CardTitle>
                         </CardHeader>
-                        <CardContent>
-                            <div className="overflow-x-auto">
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead>Question</TableHead>
-                                            <TableHead>Topic</TableHead>
-                                            <TableHead>Type</TableHead>
-                                            <TableHead
-                                                className="cursor-pointer"
-                                                onClick={() =>
-                                                    handleSort('difficulty_level')
-                                                }
-                                            >
-                                                Difficulty
-                                                {sortBy === 'difficulty_level' && (
-                                                    sortOrder === 'asc' ? (
-                                                        <TrendingUp className="ml-1 inline h-3 w-3" />
-                                                    ) : (
-                                                        <TrendingDown className="ml-1 inline h-3 w-3" />
-                                                    )
-                                                )}
-                                            </TableHead>
-                                            <TableHead
-                                                className="cursor-pointer"
-                                                onClick={() =>
-                                                    handleSort('success_rate')
-                                                }
-                                            >
-                                                Success Rate
-                                                {sortBy === 'success_rate' && (
-                                                    sortOrder === 'asc' ? (
-                                                        <TrendingUp className="ml-1 inline h-3 w-3" />
-                                                    ) : (
-                                                        <TrendingDown className="ml-1 inline h-3 w-3" />
-                                                    )
-                                                )}
-                                            </TableHead>
-                                            <TableHead
-                                                className="cursor-pointer"
-                                                onClick={() =>
-                                                    handleSort('discrimination_index')
-                                                }
-                                            >
-                                                Discrimination
-                                                {sortBy === 'discrimination_index' && (
-                                                    sortOrder === 'asc' ? (
-                                                        <TrendingUp className="ml-1 inline h-3 w-3" />
-                                                    ) : (
-                                                        <TrendingDown className="ml-1 inline h-3 w-3" />
-                                                    )
-                                                )}
-                                            </TableHead>
-                                            <TableHead
-                                                className="cursor-pointer"
-                                                onClick={() =>
-                                                    handleSort('times_answered')
-                                                }
-                                            >
-                                                Times Answered
-                                                {sortBy === 'times_answered' && (
-                                                    sortOrder === 'asc' ? (
-                                                        <TrendingUp className="ml-1 inline h-3 w-3" />
-                                                    ) : (
-                                                        <TrendingDown className="ml-1 inline h-3 w-3" />
-                                                    )
-                                                )}
-                                            </TableHead>
-                                            <TableHead>Avg Time</TableHead>
-                                            <TableHead>Status</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {questions.data.map((question) => (
-                                            <TableRow key={question.id}>
-                                                <TableCell className="max-w-md">
-                                                    <div className="truncate">
-                                                        {question.question_text}
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell>
-                                                    {question.topic?.name || (
-                                                        <span className="text-muted-foreground">
-                                                            No Topic
+                        <CardContent className="p-0">
+                            <div className="-mx-6 overflow-x-auto sm:mx-0">
+                                <div className="inline-block min-w-full align-middle">
+                                    <div className="overflow-hidden">
+                                        <Table className="w-full min-w-[800px] md:min-w-[1000px] lg:min-w-[1200px]">
+                                            <TableHeader>
+                                                <TableRow>
+                                                    <TableHead className="sticky left-0 z-10 max-w-[200px] min-w-[200px] bg-background sm:max-w-[250px] sm:min-w-[250px] md:max-w-[300px] md:min-w-[300px]">
+                                                        Question
+                                                    </TableHead>
+
+                                                    <TableHead
+                                                        className="max-w-[110px] min-w-[90px] cursor-pointer sm:max-w-[130px] sm:min-w-[110px]"
+                                                        onClick={() =>
+                                                            handleSort(
+                                                                'difficulty_level',
+                                                            )
+                                                        }
+                                                    >
+                                                        Difficulty
+                                                        {sortBy ===
+                                                            'difficulty_level' &&
+                                                            (sortOrder ===
+                                                            'asc' ? (
+                                                                <TrendingUp className="ml-1 inline h-3 w-3" />
+                                                            ) : (
+                                                                <TrendingDown className="ml-1 inline h-3 w-3" />
+                                                            ))}
+                                                    </TableHead>
+                                                    <TableHead
+                                                        className="max-w-[120px] min-w-[100px] cursor-pointer whitespace-nowrap sm:max-w-[140px] sm:min-w-[120px]"
+                                                        onClick={() =>
+                                                            handleSort(
+                                                                'success_rate',
+                                                            )
+                                                        }
+                                                    >
+                                                        Success Rate
+                                                        {sortBy ===
+                                                            'success_rate' &&
+                                                            (sortOrder ===
+                                                            'asc' ? (
+                                                                <TrendingUp className="ml-1 inline h-3 w-3" />
+                                                            ) : (
+                                                                <TrendingDown className="ml-1 inline h-3 w-3" />
+                                                            ))}
+                                                    </TableHead>
+                                                    <TableHead
+                                                        className="max-w-[130px] min-w-[110px] cursor-pointer sm:max-w-[150px] sm:min-w-[130px]"
+                                                        onClick={() =>
+                                                            handleSort(
+                                                                'discrimination_index',
+                                                            )
+                                                        }
+                                                    >
+                                                        <span className="hidden sm:inline">
+                                                            Discrimination
                                                         </span>
-                                                    )}
-                                                </TableCell>
-                                                <TableCell>
-                                                    <Badge variant="outline">
-                                                        {question.question_type
-                                                            .replace('_', ' ')
-                                                            .replace(
-                                                                /\b\w/g,
-                                                                (l) =>
-                                                                    l.toUpperCase(),
-                                                            )}
-                                                    </Badge>
-                                                </TableCell>
-                                                <TableCell>
-                                                    {getDifficultyBadge(
-                                                        question.difficulty_level,
-                                                        question.statistics
-                                                            ?.computed_difficulty ||
-                                                            null,
-                                                    )}
-                                                </TableCell>
-                                                <TableCell>
-                                                    {question.statistics &&
-                                                    question.statistics
-                                                        .times_answered > 0 ? (
-                                                        <div className="flex items-center gap-2">
-                                                            <span
-                                                                className={
-                                                                    (question
-                                                                        .statistics
-                                                                        ?.success_rate ||
-                                                                        0) >= 70
-                                                                        ? 'text-green-600'
-                                                                        : (question
-                                                                              .statistics
-                                                                              ?.success_rate ||
-                                                                            0) >=
-                                                                            40
-                                                                          ? 'text-yellow-600'
-                                                                          : 'text-red-600'
-                                                                }
-                                                            >
-                                                                {
+                                                        <span className="sm:hidden">
+                                                            Disc.
+                                                        </span>
+                                                        {sortBy ===
+                                                            'discrimination_index' &&
+                                                            (sortOrder ===
+                                                            'asc' ? (
+                                                                <TrendingUp className="ml-1 inline h-3 w-3" />
+                                                            ) : (
+                                                                <TrendingDown className="ml-1 inline h-3 w-3" />
+                                                            ))}
+                                                    </TableHead>
+                                                    <TableHead
+                                                        className="max-w-[130px] min-w-[110px] cursor-pointer sm:max-w-[150px] sm:min-w-[130px]"
+                                                        onClick={() =>
+                                                            handleSort(
+                                                                'times_answered',
+                                                            )
+                                                        }
+                                                    >
+                                                        <span className="hidden md:inline">
+                                                            Times Answered
+                                                        </span>
+                                                        <span className="md:hidden">
+                                                            Answered
+                                                        </span>
+                                                        {sortBy ===
+                                                            'times_answered' &&
+                                                            (sortOrder ===
+                                                            'asc' ? (
+                                                                <TrendingUp className="ml-1 inline h-3 w-3" />
+                                                            ) : (
+                                                                <TrendingDown className="ml-1 inline h-3 w-3" />
+                                                            ))}
+                                                    </TableHead>
+                                                    <TableHead className="hidden max-w-[100px] min-w-[90px] whitespace-nowrap sm:max-w-[110px] sm:min-w-[100px] lg:table-cell">
+                                                        Avg Time
+                                                    </TableHead>
+                                                </TableRow>
+                                            </TableHeader>
+                                            <TableBody>
+                                                {questions.data.map(
+                                                    (question) => (
+                                                        <TableRow
+                                                            key={question.id}
+                                                        >
+                                                            <TableCell className="sticky left-0 z-10 max-w-[200px] min-w-[200px] bg-background sm:max-w-[250px] sm:min-w-[250px] md:max-w-[300px] md:min-w-[300px]">
+                                                                <div className="space-y-2 pr-2">
+                                                                    <div className="text-sm break-words sm:text-base">
+                                                                        {
+                                                                            question.question_text
+                                                                        }
+                                                                    </div>
+                                                                    <div className="flex flex-col gap-1.5 text-xs">
+                                                                        <div className="flex items-center gap-2">
+                                                                            <span className="font-medium whitespace-nowrap text-muted-foreground">
+                                                                                Type:
+                                                                            </span>
+                                                                            <Badge
+                                                                                variant="outline"
+                                                                                className="text-xs"
+                                                                            >
+                                                                                {question.question_type
+                                                                                    .replace(
+                                                                                        '_',
+                                                                                        ' ',
+                                                                                    )
+                                                                                    .replace(
+                                                                                        /\b\w/g,
+                                                                                        (
+                                                                                            l,
+                                                                                        ) =>
+                                                                                            l.toUpperCase(),
+                                                                                    )}
+                                                                            </Badge>
+                                                                        </div>
+                                                                        <div className="flex items-center gap-2">
+                                                                            <span className="font-medium whitespace-nowrap text-muted-foreground">
+                                                                                Topic:
+                                                                            </span>
+                                                                            <span className="text-xs break-words">
+                                                                                {question
+                                                                                    .topic
+                                                                                    ?.name || (
+                                                                                    <span className="text-muted-foreground italic">
+                                                                                        No
+                                                                                        Topic
+                                                                                    </span>
+                                                                                )}
+                                                                            </span>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            </TableCell>
+                                                            <TableCell className="max-w-[110px] min-w-[90px] sm:max-w-[130px] sm:min-w-[110px]">
+                                                                {getDifficultyBadge(
+                                                                    question.difficulty_level,
                                                                     question
                                                                         .statistics
-                                                                        ?.success_rate
-                                                                }
-                                                                %
-                                                            </span>
-                                                        </div>
-                                                    ) : (
-                                                        <span className="text-muted-foreground">
-                                                            No data
-                                                        </span>
-                                                    )}
-                                                </TableCell>
-                                                <TableCell>
-                                                    {question.statistics &&
-                                                    question.statistics
-                                                        .times_answered > 0 &&
-                                                    question.statistics
-                                                        .discrimination_index !==
-                                                        null ? (
-                                                        <Badge
-                                                            variant={
-                                                                (question
-                                                                    .statistics
-                                                                    ?.discrimination_index ||
-                                                                    0) >= 0.3
-                                                                    ? 'default'
-                                                                    : (question
-                                                                          .statistics
-                                                                          ?.discrimination_index ||
-                                                                        0) >=
-                                                                        0.2
-                                                                      ? 'secondary'
-                                                                      : 'destructive'
-                                                            }
-                                                        >
-                                                            {
+                                                                        ?.computed_difficulty ||
+                                                                        null,
+                                                                )}
+                                                            </TableCell>
+                                                            <TableCell className="max-w-[120px] min-w-[100px] whitespace-nowrap sm:max-w-[140px] sm:min-w-[120px]">
+                                                                {question.statistics &&
                                                                 question
                                                                     .statistics
-                                                                    ?.discrimination_index
-                                                            }
-                                                        </Badge>
-                                                    ) : (
-                                                        <span className="text-muted-foreground">
-                                                            No data
-                                                        </span>
-                                                    )}
-                                                </TableCell>
-                                                <TableCell>
-                                                    {question.statistics
-                                                        ?.times_answered || 0}
-                                                    {question.statistics
-                                                        ?.times_answered ===
-                                                        0 && (
-                                                        <span className="ml-1 text-xs text-muted-foreground">
-                                                            (unused)
-                                                        </span>
-                                                    )}
-                                                </TableCell>
-                                                <TableCell>
-                                                    {formatTime(
-                                                        question.statistics
-                                                            ?.average_time_seconds ||
-                                                            null,
-                                                    )}
-                                                </TableCell>
-                                                <TableCell>
-                                                    {question.is_approved ? (
-                                                        <Badge variant="default">
-                                                            <CheckCircle2 className="mr-1 h-3 w-3" />
-                                                            Approved
-                                                        </Badge>
-                                                    ) : (
-                                                        <Badge variant="secondary">
-                                                            <AlertTriangle className="mr-1 h-3 w-3" />
-                                                            Pending
-                                                        </Badge>
-                                                    )}
-                                                </TableCell>
-                                            </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
+                                                                    .times_answered >
+                                                                    0 ? (
+                                                                    <div className="flex items-center gap-2">
+                                                                        <span
+                                                                            className={
+                                                                                (question
+                                                                                    .statistics
+                                                                                    ?.success_rate ||
+                                                                                    0) >=
+                                                                                70
+                                                                                    ? 'text-sm font-medium text-green-600 sm:text-base'
+                                                                                    : (question
+                                                                                            .statistics
+                                                                                            ?.success_rate ||
+                                                                                            0) >=
+                                                                                        40
+                                                                                      ? 'text-sm font-medium text-yellow-600 sm:text-base'
+                                                                                      : 'text-sm font-medium text-red-600 sm:text-base'
+                                                                            }
+                                                                        >
+                                                                            {
+                                                                                question
+                                                                                    .statistics
+                                                                                    ?.success_rate
+                                                                            }
+                                                                            %
+                                                                        </span>
+                                                                    </div>
+                                                                ) : (
+                                                                    <span className="text-sm text-muted-foreground">
+                                                                        No data
+                                                                    </span>
+                                                                )}
+                                                            </TableCell>
+                                                            <TableCell className="max-w-[130px] min-w-[110px] sm:max-w-[150px] sm:min-w-[130px]">
+                                                                {question.statistics &&
+                                                                question
+                                                                    .statistics
+                                                                    .times_answered >
+                                                                    0 &&
+                                                                question
+                                                                    .statistics
+                                                                    .discrimination_index !==
+                                                                    null ? (
+                                                                    <Badge
+                                                                        variant={
+                                                                            (question
+                                                                                .statistics
+                                                                                ?.discrimination_index ||
+                                                                                0) >=
+                                                                            0.3
+                                                                                ? 'default'
+                                                                                : (question
+                                                                                        .statistics
+                                                                                        ?.discrimination_index ||
+                                                                                        0) >=
+                                                                                    0.2
+                                                                                  ? 'secondary'
+                                                                                  : 'destructive'
+                                                                        }
+                                                                        className="text-xs"
+                                                                    >
+                                                                        {
+                                                                            question
+                                                                                .statistics
+                                                                                ?.discrimination_index
+                                                                        }
+                                                                    </Badge>
+                                                                ) : (
+                                                                    <span className="text-sm text-muted-foreground">
+                                                                        No data
+                                                                    </span>
+                                                                )}
+                                                            </TableCell>
+                                                            <TableCell className="max-w-[130px] min-w-[110px] whitespace-nowrap sm:max-w-[150px] sm:min-w-[130px]">
+                                                                <span className="text-sm sm:text-base">
+                                                                    {question
+                                                                        .statistics
+                                                                        ?.times_answered ||
+                                                                        0}
+                                                                </span>
+                                                                {question
+                                                                    .statistics
+                                                                    ?.times_answered ===
+                                                                    0 && (
+                                                                    <span className="ml-1 text-xs text-muted-foreground">
+                                                                        (unused)
+                                                                    </span>
+                                                                )}
+                                                            </TableCell>
+                                                            <TableCell className="hidden max-w-[100px] min-w-[90px] whitespace-nowrap sm:max-w-[110px] sm:min-w-[100px] lg:table-cell">
+                                                                <span className="text-sm">
+                                                                    {formatTime(
+                                                                        question
+                                                                            .statistics
+                                                                            ?.average_time_seconds ||
+                                                                            null,
+                                                                    )}
+                                                                </span>
+                                                            </TableCell>
+                                                        </TableRow>
+                                                    ),
+                                                )}
+                                            </TableBody>
+                                        </Table>
+                                    </div>
+                                </div>
                             </div>
 
                             {/* Pagination */}
                             {questions.data.length > 0 && (
-                                <div className="mt-4 space-y-4">
+                                <div className="mt-4 space-y-4 px-6 pb-6">
                                     <div className="text-center text-sm text-muted-foreground">
                                         Showing{' '}
                                         {(questions.current_page - 1) *
@@ -761,10 +814,8 @@ export default function QuestionBank() {
                                                                             page,
                                                                         },
                                                                         {
-                                                                            preserveState:
-                                                                                true,
-                                                                            preserveScroll:
-                                                                                true,
+                                                                            preserveState: true,
+                                                                            preserveScroll: true,
                                                                         },
                                                                     );
                                                                 }}
@@ -807,7 +858,8 @@ export default function QuestionBank() {
                             {questions.data.length === 0 && (
                                 <div className="py-8 text-center">
                                     <p className="text-muted-foreground">
-                                        No questions found matching your filters.
+                                        No questions found matching your
+                                        filters.
                                     </p>
                                 </div>
                             )}
