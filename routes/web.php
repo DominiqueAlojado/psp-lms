@@ -171,6 +171,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('events/{event}/attendees', [App\Http\Controllers\EventController::class, 'attendees'])
         ->middleware('permission:view-events')
         ->name('events.attendees');
+    Route::get('events/{event}/meeting-attendance', [App\Http\Controllers\EventController::class, 'meetingAttendance'])
+        ->middleware('permission:view-events')
+        ->name('events.meeting-attendance');
     Route::post('events/{event}/registrations/{registration}/approve', [App\Http\Controllers\EventController::class, 'approveRegistration'])
         ->middleware('permission:edit-events')
         ->name('events.approve-registration');

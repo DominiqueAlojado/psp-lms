@@ -403,6 +403,72 @@ class EventController extends Controller
     }
 
     /**
+     * View meeting attendance with metadata for virtual/hybrid events.
+     */
+    public function meetingAttendance(Request $request, Event $event): Response
+    {
+        $user = $request->user();
+        $organizationId = $user->currentOrganization?->id;
+
+        // Check access (System Admins and BOP can view all event attendance)
+        if (! $user->hasAnyRole(['System Admin', 'BOP']) && $event->organization_id !== $organizationId) {
+            abort(403, 'You do not have access to this event.');
+        }
+
+        // Only show for virtual or hybrid events
+        if (! in_array($event->event_type, ['virtual', 'hybrid'])) {
+            return back()->with('error', 'Meeting attendance tracking is only available for virtual and hybrid events.');
+        }
+
+        $query = MeetingAttendance::where('event_id', $event->id)
+            ->with(['user.resident', 'organization:id,name', 'eventRegistration']);
+
+        // Filter by attendance type (for hybrid events)
+        if ($request->filled('attendance_type')) {
+            $query->whereJsonContains('metadata->attendance_type', $request->attendance_type);
+        }
+
+        // Filter by status
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        // Search
+        if ($request->filled('search')) {
+            $query->whereHas('user', function ($q) use ($request) {
+                $q->where('name', 'like', '%'.$request->search.'%')
+                    ->orWhere('email', 'like', '%'.$request->search.'%');
+            });
+        }
+
+        $attendances = $query->orderBy('joined_at', 'desc')
+            ->paginate(20)
+            ->withQueryString();
+
+        // Calculate statistics
+        $stats = [
+            'total_attendees' => MeetingAttendance::where('event_id', $event->id)->count(),
+            'active_now' => MeetingAttendance::where('event_id', $event->id)
+                ->whereNull('left_at')
+                ->where('status', '!=', 'left')
+                ->count(),
+            'total_duration_minutes' => MeetingAttendance::where('event_id', $event->id)
+                ->whereNotNull('duration_seconds')
+                ->sum('duration_seconds') / 60,
+            'average_duration_minutes' => MeetingAttendance::where('event_id', $event->id)
+                ->whereNotNull('duration_seconds')
+                ->avg('duration_seconds') / 60,
+        ];
+
+        return Inertia::render('events/meeting-attendance', [
+            'event' => $event,
+            'attendances' => $attendances,
+            'stats' => $stats,
+            'filters' => $request->only(['status', 'search', 'attendance_type']),
+        ]);
+    }
+
+    /**
      * Approve a pending registration.
      */
     public function approveRegistration(Request $request, Event $event, EventRegistration $registration): \Illuminate\Http\RedirectResponse

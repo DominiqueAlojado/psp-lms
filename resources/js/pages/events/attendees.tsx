@@ -121,6 +121,11 @@ export default function EventAttendees({ event, registrations, filters }: PagePr
                     />
                     <div className="flex gap-2">
                         <Button asChild variant="outline">
+                            <Link href={`/events/${event.id}/meeting-attendance`}>
+                                View Meeting Attendance
+                            </Link>
+                        </Button>
+                        <Button asChild variant="outline">
                             <Link href="/events/manage">Back to Manage</Link>
                         </Button>
                     </div>
