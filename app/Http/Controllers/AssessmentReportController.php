@@ -24,6 +24,10 @@ class AssessmentReportController extends Controller
         // Check if user has permission to view all organizations' assessment reports
         $canViewAllOrganizations = $user->hasPermissionTo('view-all-assessment-reports');
 
+        // Get current organization to determine which attempts to show
+        $currentOrg = $user->currentOrganization;
+        $orgType = $currentOrg?->type ? strtolower($currentOrg->type) : null;
+
         // Get institution attempts
         $institutionQuery = InstitutionAttempt::query()
             ->with([
@@ -98,9 +102,14 @@ class AssessmentReportController extends Controller
             $institutionQuery->whereDate('submitted_at', '<=', $request->input('date_to'));
         }
 
-        // Only get institution attempts if no exam filter OR if it's an institution exam
+        // Only get institution attempts if:
+        // 1. No exam filter OR it's an institution exam
+        // 2. AND (organization is institution type OR system admin viewing all orgs)
         $institutionAttempts = collect();
-        if (! $request->filled('exam') || $isInstitutionExam) {
+        $shouldShowInstitutionAttempts = (! $request->filled('exam') || $isInstitutionExam) 
+            && ($orgType === 'institution' || ($canViewAllOrganizations && ! $orgType));
+        
+        if ($shouldShowInstitutionAttempts) {
             $institutionAttempts = $institutionQuery
                 ->get()
                 ->map(fn($attempt) => [
@@ -198,9 +207,14 @@ class AssessmentReportController extends Controller
             $nationalQuery->whereDate('submitted_at', '<=', $request->input('date_to'));
         }
 
-        // Only get national attempts if no exam filter OR if it's a national exam
+        // Only get national attempts if:
+        // 1. No exam filter OR it's a national exam
+        // 2. AND (organization is national/inservice type OR system admin viewing all orgs)
         $nationalAttempts = collect();
-        if (! $request->filled('exam') || $isNationalExam) {
+        $shouldShowNationalAttempts = (! $request->filled('exam') || $isNationalExam) 
+            && (($orgType && in_array($orgType, ['national', 'inservice'])) || ($canViewAllOrganizations && ! $orgType));
+        
+        if ($shouldShowNationalAttempts) {
             $nationalAttempts = $nationalQuery
                 ->get()
                 ->map(fn($attempt) => [
@@ -264,6 +278,10 @@ class AssessmentReportController extends Controller
             ? Organization::select('id', 'name')->orderBy('name')->get()
             : collect();
 
+        // Get current organization to determine exam type filtering
+        $currentOrg = $user->currentOrganization;
+        $orgType = $currentOrg?->type;
+
         // Get both institution and national exams
         $institutionExams = InstitutionAssessment::query()
             ->when(! $canViewAllOrganizations, function ($q) use ($organizationId) {
@@ -280,7 +298,20 @@ class AssessmentReportController extends Controller
             ->get(['id', 'title'])
             ->map(fn($exam) => ['id' => 'national_' . $exam->id, 'title' => $exam->title, 'type' => 'inservice', 'original_id' => $exam->id]);
 
-        $exams = $institutionExams->concat($nationalExams)->sortBy('title')->values();
+        // Filter exams based on organization type
+        $exams = collect();
+        if ($orgType && strtolower($orgType) === 'institution') {
+            // Institution organizations: show only institution exams
+            $exams = $institutionExams;
+        } elseif ($orgType && in_array(strtolower($orgType), ['national', 'inservice'])) {
+            // National/Inservice organizations: show only inservice exams
+            $exams = $nationalExams;
+        } else {
+            // Default: show all exams (for system admins or unknown types)
+            $exams = $institutionExams->concat($nationalExams);
+        }
+
+        $exams = $exams->sortBy('title')->values();
 
         return Inertia::render('assessment-reports/by-resident', [
             'attempts' => $attempts,

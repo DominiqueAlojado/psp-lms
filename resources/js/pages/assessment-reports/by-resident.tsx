@@ -21,10 +21,10 @@ import {
 } from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
 import AssessmentReportsLayout from '@/layouts/assessment-reports/assessment-reports-layout';
-import { type BreadcrumbItem } from '@/types';
+import { type BreadcrumbItem, type SharedData } from '@/types';
 import { Head, router, usePage } from '@inertiajs/react';
 import { FileBarChart, Search, X } from 'lucide-react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -73,8 +73,10 @@ interface Organization {
 }
 
 interface Exam {
-    id: number;
+    id: number | string;
     title: string;
+    type?: string;
+    original_id?: number;
 }
 
 interface PageProps {
@@ -95,15 +97,14 @@ interface PageProps {
 }
 
 export default function ByResidentReport() {
-    const { attempts, filters, organizations, exams, isSystemAdmin } =
+    const { attempts, filters, exams, isSystemAdmin } =
         usePage<PageProps>().props;
+    const { auth } = usePage<SharedData>().props;
+    const currentOrganization = auth.currentOrganization;
 
     const [search, setSearch] = useState(filters.search || '');
     const [examFilter, setExamFilter] = useState(
         filters.exam?.toString() || 'all',
-    );
-    const [organizationFilter, setOrganizationFilter] = useState(
-        filters.organization?.toString() || '',
     );
     const [yearLevelFilter, setYearLevelFilter] = useState(
         filters.year_level || '',
@@ -111,6 +112,28 @@ export default function ByResidentReport() {
     const [statusFilter, setStatusFilter] = useState(filters.status || '');
     const [dateFrom, setDateFrom] = useState(filters.date_from || '');
     const [dateTo, setDateTo] = useState(filters.date_to || '');
+
+    // Filter exams based on current organization type
+    const filteredExams = useMemo(() => {
+        if (!currentOrganization) {
+            return exams;
+        }
+
+        const orgType = currentOrganization.type?.toLowerCase();
+
+        // If organization is national or inservice, show only inservice exams
+        if (orgType === 'national' || orgType === 'inservice') {
+            return exams.filter((exam) => exam.type === 'inservice');
+        }
+
+        // If organization is institution, show only institution exams
+        if (orgType === 'institution') {
+            return exams.filter((exam) => exam.type === 'institution');
+        }
+
+        // Default: show all exams
+        return exams;
+    }, [exams, currentOrganization]);
 
     const handleSearch = () => {
         router.get(
@@ -121,7 +144,6 @@ export default function ByResidentReport() {
                     examFilter && examFilter !== '' && examFilter !== 'all'
                         ? examFilter
                         : undefined,
-                organization: organizationFilter || undefined,
                 year_level: yearLevelFilter || undefined,
                 status: statusFilter || undefined,
                 date_from: dateFrom || undefined,
@@ -134,7 +156,6 @@ export default function ByResidentReport() {
     const clearFilters = () => {
         setSearch('');
         setExamFilter('all');
-        setOrganizationFilter('');
         setYearLevelFilter('');
         setStatusFilter('');
         setDateFrom('');
@@ -149,7 +170,6 @@ export default function ByResidentReport() {
     const hasActiveFilters =
         filters.search ||
         filters.exam ||
-        filters.organization ||
         filters.year_level ||
         filters.status ||
         filters.date_from ||
@@ -191,62 +211,32 @@ export default function ByResidentReport() {
                                     </div>
                                 </div>
 
-                                {/* Exam & Organization */}
-                                <div className="grid gap-4 sm:grid-cols-2">
-                                    <div className="space-y-2">
-                                        <Label>Exam</Label>
-                                        <Select
-                                            value={examFilter}
-                                            onValueChange={(value) => {
-                                                setExamFilter(value);
-                                            }}
-                                        >
-                                            <SelectTrigger>
-                                                <SelectValue placeholder="All Exams" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="all">
-                                                    All Exams
+                                {/* Exam */}
+                                <div className="space-y-2">
+                                    <Label>Exam</Label>
+                                    <Select
+                                        value={examFilter}
+                                        onValueChange={(value) => {
+                                            setExamFilter(value);
+                                        }}
+                                    >
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="All Exams" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="all">
+                                                All Exams
+                                            </SelectItem>
+                                            {filteredExams.map((exam) => (
+                                                <SelectItem
+                                                    key={exam.id}
+                                                    value={String(exam.id)}
+                                                >
+                                                    {exam.title}
                                                 </SelectItem>
-                                                {exams.map((exam) => (
-                                                    <SelectItem
-                                                        key={exam.id}
-                                                        value={String(exam.id)}
-                                                    >
-                                                        {exam.title}
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-
-                                    {isSystemAdmin && (
-                                        <div className="space-y-2">
-                                            <Label>Institution</Label>
-                                            <Select
-                                                value={organizationFilter}
-                                                onValueChange={
-                                                    setOrganizationFilter
-                                                }
-                                            >
-                                                <SelectTrigger>
-                                                    <SelectValue placeholder="All Institutions" />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    {organizations.map(
-                                                        (org) => (
-                                                            <SelectItem
-                                                                key={org.id}
-                                                                value={org.id.toString()}
-                                                            >
-                                                                {org.name}
-                                                            </SelectItem>
-                                                        ),
-                                                    )}
-                                                </SelectContent>
-                                            </Select>
-                                        </div>
-                                    )}
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
                                 </div>
 
                                 {/* Year Level & Status */}
