@@ -19,6 +19,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->validateCsrfTokens(except: [
             'exams/*/*/save-answer',
+            'logout',
         ]);
 
         // Trust proxies for HTTPS detection and real IP (including Cloudflare)

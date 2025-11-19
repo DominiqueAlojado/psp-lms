@@ -22,9 +22,21 @@ export function UserMenuContent({ user }: UserMenuContentProps) {
     const handleLogout = () => {
         cleanup();
         router.post(logout().url, {}, {
-            onFinish: () => {
-                // Force a full page reload after logout to refresh CSRF token
+            onSuccess: () => {
+                // Inertia will handle the redirect via Inertia::location
+            },
+            onError: (errors) => {
+                // If logout fails (e.g., CSRF token expired), force redirect to login
+                // This handles the case where the session has already expired
                 window.location.href = '/login';
+            },
+            onFinish: () => {
+                // Fallback: ensure we redirect even if something goes wrong
+                setTimeout(() => {
+                    if (window.location.pathname !== '/login') {
+                        window.location.href = '/login';
+                    }
+                }, 100);
             },
         });
     };

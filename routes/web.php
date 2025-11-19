@@ -11,6 +11,25 @@ Route::get('/', function () {
     ]);
 })->name('home');
 
+// Custom logout route that handles Inertia properly
+Route::post('logout', function (Request $request) {
+    // Logout the user if authenticated
+    if ($request->user()) {
+        \Illuminate\Support\Facades\Auth::logout();
+    }
+
+    // Invalidate and regenerate session
+    $request->session()->invalidate();
+    $request->session()->regenerateToken();
+
+    // Handle Inertia requests
+    if ($request->header('X-Inertia')) {
+        return Inertia::location('/login');
+    }
+
+    return redirect('/login');
+})->middleware('web')->name('logout');
+
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('dashboard', function () {
         return Inertia::render('dashboard');

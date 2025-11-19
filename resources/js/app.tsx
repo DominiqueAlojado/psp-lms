@@ -34,9 +34,14 @@ axios.interceptors.response.use(
         return response;
     },
     (error) => {
-        // On 419 error, refresh the page to get a new CSRF token
+        // On 419 error (CSRF token expired), redirect to login instead of reloading
+        // This prevents the "page expired" flash and provides a better UX
         if (error.response?.status === 419) {
-            window.location.reload();
+            // Don't redirect if we're already on the login page
+            if (window.location.pathname !== '/login') {
+                window.location.href = '/login';
+                return Promise.reject(error);
+            }
         }
         return Promise.reject(error);
     },
