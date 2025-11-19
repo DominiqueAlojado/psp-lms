@@ -1,4 +1,7 @@
 import HeadingSmall from '@/components/heading-small';
+import MeetingEmbed, {
+    type MeetingEmbedRef,
+} from '@/components/meetings/meeting-embed';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -21,19 +24,20 @@ import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
 import { useMeetingAttendance } from '@/hooks/use-meeting-attendance';
 import AppLayout from '@/layouts/app-layout';
-import { type BreadcrumbItem } from '@/types';
-import { Head, Link, router, useForm } from '@inertiajs/react';
+import EmbeddedMeetingLayout from '@/layouts/embedded-meeting-layout';
+import { type BreadcrumbItem, type SharedData } from '@/types';
+import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import { format, parseISO } from 'date-fns';
 import {
     AlertCircle,
     Calendar,
     Clock,
-    ExternalLink,
     MapPin,
+    Maximize2,
     Users,
     Video,
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 interface Event {
     id: number;
@@ -116,7 +120,10 @@ export default function EventShow({
     registrationStats,
     canRegister,
 }: PageProps) {
+    const { auth } = usePage<SharedData>().props;
     const [showCancelDialog, setShowCancelDialog] = useState(false);
+    const [showEmbeddedMeeting, setShowEmbeddedMeeting] = useState(false);
+    const meetingEmbedRef = useRef<MeetingEmbedRef>(null);
     const cancelForm = useForm({
         reason: '',
     });
@@ -163,17 +170,25 @@ export default function EventShow({
     };
 
     const isRegistered = !!userRegistration;
-    const canCancel =
-        isRegistered &&
-        ['pending', 'confirmed', 'approved', 'waitlisted'].includes(
-            userRegistration.registration_status,
-        );
 
     // Check if event is currently live
     const now = new Date();
     const startDate = parseISO(event.start_date);
     const endDate = parseISO(event.end_date);
     const isEventLive = now >= startDate && now <= endDate;
+
+    // Check if it's at least 1 day before the event (hide on event day and after)
+    const oneDayBeforeEvent = new Date(startDate);
+    oneDayBeforeEvent.setDate(oneDayBeforeEvent.getDate() - 1);
+    oneDayBeforeEvent.setHours(23, 59, 59, 999); // End of day
+    const canCancelBeforeEvent = now < oneDayBeforeEvent;
+
+    const canCancel =
+        isRegistered &&
+        ['pending', 'confirmed', 'approved', 'waitlisted'].includes(
+            userRegistration.registration_status,
+        ) &&
+        canCancelBeforeEvent;
 
     // Debug: Log event live status
     useEffect(() => {
@@ -231,6 +246,44 @@ export default function EventShow({
             },
             {} as Record<number, typeof event.agenda_items>,
         ) || {};
+
+    // Show embedded meeting view if enabled
+    if (showEmbeddedMeeting && event.virtual_link) {
+        return (
+            <EmbeddedMeetingLayout
+                title={event.title}
+                onClose={async () => {
+                    // Close the meeting popup window
+                    if (meetingEmbedRef.current) {
+                        meetingEmbedRef.current.closePopup();
+                    }
+
+                    // Stop tracking when exiting embedded view
+                    if (attendanceTracking.isTracking) {
+                        console.log(
+                            '🛑 Exiting embedded view, stopping tracking...',
+                        );
+                        const stopTracking = (
+                            attendanceTracking as {
+                                stopTracking?: () => Promise<void>;
+                            }
+                        ).stopTracking;
+                        if (stopTracking) {
+                            await stopTracking();
+                        }
+                    }
+                    setShowEmbeddedMeeting(false);
+                }}
+            >
+                <MeetingEmbed
+                    ref={meetingEmbedRef}
+                    virtualLink={event.virtual_link}
+                    userName={auth.user?.name || 'Guest'}
+                    userEmail={auth.user?.email || ''}
+                />
+            </EmbeddedMeetingLayout>
+        );
+    }
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -456,21 +509,6 @@ export default function EventShow({
                                                         active
                                                     </span>
                                                 )}
-                                            {isEventLive &&
-                                                !attendanceTracking.isTracking &&
-                                                isRegistered &&
-                                                [
-                                                    'confirmed',
-                                                    'approved',
-                                                ].includes(
-                                                    userRegistration?.registration_status ||
-                                                        '',
-                                                ) && (
-                                                    <span className="text-yellow-600 dark:text-yellow-400">
-                                                        ⚠️ Tracking will start
-                                                        when you view this page
-                                                    </span>
-                                                )}
                                             {!isEventLive && (
                                                 <span className="text-muted-foreground">
                                                     Event is not live yet.
@@ -489,6 +527,32 @@ export default function EventShow({
                                         </CardDescription>
                                     </CardHeader>
                                     <CardContent className="space-y-4">
+                                        {/* Tracking Info */}
+                                        {isEventLive && (
+                                            <div className="rounded-lg border bg-blue-50 p-4 dark:bg-blue-900/20">
+                                                <p className="text-sm text-blue-800 dark:text-blue-400">
+                                                    <strong>Note:</strong>{' '}
+                                                    Attendance tracking is only
+                                                    available during the
+                                                    embedded meeting. Click
+                                                    "Embed Meeting" to start
+                                                    tracking.
+                                                    {attendanceTracking.isTracking ? (
+                                                        <span className="mt-1 block">
+                                                            ✓ Tracking is
+                                                            active.
+                                                        </span>
+                                                    ) : (
+                                                        <span className="mt-1 block">
+                                                            ⏳ Tracking will
+                                                            start when you click
+                                                            the "Embed Meeting"
+                                                            button.
+                                                        </span>
+                                                    )}
+                                                </p>
+                                            </div>
+                                        )}
                                         {/* Meeting Join Area */}
                                         <div className="flex aspect-video w-full items-center justify-center overflow-hidden rounded-lg border bg-gradient-to-br from-primary/10 to-primary/5 p-8 text-center dark:from-primary/20 dark:to-primary/10">
                                             <div className="max-w-md space-y-6">
@@ -501,47 +565,37 @@ export default function EventShow({
                                                     </h3>
                                                     <p className="text-sm text-muted-foreground">
                                                         Click the button below
-                                                        to join the meeting in a
-                                                        new tab. Your attendance
-                                                        will be tracked while
-                                                        you stay on this page.
+                                                        to embed the meeting
+                                                        directly in this app.
+                                                        Your attendance will be
+                                                        tracked only during the
+                                                        embedded meeting
+                                                        session.
                                                     </p>
                                                 </div>
-                                                <div className="flex gap-2">
-                                                    <Button
-                                                        asChild
-                                                        size="lg"
-                                                        className="flex-1"
-                                                    >
-                                                        <a
-                                                            href={
-                                                                event.virtual_link ||
-                                                                '#'
-                                                            }
-                                                            target="_blank"
-                                                            rel="noopener noreferrer"
-                                                            className="flex items-center justify-center gap-2"
-                                                        >
-                                                            Join Meeting{' '}
-                                                            <ExternalLink className="h-4 w-4" />
-                                                        </a>
-                                                    </Button>
-                                                    {canTrack &&
-                                                        !attendanceTracking.isTracking && (
-                                                            <Button
-                                                                size="lg"
-                                                                variant="outline"
-                                                                onClick={() => {
-                                                                    console.log(
-                                                                        '🚀 Manually starting tracking...',
-                                                                    );
-                                                                    attendanceTracking.startTracking?.();
-                                                                }}
-                                                            >
-                                                                Start Tracking
-                                                            </Button>
-                                                        )}
-                                                </div>
+                                                <Button
+                                                    size="lg"
+                                                    className="w-full"
+                                                    onClick={async () => {
+                                                        // Start tracking first
+                                                        if (
+                                                            canTrack &&
+                                                            !attendanceTracking.isTracking
+                                                        ) {
+                                                            console.log(
+                                                                '🎯 Starting attendance tracking...',
+                                                            );
+                                                            await attendanceTracking.startTracking?.();
+                                                        }
+                                                        // Then show embedded view
+                                                        setShowEmbeddedMeeting(
+                                                            true,
+                                                        );
+                                                    }}
+                                                >
+                                                    <Maximize2 className="mr-2 h-4 w-4" />
+                                                    Embed Meeting
+                                                </Button>
                                                 {isEventLive &&
                                                     attendanceTracking.isTracking && (
                                                         <div className="flex items-center justify-center gap-2 text-sm text-green-600 dark:text-green-400">
@@ -565,48 +619,6 @@ export default function EventShow({
                                                     )}
                                             </div>
                                         </div>
-
-                                        {/* Meeting Link */}
-                                        <div className="flex items-center justify-between rounded-lg border p-3 text-sm">
-                                            <div className="flex items-center gap-2">
-                                                <Video className="h-4 w-4 text-muted-foreground" />
-                                                <span className="text-muted-foreground">
-                                                    Meeting Link:
-                                                </span>
-                                            </div>
-                                            <a
-                                                href={event.virtual_link || '#'}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="flex items-center gap-1 text-primary hover:underline"
-                                            >
-                                                Open in new tab{' '}
-                                                <ExternalLink className="h-3 w-3" />
-                                            </a>
-                                        </div>
-
-                                        {/* Tracking Info */}
-                                        {isEventLive && (
-                                            <div className="rounded-lg border bg-blue-50 p-4 dark:bg-blue-900/20">
-                                                <p className="text-sm text-blue-800 dark:text-blue-400">
-                                                    <strong>Note:</strong> Your
-                                                    attendance is automatically
-                                                    tracked while you stay on
-                                                    this event page.
-                                                    {attendanceTracking.isTracking ? (
-                                                        <span className="mt-1 block">
-                                                            ✓ Tracking is
-                                                            active.
-                                                        </span>
-                                                    ) : (
-                                                        <span className="mt-1 block">
-                                                            ⏳ Tracking will
-                                                            start automatically.
-                                                        </span>
-                                                    )}
-                                                </p>
-                                            </div>
-                                        )}
                                     </CardContent>
                                 </Card>
                             )}
@@ -766,28 +778,6 @@ export default function EventShow({
                                         </div>
                                     </div>
                                 )}
-
-                                {event.virtual_link &&
-                                    (event.event_type === 'virtual' ||
-                                        event.event_type === 'hybrid') && (
-                                        <div className="flex items-start gap-3">
-                                            <Video className="mt-0.5 h-5 w-5 flex-shrink-0 text-muted-foreground" />
-                                            <div className="flex-1">
-                                                <p className="text-sm font-medium">
-                                                    Virtual Link
-                                                </p>
-                                                <a
-                                                    href={event.virtual_link}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    className="flex items-center gap-1 text-sm text-primary hover:underline"
-                                                >
-                                                    Join Online{' '}
-                                                    <ExternalLink className="h-3 w-3" />
-                                                </a>
-                                            </div>
-                                        </div>
-                                    )}
 
                                 {event.registration_deadline && (
                                     <div className="flex items-start gap-3">

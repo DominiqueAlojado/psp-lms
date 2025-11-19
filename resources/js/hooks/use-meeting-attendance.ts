@@ -168,21 +168,17 @@ export function useMeetingAttendance({
         }
     };
 
-    // Join meeting automatically when page loads (if conditions are met)
+    // Note: Tracking is now manual - it starts when user clicks "Embed Meeting"
+    // This useEffect is kept for debugging purposes only
     useEffect(() => {
-        if (!shouldTrack || hasJoinedRef.current) {
-            if (!shouldTrack) {
-                console.log('⚠️ Tracking not active. Reasons:', {
-                    isEventLive,
-                    hasRegistration,
-                    eventType: eventType === 'virtual' || eventType === 'hybrid',
-                    hasVirtualLink: !!virtualLink,
-                });
-            }
-            return;
+        if (!shouldTrack) {
+            console.log('⚠️ Tracking conditions not met. Reasons:', {
+                isEventLive,
+                hasRegistration,
+                eventType: eventType === 'virtual' || eventType === 'hybrid',
+                hasVirtualLink: !!virtualLink,
+            });
         }
-
-        joinMeeting();
     }, [shouldTrack, eventId, isEventLive, hasRegistration, eventType, virtualLink]);
 
     // Page Visibility API - track when page is visible/hidden
@@ -335,6 +331,39 @@ export function useMeetingAttendance({
         await joinMeeting();
     };
 
+    // Manual stop tracking function (exported for manual trigger)
+    const stopTracking = async () => {
+        if (!hasJoinedRef.current) {
+            console.log('⚠️ Not currently tracking, nothing to stop');
+            return;
+        }
+
+        console.log('🛑 Manual tracking stop requested');
+        
+        try {
+            await axios.post(`/events/${eventId}/meeting/leave`);
+            
+            setAttendance((prev) => ({
+                ...prev,
+                status: 'left',
+                isTracking: false,
+            }));
+            hasJoinedRef.current = false;
+            clearHeartbeatInterval();
+            
+            console.log('✅ Successfully stopped tracking');
+        } catch (error) {
+            console.error('❌ Error stopping tracking:', error);
+            // Still mark as stopped locally even if API call fails
+            hasJoinedRef.current = false;
+            clearHeartbeatInterval();
+            setAttendance((prev) => ({
+                ...prev,
+                isTracking: false,
+            }));
+        }
+    };
+
     return {
         isTracking: attendance.isTracking,
         status: attendance.status,
@@ -342,6 +371,7 @@ export function useMeetingAttendance({
         error: attendance.error,
         shouldTrack,
         startTracking,
+        stopTracking,
     };
 }
 
