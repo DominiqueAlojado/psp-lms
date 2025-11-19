@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Event;
 use App\Models\EventRegistration;
+use App\Models\MeetingAttendance;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -447,5 +448,180 @@ class EventController extends Controller
             'registrations' => $registrations,
             'filters' => $request->only(['status']),
         ]);
+    }
+
+    /**
+     * Join meeting - record attendance start.
+     */
+    public function joinMeeting(Request $request, Event $event): \Illuminate\Http\JsonResponse
+    {
+        $user = $request->user();
+        $organizationId = $user->currentOrganization?->id;
+
+        // Check if event is live (started and not ended)
+        $now = now();
+        if ($now->isBefore($event->start_date) || $now->isAfter($event->end_date)) {
+            return response()->json(['error' => 'Event is not currently live.'], 403);
+        }
+
+        // Check if user is registered (optional - can track without registration)
+        $registration = $event->registrations()
+            ->where('user_id', $user->id)
+            ->first();
+
+        // Check for existing active attendance
+        $existingAttendance = MeetingAttendance::where('event_id', $event->id)
+            ->where('user_id', $user->id)
+            ->where('status', '!=', 'left')
+            ->whereNull('left_at')
+            ->first();
+
+        if ($existingAttendance) {
+            // Update existing attendance
+            $existingAttendance->updateLastSeen();
+            return response()->json([
+                'success' => true,
+                'attendance_id' => $existingAttendance->id,
+                'message' => 'Attendance updated.',
+            ]);
+        }
+
+        // Create new attendance record
+        $metadata = [
+            'ip_address' => $request->ip(),
+            'user_agent' => $request->userAgent(),
+            'device' => $this->getDeviceInfo($request),
+            'browser' => $this->getBrowserInfo($request),
+        ];
+
+        $attendance = MeetingAttendance::create([
+            'event_id' => $event->id,
+            'event_registration_id' => $registration?->id, // Nullable - can track without registration
+            'user_id' => $user->id,
+            'organization_id' => $organizationId,
+            'joined_at' => now(),
+            'last_seen_at' => now(),
+            'status' => 'joined',
+            'metadata' => $metadata,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'attendance_id' => $attendance->id,
+            'message' => 'Attendance recorded.',
+        ]);
+    }
+
+    /**
+     * Update meeting heartbeat - track active status.
+     */
+    public function meetingHeartbeat(Request $request, Event $event): \Illuminate\Http\JsonResponse
+    {
+        $user = $request->user();
+
+        // Find active attendance
+        $attendance = MeetingAttendance::where('event_id', $event->id)
+            ->where('user_id', $user->id)
+            ->whereNull('left_at')
+            ->latest('joined_at')
+            ->first();
+
+        if (! $attendance) {
+            return response()->json(['error' => 'No active attendance found.'], 404);
+        }
+
+        // Check if user has been inactive for too long (5 minutes = timeout)
+        $inactiveThreshold = now()->subMinutes(5);
+        if ($attendance->last_seen_at && $attendance->last_seen_at->isBefore($inactiveThreshold)) {
+            $attendance->update([
+                'status' => 'timeout',
+                'left_at' => $attendance->last_seen_at,
+            ]);
+            $attendance->calculateDuration();
+
+            return response()->json([
+                'success' => false,
+                'status' => 'timeout',
+                'message' => 'Attendance timed out due to inactivity.',
+            ]);
+        }
+
+        // Update last seen
+        $attendance->updateLastSeen();
+
+        return response()->json([
+            'success' => true,
+            'status' => $attendance->status,
+            'last_seen_at' => $attendance->last_seen_at->toISOString(),
+        ]);
+    }
+
+    /**
+     * Leave meeting - record attendance end.
+     */
+    public function leaveMeeting(Request $request, Event $event): \Illuminate\Http\JsonResponse
+    {
+        $user = $request->user();
+
+        // Find active attendance
+        $attendance = MeetingAttendance::where('event_id', $event->id)
+            ->where('user_id', $user->id)
+            ->whereNull('left_at')
+            ->latest('joined_at')
+            ->first();
+
+        if (! $attendance) {
+            return response()->json(['error' => 'No active attendance found.'], 404);
+        }
+
+        // Mark as left
+        $attendance->markAsLeft();
+
+        return response()->json([
+            'success' => true,
+            'duration_seconds' => $attendance->duration_seconds,
+            'message' => 'Attendance ended.',
+        ]);
+    }
+
+    /**
+     * Get device info from request.
+     */
+    private function getDeviceInfo(Request $request): string
+    {
+        $userAgent = $request->userAgent() ?? '';
+
+        if (preg_match('/Mobile|Android|iPhone|iPad/', $userAgent)) {
+            return 'mobile';
+        }
+
+        if (preg_match('/Tablet|iPad/', $userAgent)) {
+            return 'tablet';
+        }
+
+        return 'desktop';
+    }
+
+    /**
+     * Get browser info from request.
+     */
+    private function getBrowserInfo(Request $request): string
+    {
+        $userAgent = $request->userAgent() ?? '';
+
+        if (preg_match('/Chrome/', $userAgent)) {
+            return 'Chrome';
+        }
+        if (preg_match('/Firefox/', $userAgent)) {
+            return 'Firefox';
+        }
+        if (preg_match('/Safari/', $userAgent)) {
+            return 'Safari';
+        }
+        if (preg_match('/Edge/', $userAgent)) {
+            return 'Edge';
+        }
+
+        return 'Unknown';
     }
 }

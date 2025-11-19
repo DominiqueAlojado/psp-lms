@@ -174,6 +174,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('events/{event}/registrations/{registration}/approve', [App\Http\Controllers\EventController::class, 'approveRegistration'])
         ->middleware('permission:edit-events')
         ->name('events.approve-registration');
+    Route::post('events/{event}/meeting/join', [App\Http\Controllers\EventController::class, 'joinMeeting'])
+        ->name('events.meeting.join');
+    Route::post('events/{event}/meeting/heartbeat', [App\Http\Controllers\EventController::class, 'meetingHeartbeat'])
+        ->name('events.meeting.heartbeat');
+    Route::post('events/{event}/meeting/leave', [App\Http\Controllers\EventController::class, 'leaveMeeting'])
+        ->name('events.meeting.leave');
 
     // My Grades (Resident's personal performance dashboard)
     Route::get('my-grades', [App\Http\Controllers\GradebookController::class, 'myGrades'])

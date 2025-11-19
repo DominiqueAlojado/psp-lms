@@ -94,6 +94,11 @@ class Event extends Model
         return $this->hasMany(EventRegistration::class);
     }
 
+    public function attendances(): HasMany
+    {
+        return $this->hasMany(MeetingAttendance::class);
+    }
+
     public function isRegistrationOpen(): bool
     {
         if (! $this->is_published) {

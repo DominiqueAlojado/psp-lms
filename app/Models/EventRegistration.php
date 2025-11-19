@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class EventRegistration extends Model
 {
@@ -50,6 +51,11 @@ class EventRegistration extends Model
     public function organization(): BelongsTo
     {
         return $this->belongsTo(Organization::class);
+    }
+
+    public function attendances(): HasMany
+    {
+        return $this->hasMany(MeetingAttendance::class);
     }
 
     public function isConfirmed(): bool
