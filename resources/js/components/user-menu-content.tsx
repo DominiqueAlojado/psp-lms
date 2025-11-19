@@ -21,7 +21,12 @@ export function UserMenuContent({ user }: UserMenuContentProps) {
 
     const handleLogout = () => {
         cleanup();
-        router.post(logout().url);
+        router.post(logout().url, {}, {
+            onFinish: () => {
+                // Force a full page reload after logout to refresh CSRF token
+                window.location.href = '/login';
+            },
+        });
     };
 
     return (

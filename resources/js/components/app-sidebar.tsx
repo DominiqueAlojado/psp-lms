@@ -183,7 +183,7 @@ export function AppSidebar() {
         // Hide "Institution Exams" for residents (show only for staff/admins)
         if (
             item.title === 'Institution Exams' &&
-            !hasPermission('view-residents')
+            !hasPermission('view-assessments')
         ) {
             return false;
         }

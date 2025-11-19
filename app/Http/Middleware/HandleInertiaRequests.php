@@ -64,4 +64,12 @@ class HandleInertiaRequests extends Middleware
             ],
         ];
     }
+
+    /**
+     * Set the root template that's loaded on the first page visit.
+     */
+    public function rootView(Request $request): string
+    {
+        return parent::rootView($request);
+    }
 }
