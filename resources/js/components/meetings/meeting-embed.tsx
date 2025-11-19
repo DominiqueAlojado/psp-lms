@@ -7,6 +7,7 @@ interface MeetingEmbedProps {
     virtualLink: string;
     userName?: string;
     userEmail?: string;
+    onPopupClosed?: () => void;
 }
 
 export interface MeetingEmbedRef {
@@ -20,6 +21,7 @@ const MeetingEmbed = forwardRef<MeetingEmbedRef, MeetingEmbedProps>(({
     virtualLink,
     userName,
     userEmail,
+    onPopupClosed,
 }, ref) => {
     const platformInfo = detectMeetingPlatform(virtualLink);
     const zoomRef = useRef<ZoomMeetingEmbedRef>(null);
@@ -44,11 +46,18 @@ const MeetingEmbed = forwardRef<MeetingEmbedRef, MeetingEmbedProps>(({
                     virtualLink={virtualLink}
                     userName={userName}
                     userEmail={userEmail}
+                    onPopupClosed={onPopupClosed}
                 />
             );
 
         case 'google-meet':
-            return <GoogleMeetEmbed ref={googleMeetRef} virtualLink={virtualLink} />;
+            return (
+                <GoogleMeetEmbed
+                    ref={googleMeetRef}
+                    virtualLink={virtualLink}
+                    onPopupClosed={onPopupClosed}
+                />
+            );
 
         case 'microsoft-teams':
             // Teams also blocks iframe embedding, similar to Google Meet

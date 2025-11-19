@@ -6,6 +6,7 @@ interface ZoomMeetingEmbedProps {
     virtualLink: string;
     userName?: string;
     userEmail?: string;
+    onPopupClosed?: () => void;
 }
 
 export interface ZoomMeetingEmbedRef {
@@ -21,6 +22,7 @@ const ZoomMeetingEmbed = forwardRef<ZoomMeetingEmbedRef, ZoomMeetingEmbedProps>(
     virtualLink,
     userName = 'Guest',
     userEmail = '',
+    onPopupClosed,
 }, ref) => {
     const [isFullscreen, setIsFullscreen] = useState(false);
     const [popupWindow, setPopupWindow] = useState<Window | null>(null);
@@ -49,6 +51,10 @@ const ZoomMeetingEmbed = forwardRef<ZoomMeetingEmbedRef, ZoomMeetingEmbedProps>(
                         setIsFullscreen(false);
                         setPopupWindow(null);
                         clearInterval(checkClosed);
+                        // Notify parent that popup was closed
+                        if (onPopupClosed) {
+                            onPopupClosed();
+                        }
                     }
                 }, 500);
 

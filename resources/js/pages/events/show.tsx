@@ -280,6 +280,27 @@ export default function EventShow({
                     virtualLink={event.virtual_link}
                     userName={auth.user?.name || 'Guest'}
                     userEmail={auth.user?.email || ''}
+                    onPopupClosed={async () => {
+                        // When user closes the popup window, close embedded view and stop tracking
+                        console.log(
+                            '🛑 Meeting popup closed by user, closing embedded view...',
+                        );
+
+                        // Stop tracking
+                        if (attendanceTracking.isTracking) {
+                            const stopTracking = (
+                                attendanceTracking as {
+                                    stopTracking?: () => Promise<void>;
+                                }
+                            ).stopTracking;
+                            if (stopTracking) {
+                                await stopTracking();
+                            }
+                        }
+
+                        // Close embedded view
+                        setShowEmbeddedMeeting(false);
+                    }}
                 />
             </EmbeddedMeetingLayout>
         );

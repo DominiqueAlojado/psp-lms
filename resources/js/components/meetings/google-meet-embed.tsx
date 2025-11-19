@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 
 interface GoogleMeetEmbedProps {
     virtualLink: string;
+    onPopupClosed?: () => void;
 }
 
 export interface GoogleMeetEmbedRef {
@@ -15,7 +16,7 @@ export interface GoogleMeetEmbedRef {
  * Since Google Meet blocks iframe embedding, this creates a full-screen
  * overlay that opens the meeting in a way that feels embedded
  */
-const GoogleMeetEmbed = forwardRef<GoogleMeetEmbedRef, GoogleMeetEmbedProps>(({ virtualLink }, ref) => {
+const GoogleMeetEmbed = forwardRef<GoogleMeetEmbedRef, GoogleMeetEmbedProps>(({ virtualLink, onPopupClosed }, ref) => {
     const [isFullscreen, setIsFullscreen] = useState(false);
     const [popupWindow, setPopupWindow] = useState<Window | null>(null);
 
@@ -43,6 +44,10 @@ const GoogleMeetEmbed = forwardRef<GoogleMeetEmbedRef, GoogleMeetEmbedProps>(({ 
                         setIsFullscreen(false);
                         setPopupWindow(null);
                         clearInterval(checkClosed);
+                        // Notify parent that popup was closed
+                        if (onPopupClosed) {
+                            onPopupClosed();
+                        }
                     }
                 }, 500);
 
