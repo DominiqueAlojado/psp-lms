@@ -486,13 +486,47 @@ class EventController extends Controller
             ]);
         }
 
-        // Create new attendance record
+        // Create new attendance record with comprehensive metadata
+        $clientMetadata = $request->input('metadata');
+        
+        // Build metadata object with server-side and client-side data
         $metadata = [
             'ip_address' => $request->ip(),
             'user_agent' => $request->userAgent(),
-            'device' => $this->getDeviceInfo($request),
-            'browser' => $this->getBrowserInfo($request),
         ];
+
+        // Add client-captured metadata if available (for virtual/hybrid events)
+        if ($clientMetadata && is_array($clientMetadata)) {
+            // Merge client metadata (browser, connection, etc.)
+            if (isset($clientMetadata['browser_metadata'])) {
+                $metadata['browser_metadata'] = $clientMetadata['browser_metadata'];
+            }
+            if (isset($clientMetadata['connection_type'])) {
+                $metadata['connection_type'] = $clientMetadata['connection_type'];
+            }
+            if (isset($clientMetadata['connection_speed'])) {
+                $metadata['connection_speed'] = $clientMetadata['connection_speed'];
+            }
+            if (isset($clientMetadata['user_agent'])) {
+                $metadata['user_agent'] = $clientMetadata['user_agent'];
+            }
+            // For hybrid events, track if joining virtually or in-person
+            if (isset($clientMetadata['attendance_type'])) {
+                $metadata['attendance_type'] = $clientMetadata['attendance_type'];
+            } elseif ($event->event_type === 'hybrid') {
+                // Default to virtual if not specified for hybrid events
+                $metadata['attendance_type'] = 'virtual';
+            }
+        } else {
+            // Fallback to server-side detection for in-person events
+            $metadata['device'] = $this->getDeviceInfo($request);
+            $metadata['browser'] = $this->getBrowserInfo($request);
+            
+            // For hybrid events without client metadata, assume in-person
+            if ($event->event_type === 'hybrid') {
+                $metadata['attendance_type'] = 'in-person';
+            }
+        }
 
         $attendance = MeetingAttendance::create([
             'event_id' => $event->id,

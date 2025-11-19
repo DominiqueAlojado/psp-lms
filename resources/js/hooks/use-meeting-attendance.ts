@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { useEffect, useRef, useState } from 'react';
+import { captureExamMetadata } from '@/utils/exam-metadata';
 
 interface UseMeetingAttendanceOptions {
     eventId: number;
@@ -53,8 +54,37 @@ export function useMeetingAttendance({
             eventId,
             url: `/events/${eventId}/meeting/join`,
         });
+
         try {
-            const response = await axios.post(`/events/${eventId}/meeting/join`);
+            // Capture comprehensive metadata for hybrid and virtual events
+            let metadata = null;
+            if (eventType === 'virtual' || eventType === 'hybrid') {
+                console.log('📊 Capturing attendee metadata...');
+                try {
+                    const capturedMetadata = await captureExamMetadata();
+                    metadata = {
+                        browser_metadata: capturedMetadata.browserMetadata,
+                        connection_type: capturedMetadata.connectionType,
+                        connection_speed: capturedMetadata.connectionSpeed,
+                        user_agent: capturedMetadata.userAgent,
+                        // For hybrid events, determine if joining virtually
+                        attendance_type: eventType === 'hybrid' ? 'virtual' : 'virtual',
+                    };
+                    console.log('✅ Metadata captured:', {
+                        browser: metadata.browser_metadata.browser,
+                        device: metadata.browser_metadata.device,
+                        connectionType: metadata.connection_type,
+                        connectionSpeed: metadata.connection_speed,
+                        attendanceType: metadata.attendance_type,
+                    });
+                } catch (metadataError) {
+                    console.warn('⚠️ Failed to capture metadata, continuing without it:', metadataError);
+                }
+            }
+
+            const response = await axios.post(`/events/${eventId}/meeting/join`, {
+                metadata,
+            });
 
             console.log('📥 Join meeting response:', response.data);
 
