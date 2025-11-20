@@ -198,7 +198,7 @@ export default function QuestionBankStatistics({
                                                     </div>
                                                     <div className="text-right">
                                                         <div className="text-lg font-bold text-green-600">
-                                                            {question.statistics.success_rate.toFixed(0)}%
+                                                            {typeof question.statistics.success_rate === 'number' ? question.statistics.success_rate.toFixed(0) : Number(question.statistics.success_rate || 0).toFixed(0)}%
                                                         </div>
                                                         <div className="text-xs text-muted-foreground">
                                                             {question.statistics.times_answered} attempts
@@ -254,7 +254,7 @@ export default function QuestionBankStatistics({
                                                     </div>
                                                     <div className="text-right">
                                                         <div className="text-lg font-bold text-red-600">
-                                                            {question.statistics.success_rate.toFixed(0)}%
+                                                            {typeof question.statistics.success_rate === 'number' ? question.statistics.success_rate.toFixed(0) : Number(question.statistics.success_rate || 0).toFixed(0)}%
                                                         </div>
                                                         <div className="text-xs text-muted-foreground">
                                                             {question.statistics.times_answered} attempts

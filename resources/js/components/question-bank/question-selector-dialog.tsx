@@ -210,7 +210,7 @@ export function QuestionSelectorDialog({ open, onOpenChange, assessmentId, onQue
                                                 <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
                                                     <div className="flex items-center gap-1">
                                                         <TrendingUp className="h-3 w-3" />
-                                                        <span>Success: {stats.success_rate.toFixed(0)}%</span>
+                                                        <span>Success: {typeof stats.success_rate === 'number' ? stats.success_rate.toFixed(0) : Number(stats.success_rate || 0).toFixed(0)}%</span>
                                                     </div>
                                                     <div className="flex items-center gap-1">
                                                         <Check className="h-3 w-3" />
