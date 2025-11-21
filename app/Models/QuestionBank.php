@@ -216,7 +216,7 @@ class QuestionBank extends Model
     {
         // Get all exam attempts that include this question
         $attempts = collect();
-        
+
         if ($scope === 'national') {
             // Get national exam attempts
             $nationalAttempts = \App\Models\National\NationalAttempt::query()
@@ -299,7 +299,7 @@ class QuestionBank extends Model
         // Calculate discrimination index
         $highGroupProportion = $highGroup->count() > 0 ? $highGroupCorrect / $highGroup->count() : 0;
         $lowGroupProportion = $lowGroup->count() > 0 ? $lowGroupCorrect / $lowGroup->count() : 0;
-        
+
         $discriminationIndex = $highGroupProportion - $lowGroupProportion;
 
         // Update statistics

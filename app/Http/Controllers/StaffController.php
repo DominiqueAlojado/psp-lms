@@ -12,6 +12,8 @@ use Illuminate\Support\Facades\Hash;
 use Inertia\Inertia;
 use Inertia\Response;
 use Maatwebsite\Excel\Facades\Excel;
+use Spatie\Activitylog\Facades\Activity;
+use Spatie\Activitylog\Models\Activity as ActivityLog;
 use Spatie\Permission\Models\Role;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
@@ -56,7 +58,7 @@ class StaffController extends Controller
             ->orderBy($request->input('sort', 'name'), $request->input('direction', 'asc'))
             ->paginate(15)
             ->withQueryString()
-            ->through(fn ($user) => [
+            ->through(fn($user) => [
                 'id' => $user->id,
                 'uuid' => $user->uuid,
                 'name' => $user->name,
@@ -153,9 +155,18 @@ class StaffController extends Controller
      */
     public function update(Request $request, User $staff): RedirectResponse
     {
+        // Prevent duplicate submissions by checking if this is a retry
+        $requestId = $request->header('X-Request-ID') ?: uniqid('update_', true);
+        $cacheKey = "staff_update_{$staff->id}_{$requestId}";
+
+        // Check if we've already processed this update (prevent duplicates)
+        if (cache()->has($cacheKey)) {
+            return back()->with('success', 'Staff member updated successfully');
+        }
+
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email,'.$staff->id],
+            'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email,' . $staff->id],
             'password' => ['nullable', 'string', 'min:8'],
             'roles' => ['required', 'array', 'min:1'],
             'roles.*' => ['exists:roles,id'],
@@ -170,30 +181,125 @@ class StaffController extends Controller
             'roles.required' => 'At least one role must be selected',
         ]);
 
-        // Update user
+        // Capture old values before updating
+        $oldName = $staff->name;
+        $oldEmail = $staff->email;
+        $oldCurrentOrgId = $staff->current_organization_id;
+        $oldRoles = $staff->roles->pluck('name')->sort()->values()->toArray();
+        $oldOrganizations = $staff->organizations->pluck('name')->sort()->values()->toArray();
+
+        // Update user (disable automatic logging to prevent duplicates)
         $updateData = [
             'name' => $validated['name'],
             'email' => $validated['email'],
             'current_organization_id' => $validated['current_organization_id'] ?? null,
         ];
 
-        if (! empty($validated['password'])) {
+        // Check if password is being changed
+        $passwordChanged = ! empty($validated['password']);
+
+        if ($passwordChanged) {
             $updateData['password'] = Hash::make($validated['password']);
         }
 
-        $staff->update($updateData);
+        // Temporarily disable automatic logging to prevent duplicates
+        // We'll manually log all changes in one consolidated entry below
+        try {
+            Activity::disableLogging();
+            $staff->update($updateData);
+        } finally {
+            Activity::enableLogging();
+        }
 
         // Update roles
+        $newRoleIds = $validated['roles'];
+        $newRoles = Role::whereIn('id', $newRoleIds)->pluck('name')->sort()->values()->toArray();
         $staff->syncRoles($validated['roles']);
 
         // Update organizations
+        $newOrganizations = $oldOrganizations;
         if (isset($validated['organizations'])) {
+            $newOrgIds = $validated['organizations'];
+            $newOrganizations = Organization::whereIn('id', $newOrgIds)->pluck('name')->sort()->values()->toArray();
+
             $organizationData = collect($validated['organizations'])->mapWithKeys(function ($orgId) {
                 return [$orgId => ['joined_at' => now(), 'is_active' => true]];
             })->toArray();
 
             $staff->organizations()->sync($organizationData);
         }
+
+        // Build consolidated log entry with all changes
+        $attributes = [];
+        $oldValues = [];
+        $hasChanges = false;
+
+        // Check name change
+        if ($oldName !== $validated['name']) {
+            $attributes['name'] = $validated['name'];
+            $oldValues['name'] = $oldName;
+            $hasChanges = true;
+        }
+
+        // Check email change
+        if ($oldEmail !== $validated['email']) {
+            $attributes['email'] = $validated['email'];
+            $oldValues['email'] = $oldEmail;
+            $hasChanges = true;
+        }
+
+        // Check current organization change
+        if ($oldCurrentOrgId != ($validated['current_organization_id'] ?? null)) {
+            $newOrgName = $validated['current_organization_id']
+                ? Organization::find($validated['current_organization_id'])?->name
+                : null;
+            $oldOrgName = $oldCurrentOrgId
+                ? Organization::find($oldCurrentOrgId)?->name
+                : null;
+            $attributes['current_organization'] = $newOrgName;
+            $oldValues['current_organization'] = $oldOrgName;
+            $hasChanges = true;
+        }
+
+        // Check password change
+        if ($passwordChanged) {
+            $attributes['password'] = '***changed***';
+            $oldValues['password'] = '***hidden***';
+            $hasChanges = true;
+        }
+
+        // Check role changes
+        if ($oldRoles !== $newRoles) {
+            $attributes['roles'] = $newRoles;
+            $oldValues['roles'] = $oldRoles;
+            $hasChanges = true;
+        }
+
+        // Check organization changes
+        if ($oldOrganizations !== $newOrganizations) {
+            $attributes['organizations'] = $newOrganizations;
+            $oldValues['organizations'] = $oldOrganizations;
+            $hasChanges = true;
+        }
+
+        // Log all changes in a single entry (only once per request)
+        if ($hasChanges) {
+            // Use batch_uuid to prevent duplicate entries from the same update
+            $batchUuid = (string) \Illuminate\Support\Str::uuid();
+
+            activity()
+                ->performedOn($staff)
+                ->causedBy($request->user())
+                ->useLog('users')
+                ->withProperties([
+                    'attributes' => $attributes,
+                    'old' => $oldValues,
+                ])
+                ->log('User updated');
+        }
+
+        // Mark this update as processed (expires in 5 seconds to prevent duplicates)
+        cache()->put($cacheKey, true, 5);
 
         return back()->with('success', 'Staff member updated successfully');
     }
@@ -222,7 +328,7 @@ class StaffController extends Controller
 
         return Excel::download(
             new StaffExport($filters),
-            'staff-'.now()->format('Y-m-d-His').'.xlsx'
+            'staff-' . now()->format('Y-m-d-His') . '.xlsx'
         );
     }
 
@@ -242,11 +348,58 @@ class StaffController extends Controller
                 'roles' => $staff->roles->pluck('id')->toArray(),
                 'role_names' => $staff->roles->pluck('name')->toArray(),
                 'current_organization_id' => $staff->current_organization_id,
-                'organizations' => $staff->organizations->map(fn ($org) => [
+                'organizations' => $staff->organizations->map(fn($org) => [
                     'id' => $org->id,
                     'name' => $org->name,
                 ])->toArray(),
             ],
+        ]);
+    }
+
+    /**
+     * Get activity logs for a staff member.
+     */
+    public function logs(User $staff): JsonResponse
+    {
+        // Get activities where this user is:
+        // 1. The subject (being updated/modified) - e.g., when their profile is updated
+        // 2. The causer (performing actions) - e.g., when they grade submissions, update assessments, etc.
+        $logs = ActivityLog::query()
+            ->where(function ($query) use ($staff) {
+                $query->where(function ($q) use ($staff) {
+                    $q->where('subject_type', User::class)
+                        ->where('subject_id', $staff->id);
+                })->orWhere(function ($q) use ($staff) {
+                    $q->where('causer_type', User::class)
+                        ->where('causer_id', $staff->id);
+                });
+            })
+            ->with(['subject', 'causer'])
+            ->latest()
+            ->limit(100)
+            ->get()
+            ->map(function ($activity) {
+                return [
+                    'id' => $activity->id,
+                    'description' => $activity->description,
+                    'log_name' => $activity->log_name,
+                    'event' => $activity->event,
+                    'properties' => $activity->properties,
+                    'causer' => $activity->causer ? [
+                        'id' => $activity->causer->id,
+                        'name' => $activity->causer->name,
+                        'email' => $activity->causer->email,
+                    ] : null,
+                    'subject' => $activity->subject ? [
+                        'id' => $activity->subject->id,
+                        'type' => class_basename($activity->subject_type),
+                    ] : null,
+                    'created_at' => $activity->created_at->toISOString(),
+                ];
+            });
+
+        return response()->json([
+            'logs' => $logs,
         ]);
     }
 }

@@ -10,10 +10,12 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 
 class InstitutionAttempt extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, LogsActivity, SoftDeletes;
 
     protected $fillable = [
         'assessment_id',
@@ -120,5 +122,19 @@ class InstitutionAttempt extends Model
     public function isPassed(): bool
     {
         return $this->score >= $this->assessment->passing_score;
+    }
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly(['score', 'status', 'submitted_at'])
+            ->logOnlyDirty()
+            ->setDescriptionForEvent(fn (string $eventName) => match ($eventName) {
+                'created' => 'Institution exam attempt created',
+                'updated' => 'Institution exam attempt updated',
+                'deleted' => 'Institution exam attempt deleted',
+                default => "Institution exam attempt {$eventName}",
+            })
+            ->useLogName('exam_attempts');
     }
 }

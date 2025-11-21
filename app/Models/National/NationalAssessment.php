@@ -8,10 +8,12 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 
 class NationalAssessment extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, LogsActivity, SoftDeletes;
 
     protected $fillable = [
         'title',
@@ -138,5 +140,37 @@ class NationalAssessment extends Model
                 $attempt->update(['institution_rank' => $index + 1]);
             }
         }
+    }
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly([
+                'title',
+                'description',
+                'exam_year',
+                'exam_period',
+                'category',
+                'duration_minutes',
+                'total_points',
+                'passing_score',
+                'randomize_questions',
+                'randomize_choices',
+                'show_results_immediately',
+                'allow_review',
+                'is_published',
+                'national_ranking_enabled',
+                'institution_comparison_enabled',
+                'scheduled_date',
+                'results_release_date',
+            ])
+            ->logOnlyDirty()
+            ->setDescriptionForEvent(fn (string $eventName) => match ($eventName) {
+                'created' => 'National assessment created',
+                'updated' => 'National assessment updated',
+                'deleted' => 'National assessment deleted',
+                default => "National assessment {$eventName}",
+            })
+            ->useLogName('assessments');
     }
 }

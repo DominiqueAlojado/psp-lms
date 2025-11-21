@@ -115,6 +115,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('staff/{staff}', [App\Http\Controllers\StaffController::class, 'show'])
         ->middleware('permission:view-staff')
         ->name('staff.show');
+    Route::get('staff/{staff}/logs', [App\Http\Controllers\StaffController::class, 'logs'])
+        ->middleware('permission:view-staff')
+        ->name('staff.logs');
     Route::patch('staff/{staff}', [App\Http\Controllers\StaffController::class, 'update'])
         ->middleware('permission:edit-staff')
         ->name('staff.update');
@@ -438,4 +441,4 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('organization.switch');
 });
 
-require __DIR__ . '/settings.php';
+require __DIR__.'/settings.php';

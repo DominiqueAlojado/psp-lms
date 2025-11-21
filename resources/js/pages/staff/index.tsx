@@ -2,6 +2,7 @@ import { ExportButton } from '@/components/export-button';
 import HeadingSmall from '@/components/heading-small';
 import { CreateStaffSheet } from '@/components/staff/create-staff-sheet';
 import { EditStaffSheet } from '@/components/staff/edit-staff-sheet';
+import { StaffLogsSheet } from '@/components/staff/staff-logs-sheet';
 import { StaffTable } from '@/components/staff/staff-table';
 import { StatCard } from '@/components/stat-card';
 import { Button } from '@/components/ui/button';
@@ -83,6 +84,7 @@ export default function StaffIndex() {
 
     const [createOpen, setCreateOpen] = useState(false);
     const [editingStaff, setEditingStaff] = useState<Staff | null>(null);
+    const [viewingLogsStaff, setViewingLogsStaff] = useState<Staff | null>(null);
     const [searchQuery, setSearchQuery] = useState(filters.search || '');
     const [roleFilter, setRoleFilter] = useState(filters.role || '');
     const [orgFilter, setOrgFilter] = useState(filters.organization || '');
@@ -247,6 +249,9 @@ export default function StaffIndex() {
                     <StaffTable
                         staff={staff.data}
                         onEdit={(staffMember) => setEditingStaff(staffMember)}
+                        onViewLogs={(staffMember) =>
+                            setViewingLogsStaff(staffMember)
+                        }
                     />
                 </div>
 
@@ -279,6 +284,13 @@ export default function StaffIndex() {
                 onOpenChange={(open) => !open && setEditingStaff(null)}
                 roles={roles}
                 organizations={sortedOrganizations}
+            />
+
+            {/* Staff Logs Sheet */}
+            <StaffLogsSheet
+                staff={viewingLogsStaff}
+                open={!!viewingLogsStaff}
+                onOpenChange={(open) => !open && setViewingLogsStaff(null)}
             />
         </AppLayout>
     );

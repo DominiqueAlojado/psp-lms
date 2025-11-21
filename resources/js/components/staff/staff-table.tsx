@@ -16,7 +16,7 @@ import {
 } from '@/components/ui/tooltip';
 import { usePermissions } from '@/hooks/use-permissions';
 import { router } from '@inertiajs/react';
-import { Building2, Pencil, Trash2 } from 'lucide-react';
+import { Building2, FileText, Pencil, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { DeleteConfirmationDialog } from '../delete-confirmation-dialog';
@@ -37,9 +37,10 @@ interface Staff {
 interface StaffTableProps {
     staff: Staff[];
     onEdit: (staff: Staff) => void;
+    onViewLogs: (staff: Staff) => void;
 }
 
-export function StaffTable({ staff, onEdit }: StaffTableProps) {
+export function StaffTable({ staff, onEdit, onViewLogs }: StaffTableProps) {
     const { hasPermission } = usePermissions();
     const [deletingStaff, setDeletingStaff] = useState<Staff | null>(null);
 
@@ -129,6 +130,26 @@ export function StaffTable({ staff, onEdit }: StaffTableProps) {
                             </TableCell>
                             <TableCell className="text-right">
                                 <div className="flex justify-end gap-2">
+                                    <TooltipProvider>
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <span className="inline-block">
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        onClick={() =>
+                                                            onViewLogs(member)
+                                                        }
+                                                    >
+                                                        <FileText className="h-4 w-4" />
+                                                    </Button>
+                                                </span>
+                                            </TooltipTrigger>
+                                            <TooltipContent>
+                                                <p>View activity logs</p>
+                                            </TooltipContent>
+                                        </Tooltip>
+                                    </TooltipProvider>
                                     <TooltipProvider>
                                         <Tooltip>
                                             <TooltipTrigger asChild>

@@ -9,10 +9,12 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 
 class InstitutionAssessment extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, LogsActivity, SoftDeletes;
 
     protected $fillable = [
         'organization_id',
@@ -91,5 +93,33 @@ class InstitutionAssessment extends Model
             ->where('user_id', $user->id)
             ->whereIn('status', ['completed', 'graded'])
             ->exists();
+    }
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly([
+                'title',
+                'description',
+                'exam_category',
+                'duration_minutes',
+                'total_points',
+                'passing_score',
+                'randomize_questions',
+                'randomize_choices',
+                'show_results_immediately',
+                'allow_review',
+                'is_published',
+                'available_from',
+                'available_until',
+            ])
+            ->logOnlyDirty()
+            ->setDescriptionForEvent(fn (string $eventName) => match ($eventName) {
+                'created' => 'Institution assessment created',
+                'updated' => 'Institution assessment updated',
+                'deleted' => 'Institution assessment deleted',
+                default => "Institution assessment {$eventName}",
+            })
+            ->useLogName('assessments');
     }
 }
