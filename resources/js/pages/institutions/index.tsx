@@ -3,6 +3,7 @@ import { ExportButton } from '@/components/export-button';
 import HeadingSmall from '@/components/heading-small';
 import { CreateInstitutionSheet } from '@/components/institutions/create-institution-sheet';
 import { EditInstitutionSheet } from '@/components/institutions/edit-institution-sheet';
+import { InstitutionLogsSheet } from '@/components/institutions/institution-logs-sheet';
 import { InstitutionTable } from '@/components/institutions/institution-table';
 import { StatCard } from '@/components/stat-card';
 import { Button } from '@/components/ui/button';
@@ -83,6 +84,8 @@ export default function InstitutionsIndex({
     const [search, setSearch] = useState(filters.search || '');
     const [localFilters, setLocalFilters] = useState(filters);
     const [editingInstitution, setEditingInstitution] =
+        useState<Institution | null>(null);
+    const [viewingLogsInstitution, setViewingLogsInstitution] =
         useState<Institution | null>(null);
     const [addingInstitution, setAddingInstitution] = useState(false);
     const [deletingInstitution, setDeletingInstitution] =
@@ -273,6 +276,9 @@ export default function InstitutionsIndex({
                     filters={filters}
                     onEdit={setEditingInstitution}
                     onDelete={setDeletingInstitution}
+                    onViewLogs={(institution) =>
+                        setViewingLogsInstitution(institution)
+                    }
                 />
             </div>
 
@@ -303,6 +309,15 @@ export default function InstitutionsIndex({
                 confirmText="Delete Institution"
                 onConfirm={confirmDelete}
                 onCancel={() => setDeletingInstitution(null)}
+            />
+
+            {/* Institution Logs Sheet */}
+            <InstitutionLogsSheet
+                institution={viewingLogsInstitution}
+                open={!!viewingLogsInstitution}
+                onOpenChange={(open) =>
+                    !open && setViewingLogsInstitution(null)
+                }
             />
         </AppLayout>
     );

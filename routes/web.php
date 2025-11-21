@@ -98,6 +98,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::patch('institutions/{organization}', [App\Http\Controllers\OrganizationController::class, 'update'])
         ->middleware('permission:edit-institutions')
         ->name('institutions.update');
+    Route::get('institutions/{organization}/logs', [App\Http\Controllers\OrganizationController::class, 'logs'])
+        ->middleware('permission:view-institutions')
+        ->name('institutions.logs');
     Route::delete('institutions/{organization}', [App\Http\Controllers\OrganizationController::class, 'destroy'])
         ->middleware('permission:delete-institutions')
         ->name('institutions.destroy');
@@ -441,4 +444,4 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('organization.switch');
 });
 
-require __DIR__.'/settings.php';
+require __DIR__ . '/settings.php';

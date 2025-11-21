@@ -17,7 +17,7 @@ import {
 } from '@/components/ui/tooltip';
 import { usePermissions } from '@/hooks/use-permissions';
 import { router } from '@inertiajs/react';
-import { Edit, Trash2, Users } from 'lucide-react';
+import { Edit, FileText, Trash2, Users } from 'lucide-react';
 
 interface Institution {
     id: number;
@@ -49,9 +49,10 @@ interface PaginatedInstitutions {
 
 interface Props {
     institutions: PaginatedInstitutions;
-    filters: Record<string, any>;
+    filters: Record<string, string | undefined>;
     onEdit: (institution: Institution) => void;
     onDelete: (institution: Institution) => void;
+    onViewLogs: (institution: Institution) => void;
 }
 
 export function InstitutionTable({
@@ -59,6 +60,7 @@ export function InstitutionTable({
     filters,
     onEdit,
     onDelete,
+    onViewLogs,
 }: Props) {
     const { hasPermission } = usePermissions();
 
@@ -165,6 +167,31 @@ export function InstitutionTable({
                                         </TableCell>
                                         <TableCell className="py-4">
                                             <div className="flex gap-2">
+                                                <TooltipProvider>
+                                                    <Tooltip>
+                                                        <TooltipTrigger asChild>
+                                                            <span className="inline-block">
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    onClick={() =>
+                                                                        onViewLogs(
+                                                                            institution,
+                                                                        )
+                                                                    }
+                                                                >
+                                                                    <FileText className="h-4 w-4" />
+                                                                </Button>
+                                                            </span>
+                                                        </TooltipTrigger>
+                                                        <TooltipContent>
+                                                            <p>
+                                                                View activity
+                                                                logs
+                                                            </p>
+                                                        </TooltipContent>
+                                                    </Tooltip>
+                                                </TooltipProvider>
                                                 <TooltipProvider>
                                                     <Tooltip>
                                                         <TooltipTrigger asChild>
