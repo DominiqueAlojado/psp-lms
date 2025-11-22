@@ -59,6 +59,7 @@ const mainNavItems: NavItem[] = [
         icon: Pencil,
         permission: 'view-resident-assignments',
         excludeOrgTypes: ['national'], // Hide when in national org
+        excludeRoles: ['System Admin', 'BOP'], // Hide for system admins - residents only
     },
     {
         title: 'Learning Resources',

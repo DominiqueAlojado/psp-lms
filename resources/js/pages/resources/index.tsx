@@ -214,8 +214,14 @@ export default function ResourcesIndex() {
                                             resource.target_year_levels.length >
                                                 0 && (
                                                 <div className="flex flex-wrap gap-1">
-                                                    {resource.target_year_levels.map(
-                                                        (level) => (
+                                                    {resource.target_year_levels
+                                                        .filter(
+                                                            (level) =>
+                                                                !level.startsWith(
+                                                                    'PGY-',
+                                                                ),
+                                                        )
+                                                        .map((level) => (
                                                             <Badge
                                                                 key={level}
                                                                 variant="outline"
@@ -223,8 +229,7 @@ export default function ResourcesIndex() {
                                                             >
                                                                 {level}
                                                             </Badge>
-                                                        ),
-                                                    )}
+                                                        ))}
                                                 </div>
                                             )}
 

@@ -244,13 +244,25 @@ export default function AnnouncementsIndex() {
                                                 {announcement.target_year_levels &&
                                                     announcement
                                                         .target_year_levels
+                                                        .filter(
+                                                            (level) =>
+                                                                !level.startsWith(
+                                                                    'PGY-',
+                                                                ),
+                                                        )
                                                         .length > 0 && (
                                                         <div className="flex flex-wrap gap-2 pt-2">
                                                             <span className="text-sm text-muted-foreground">
                                                                 Target:
                                                             </span>
-                                                            {announcement.target_year_levels.map(
-                                                                (level) => (
+                                                            {announcement.target_year_levels
+                                                                .filter(
+                                                                    (level) =>
+                                                                        !level.startsWith(
+                                                                            'PGY-',
+                                                                        ),
+                                                                )
+                                                                .map((level) => (
                                                                     <Badge
                                                                         key={
                                                                             level
@@ -259,8 +271,7 @@ export default function AnnouncementsIndex() {
                                                                     >
                                                                         {level}
                                                                     </Badge>
-                                                                ),
-                                                            )}
+                                                                ))}
                                                         </div>
                                                     )}
                                             </div>
@@ -355,21 +366,30 @@ export default function AnnouncementsIndex() {
 
                                 {selectedAnnouncement.target_year_levels &&
                                     selectedAnnouncement.target_year_levels
+                                        .filter(
+                                            (level) =>
+                                                !level.startsWith('PGY-'),
+                                        )
                                         .length > 0 && (
                                         <div className="flex flex-wrap gap-2 border-t pt-4">
                                             <span className="text-sm font-medium">
                                                 Target Year Levels:
                                             </span>
-                                            {selectedAnnouncement.target_year_levels.map(
-                                                (level) => (
+                                            {selectedAnnouncement.target_year_levels
+                                                .filter(
+                                                    (level) =>
+                                                        !level.startsWith(
+                                                            'PGY-',
+                                                        ),
+                                                )
+                                                .map((level) => (
                                                     <Badge
                                                         key={level}
                                                         variant="secondary"
                                                     >
                                                         {level}
                                                     </Badge>
-                                                ),
-                                            )}
+                                                ))}
                                         </div>
                                     )}
                             </div>
