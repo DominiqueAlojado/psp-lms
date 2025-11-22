@@ -3,14 +3,24 @@
 namespace App\Http\Controllers;
 
 use App\Models\LearningResource;
+use App\Services\ActivityLog\ResourceActivityLogService;
+use App\Traits\LogsActivity;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class ResourceController extends Controller
 {
+    use LogsActivity;
+
+    public function __construct(
+        protected ResourceActivityLogService $activityLogService
+    ) {}
+
     /**
      * Display a listing of resources for residents.
      */
@@ -126,7 +136,7 @@ class ResourceController extends Controller
      */
     public function store(Request $request): RedirectResponse
     {
-        \Log::info('Resource upload attempt', [
+        Log::info('Resource upload attempt', [
             'user' => $request->user()->email,
             'has_file' => $request->hasFile('file'),
             'all_data' => $request->except(['file']),
@@ -174,15 +184,18 @@ class ResourceController extends Controller
                 'is_published' => $validated['is_published'] ?? true,
             ]);
 
-            \Log::info('Resource created successfully', ['id' => $resource->id, 'title' => $resource->title]);
+            // Log resource creation
+            $this->activityLogService->logResourceCreated($resource);
+
+            Log::info('Resource created successfully', ['id' => $resource->id, 'title' => $resource->title]);
 
             return redirect('/resources/manage')->with('success', 'Resource uploaded successfully!');
         } catch (\Illuminate\Validation\ValidationException $e) {
-            \Log::error('Resource validation failed', ['errors' => $e->errors()]);
+            Log::error('Resource validation failed', ['errors' => $e->errors()]);
 
             return back()->withErrors($e->errors());
         } catch (\Exception $e) {
-            \Log::error('Resource upload failed', ['error' => $e->getMessage()]);
+            Log::error('Resource upload failed', ['error' => $e->getMessage()]);
 
             return back()->withErrors(['error' => 'Failed to upload resource: ' . $e->getMessage()]);
         }
@@ -207,7 +220,25 @@ class ResourceController extends Controller
             'is_published' => ['boolean'],
         ]);
 
-        $resource->update($validated);
+        // Capture old values before update
+        $oldValues = [
+            'title' => $resource->title,
+            'description' => $resource->description,
+            'category' => $resource->category,
+            'target_year_levels' => $resource->target_year_levels,
+            'is_published' => $resource->is_published,
+        ];
+
+        // Update resource without logging (to avoid duplicate logs)
+        $this->withoutActivityLogging(function () use ($resource, $validated) {
+            $resource->update($validated);
+        });
+
+        // Build log data and log changes
+        $logData = $this->activityLogService->buildUpdateLogData($resource, $validated, $oldValues);
+        if (! empty($logData['attributes']) || ! empty($logData['old'])) {
+            $this->activityLogService->logResourceUpdated($resource, $logData['attributes'], $logData['old']);
+        }
 
         return back()->with('success', 'Resource updated successfully!');
     }
@@ -215,12 +246,15 @@ class ResourceController extends Controller
     /**
      * Remove the specified resource.
      */
-    public function destroy(LearningResource $resource): RedirectResponse
+    public function destroy(Request $request, LearningResource $resource): RedirectResponse
     {
         // Verify user has access
-        if ($resource->organization_id !== auth()->user()->current_organization_id) {
+        if ($resource->organization_id !== $request->user()->current_organization_id) {
             abort(403, 'You do not have access to this resource.');
         }
+
+        // Log resource deletion before deleting
+        $this->activityLogService->logResourceDeleted($resource);
 
         // Delete the file from storage
         if (Storage::disk('public')->exists($resource->file_path)) {
@@ -233,12 +267,29 @@ class ResourceController extends Controller
     }
 
     /**
-     * Download the specified resource.
+     * Get activity logs for a resource.
      */
-    public function download(LearningResource $resource)
+    public function logs(Request $request, LearningResource $resource): JsonResponse
     {
         // Verify user has access
-        if ($resource->organization_id !== auth()->user()->current_organization_id) {
+        if ($resource->organization_id !== $request->user()->current_organization_id) {
+            abort(403, 'You do not have access to this resource.');
+        }
+
+        $logs = $this->activityLogService->getLogs($resource);
+
+        return response()->json([
+            'logs' => $logs,
+        ]);
+    }
+
+    /**
+     * Download the specified resource.
+     */
+    public function download(Request $request, LearningResource $resource)
+    {
+        // Verify user has access
+        if ($resource->organization_id !== $request->user()->current_organization_id) {
             abort(403, 'You do not have access to this resource.');
         }
 

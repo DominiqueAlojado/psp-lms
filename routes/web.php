@@ -152,6 +152,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::delete('resources/{resource}', [App\Http\Controllers\ResourceController::class, 'destroy'])
         ->middleware('permission:delete-materials')
         ->name('resources.destroy');
+    Route::get('resources/{resource}/logs', [App\Http\Controllers\ResourceController::class, 'logs'])
+        ->middleware('permission:view-materials')
+        ->name('resources.logs');
     Route::get('resources/{resource}/download', [App\Http\Controllers\ResourceController::class, 'download'])
         ->name('resources.download');
 

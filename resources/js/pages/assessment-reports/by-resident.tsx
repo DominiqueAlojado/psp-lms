@@ -34,7 +34,7 @@ const breadcrumbs: BreadcrumbItem[] = [
 ];
 
 const YEAR_LEVELS = [
-    'Pre-resident',
+    'Pre-Resident',
     'First Year',
     'Second Year',
     'Third Year',

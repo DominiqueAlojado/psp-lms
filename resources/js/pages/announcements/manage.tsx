@@ -52,7 +52,7 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
 ];
 
-const YEAR_LEVELS = ['PGY-1', 'PGY-2', 'PGY-3', 'PGY-4', 'PGY-5'];
+const YEAR_LEVELS = ['Pre-Resident', 'First Year', 'Second Year', 'Third Year', 'Fourth Year', 'Graduate'];
 
 interface Announcement {
     id: number;

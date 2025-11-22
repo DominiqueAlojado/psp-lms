@@ -63,12 +63,12 @@ export const ASSIGNMENT_TYPES = [
 ];
 
 export const YEAR_LEVELS = [
-    '1st Year',
-    '2nd Year',
-    '3rd Year',
-    '4th Year',
-    'Graduate',
     'Pre-Resident',
+    'First Year',
+    'Second Year',
+    'Third Year',
+    'Fourth Year',
+    'Graduate',
 ];
 
 export const FILE_TYPES = [

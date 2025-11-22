@@ -400,18 +400,18 @@ class AssignmentController extends Controller
             abort(403, 'No organization selected.');
         }
 
-        // Get user's year level and convert to assignment format
+        // Get user's year level
         $resident = $user->resident;
         $yearLevel = $resident?->year_level;
 
-        // Convert year level format: "First Year" -> "1st Year", etc.
+        // Use year level as-is (already in the correct format: Pre-Resident, First Year, etc.)
         $formattedYearLevel = match ($yearLevel) {
             'Pre-Resident' => 'Pre-Resident',
-            'First Year' => '1st Year',
-            'Second Year' => '2nd Year',
-            'Third Year' => '3rd Year',
-            'Fourth Year' => '4th Year',
-            'Fifth Year' => '4th Year', // Map Fifth Year to 4th Year
+            'First Year' => 'First Year',
+            'Second Year' => 'Second Year',
+            'Third Year' => 'Third Year',
+            'Fourth Year' => 'Fourth Year',
+            'Fifth Year' => 'Fourth Year', // Map Fifth Year to Fourth Year
             'Graduate' => 'Graduate',
             default => $yearLevel,
         };

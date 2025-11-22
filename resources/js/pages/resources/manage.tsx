@@ -1,5 +1,6 @@
 import { DeleteConfirmationDialog } from '@/components/delete-confirmation-dialog';
 import HeadingSmall from '@/components/heading-small';
+import { ResourceLogsSheet } from '@/components/resources/resource-logs-sheet';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -29,6 +30,7 @@ import {
     BookOpen,
     Download,
     Edit,
+    FileText,
     Plus,
     Search,
     Trash2,
@@ -62,7 +64,7 @@ const RESOURCE_CATEGORIES = [
     'Other',
 ] as const;
 
-const YEAR_LEVELS = ['PGY-1', 'PGY-2', 'PGY-3', 'PGY-4', 'PGY-5'];
+const YEAR_LEVELS = ['Pre-Resident', 'First Year', 'Second Year', 'Third Year', 'Fourth Year', 'Graduate'];
 
 interface Resource {
     id: number;
@@ -111,6 +113,9 @@ export default function ManageResources() {
     const [deletingResource, setDeletingResource] = useState<Resource | null>(
         null,
     );
+    const [viewingLogsResource, setViewingLogsResource] =
+        useState<Resource | null>(null);
+    const [showLogsSheet, setShowLogsSheet] = useState(false);
 
     // Upload form state
     const [uploadTitle, setUploadTitle] = useState('');
@@ -317,6 +322,11 @@ export default function ManageResources() {
         }
     };
 
+    const handleViewLogs = (resource: Resource) => {
+        setViewingLogsResource(resource);
+        setShowLogsSheet(true);
+    };
+
     const hasActiveFilters = filters.search || filters.category;
 
     return (
@@ -456,8 +466,19 @@ export default function ManageResources() {
                                                 onClick={() =>
                                                     openEditDialog(resource)
                                                 }
+                                                title="Edit"
                                             >
                                                 <Edit className="h-4 w-4" />
+                                            </Button>
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() =>
+                                                    handleViewLogs(resource)
+                                                }
+                                                title="View Activity Logs"
+                                            >
+                                                <FileText className="h-4 w-4" />
                                             </Button>
                                             <Button
                                                 variant="outline"
@@ -468,6 +489,7 @@ export default function ManageResources() {
                                                     href={`/resources/${resource.id}/download`}
                                                     target="_blank"
                                                     rel="noopener noreferrer"
+                                                    title="Download"
                                                 >
                                                     <Download className="h-4 w-4" />
                                                 </a>
@@ -480,6 +502,7 @@ export default function ManageResources() {
                                                         resource,
                                                     )
                                                 }
+                                                title="Delete"
                                             >
                                                 <Trash2 className="h-4 w-4 text-destructive" />
                                             </Button>
@@ -815,6 +838,20 @@ export default function ManageResources() {
                         itemName={deletingResource.file_name}
                         warningMessage="This will permanently delete the resource file and all its data. This action cannot be undone."
                         confirmText="Delete Resource"
+                    />
+                )}
+
+                {/* Resource Logs Sheet */}
+                {viewingLogsResource && (
+                    <ResourceLogsSheet
+                        open={showLogsSheet}
+                        onOpenChange={(open) => {
+                            setShowLogsSheet(open);
+                            if (!open) {
+                                setViewingLogsResource(null);
+                            }
+                        }}
+                        resource={viewingLogsResource}
                     />
                 )}
             </div>
