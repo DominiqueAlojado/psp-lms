@@ -250,7 +250,7 @@ class ResidentController extends Controller
 
         // Temporarily disable automatic logging to prevent duplicates
         $this->withoutActivityLogging(function () use ($resident, $validated) {
-            $resident->update($validated);
+        $resident->update($validated);
         });
 
         // Update linked user if exists

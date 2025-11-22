@@ -293,6 +293,86 @@ class NationalAssessmentController extends Controller
     }
 
     /**
+     * Add questions from question bank to assessment.
+     */
+    public function addFromBank(Request $request, NationalAssessment $assessment): RedirectResponse
+    {
+        $request->validate([
+            'question_ids' => ['required', 'array', 'min:1'],
+            'question_ids.*' => ['required', 'integer', 'exists:question_bank,id'],
+        ]);
+
+        // Get questions from bank (national questions only)
+        $bankQuestions = QuestionBank::with(['choices', 'topic'])
+            ->whereIn('id', $request->question_ids)
+            ->where('owner_type', 'national')
+            ->get();
+
+        if ($bankQuestions->isEmpty()) {
+            return back()->with('error', 'No valid questions found.');
+        }
+
+        $totalPointsAdded = 0;
+        $order = ($assessment->questions()->max('order') ?? 0) + 1;
+
+        DB::transaction(function () use ($bankQuestions, $assessment, &$totalPointsAdded, &$order) {
+            foreach ($bankQuestions as $bankQuestion) {
+                // Create a copy of the question in the assessment
+                $question = NationalQuestion::create([
+                    'assessment_id' => $assessment->id,
+                    'question_type' => $bankQuestion->question_type,
+                    'question_text' => $bankQuestion->question_text,
+                    'points' => $bankQuestion->points,
+                    'topic' => $bankQuestion->topic?->name,
+                    'order' => $order++,
+                    'image_path' => $bankQuestion->image_path,
+                ]);
+
+                $totalPointsAdded += (int) $bankQuestion->points;
+
+                // Copy choices
+                foreach ($bankQuestion->choices as $bankChoice) {
+                    NationalQuestionChoice::create([
+                        'question_id' => $question->id,
+                        'choice_text' => $bankChoice->choice_text,
+                        'is_correct' => $bankChoice->is_correct,
+                        'order' => $bankChoice->order,
+                    ]);
+                }
+
+                // Increment usage counter in question bank
+                $bankQuestion->incrementUsage();
+
+                // Log each question added from bank
+                $question->load('choices');
+                $choicesData = $question->choices->map(function ($choice) {
+                    return [
+                        'choice_text' => $choice->choice_text,
+                        'is_correct' => $choice->is_correct,
+                    ];
+                })->toArray();
+
+                $this->activityLogService->logQuestionAddedFromBank(
+                    $assessment,
+                    $question->id,
+                    $question->question_text,
+                    $question->question_type,
+                    $question->points,
+                    $question->topic,
+                    $choicesData,
+                    $bankQuestion->id
+                );
+            }
+
+            // Update total points
+            $assessment->total_points += $totalPointsAdded;
+            $assessment->save();
+        });
+
+        return back()->with('success', "Successfully added {$bankQuestions->count()} question(s) from question bank!");
+    }
+
+    /**
      * Edit page for a national assessment.
      */
     public function edit(NationalAssessment $assessment): Response

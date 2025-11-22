@@ -398,6 +398,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('inservice-exams/{assessment}/questions/import', [App\Http\Controllers\NationalAssessmentController::class, 'importQuestions'])
         ->middleware('role:System Admin|BOP')
         ->name('inservice-exams.questions.import');
+    Route::post('inservice-exams/{assessment}/questions/from-bank', [App\Http\Controllers\NationalAssessmentController::class, 'addFromBank'])
+        ->middleware('role:System Admin|BOP')
+        ->name('inservice-exams.questions.from-bank');
 
     // Institution Exams (frontend pages)
     Route::redirect('institution-exams', '/institution-exams/active')->name('institution-exams');

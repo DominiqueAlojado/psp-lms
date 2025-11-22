@@ -1258,6 +1258,7 @@ export default function EditInServiceAssessment() {
                 onOpenChange={setShowQuestionSelector}
                 assessmentId={assessment.id}
                 onQuestionsAdded={() => router.reload({ only: ['assessment'] })}
+                routePrefix="inservice-exams"
             />
 
             {/* Assessment Logs Sheet */}

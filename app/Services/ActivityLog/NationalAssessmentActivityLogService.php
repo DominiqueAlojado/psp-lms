@@ -107,8 +107,6 @@ class NationalAssessmentActivityLogService
                 'attributes' => [
                     'questions_added' => $questionsCount,
                     'total_points_added' => $totalPointsAdded,
-                    'new_total_questions' => $assessment->questions()->count(),
-                    'new_total_points' => $assessment->total_points,
                 ],
             ])
             ->log('Questions added to assessment');
@@ -154,11 +152,56 @@ class NationalAssessmentActivityLogService
                     'points' => $points,
                     'correct_answer' => !empty($correctAnswer) ? implode(', ', $correctAnswer) : 'None',
                     'choices' => !empty($choicesFormatted) ? implode(' | ', $choicesFormatted) : 'None',
-                    'new_total_questions' => $assessment->questions()->count(),
-                    'new_total_points' => $assessment->total_points,
                 ],
             ])
             ->log('Question added to assessment');
+    }
+
+    /**
+     * Log question added from question bank.
+     */
+    public function logQuestionAddedFromBank(
+        NationalAssessment $assessment,
+        int $questionId,
+        string $questionText,
+        string $questionType,
+        int $points,
+        ?string $topic = null,
+        array $choices = [],
+        int $bankQuestionId
+    ): void {
+        // Format choices for display
+        $choicesFormatted = [];
+        foreach ($choices as $choice) {
+            $text = substr(strip_tags($choice['choice_text'] ?? ''), 0, 50);
+            $isCorrect = $choice['is_correct'] ?? false;
+            $choicesFormatted[] = $isCorrect ? "{$text} (Correct)" : $text;
+        }
+
+        $correctAnswer = collect($choices)
+            ->where('is_correct', true)
+            ->pluck('choice_text')
+            ->map(fn($text) => substr(strip_tags($text), 0, 50))
+            ->values()
+            ->toArray();
+
+        activity()
+            ->performedOn($assessment)
+            ->causedBy(auth()->user() ?? null)
+            ->useLog('national_assessment')
+            ->withProperties([
+                'attributes' => [
+                    'question_id' => $questionId,
+                    'question_text' => substr(strip_tags($questionText), 0, 100),
+                    'question_type' => $questionType,
+                    'topic' => $topic ?? 'None',
+                    'points' => $points,
+                    'correct_answer' => !empty($correctAnswer) ? implode(', ', $correctAnswer) : 'None',
+                    'choices' => !empty($choicesFormatted) ? implode(' | ', $choicesFormatted) : 'None',
+                    'source' => 'question_bank',
+                ],
+            ])
+            ->log('Question added from question bank');
     }
 
     /**
@@ -297,8 +340,6 @@ class NationalAssessmentActivityLogService
                 'attributes' => [
                     'questions_imported' => $questionsCount,
                     'total_points_added' => $totalPointsAdded,
-                    'new_total_questions' => $assessment->questions()->count(),
-                    'new_total_points' => $assessment->total_points,
                 ],
             ])
             ->log('Questions imported to assessment');

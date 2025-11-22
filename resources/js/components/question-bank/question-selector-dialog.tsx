@@ -35,6 +35,7 @@ interface Props {
     onOpenChange: (open: boolean) => void;
     assessmentId: number;
     onQuestionsAdded: () => void;
+    routePrefix?: string; // Optional route prefix (e.g., 'inservice-exams' or 'assessments')
 }
 
 const typeLabels: Record<string, string> = {
@@ -49,7 +50,7 @@ const difficultyColors: Record<string, string> = {
     hard: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
 };
 
-export function QuestionSelectorDialog({ open, onOpenChange, assessmentId, onQuestionsAdded }: Props) {
+export function QuestionSelectorDialog({ open, onOpenChange, assessmentId, onQuestionsAdded, routePrefix }: Props) {
     const [questions, setQuestions] = useState<Question[]>([]);
     const [selectedIds, setSelectedIds] = useState<number[]>([]);
     const [loading, setLoading] = useState(false);
@@ -105,8 +106,12 @@ export function QuestionSelectorDialog({ open, onOpenChange, assessmentId, onQue
     };
 
     const handleAddQuestions = () => {
+        // Determine route based on prefix or current URL
+        const prefix = routePrefix || (window.location.pathname.includes('/inservice-exams/') ? 'inservice-exams' : 'assessments');
+        const route = `/${prefix}/${assessmentId}/questions/from-bank`;
+        
         router.post(
-            `/assessments/${assessmentId}/questions/from-bank`,
+            route,
             { question_ids: selectedIds },
             {
                 preserveScroll: true,
