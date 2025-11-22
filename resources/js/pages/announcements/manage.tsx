@@ -1,4 +1,5 @@
 import { DeleteConfirmationDialog } from '@/components/delete-confirmation-dialog';
+import { AnnouncementLogsSheet } from '@/components/announcements/announcement-logs-sheet';
 import HeadingSmall from '@/components/heading-small';
 import { RichTextEditor } from '@/components/rich-text-editor';
 import { Badge } from '@/components/ui/badge';
@@ -29,6 +30,7 @@ import {
     AlertCircle,
     Edit,
     Eye,
+    FileText,
     Megaphone,
     Pin,
     Plus,
@@ -98,6 +100,9 @@ export default function ManageAnnouncements() {
         useState<Announcement | null>(null);
     const [deletingAnnouncement, setDeletingAnnouncement] =
         useState<Announcement | null>(null);
+    const [viewingLogsAnnouncement, setViewingLogsAnnouncement] =
+        useState<Announcement | null>(null);
+    const [showLogsSheet, setShowLogsSheet] = useState(false);
 
     // Create form state
     const [createTitle, setCreateTitle] = useState('');
@@ -259,6 +264,11 @@ export default function ManageAnnouncements() {
             },
             onFinish: () => setDeletingAnnouncement(null),
         });
+    };
+
+    const handleViewLogs = (announcement: Announcement) => {
+        setViewingLogsAnnouncement(announcement);
+        setShowLogsSheet(true);
     };
 
     const toggleYearLevel = (level: string, isCreate: boolean) => {
@@ -447,6 +457,16 @@ export default function ManageAnnouncements() {
                                             </div>
                                         </div>
                                         <div className="flex gap-2">
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() =>
+                                                    handleViewLogs(announcement)
+                                                }
+                                                title="View Activity Logs"
+                                            >
+                                                <FileText className="h-4 w-4" />
+                                            </Button>
                                             <Button
                                                 variant="outline"
                                                 size="sm"
@@ -931,6 +951,23 @@ export default function ManageAnnouncements() {
                             </form>
                         </DialogContent>
                     </Dialog>
+                )}
+
+                {/* Activity Logs */}
+                {viewingLogsAnnouncement && (
+                    <AnnouncementLogsSheet
+                        open={showLogsSheet}
+                        onOpenChange={(open) => {
+                            setShowLogsSheet(open);
+                            if (!open) {
+                                setViewingLogsAnnouncement(null);
+                            }
+                        }}
+                        announcement={{
+                            id: viewingLogsAnnouncement.id,
+                            title: viewingLogsAnnouncement.title,
+                        }}
+                    />
                 )}
 
                 {/* Delete Confirmation */}

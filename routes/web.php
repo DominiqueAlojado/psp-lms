@@ -172,6 +172,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('announcements.destroy');
     Route::post('announcements/{announcement}/view', [App\Http\Controllers\AnnouncementController::class, 'markAsViewed'])
         ->name('announcements.view');
+    Route::get('announcements/{announcement}/logs', [App\Http\Controllers\AnnouncementController::class, 'logs'])
+        ->middleware('permission:view-announcements')
+        ->name('announcements.logs');
 
     // Events & Conventions
     Route::get('events', [App\Http\Controllers\EventController::class, 'index'])
