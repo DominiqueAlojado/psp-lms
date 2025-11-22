@@ -1,5 +1,6 @@
 import { CreateQuestionSheet } from '@/components/question-bank/create-question-sheet';
 import { EditQuestionSheet } from '@/components/question-bank/edit-question-sheet';
+import { QuestionLogsSheet } from '@/components/question-bank/question-logs-sheet';
 import { DeleteConfirmationDialog } from '@/components/delete-confirmation-dialog';
 import { QuestionsImportPreviewDialog } from '@/components/questions-import-preview-dialog';
 import HeadingSmall from '@/components/heading-small';
@@ -11,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, router } from '@inertiajs/react';
-import { BarChart3, Check, CheckCircle, Clock, Download, Edit, Plus, Search, Trash2, TrendingUp, Upload } from 'lucide-react';
+import { BarChart3, Check, CheckCircle, Clock, Download, Edit, FileText, Plus, Search, Trash2, TrendingUp, Upload } from 'lucide-react';
 import { useState } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -78,6 +79,7 @@ export default function QuestionBankIndex({ questions, filters }: PageProps) {
     const [selectedQuestion, setSelectedQuestion] = useState<Question | null>(null);
     const [showEditSheet, setShowEditSheet] = useState(false);
     const [questionToDelete, setQuestionToDelete] = useState<Question | null>(null);
+    const [viewingLogsQuestion, setViewingLogsQuestion] = useState<Question | null>(null);
     
     // Import state
     const [showImportPreview, setShowImportPreview] = useState(false);
@@ -364,6 +366,14 @@ export default function QuestionBankIndex({ questions, filters }: PageProps) {
                                                         <Edit className="mr-1 h-3 w-3" />
                                                         Edit
                                                     </Button>
+                                                    <Button 
+                                                        size="sm" 
+                                                        variant="outline"
+                                                        onClick={() => setViewingLogsQuestion(question)}
+                                                    >
+                                                        <FileText className="mr-1 h-3 w-3" />
+                                                        Logs
+                                                    </Button>
                                                     {!question.is_approved && (
                                                         <Button 
                                                             size="sm"
@@ -445,6 +455,17 @@ export default function QuestionBankIndex({ questions, filters }: PageProps) {
                     isImporting={isImporting}
                 />
             )}
+
+            {/* Question Logs Sheet */}
+            <QuestionLogsSheet
+                question={viewingLogsQuestion}
+                open={!!viewingLogsQuestion}
+                onOpenChange={(open) => {
+                    if (!open) {
+                        setViewingLogsQuestion(null);
+                    }
+                }}
+            />
         </AppLayout>
     );
 }

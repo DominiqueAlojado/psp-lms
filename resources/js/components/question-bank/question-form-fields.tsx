@@ -43,6 +43,17 @@ export function QuestionFormFields({ data, setData, errors = {} }: Props) {
     const updateChoice = (index: number, field: keyof Choice, value: string | boolean) => {
         const newChoices = [...data.choices];
         newChoices[index] = { ...newChoices[index], [field]: value };
+        
+        // For multiple_choice, ensure only one answer is correct
+        if (field === 'is_correct' && data.question_type === 'multiple_choice' && value === true) {
+            // Uncheck all other choices
+            newChoices.forEach((choice, idx) => {
+                if (idx !== index) {
+                    choice.is_correct = false;
+                }
+            });
+        }
+        
         setData({ ...data, choices: newChoices });
     };
 

@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\QuestionBank;
 use App\Models\QuestionBankChoice;
+use App\Services\ActivityLog\QuestionBankActivityLogService;
+use App\Traits\LogsActivity;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -15,6 +17,11 @@ use Maatwebsite\Excel\Facades\Excel;
 
 class QuestionBankController extends Controller
 {
+    use LogsActivity;
+
+    public function __construct(
+        protected QuestionBankActivityLogService $activityLogService
+    ) {}
     /**
      * Display question bank listing.
      */
@@ -41,7 +48,7 @@ class QuestionBankController extends Controller
 
         // Search
         if ($request->filled('search')) {
-            $query->where('question_text', 'like', '%'.$request->search.'%');
+            $query->where('question_text', 'like', '%' . $request->search . '%');
         }
 
         // Filter by topic
@@ -109,7 +116,7 @@ class QuestionBankController extends Controller
         }
 
         if ($request->filled('search')) {
-            $query->where('question_text', 'like', '%'.$request->search.'%');
+            $query->where('question_text', 'like', '%' . $request->search . '%');
         }
 
         if ($request->filled('topic')) {
@@ -178,7 +185,7 @@ class QuestionBankController extends Controller
         $imagePath = null;
         if ($request->hasFile('image')) {
             $file = $request->file('image');
-            $fileName = Str::uuid().'.'.$file->getClientOriginalExtension();
+            $fileName = Str::uuid() . '.' . $file->getClientOriginalExtension();
             $imagePath = $file->storeAs('question-images', $fileName, 'public');
         }
 
@@ -208,6 +215,9 @@ class QuestionBankController extends Controller
             ]);
         }
 
+        // Log question creation
+        $this->activityLogService->logQuestionCreated($question);
+
         return redirect()->route('question-bank.index')
             ->with('success', 'Question added to bank successfully!');
     }
@@ -235,6 +245,9 @@ class QuestionBankController extends Controller
             }
         }
 
+        // Load choices relationship before updating
+        $question->load('choices');
+
         $validated = $request->validate([
             'topic_id' => ['nullable', 'exists:topics,id'],
             'question_type' => ['required', 'in:multiple_choice,multiple_select,true_false'],
@@ -246,22 +259,55 @@ class QuestionBankController extends Controller
             'choices' => ['required', 'array', 'min:2'],
             'choices.*.choice_text' => ['required', 'string'],
             'choices.*.is_correct' => ['required', 'boolean'],
+        ], [
+            'choices.required' => 'At least two choices are required',
+            'choices.min' => 'At least two choices are required',
         ]);
 
+        // Validate that multiple_choice has exactly one correct answer
+        if ($validated['question_type'] === 'multiple_choice') {
+            $correctCount = collect($validated['choices'])->where('is_correct', true)->count();
+            if ($correctCount !== 1) {
+                return back()->withErrors([
+                    'choices' => 'Multiple choice questions must have exactly one correct answer.',
+                ]);
+            }
+        }
+
+        // Capture old values before updating
+        $oldTopicId = $question->topic_id;
+        $oldQuestionType = $question->question_type;
+        $oldQuestionText = $question->question_text;
+        $oldPoints = $question->points;
+        $oldExplanation = $question->explanation;
+        $oldDifficultyLevel = $question->difficulty_level;
+        $imageChanged = $request->hasFile('image');
+
+        // Capture old choices before they're deleted
+        $oldChoices = $question->choices()->orderBy('order')->get()->map(function ($choice) {
+            return [
+                'choice_text' => $choice->choice_text,
+                'is_correct' => $choice->is_correct,
+                'order' => $choice->order,
+            ];
+        })->toArray();
+
         // Handle image upload
-        if ($request->hasFile('image')) {
+        if ($imageChanged) {
             // Delete old image
             if ($question->image_path && Storage::disk('public')->exists($question->image_path)) {
                 Storage::disk('public')->delete($question->image_path);
             }
 
             $file = $request->file('image');
-            $fileName = Str::uuid().'.'.$file->getClientOriginalExtension();
+            $fileName = Str::uuid() . '.' . $file->getClientOriginalExtension();
             $validated['image_path'] = $file->storeAs('question-images', $fileName, 'public');
         }
 
-        // Update question
-        $question->update($validated);
+        // Temporarily disable automatic logging to prevent duplicates
+        $this->withoutActivityLogging(function () use ($question, $validated) {
+            $question->update($validated);
+        });
 
         // Update choices - delete old ones and create new
         $question->choices()->delete();
@@ -272,6 +318,29 @@ class QuestionBankController extends Controller
                 'is_correct' => $choice['is_correct'],
                 'order' => $index,
             ]);
+        }
+
+        // Build consolidated log entry with all changes using service
+        $logData = $this->activityLogService->buildUpdateLogData(
+            $question,
+            $validated,
+            $oldTopicId,
+            $oldQuestionType,
+            $oldQuestionText,
+            $oldPoints,
+            $oldExplanation,
+            $oldDifficultyLevel,
+            $imageChanged,
+            $oldChoices
+        );
+
+        // Log all changes in a single entry
+        if ($logData['hasChanges']) {
+            $this->activityLogService->logQuestionUpdated(
+                $question,
+                $logData['attributes'],
+                $logData['oldValues']
+            );
         }
 
         return back()->with('success', 'Question updated successfully!');
@@ -304,6 +373,9 @@ class QuestionBankController extends Controller
         if ($question->assessments()->count() > 0) {
             return back()->with('error', 'Cannot delete question that is used in exams. Remove from exams first.');
         }
+
+        // Log deletion before deleting
+        $this->activityLogService->logQuestionDeleted($question);
 
         $question->delete();
 
@@ -338,6 +410,9 @@ class QuestionBankController extends Controller
             'approved_by' => $user->id,
             'approved_at' => now(),
         ]);
+
+        // Log question approval
+        $this->activityLogService->logQuestionApproved($question);
 
         return back()->with('success', 'Question approved successfully!');
     }
@@ -535,7 +610,7 @@ class QuestionBankController extends Controller
                         if (! $topic) {
                             $topic = \App\Models\Topic::create([
                                 'name' => $rowData['topic'],
-                                'slug' => $topicSlug.'-'.uniqid(),
+                                'slug' => $topicSlug . '-' . uniqid(),
                                 'organization_id' => $organizationId,
                             ]);
                         }
@@ -573,16 +648,16 @@ class QuestionBankController extends Controller
 
                     $successCount++;
                 } catch (\Exception $e) {
-                    $errors[] = "Row {$rowNumber}: ".$e->getMessage();
+                    $errors[] = "Row {$rowNumber}: " . $e->getMessage();
                 }
             }
 
             if (! empty($errors)) {
-                $errorMessage = "Imported {$successCount} questions with ".count($errors).' errors: ';
+                $errorMessage = "Imported {$successCount} questions with " . count($errors) . ' errors: ';
                 $errorMessage .= implode('; ', array_slice($errors, 0, 3));
 
                 if (count($errors) > 3) {
-                    $errorMessage .= '... and '.(count($errors) - 3).' more errors.';
+                    $errorMessage .= '... and ' . (count($errors) - 3) . ' more errors.';
                 }
 
                 return back()->with('warning', $errorMessage);
@@ -590,9 +665,21 @@ class QuestionBankController extends Controller
 
             return back()->with('success', "Successfully imported {$successCount} questions to Question Bank!");
         } catch (\Exception $e) {
-            \Log::error('Question Bank import failed', ['error' => $e->getMessage()]);
+            \Illuminate\Support\Facades\Log::error('Question Bank import failed', ['error' => $e->getMessage()]);
 
-            return back()->withErrors(['file' => 'Import failed: '.$e->getMessage()]);
+            return back()->withErrors(['file' => 'Import failed: ' . $e->getMessage()]);
         }
+    }
+
+    /**
+     * Get activity logs for a question.
+     */
+    public function logs(QuestionBank $question): JsonResponse
+    {
+        $logs = $this->activityLogService->getLogs($question);
+
+        return response()->json([
+            'logs' => $logs,
+        ]);
     }
 }

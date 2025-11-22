@@ -417,6 +417,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::patch('question-bank/{question}', [App\Http\Controllers\QuestionBankController::class, 'update'])
         ->middleware(['permission:edit-assessments', 'role:System Admin|Admin|Training Officer|BOP'])
         ->name('question-bank.update');
+    Route::get('question-bank/{question}/logs', [App\Http\Controllers\QuestionBankController::class, 'logs'])
+        ->middleware(['permission:view-assessments', 'role:System Admin|Admin|Training Officer|BOP'])
+        ->name('question-bank.logs');
     Route::delete('question-bank/{question}', [App\Http\Controllers\QuestionBankController::class, 'destroy'])
         ->middleware(['permission:delete-assessments', 'role:System Admin|Admin|Training Officer|BOP'])
         ->name('question-bank.destroy');
