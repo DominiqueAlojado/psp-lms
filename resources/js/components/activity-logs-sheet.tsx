@@ -67,14 +67,30 @@ export function ActivityLogsSheet({
     useEffect(() => {
         if (entity && open) {
             setLoading(true);
-            fetch(fetchUrl)
-                .then((res) => res.json())
+            fetch(fetchUrl, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Accept: 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                credentials: 'same-origin',
+            })
+                .then((res) => {
+                    if (!res.ok) {
+                        throw new Error(`HTTP error! status: ${res.status}`);
+                    }
+                    return res.json();
+                })
                 .then((data) => {
+                    console.log('Activity logs data received:', data);
                     setLogs(data.logs || []);
                     setLoading(false);
                 })
                 .catch((error) => {
                     console.error('Error fetching activity logs:', error);
+                    console.error('Fetch URL:', fetchUrl);
+                    setLogs([]);
                     setLoading(false);
                 });
         } else {

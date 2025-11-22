@@ -1,4 +1,5 @@
 import { DeleteConfirmationDialog } from '@/components/delete-confirmation-dialog';
+import { AssessmentLogsSheet } from '@/components/inservice-exams/assessment-logs-sheet';
 import { QuestionSelectorDialog } from '@/components/question-bank/question-selector-dialog';
 import { QuestionsImportPreviewDialog } from '@/components/questions-import-preview-dialog';
 import { RichTextEditor } from '@/components/rich-text-editor';
@@ -28,6 +29,7 @@ import {
     ChevronRight,
     Copy,
     Download,
+    FileText,
     Save,
     Search,
     Trash2,
@@ -135,6 +137,10 @@ export default function EditInServiceAssessment() {
     const [previewData, setPreviewData] = useState<unknown>(null);
     const [isImporting, setIsImporting] = useState(false);
     const [showQuestionSelector, setShowQuestionSelector] = useState(false);
+    const [viewingLogsAssessment, setViewingLogsAssessment] = useState<{
+        id: number;
+        title: string;
+    } | null>(null);
 
     // Fetch topics once on page load
     useEffect(() => {
@@ -442,16 +448,32 @@ export default function EditInServiceAssessment() {
                 <div className="space-y-4 rounded-lg border p-6">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                         <h3 className="text-lg font-semibold">Exam Details</h3>
-                        <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={handleDuplicateExam}
-                            disabled={duplicating}
-                        >
-                            <Copy className="mr-2 h-4 w-4" />
-                            {duplicating ? 'Duplicating...' : 'Duplicate Exam'}
-                        </Button>
+                        <div className="flex gap-2">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() =>
+                                    setViewingLogsAssessment({
+                                        id: assessment.id,
+                                        title: assessment.title,
+                                    })
+                                }
+                            >
+                                <FileText className="mr-2 h-4 w-4" />
+                                View Logs
+                            </Button>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={handleDuplicateExam}
+                                disabled={duplicating}
+                            >
+                                <Copy className="mr-2 h-4 w-4" />
+                                {duplicating ? 'Duplicating...' : 'Duplicate Exam'}
+                            </Button>
+                        </div>
                     </div>
                     <div className="space-y-2">
                         <Label>Title</Label>
@@ -1226,6 +1248,17 @@ export default function EditInServiceAssessment() {
                 onOpenChange={setShowQuestionSelector}
                 assessmentId={assessment.id}
                 onQuestionsAdded={() => router.reload({ only: ['assessment'] })}
+            />
+
+            {/* Assessment Logs Sheet */}
+            <AssessmentLogsSheet
+                assessment={viewingLogsAssessment}
+                open={!!viewingLogsAssessment}
+                onOpenChange={(open) => {
+                    if (!open) {
+                        setViewingLogsAssessment(null);
+                    }
+                }}
             />
         </AppLayout>
     );

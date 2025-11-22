@@ -9,10 +9,13 @@ use App\Models\National\NationalQuestion;
 use App\Models\National\NationalQuestionChoice;
 use App\Models\QuestionBank;
 use App\Models\Topic;
+use App\Services\ActivityLog\NationalAssessmentActivityLogService;
+use App\Traits\LogsActivity;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -21,6 +24,11 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class NationalAssessmentController extends Controller
 {
+    use LogsActivity;
+
+    public function __construct(
+        protected NationalAssessmentActivityLogService $activityLogService
+    ) {}
     /**
      * Display a listing of national in-service exams.
      */
@@ -130,7 +138,7 @@ class NationalAssessmentController extends Controller
                 ];
             });
 
-        \Log::info('Active exams query result', [
+        Log::info('Active exams query result', [
             'count' => $assessments->count(),
             'total' => $assessments->total(),
             'data_count' => count($assessments->items()),
@@ -187,6 +195,9 @@ class NationalAssessmentController extends Controller
             'created_by' => $request->user()->id,
         ]);
 
+        // Log assessment creation
+        $this->activityLogService->logAssessmentCreated($assessment);
+
         return back()->with('assessment_id', $assessment->id);
     }
 
@@ -208,9 +219,10 @@ class NationalAssessmentController extends Controller
             'questions.*.answer' => ['nullable', 'boolean'],
         ]);
 
-        DB::transaction(function () use ($validated, $assessment) {
+        $totalPointsAdded = 0;
+        $questionsData = [];
+        DB::transaction(function () use ($validated, $assessment, &$totalPointsAdded, &$questionsData) {
             $order = ($assessment->questions()->max('order') ?? 0) + 1;
-            $totalPointsAdded = 0;
 
             foreach ($validated['questions'] as $q) {
                 $question = NationalQuestion::create([
@@ -224,6 +236,14 @@ class NationalAssessmentController extends Controller
                 ]);
 
                 $totalPointsAdded += (int) $q['points'];
+
+                // Store question data for logging
+                $questionsData[] = [
+                    'question_type' => $q['question_type'],
+                    'question_text' => $q['question_text'],
+                    'points' => $q['points'],
+                    'topic' => $q['topic'] ?? null,
+                ];
 
                 // Handle choices for types that require them
                 if (in_array($q['question_type'], ['multiple_choice', 'multiple_select'])) {
@@ -254,8 +274,20 @@ class NationalAssessmentController extends Controller
             }
 
             // Update total points
-            $assessment->increment('total_points', $totalPointsAdded);
+            $assessment->total_points += $totalPointsAdded;
+            $assessment->save();
         });
+
+        // Reload assessment to get updated question count
+        $assessment->refresh();
+
+        // Log questions added
+        $this->activityLogService->logQuestionsAdded(
+            $assessment,
+            count($validated['questions']),
+            $totalPointsAdded,
+            $questionsData
+        );
 
         return back()->with('success', 'Questions saved successfully.');
     }
@@ -340,7 +372,7 @@ class NationalAssessmentController extends Controller
         $hasValidId = !empty($validated['id']) && $validated['id'] > 0;
         $isNewQuestion = !$hasValidId;
 
-        \Log::info('Saving question', [
+        Log::info('Saving question', [
             'is_new' => $isNewQuestion,
             'has_id' => !empty($validated['id']),
             'question_id' => $validated['id'] ?? 'none',
@@ -350,12 +382,33 @@ class NationalAssessmentController extends Controller
         ]);
 
         $question = null;
+        $oldQuestionText = null;
+        $oldQuestionType = null;
+        $oldPoints = null;
+        $oldTopic = null;
+        $oldChoices = [];
+
         if (! $isNewQuestion) {
             // Look for existing question by ID
             $question = NationalQuestion::query()
                 ->where('assessment_id', $assessment->id)
                 ->where('id', $validated['id'])
+                ->with('choices')
                 ->first();
+
+            if ($question) {
+                // Capture old values before updating
+                $oldQuestionText = $question->question_text;
+                $oldQuestionType = $question->question_type;
+                $oldPoints = $question->points;
+                $oldTopic = $question->topic;
+                $oldChoices = $question->choices->map(function ($choice) {
+                    return [
+                        'choice_text' => $choice->choice_text,
+                        'is_correct' => $choice->is_correct,
+                    ];
+                })->toArray();
+            }
         }
 
         if (! $question) {
@@ -435,21 +488,21 @@ class NationalAssessmentController extends Controller
         if ($isNewQuestion || !$existsInBank) {
             try {
                 $this->saveToQuestionBank($question, $choicesData, $imagePath, $topicId, $topicName, $request->user());
-                \Log::info('Question saved to question bank', [
+                Log::info('Question saved to question bank', [
                     'question_id' => $question->id,
                     'assessment_id' => $assessment->id,
                     'is_new' => $isNewQuestion,
                     'exists_in_bank' => $existsInBank,
                 ]);
             } catch (\Exception $e) {
-                \Log::error('Failed to save question to question bank', [
+                Log::error('Failed to save question to question bank', [
                     'error' => $e->getMessage(),
                     'trace' => $e->getTraceAsString(),
                     'question_id' => $question->id,
                 ]);
             }
         } else {
-            \Log::info('Question not saved to question bank - already exists', [
+            Log::info('Question not saved to question bank - already exists', [
                 'question_id' => $question->id,
                 'has_id' => !empty($validated['id']),
                 'exists_in_bank' => $existsInBank,
@@ -459,6 +512,36 @@ class NationalAssessmentController extends Controller
         // Recompute total points
         $total = $assessment->questions()->sum('points');
         $assessment->update(['total_points' => $total]);
+
+        // Log question activity
+        if ($isNewQuestion) {
+            // Log question added
+            $this->activityLogService->logQuestionAdded(
+                $assessment,
+                $question->id,
+                $question->question_text,
+                $question->question_type,
+                $question->points,
+                $question->topic,
+                $choicesData
+            );
+        } elseif ($oldQuestionText !== null) {
+            // Log question updated
+            $this->activityLogService->logQuestionUpdated(
+                $assessment,
+                $question->id,
+                $question->question_text,
+                $question->question_type,
+                $question->points,
+                $question->topic,
+                $choicesData,
+                $oldQuestionText,
+                $oldQuestionType,
+                $oldPoints,
+                $oldTopic,
+                $oldChoices
+            );
+        }
 
         return back()->with('question', [
             'id' => $question->id,
@@ -519,6 +602,9 @@ class NationalAssessmentController extends Controller
         // Recompute total points
         $totalPoints = $duplicate->questions()->sum('points');
         $duplicate->update(['total_points' => $totalPoints]);
+
+        // Log assessment duplication
+        $this->activityLogService->logAssessmentDuplicated($assessment, $duplicate);
 
         return redirect()
             ->route('inservice-exams.edit', $duplicate)
@@ -623,7 +709,7 @@ class NationalAssessmentController extends Controller
                 'total_errors' => count($errors),
             ]);
         } catch (\Exception $e) {
-            \Log::error('National question preview failed', ['error' => $e->getMessage()]);
+            Log::error('National question preview failed', ['error' => $e->getMessage()]);
 
             return response()->json([
                 'success' => false,
@@ -657,13 +743,29 @@ class NationalAssessmentController extends Controller
                 return back()->with('warning', $errorMessage);
             }
 
+            // Get old total points before import
+            $oldTotalPoints = $assessment->total_points;
+
             // Recompute total points after import
             $total = $assessment->questions()->sum('points');
             $assessment->update(['total_points' => $total]);
 
+            // Reload assessment to get updated question count
+            $assessment->refresh();
+
+            // Calculate points added
+            $pointsAdded = $total - $oldTotalPoints;
+
+            // Log questions imported
+            $this->activityLogService->logQuestionsImported(
+                $assessment,
+                $successCount,
+                $pointsAdded
+            );
+
             return back()->with('success', "Successfully imported {$successCount} questions!");
         } catch (\Exception $e) {
-            \Log::error('National question import failed', ['error' => $e->getMessage()]);
+            Log::error('National question import failed', ['error' => $e->getMessage()]);
 
             return back()->withErrors(['file' => 'Import failed: ' . $e->getMessage()]);
         }
@@ -781,7 +883,55 @@ class NationalAssessmentController extends Controller
             'results_release_date' => ['nullable', 'date'],
         ]);
 
-        $assessment->update($validated);
+        // Capture old values before updating
+        $oldTitle = $assessment->title;
+        $oldDescription = $assessment->description;
+        $oldExamYear = $assessment->exam_year;
+        $oldExamPeriod = $assessment->exam_period;
+        $oldCategory = $assessment->category;
+        $oldDurationMinutes = $assessment->duration_minutes;
+        $oldPassingScore = $assessment->passing_score;
+        $oldIsPublished = $assessment->is_published;
+        $oldScheduledDate = $assessment->scheduled_date?->format('Y-m-d H:i:s');
+        $oldResultsReleaseDate = $assessment->results_release_date?->format('Y-m-d H:i:s');
+        $oldRandomizeQuestions = $assessment->randomize_questions;
+        $oldRandomizeChoices = $assessment->randomize_choices;
+        $oldShowResultsImmediately = $assessment->show_results_immediately;
+        $oldAllowReview = $assessment->allow_review;
+
+        // Temporarily disable automatic logging to prevent duplicates
+        $this->withoutActivityLogging(function () use ($assessment, $validated) {
+            $assessment->update($validated);
+        });
+
+        // Build consolidated log entry with all changes using service
+        $logData = $this->activityLogService->buildUpdateLogData(
+            $assessment,
+            $validated,
+            $oldTitle,
+            $oldDescription,
+            $oldExamYear,
+            $oldExamPeriod,
+            $oldCategory,
+            $oldDurationMinutes,
+            $oldPassingScore,
+            $oldIsPublished,
+            $oldScheduledDate,
+            $oldResultsReleaseDate,
+            $oldRandomizeQuestions,
+            $oldRandomizeChoices,
+            $oldShowResultsImmediately,
+            $oldAllowReview
+        );
+
+        // Log all changes in a single entry
+        if ($logData['hasChanges']) {
+            $this->activityLogService->logAssessmentUpdated(
+                $assessment,
+                $logData['attributes'],
+                $logData['oldValues']
+            );
+        }
 
         return back()->with('success', 'Assessment updated successfully');
     }
@@ -794,6 +944,9 @@ class NationalAssessmentController extends Controller
         if ($assessment->attempts()->exists()) {
             return back()->withErrors(['error' => 'Cannot delete an exam that has attempts.']);
         }
+
+        // Log deletion before deleting
+        $this->activityLogService->logAssessmentDeleted($assessment);
 
         $assessment->delete();
 
@@ -848,7 +1001,7 @@ class NationalAssessmentController extends Controller
             ]);
         } catch (\Exception $e) {
             // Log error but don't fail the question creation
-            \Log::error('Failed to save question to question bank', [
+            Log::error('Failed to save question to question bank', [
                 'error' => $e->getMessage(),
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
@@ -856,5 +1009,17 @@ class NationalAssessmentController extends Controller
             ]);
             throw $e; // Re-throw so outer try-catch can log it
         }
+    }
+
+    /**
+     * Get activity logs for an assessment.
+     */
+    public function logs(NationalAssessment $assessment): JsonResponse
+    {
+        $logs = $this->activityLogService->getLogs($assessment);
+
+        return response()->json([
+            'logs' => $logs,
+        ]);
     }
 }

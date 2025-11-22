@@ -383,6 +383,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::patch('inservice-exams/{assessment}', [App\Http\Controllers\NationalAssessmentController::class, 'update'])
         ->middleware('role:System Admin|BOP')
         ->name('inservice-exams.update');
+    Route::get('inservice-exams/{assessment}/logs', [App\Http\Controllers\NationalAssessmentController::class, 'logs'])
+        ->middleware('role:System Admin|BOP')
+        ->name('inservice-exams.logs');
     Route::delete('inservice-exams/{assessment}', [App\Http\Controllers\NationalAssessmentController::class, 'destroy'])
         ->middleware('role:System Admin|BOP')
         ->name('inservice-exams.destroy');

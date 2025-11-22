@@ -1,4 +1,5 @@
 import HeadingSmall from '@/components/heading-small';
+import { AssessmentLogsSheet } from '@/components/inservice-exams/assessment-logs-sheet';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -20,7 +21,14 @@ import AppLayout from '@/layouts/app-layout';
 import InServiceExamsLayout from '@/layouts/exams/inservice-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { Copy, GraduationCap, Pencil, Plus, Trash2 } from 'lucide-react';
+import {
+    Copy,
+    FileText,
+    GraduationCap,
+    Pencil,
+    Plus,
+    Trash2,
+} from 'lucide-react';
 import { useState } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -76,6 +84,10 @@ export default function Active() {
     const [duplicateExam, setDuplicateExam] = useState<Exam | null>(null);
     const [duplicateTitle, setDuplicateTitle] = useState('');
     const [submittingDuplicate, setSubmittingDuplicate] = useState(false);
+    const [viewingLogsAssessment, setViewingLogsAssessment] = useState<{
+        id: number;
+        title: string;
+    } | null>(null);
 
     const openDuplicateModal = (exam: Exam) => {
         setDuplicateExam(exam);
@@ -215,6 +227,35 @@ export default function Active() {
                                                                 <Button
                                                                     variant="ghost"
                                                                     size="sm"
+                                                                    onClick={() =>
+                                                                        setViewingLogsAssessment(
+                                                                            {
+                                                                                id: exam.id,
+                                                                                title: exam.title,
+                                                                            },
+                                                                        )
+                                                                    }
+                                                                >
+                                                                    <FileText className="h-4 w-4" />
+                                                                </Button>
+                                                            </TooltipTrigger>
+                                                            <TooltipContent>
+                                                                <p>
+                                                                    View
+                                                                    activity
+                                                                    logs
+                                                                </p>
+                                                            </TooltipContent>
+                                                        </Tooltip>
+                                                    </TooltipProvider>
+                                                    <TooltipProvider>
+                                                        <Tooltip>
+                                                            <TooltipTrigger
+                                                                asChild
+                                                            >
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="sm"
                                                                     asChild
                                                                 >
                                                                     <Link
@@ -334,6 +375,17 @@ export default function Active() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            {/* Assessment Logs Sheet */}
+            <AssessmentLogsSheet
+                assessment={viewingLogsAssessment}
+                open={!!viewingLogsAssessment}
+                onOpenChange={(open) => {
+                    if (!open) {
+                        setViewingLogsAssessment(null);
+                    }
+                }}
+            />
         </AppLayout>
     );
 }
