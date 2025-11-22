@@ -785,9 +785,19 @@ export default function EditInServiceAssessment() {
                                         data-question-index={qi}
                                         open={openQuestions[qi] ?? false}
                                         onOpenChange={() => toggleQuestion(qi)}
-                                        className="rounded border"
+                                        className={`rounded border transition-colors ${
+                                            openQuestions[qi]
+                                                ? 'border-primary bg-primary/5 shadow-sm'
+                                                : ''
+                                        }`}
                                     >
-                                        <div className="flex items-center justify-between border-b bg-muted/50 p-3">
+                                        <div
+                                            className={`flex items-center justify-between border-b p-3 transition-colors ${
+                                                openQuestions[qi]
+                                                    ? 'bg-primary/10 border-primary/20'
+                                                    : 'bg-muted/50'
+                                            }`}
+                                        >
                                             <CollapsibleTrigger className="flex flex-1 items-center gap-2 text-left">
                                                 {openQuestions[qi] ? (
                                                     <ChevronDown className="h-4 w-4" />

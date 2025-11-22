@@ -266,6 +266,7 @@ class NationalAssessmentActivityLogService
             return; // No changes, don't log
         }
 
+        // Always include question text and ID for context, even if they didn't change
         activity()
             ->performedOn($assessment)
             ->causedBy(auth()->user() ?? null)
@@ -273,6 +274,7 @@ class NationalAssessmentActivityLogService
             ->withProperties([
                 'attributes' => array_merge([
                     'question_id' => $questionId,
+                    'question_text' => substr(strip_tags($newQuestionText), 0, 100),
                 ], $attributes),
                 'old' => $oldValues,
             ])
