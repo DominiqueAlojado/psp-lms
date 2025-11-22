@@ -20,12 +20,18 @@ return new class extends Migration
             if (! Schema::hasColumn('question_bank_statistics', 'institution_id')) {
                 $table->foreignId('institution_id')->nullable()->after('scope')->constrained('organizations')->nullOnDelete();
             }
+        });
 
+        // Ensure columns exist before creating indexes
+        $hasScope = Schema::hasColumn('question_bank_statistics', 'scope');
+        $hasInstitutionId = Schema::hasColumn('question_bank_statistics', 'institution_id');
+
+        if ($hasScope && $hasInstitutionId) {
             // Safely replace unique/index using DB statements to support IF EXISTS/IF NOT EXISTS (postgres)
             DB::statement('ALTER TABLE question_bank_statistics DROP CONSTRAINT IF EXISTS question_bank_statistics_question_id_unique');
             DB::statement('CREATE UNIQUE INDEX IF NOT EXISTS qbs_question_scope_institution_unique ON question_bank_statistics (question_id, scope, institution_id)');
             DB::statement('CREATE INDEX IF NOT EXISTS qbs_scope_institution_index ON question_bank_statistics (scope, institution_id)');
-        });
+        }
     }
 
     /**
