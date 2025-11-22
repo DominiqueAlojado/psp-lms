@@ -5,6 +5,9 @@ namespace App\Http\Controllers;
 use App\Models\Event;
 use App\Models\EventRegistration;
 use App\Models\MeetingAttendance;
+use App\Services\ActivityLog\EventActivityLogService;
+use App\Traits\LogsActivity;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -13,6 +16,12 @@ use Inertia\Response;
 
 class EventController extends Controller
 {
+    use LogsActivity;
+
+    public function __construct(
+        protected EventActivityLogService $activityLogService
+    ) {}
+
     /**
      * Display a listing of events (public view for all users).
      */
@@ -45,9 +54,9 @@ class EventController extends Controller
         // Search
         if ($request->filled('search')) {
             $query->where(function ($q) use ($request) {
-                $q->where('title', 'like', '%'.$request->search.'%')
-                    ->orWhere('description', 'like', '%'.$request->search.'%')
-                    ->orWhere('location', 'like', '%'.$request->search.'%');
+                $q->where('title', 'like', '%' . $request->search . '%')
+                    ->orWhere('description', 'like', '%' . $request->search . '%')
+                    ->orWhere('location', 'like', '%' . $request->search . '%');
             });
         }
 
@@ -131,7 +140,7 @@ class EventController extends Controller
 
         // Search
         if ($request->filled('search')) {
-            $query->where('title', 'like', '%'.$request->search.'%');
+            $query->where('title', 'like', '%' . $request->search . '%');
         }
 
         $events = $query->orderBy('start_date', 'desc')
@@ -177,7 +186,7 @@ class EventController extends Controller
         $imagePath = null;
         if ($request->hasFile('image')) {
             $file = $request->file('image');
-            $fileName = Str::uuid().'.'.$file->getClientOriginalExtension();
+            $fileName = Str::uuid() . '.' . $file->getClientOriginalExtension();
             $imagePath = $file->storeAs('event-posters', $fileName, 'public');
         }
 
@@ -187,6 +196,9 @@ class EventController extends Controller
             'organization_id' => $organizationId,
             'created_by' => $user->id,
         ]);
+
+        // Log event creation
+        $this->activityLogService->logEventCreated($event);
 
         return redirect()->route('events.manage')
             ->with('success', 'Event created successfully!');
@@ -226,6 +238,25 @@ class EventController extends Controller
             'is_published' => ['nullable', 'boolean'],
         ]);
 
+        // Capture old values before update
+        $oldValues = [
+            'title' => $event->title,
+            'description' => $event->description,
+            'event_category' => $event->event_category,
+            'event_type' => $event->event_type,
+            'start_date' => $event->start_date?->format('Y-m-d\TH:i'),
+            'end_date' => $event->end_date?->format('Y-m-d\TH:i'),
+            'registration_deadline' => $event->registration_deadline?->format('Y-m-d\TH:i'),
+            'location' => $event->location,
+            'virtual_link' => $event->virtual_link,
+            'capacity' => $event->capacity,
+            'price' => $event->price,
+            'is_free' => $event->is_free,
+            'cme_credits' => $event->cme_credits,
+            'requires_approval' => $event->requires_approval,
+            'is_published' => $event->is_published,
+        ];
+
         // Handle image upload
         if ($request->hasFile('image')) {
             // Delete old image if exists
@@ -235,11 +266,20 @@ class EventController extends Controller
 
             // Store new image
             $file = $request->file('image');
-            $fileName = Str::uuid().'.'.$file->getClientOriginalExtension();
+            $fileName = Str::uuid() . '.' . $file->getClientOriginalExtension();
             $validated['image_path'] = $file->storeAs('event-posters', $fileName, 'public');
         }
 
-        $event->update($validated);
+        // Update event without logging (to avoid duplicate logs)
+        $this->withoutActivityLogging(function () use ($event, $validated) {
+            $event->update($validated);
+        });
+
+        // Build log data and log changes
+        $logData = $this->activityLogService->buildUpdateLogData($event, $validated, $oldValues);
+        if (! empty($logData['attributes']) || ! empty($logData['old'])) {
+            $this->activityLogService->logEventUpdated($event, $logData['attributes'], $logData['old']);
+        }
 
         return back()->with('success', 'Event updated successfully.');
     }
@@ -262,6 +302,9 @@ class EventController extends Controller
         if ($confirmedCount > 0) {
             return back()->with('error', 'Cannot delete event with confirmed registrations.');
         }
+
+        // Log event deletion before deleting
+        $this->activityLogService->logEventDeleted($event);
 
         $event->delete();
 
@@ -386,8 +429,8 @@ class EventController extends Controller
         // Search
         if ($request->filled('search')) {
             $query->whereHas('user', function ($q) use ($request) {
-                $q->where('name', 'like', '%'.$request->search.'%')
-                    ->orWhere('email', 'like', '%'.$request->search.'%');
+                $q->where('name', 'like', '%' . $request->search . '%')
+                    ->orWhere('email', 'like', '%' . $request->search . '%');
             });
         }
 
@@ -436,8 +479,8 @@ class EventController extends Controller
         // Search
         if ($request->filled('search')) {
             $query->whereHas('user', function ($q) use ($request) {
-                $q->where('name', 'like', '%'.$request->search.'%')
-                    ->orWhere('email', 'like', '%'.$request->search.'%');
+                $q->where('name', 'like', '%' . $request->search . '%')
+                    ->orWhere('email', 'like', '%' . $request->search . '%');
             });
         }
 
@@ -488,6 +531,26 @@ class EventController extends Controller
         $registration->update(['registration_status' => 'approved']);
 
         return back()->with('success', 'Registration approved successfully.');
+    }
+
+    /**
+     * Get activity logs for an event.
+     */
+    public function logs(Request $request, Event $event): JsonResponse
+    {
+        $user = $request->user();
+        $organizationId = $user->currentOrganization?->id;
+
+        // Check access (System Admins and BOP can view all event logs)
+        if (! $user->hasAnyRole(['System Admin', 'BOP']) && $event->organization_id !== $organizationId) {
+            abort(403, 'You do not have access to this event.');
+        }
+
+        $logs = $this->activityLogService->getLogs($event);
+
+        return response()->json([
+            'logs' => $logs,
+        ]);
     }
 
     /**
@@ -545,6 +608,7 @@ class EventController extends Controller
         if ($existingAttendance) {
             // Update existing attendance
             $existingAttendance->updateLastSeen();
+
             return response()->json([
                 'success' => true,
                 'attendance_id' => $existingAttendance->id,
@@ -554,7 +618,7 @@ class EventController extends Controller
 
         // Create new attendance record with comprehensive metadata
         $clientMetadata = $request->input('metadata');
-        
+
         // Build metadata object with server-side and client-side data
         $metadata = [
             'ip_address' => $request->ip(),
@@ -587,7 +651,7 @@ class EventController extends Controller
             // Fallback to server-side detection for in-person events
             $metadata['device'] = $this->getDeviceInfo($request);
             $metadata['browser'] = $this->getBrowserInfo($request);
-            
+
             // For hybrid events without client metadata, assume in-person
             if ($event->event_type === 'hybrid') {
                 $metadata['attendance_type'] = 'in-person';

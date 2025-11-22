@@ -194,6 +194,29 @@ export function ActivityLogsSheet({
                 // This prevents converting points, counts, etc.
                 return String(value);
             }
+            // Format date strings (ISO format: YYYY-MM-DDTHH:mm or YYYY-MM-DD HH:mm)
+            const dateString = String(value);
+            const datePattern = /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}/;
+            if (datePattern.test(dateString)) {
+                try {
+                    // Replace T with space for parsing if needed
+                    const normalizedDate = dateString.replace('T', ' ');
+                    const date = new Date(normalizedDate);
+                    if (!isNaN(date.getTime())) {
+                        return date.toLocaleString('en-US', {
+                            year: 'numeric',
+                            month: 'short',
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            hour12: true,
+                        });
+                    }
+                } catch {
+                    // If parsing fails, return original value
+                }
+            }
+
             if (typeof value === 'object' && value !== null) {
                 try {
                     const str = JSON.stringify(value);

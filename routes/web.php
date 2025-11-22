@@ -199,6 +199,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('events/{event}/attendees', [App\Http\Controllers\EventController::class, 'attendees'])
         ->middleware('permission:view-events')
         ->name('events.attendees');
+    Route::get('events/{event}/logs', [App\Http\Controllers\EventController::class, 'logs'])
+        ->middleware('permission:view-events')
+        ->name('events.logs');
     Route::get('events/{event}/meeting-attendance', [App\Http\Controllers\EventController::class, 'meetingAttendance'])
         ->middleware('permission:view-events')
         ->name('events.meeting-attendance');
