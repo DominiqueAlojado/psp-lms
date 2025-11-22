@@ -26,7 +26,7 @@ class ResidentFactory extends Factory
             'first_name' => $firstName,
             'middle_name' => $middleName,
             'last_name' => $lastName,
-            'email' => strtolower($firstName.'.'.$lastName.'@'.fake()->randomElement(['gmail.com', 'yahoo.com', 'outlook.com'])),
+            'email' => fake()->unique()->safeEmail(),
             'contact_number' => '+639'.$this->faker->numerify('#########'), // Philippine mobile format
             'course' => $this->faker->randomElement([
                 'Anatomic and Clinical Pathology',

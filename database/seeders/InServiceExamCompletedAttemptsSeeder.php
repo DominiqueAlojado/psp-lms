@@ -2,7 +2,6 @@
 
 namespace Database\Seeders;
 
-use App\Models\National\NationalAnswer;
 use App\Models\National\NationalAssessment;
 use App\Models\National\NationalAttempt;
 use App\Models\National\NationalQuestion;
@@ -59,11 +58,19 @@ class InServiceExamCompletedAttemptsSeeder extends Seeder
 
         $totalAttemptsCreated = 0;
         $totalAnswersCreated = 0;
+        $totalResidents = $residents->count();
+        $processed = 0;
+
+        $this->command->info("Processing {$totalResidents} residents...");
+        $bar = $this->command->getOutput()->createProgressBar($totalResidents);
+        $bar->start();
 
         foreach ($residents as $resident) {
             $user = $resident->user;
 
             if (! $user) {
+                $bar->advance();
+
                 continue;
             }
 
@@ -80,7 +87,19 @@ class InServiceExamCompletedAttemptsSeeder extends Seeder
                 $totalAttemptsCreated++;
                 $totalAnswersCreated += $clinicalAttempt->answers()->count();
             }
+
+            $processed++;
+            $bar->advance();
+
+            // Show progress every 50 residents
+            if ($processed % 50 === 0) {
+                $this->command->newLine();
+                $this->command->info("Progress: {$processed}/{$totalResidents} residents processed ({$totalAttemptsCreated} attempts, {$totalAnswersCreated} answers)");
+            }
         }
+
+        $bar->finish();
+        $this->command->newLine();
 
         $this->command->newLine();
         $this->command->info("✅ Created {$totalAttemptsCreated} completed exam attempts");
@@ -139,6 +158,7 @@ class InServiceExamCompletedAttemptsSeeder extends Seeder
                 }
             } catch (\Exception $e) {
                 $this->command->warn("Failed to calculate discrimination for question {$question->id}: {$e->getMessage()}");
+
                 continue;
             }
         }
@@ -221,16 +241,16 @@ class InServiceExamCompletedAttemptsSeeder extends Seeder
             'last_activity_at' => $submittedAt,
         ]);
 
-        $answersCreated = 0;
+        $answersToInsert = [];
+        $statisticsToUpdate = [];
 
-        // Create answers for each question (mix of correct and incorrect)
+        // Prepare all answers for batch insert
         foreach ($questions as $question) {
             try {
                 // Skip questions without choices (for multiple choice questions)
                 if (in_array($question->question_type, ['multiple_choice', 'multiple_select', 'true_false'])) {
                     $choices = $question->choices;
                     if ($choices->isEmpty()) {
-                        $this->command->warn("Skipping question {$question->id} - no choices found");
                         continue;
                     }
                 }
@@ -241,29 +261,55 @@ class InServiceExamCompletedAttemptsSeeder extends Seeder
 
                 // Validate answer data is not empty
                 if (empty($answerData) || (isset($answerData['choice_id']) && $answerData['choice_id'] === null)) {
-                    $this->command->warn("Skipping question {$question->id} - invalid answer data generated");
                     continue;
                 }
 
-                $answer = NationalAnswer::create([
+                // Determine if answer is correct based on the data
+                $answerIsCorrect = $this->determineIfCorrect($question, $answerData);
+                $pointsEarned = $answerIsCorrect ? $question->points : 0;
+
+                // Prepare answer for batch insert
+                $answersToInsert[] = [
                     'attempt_id' => $attempt->id,
                     'question_id' => $question->id,
-                    'answer_data' => $answerData,
-                    'answer_change_count' => rand(0, 2), // 0-2 changes
-                ]);
+                    'answer_data' => json_encode($answerData),
+                    'answer_change_count' => rand(0, 2),
+                    'is_correct' => $answerIsCorrect,
+                    'points_earned' => $pointsEarned,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ];
 
-                // Auto-grade the answer
-                $answer->autoGrade();
-
-                // Update question bank statistics if question exists in bank
-                $this->updateQuestionBankStatistics($question, $answer->is_correct);
-
-                $answersCreated++;
+                // Track statistics updates to batch later
+                $statisticsToUpdate[] = [
+                    'question' => $question,
+                    'is_correct' => $answerIsCorrect,
+                ];
             } catch (\Exception $e) {
-                $this->command->error("Failed to create answer for question {$question->id}: {$e->getMessage()}");
                 continue; // Skip this question and continue with others
             }
         }
+
+        // Batch insert all answers at once
+        if (empty($answersToInsert)) {
+            $attempt->delete();
+
+            return null;
+        }
+
+        // Use chunked inserts for better performance with large datasets
+        $chunks = array_chunk($answersToInsert, 500);
+        foreach ($chunks as $chunk) {
+            \Illuminate\Support\Facades\DB::table('national_answers')->insert($chunk);
+        }
+
+        // Batch update statistics (defer to end of all attempts)
+        // Store for batch processing later
+        foreach ($statisticsToUpdate as $statUpdate) {
+            $this->updateQuestionBankStatistics($statUpdate['question'], $statUpdate['is_correct']);
+        }
+
+        $answersCreated = count($answersToInsert);
 
         // If no answers were created, delete the attempt
         if ($answersCreated === 0) {
@@ -352,6 +398,31 @@ class InServiceExamCompletedAttemptsSeeder extends Seeder
             default:
                 return [];
         }
+    }
+
+    /**
+     * Determine if an answer is correct based on question and answer data.
+     */
+    private function determineIfCorrect(NationalQuestion $question, array $answerData): bool
+    {
+        if (in_array($question->question_type, ['multiple_choice', 'true_false'])) {
+            if (isset($answerData['choice_id'])) {
+                $choice = $question->choices->firstWhere('id', $answerData['choice_id']);
+
+                return $choice?->is_correct ?? false;
+            }
+        } elseif ($question->question_type === 'multiple_select') {
+            if (isset($answerData['choice_ids']) && is_array($answerData['choice_ids'])) {
+                $selectedChoices = $question->choices->whereIn('id', $answerData['choice_ids']);
+                $correctChoices = $question->choices->where('is_correct', true);
+
+                return $selectedChoices->count() === $correctChoices->count()
+                    && $selectedChoices->pluck('id')->sort()->values()->all()
+                    === $correctChoices->pluck('id')->sort()->values()->all();
+            }
+        }
+
+        return false;
     }
 
     /**

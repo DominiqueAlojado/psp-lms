@@ -29,39 +29,85 @@ class ResidentSeeder extends Seeder
         // Create 3-8 residents per institution (randomized)
         foreach ($institutions as $institution) {
             $residentCount = rand(3, 8);
+            $createdCount = 0;
+            $skippedCount = 0;
 
             for ($i = 0; $i < $residentCount; $i++) {
-                // Create resident
-                $resident = Resident::factory()->create([
-                    'organization_id' => $institution->id,
-                ]);
+                try {
+                    // Check if we've already created enough residents for this institution
+                    $existingCount = Resident::where('organization_id', $institution->id)->count();
+                    if ($existingCount >= $residentCount) {
+                        $skippedCount = $residentCount - $createdCount;
+                        break;
+                    }
 
-                // Create user account for the resident
-                $user = User::create([
-                    'name' => $resident->full_name,
-                    'email' => $resident->email,
-                    'password' => 'password', // Default password
-                    'email_verified_at' => now(),
-                    'current_organization_id' => $institution->id,
-                ]);
+                    // Create resident
+                    $resident = Resident::factory()->create([
+                        'organization_id' => $institution->id,
+                    ]);
 
-                // Link user to resident
-                $resident->update(['user_id' => $user->id]);
+                    // Check if user with this email already exists
+                    $existingUser = User::where('email', $resident->email)->first();
+                    if ($existingUser) {
+                        // Link existing user to resident
+                        $resident->update(['user_id' => $existingUser->id]);
+                        $skippedCount++;
 
-                // Attach user to organization
-                $user->organizations()->attach($institution->id, [
-                    'joined_at' => now(),
-                    'is_active' => $resident->status === 'active',
-                ]);
+                        continue;
+                    }
 
-                // Set permission context for this organization
-                setPermissionsTeamId($institution->id);
+                    // Create user account for the resident
+                    $user = User::create([
+                        'name' => $resident->full_name,
+                        'email' => $resident->email,
+                        'password' => 'password', // Default password
+                        'email_verified_at' => now(),
+                        'current_organization_id' => $institution->id,
+                    ]);
 
-                // Assign the global Resident role
-                $user->assignRole('Resident');
+                    // Link user to resident
+                    $resident->update(['user_id' => $user->id]);
+
+                    // Attach user to organization (only if not already attached)
+                    if (! $user->organizations()->where('organizations.id', $institution->id)->exists()) {
+                        $user->organizations()->attach($institution->id, [
+                            'joined_at' => now(),
+                            'is_active' => $resident->status === 'active',
+                        ]);
+                    }
+
+                    // Set permission context for this organization
+                    setPermissionsTeamId($institution->id);
+
+                    // Assign the global Resident role (only if not already assigned)
+                    if (! $user->hasRole('Resident')) {
+                        $user->assignRole('Resident');
+                    }
+
+                    $createdCount++;
+                } catch (\Illuminate\Database\QueryException $e) {
+                    // Handle unique constraint violations
+                    if ($e->getCode() === '23505' || str_contains($e->getMessage(), 'duplicate key')) {
+                        $skippedCount++;
+                        $this->command->warn("Skipped duplicate resident: {$e->getMessage()}");
+
+                        continue;
+                    }
+                    throw $e;
+                } catch (\Exception $e) {
+                    $this->command->error("Failed to create resident: {$e->getMessage()}");
+                    $skippedCount++;
+
+                    continue;
+                }
             }
 
-            $this->command->info("Created {$residentCount} residents for {$institution->name}");
+            if ($createdCount > 0) {
+                $this->command->info("Created {$createdCount} residents for {$institution->name}");
+            }
+            if ($skippedCount > 0) {
+                $this->command->info("Skipped {$skippedCount} duplicate/existing residents for {$institution->name}");
+            }
         }
 
         // Reset permission context

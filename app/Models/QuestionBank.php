@@ -125,7 +125,26 @@ class QuestionBank extends Model
     public function incrementUsage(): void
     {
         $this->increment('times_used');
-        $this->statistics()->update(['last_used_at' => now()]);
+
+        // Update statistics if they exist, otherwise create them
+        $stats = $this->statistics;
+        if ($stats) {
+            $stats->update(['last_used_at' => now()]);
+        } else {
+            // Create statistics if they don't exist
+            $scope = $this->owner_type === 'national' ? 'national' : 'institution';
+            $this->allStatistics()->create([
+                'question_id' => $this->id,
+                'scope' => $scope,
+                'institution_id' => $scope === 'institution' ? $this->organization_id : null,
+                'times_used_in_exams' => 0,
+                'times_answered' => 0,
+                'times_correct' => 0,
+                'times_incorrect' => 0,
+                'success_rate' => 0,
+                'last_used_at' => now(),
+            ]);
+        }
     }
 
     /**

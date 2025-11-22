@@ -13,67 +13,112 @@ class BataanGeneralHospitalExamsSeeder extends Seeder
 {
     public function run(): void
     {
-        // Find Bataan General Hospital
+        // Find or create Bataan General Hospital
         $organization = Organization::where('slug', 'bataan-general-hospital')->first();
 
         if (! $organization) {
-            $this->command->error('Bataan General Hospital not found. Please create it first.');
-
-            return;
+            $this->command->info('Bataan General Hospital not found. Creating it...');
+            $organization = Organization::firstOrCreate(
+                ['slug' => 'bataan-general-hospital'],
+                [
+                    'name' => 'Bataan General Hospital',
+                    'slug' => 'bataan-general-hospital',
+                    'description' => 'Training institution and hospital partner',
+                    'type' => 'institution',
+                    'is_active' => true,
+                ]
+            );
+            $this->command->info("✓ Created organization: {$organization->name}");
         }
 
         // Find a user to be the creator (any user in the organization or first admin)
         $creator = $organization->users()->first() ?? User::role('System Admin')->first();
 
         if (! $creator) {
-            $this->command->error('No user found to be the creator.');
+            // If no user exists, try to get any user
+            $creator = User::first();
 
-            return;
+            if (! $creator) {
+                $this->command->error('No user found to be the creator. Please seed users first.');
+
+                return;
+            }
         }
 
         $this->command->info("Creating exams for {$organization->name}...");
 
-        // Exam 1: General Nursing Knowledge
-        $exam1 = InstitutionAssessment::create([
-            'organization_id' => $organization->id,
-            'title' => 'General Nursing Knowledge Assessment',
-            'description' => 'Comprehensive assessment covering fundamental nursing concepts, patient care, and clinical procedures.',
-            'exam_category' => 'Midterm Exam',
-            'duration_minutes' => 90,
-            'total_points' => 50,
-            'passing_score' => 75,
-            'randomize_questions' => true,
-            'randomize_choices' => true,
-            'show_results_immediately' => true,
-            'allow_review' => true,
-            'is_published' => true,
-            'created_by' => $creator->id,
-        ]);
+        // Check if exams already exist to prevent duplicates
+        $existingExam1 = InstitutionAssessment::where('organization_id', $organization->id)
+            ->where('title', 'General Nursing Knowledge Assessment')
+            ->first();
 
-        $this->createGeneralNursingQuestions($exam1);
-        $this->command->info("✓ Created: {$exam1->title} with 50 questions");
+        $existingExam2 = InstitutionAssessment::where('organization_id', $organization->id)
+            ->where('title', 'Clinical Skills and Patient Safety Examination')
+            ->first();
+
+        if ($existingExam1 && $existingExam2) {
+            $this->command->info('✓ Exams already exist for Bataan General Hospital. Skipping...');
+
+            return;
+        }
+
+        // Exam 1: General Nursing Knowledge
+        if (! $existingExam1) {
+            try {
+                $exam1 = InstitutionAssessment::create([
+                    'organization_id' => $organization->id,
+                    'title' => 'General Nursing Knowledge Assessment',
+                    'description' => 'Comprehensive assessment covering fundamental nursing concepts, patient care, and clinical procedures.',
+                    'exam_category' => 'Midterm Exam',
+                    'duration_minutes' => 90,
+                    'total_points' => 50,
+                    'passing_score' => 75,
+                    'randomize_questions' => true,
+                    'randomize_choices' => true,
+                    'show_results_immediately' => true,
+                    'allow_review' => true,
+                    'is_published' => true,
+                    'created_by' => $creator->id,
+                ]);
+
+                $this->createGeneralNursingQuestions($exam1);
+                $this->command->info("✓ Created: {$exam1->title} with 50 questions");
+            } catch (\Exception $e) {
+                $this->command->error("Failed to create exam 1: {$e->getMessage()}");
+            }
+        } else {
+            $this->command->info("⏭️  Exam 1 already exists: {$existingExam1->title}");
+        }
 
         // Exam 2: Clinical Skills and Patient Safety
-        $exam2 = InstitutionAssessment::create([
-            'organization_id' => $organization->id,
-            'title' => 'Clinical Skills and Patient Safety Examination',
-            'description' => 'Assessment focused on clinical skills, patient safety protocols, medication administration, and infection control.',
-            'exam_category' => 'Practical Exam',
-            'duration_minutes' => 90,
-            'total_points' => 50,
-            'passing_score' => 75,
-            'randomize_questions' => true,
-            'randomize_choices' => true,
-            'show_results_immediately' => true,
-            'allow_review' => true,
-            'is_published' => true,
-            'created_by' => $creator->id,
-        ]);
+        if (! $existingExam2) {
+            try {
+                $exam2 = InstitutionAssessment::create([
+                    'organization_id' => $organization->id,
+                    'title' => 'Clinical Skills and Patient Safety Examination',
+                    'description' => 'Assessment focused on clinical skills, patient safety protocols, medication administration, and infection control.',
+                    'exam_category' => 'Practical Exam',
+                    'duration_minutes' => 90,
+                    'total_points' => 50,
+                    'passing_score' => 75,
+                    'randomize_questions' => true,
+                    'randomize_choices' => true,
+                    'show_results_immediately' => true,
+                    'allow_review' => true,
+                    'is_published' => true,
+                    'created_by' => $creator->id,
+                ]);
 
-        $this->createClinicalSkillsQuestions($exam2);
-        $this->command->info("✓ Created: {$exam2->title} with 50 questions");
+                $this->createClinicalSkillsQuestions($exam2);
+                $this->command->info("✓ Created: {$exam2->title} with 50 questions");
+            } catch (\Exception $e) {
+                $this->command->error("Failed to create exam 2: {$e->getMessage()}");
+            }
+        } else {
+            $this->command->info("⏭️  Exam 2 already exists: {$existingExam2->title}");
+        }
 
-        $this->command->info('✅ Successfully created 2 exams with 50 questions each!');
+        $this->command->info('✅ Successfully processed exams for Bataan General Hospital!');
     }
 
     private function createGeneralNursingQuestions(InstitutionAssessment $exam): void
@@ -632,23 +677,34 @@ class BataanGeneralHospitalExamsSeeder extends Seeder
 
     private function createQuestionsFromArray(InstitutionAssessment $exam, array $questions): void
     {
+        $addedCount = 0;
         foreach ($questions as $index => $questionData) {
-            $question = InstitutionQuestion::create([
-                'assessment_id' => $exam->id,
-                'question_type' => 'multiple_choice',
-                'question_text' => $questionData['text'],
-                'points' => 1,
-                'order' => $index + 1,
-            ]);
-
-            foreach ($questionData['choices'] as $choiceIndex => $choiceText) {
-                InstitutionQuestionChoice::create([
-                    'question_id' => $question->id,
-                    'choice_text' => $choiceText,
-                    'is_correct' => $choiceIndex === $questionData['correct'],
-                    'order' => $choiceIndex + 1,
+            try {
+                $question = InstitutionQuestion::create([
+                    'assessment_id' => $exam->id,
+                    'question_type' => 'multiple_choice',
+                    'question_text' => $questionData['text'],
+                    'points' => 1,
+                    'order' => $index + 1,
                 ]);
+
+                foreach ($questionData['choices'] as $choiceIndex => $choiceText) {
+                    InstitutionQuestionChoice::create([
+                        'question_id' => $question->id,
+                        'choice_text' => $choiceText,
+                        'is_correct' => $choiceIndex === $questionData['correct'],
+                        'order' => $choiceIndex + 1,
+                    ]);
+                }
+                $addedCount++;
+            } catch (\Exception $e) {
+                $this->command->warn("Failed to create question {$index}: {$e->getMessage()}");
+
+                continue;
             }
         }
+
+        // Update exam total points
+        $exam->update(['total_points' => $addedCount]);
     }
 }

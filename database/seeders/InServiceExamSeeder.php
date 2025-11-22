@@ -17,7 +17,15 @@ class InServiceExamSeeder extends Seeder
      */
     public function run(): void
     {
-        $creatorId = User::query()->value('id') ?? 1;
+        $creator = User::query()->first();
+
+        if (! $creator) {
+            $this->command->error('No user found. Please seed users first (SystemAdminSeeder, StaffSeeder, or ResidentSeeder).');
+
+            return;
+        }
+
+        $creatorId = $creator->id;
         $year = (int) now()->year;
 
         $exams = [
@@ -118,7 +126,7 @@ class InServiceExamSeeder extends Seeder
                 // Get or create global topics
                 $topicModels = Topic::where('is_global', true)->get();
                 $topicLookup = $topicModels->pluck('id', 'name');
-                
+
                 // Ensure topics exist
                 foreach ($topics as $topicName) {
                     if (! $topicLookup->has($topicName)) {
@@ -178,11 +186,20 @@ class InServiceExamSeeder extends Seeder
                         }
 
                         // Initialize statistics in question bank (must match owner_type)
-                        $bankQuestion->statistics()->create([
-                            'question_id' => $bankQuestion->id,
-                            'scope' => 'national', // Must match owner_type ('national')
-                            'institution_id' => null, // National questions have no institution
-                        ]);
+                        $bankQuestion->allStatistics()->firstOrCreate(
+                            [
+                                'question_id' => $bankQuestion->id,
+                                'scope' => 'national', // Must match owner_type ('national')
+                                'institution_id' => null, // National questions have no institution
+                            ],
+                            [
+                                'times_used_in_exams' => 0,
+                                'times_answered' => 0,
+                                'times_correct' => 0,
+                                'times_incorrect' => 0,
+                                'success_rate' => 0,
+                            ]
+                        );
                     }
 
                     // Now create question in exam from question bank
@@ -217,7 +234,7 @@ class InServiceExamSeeder extends Seeder
 
                 // Update assessment total points
                 $assessment->update(['total_points' => $totalPoints]);
-                
+
                 $this->command->info("✅ Added {$addedCount} questions to {$exam['title']} (Total points: {$totalPoints})");
             } else {
                 $this->command->info("⏭️  {$exam['title']} already has questions, skipping...");

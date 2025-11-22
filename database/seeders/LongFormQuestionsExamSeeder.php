@@ -11,25 +11,47 @@ class LongFormQuestionsExamSeeder extends Seeder
      */
     public function run(): void
     {
-        // Find Bataan General Hospital
+        // Find or create Bataan General Hospital
         $organization = \App\Models\Organization::where('slug', 'bataan-general-hospital')->first();
 
         if (! $organization) {
-            $this->command->error('Bataan General Hospital not found. Please create it first.');
-
-            return;
+            $this->command->info('Bataan General Hospital not found. Creating it...');
+            $organization = \App\Models\Organization::firstOrCreate(
+                ['slug' => 'bataan-general-hospital'],
+                [
+                    'name' => 'Bataan General Hospital',
+                    'slug' => 'bataan-general-hospital',
+                    'description' => 'Training institution and hospital partner',
+                    'type' => 'institution',
+                    'is_active' => true,
+                ]
+            );
+            $this->command->info("✓ Created organization: {$organization->name}");
         }
 
         // Find a user to be the creator
-        $creator = $organization->users()->first() ?? \App\Models\User::role('System Admin')->first();
+        $creator = $organization->users()->first()
+            ?? \App\Models\User::role('System Admin')->first()
+            ?? \App\Models\User::first();
 
         if (! $creator) {
-            $this->command->error('No user found to be the creator.');
+            $this->command->error('No user found to be the creator. Please seed users first.');
 
             return;
         }
 
         $this->command->info("Creating exam with long-form questions for {$organization->name}...");
+
+        // Check if exam already exists
+        $existingExam = \App\Models\Institution\InstitutionAssessment::where('organization_id', $organization->id)
+            ->where('title', 'Complex Clinical Scenarios and Critical Thinking Assessment')
+            ->first();
+
+        if ($existingExam) {
+            $this->command->info("⏭️  Exam already exists: {$existingExam->title}, skipping...");
+
+            return;
+        }
 
         // Create exam with long questions
         $exam = \App\Models\Institution\InstitutionAssessment::create([
@@ -262,23 +284,36 @@ class LongFormQuestionsExamSeeder extends Seeder
 
     private function createQuestionsFromArray(\App\Models\Institution\InstitutionAssessment $exam, array $questions): void
     {
+        $addedCount = 0;
         foreach ($questions as $index => $questionData) {
-            $question = \App\Models\Institution\InstitutionQuestion::create([
-                'assessment_id' => $exam->id,
-                'question_type' => 'multiple_choice',
-                'question_text' => $questionData['text'],
-                'points' => 1,
-                'order' => $index + 1,
-            ]);
-
-            foreach ($questionData['choices'] as $choiceIndex => $choiceText) {
-                \App\Models\Institution\InstitutionQuestionChoice::create([
-                    'question_id' => $question->id,
-                    'choice_text' => $choiceText,
-                    'is_correct' => $choiceIndex === $questionData['correct'],
-                    'order' => $choiceIndex + 1,
+            try {
+                $question = \App\Models\Institution\InstitutionQuestion::create([
+                    'assessment_id' => $exam->id,
+                    'question_type' => 'multiple_choice',
+                    'question_text' => $questionData['text'],
+                    'points' => 1,
+                    'order' => $index + 1,
                 ]);
+
+                foreach ($questionData['choices'] as $choiceIndex => $choiceText) {
+                    \App\Models\Institution\InstitutionQuestionChoice::create([
+                        'question_id' => $question->id,
+                        'choice_text' => $choiceText,
+                        'is_correct' => $choiceIndex === $questionData['correct'],
+                        'order' => $choiceIndex + 1,
+                    ]);
+                }
+                $addedCount++;
+            } catch (\Exception $e) {
+                $this->command->warn("Failed to create question {$index}: {$e->getMessage()}");
+
+                continue;
             }
         }
+
+        // Update exam total points
+        $exam->update(['total_points' => $addedCount]);
+
+        $this->command->info("✓ Added {$addedCount} questions to {$exam->title}");
     }
 }

@@ -16,7 +16,15 @@ class InServiceExamPart2Seeder extends Seeder
      */
     public function run(): void
     {
-        $creatorId = User::query()->value('id') ?? 1;
+        $creator = User::query()->first();
+
+        if (! $creator) {
+            $this->command->error('No user found. Please seed users first (SystemAdminSeeder, StaffSeeder, or ResidentSeeder).');
+
+            return;
+        }
+
+        $creatorId = $creator->id;
         $year = (int) now()->year;
 
         $exams = [
@@ -86,34 +94,44 @@ class InServiceExamPart2Seeder extends Seeder
                 $addedCount = 0;
 
                 foreach ($bankQuestions as $index => $bankQuestion) {
-                    // Create question in national_questions table
-                    $question = NationalQuestion::create([
-                        'assessment_id' => $assessment->id,
-                        'question_type' => $bankQuestion->question_type,
-                        'question_text' => $bankQuestion->question_text,
-                        'points' => $bankQuestion->points ?? 1,
-                        'explanation' => $bankQuestion->explanation,
-                        'image_path' => $bankQuestion->image_path,
-                        'difficulty_level' => $bankQuestion->difficulty_level,
-                        'topic' => $bankQuestion->topic?->name,
-                        'order' => $index,
-                    ]);
-
-                    // Copy choices from question bank
-                    foreach ($bankQuestion->choices as $bankChoice) {
-                        NationalQuestionChoice::create([
-                            'question_id' => $question->id,
-                            'choice_text' => $bankChoice->choice_text,
-                            'is_correct' => $bankChoice->is_correct,
-                            'order' => $bankChoice->order,
+                    try {
+                        // Create question in national_questions table
+                        $question = NationalQuestion::create([
+                            'assessment_id' => $assessment->id,
+                            'question_type' => $bankQuestion->question_type,
+                            'question_text' => $bankQuestion->question_text,
+                            'points' => $bankQuestion->points ?? 1,
+                            'explanation' => $bankQuestion->explanation,
+                            'image_path' => $bankQuestion->image_path,
+                            'difficulty_level' => $bankQuestion->difficulty_level,
+                            'topic' => $bankQuestion->topic?->name,
+                            'order' => $index,
                         ]);
+
+                        // Copy choices from question bank
+                        foreach ($bankQuestion->choices as $bankChoice) {
+                            NationalQuestionChoice::create([
+                                'question_id' => $question->id,
+                                'choice_text' => $bankChoice->choice_text,
+                                'is_correct' => $bankChoice->is_correct,
+                                'order' => $bankChoice->order,
+                            ]);
+                        }
+
+                        // Increment usage counter in question bank
+                        try {
+                            $bankQuestion->incrementUsage();
+                        } catch (\Exception $e) {
+                            $this->command->warn("Failed to increment usage for question {$bankQuestion->id}: {$e->getMessage()}");
+                        }
+
+                        $totalPoints += $question->points;
+                        $addedCount++;
+                    } catch (\Exception $e) {
+                        $this->command->error("Failed to add question {$bankQuestion->id} to exam: {$e->getMessage()}");
+
+                        continue;
                     }
-
-                    // Increment usage counter in question bank
-                    $bankQuestion->incrementUsage();
-
-                    $totalPoints += $question->points;
-                    $addedCount++;
                 }
 
                 // Update assessment total points
