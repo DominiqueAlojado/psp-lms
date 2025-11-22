@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Exports\StaffExport;
 use App\Models\Organization;
 use App\Models\User;
+use App\Services\ActivityLog\StaffActivityLogService;
+use App\Traits\LogsActivity;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -12,13 +14,16 @@ use Illuminate\Support\Facades\Hash;
 use Inertia\Inertia;
 use Inertia\Response;
 use Maatwebsite\Excel\Facades\Excel;
-use Spatie\Activitylog\Facades\Activity;
-use Spatie\Activitylog\Models\Activity as ActivityLog;
 use Spatie\Permission\Models\Role;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class StaffController extends Controller
 {
+    use LogsActivity;
+
+    public function __construct(
+        protected StaffActivityLogService $activityLogService
+    ) {}
     /**
      * Display a listing of staff members.
      */
@@ -147,6 +152,9 @@ class StaffController extends Controller
             $user->organizations()->attach($organizationData);
         }
 
+        // Log user creation
+        $this->activityLogService->logUserCreated($user);
+
         return back()->with('success', 'Staff member created successfully');
     }
 
@@ -204,12 +212,9 @@ class StaffController extends Controller
 
         // Temporarily disable automatic logging to prevent duplicates
         // We'll manually log all changes in one consolidated entry below
-        try {
-            Activity::disableLogging();
+        $this->withoutActivityLogging(function () use ($staff, $updateData) {
             $staff->update($updateData);
-        } finally {
-            Activity::enableLogging();
-        }
+        });
 
         // Update roles
         $newRoleIds = $validated['roles'];
@@ -229,73 +234,27 @@ class StaffController extends Controller
             $staff->organizations()->sync($organizationData);
         }
 
-        // Build consolidated log entry with all changes
-        $attributes = [];
-        $oldValues = [];
-        $hasChanges = false;
-
-        // Check name change
-        if ($oldName !== $validated['name']) {
-            $attributes['name'] = $validated['name'];
-            $oldValues['name'] = $oldName;
-            $hasChanges = true;
-        }
-
-        // Check email change
-        if ($oldEmail !== $validated['email']) {
-            $attributes['email'] = $validated['email'];
-            $oldValues['email'] = $oldEmail;
-            $hasChanges = true;
-        }
-
-        // Check current organization change
-        if ($oldCurrentOrgId != ($validated['current_organization_id'] ?? null)) {
-            $newOrgName = $validated['current_organization_id']
-                ? Organization::find($validated['current_organization_id'])?->name
-                : null;
-            $oldOrgName = $oldCurrentOrgId
-                ? Organization::find($oldCurrentOrgId)?->name
-                : null;
-            $attributes['current_organization'] = $newOrgName;
-            $oldValues['current_organization'] = $oldOrgName;
-            $hasChanges = true;
-        }
-
-        // Check password change
-        if ($passwordChanged) {
-            $attributes['password'] = '***changed***';
-            $oldValues['password'] = '***hidden***';
-            $hasChanges = true;
-        }
-
-        // Check role changes
-        if ($oldRoles !== $newRoles) {
-            $attributes['roles'] = $newRoles;
-            $oldValues['roles'] = $oldRoles;
-            $hasChanges = true;
-        }
-
-        // Check organization changes
-        if ($oldOrganizations !== $newOrganizations) {
-            $attributes['organizations'] = $newOrganizations;
-            $oldValues['organizations'] = $oldOrganizations;
-            $hasChanges = true;
-        }
+        // Build consolidated log entry with all changes using service
+        $logData = $this->activityLogService->buildUpdateLogData(
+            $staff,
+            $validated,
+            $oldName,
+            $oldEmail,
+            $oldCurrentOrgId,
+            $oldRoles,
+            $oldOrganizations,
+            $passwordChanged,
+            $newRoles,
+            $newOrganizations
+        );
 
         // Log all changes in a single entry (only once per request)
-        if ($hasChanges) {
-            // Use batch_uuid to prevent duplicate entries from the same update
-            $batchUuid = (string) \Illuminate\Support\Str::uuid();
-
-            activity()
-                ->performedOn($staff)
-                ->causedBy($request->user())
-                ->useLog('users')
-                ->withProperties([
-                    'attributes' => $attributes,
-                    'old' => $oldValues,
-                ])
-                ->log('User updated');
+        if ($logData['hasChanges']) {
+            $this->activityLogService->logUserUpdated(
+                $staff,
+                $logData['attributes'],
+                $logData['oldValues']
+            );
         }
 
         // Mark this update as processed (expires in 5 seconds to prevent duplicates)
@@ -313,6 +272,9 @@ class StaffController extends Controller
         if ($staff->hasRole('Resident')) {
             return back()->with('error', 'Cannot delete residents from staff module');
         }
+
+        // Log deletion before deleting
+        $this->activityLogService->logUserDeleted($staff);
 
         $staff->delete();
 
@@ -361,42 +323,7 @@ class StaffController extends Controller
      */
     public function logs(User $staff): JsonResponse
     {
-        // Get activities where this user is:
-        // 1. The subject (being updated/modified) - e.g., when their profile is updated
-        // 2. The causer (performing actions) - e.g., when they grade submissions, update assessments, etc.
-        $logs = ActivityLog::query()
-            ->where(function ($query) use ($staff) {
-                $query->where(function ($q) use ($staff) {
-                    $q->where('subject_type', User::class)
-                        ->where('subject_id', $staff->id);
-                })->orWhere(function ($q) use ($staff) {
-                    $q->where('causer_type', User::class)
-                        ->where('causer_id', $staff->id);
-                });
-            })
-            ->with(['subject', 'causer'])
-            ->latest()
-            ->limit(100)
-            ->get()
-            ->map(function ($activity) {
-                return [
-                    'id' => $activity->id,
-                    'description' => $activity->description,
-                    'log_name' => $activity->log_name,
-                    'event' => $activity->event,
-                    'properties' => $activity->properties,
-                    'causer' => $activity->causer ? [
-                        'id' => $activity->causer->id,
-                        'name' => $activity->causer->name,
-                        'email' => $activity->causer->email,
-                    ] : null,
-                    'subject' => $activity->subject ? [
-                        'id' => $activity->subject->id,
-                        'type' => class_basename($activity->subject_type),
-                    ] : null,
-                    'created_at' => $activity->created_at->toISOString(),
-                ];
-            });
+        $logs = $this->activityLogService->getLogs($staff);
 
         return response()->json([
             'logs' => $logs,
