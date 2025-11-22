@@ -17,7 +17,7 @@ import {
 } from '@/components/ui/tooltip';
 import { usePermissions } from '@/hooks/use-permissions';
 import { router } from '@inertiajs/react';
-import { Building2, Edit, Eye, Trash2 } from 'lucide-react';
+import { Building2, Edit, Eye, FileText, Trash2 } from 'lucide-react';
 
 interface Organization {
     id: number;
@@ -64,9 +64,17 @@ interface Props {
     onView: (resident: Resident) => void;
     onEdit: (resident: Resident) => void;
     onDelete: (resident: Resident) => void;
+    onViewLogs: (resident: Resident) => void;
 }
 
-export function ResidentTable({ residents, filters, onView, onEdit, onDelete }: Props) {
+export function ResidentTable({
+    residents,
+    filters,
+    onView,
+    onEdit,
+    onDelete,
+    onViewLogs,
+}: Props) {
     const { hasPermission } = usePermissions();
 
     return (
@@ -76,8 +84,8 @@ export function ResidentTable({ residents, filters, onView, onEdit, onDelete }: 
                     {/* Results Count */}
                     <div className="flex items-center justify-between">
                         <p className="text-sm text-muted-foreground">
-                            Showing {residents.from || 0} to {residents.to || 0} of{' '}
-                            {residents.total} residents
+                            Showing {residents.from || 0} to {residents.to || 0}{' '}
+                            of {residents.total} residents
                         </p>
                     </div>
 
@@ -87,12 +95,20 @@ export function ResidentTable({ residents, filters, onView, onEdit, onDelete }: 
                             <TableRow>
                                 <TableHead className="py-4">Name</TableHead>
                                 <TableHead className="py-4">Email</TableHead>
-                                <TableHead className="py-4">Home Institution</TableHead>
-                                <TableHead className="py-4">Institutions</TableHead>
-                                <TableHead className="py-4">Year Level</TableHead>
+                                <TableHead className="py-4">
+                                    Home Institution
+                                </TableHead>
+                                <TableHead className="py-4">
+                                    Institutions
+                                </TableHead>
+                                <TableHead className="py-4">
+                                    Year Level
+                                </TableHead>
                                 <TableHead className="py-4">Status</TableHead>
                                 <TableHead className="py-4">Updated</TableHead>
-                                <TableHead className="w-[100px] py-4">Actions</TableHead>
+                                <TableHead className="w-[100px] py-4">
+                                    Actions
+                                </TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -102,14 +118,17 @@ export function ResidentTable({ residents, filters, onView, onEdit, onDelete }: 
                                         colSpan={8}
                                         className="py-8 text-center text-muted-foreground"
                                     >
-                                        No residents found. Try adjusting your filters.
+                                        No residents found. Try adjusting your
+                                        filters.
                                     </TableCell>
                                 </TableRow>
                             ) : (
                                 residents.data.map((resident) => (
                                     <TableRow key={resident.id}>
                                         <TableCell className="py-4 font-medium">
-                                            {resident.full_name_with_middle_initial}
+                                            {
+                                                resident.full_name_with_middle_initial
+                                            }
                                         </TableCell>
                                         <TableCell className="py-4">
                                             {resident.email}
@@ -123,7 +142,9 @@ export function ResidentTable({ residents, filters, onView, onEdit, onDelete }: 
                                             <div className="flex items-center gap-1">
                                                 <Building2 className="h-4 w-4 text-muted-foreground" />
                                                 <span className="text-sm">
-                                                    {resident.organizations_count}
+                                                    {
+                                                        resident.organizations_count
+                                                    }
                                                 </span>
                                             </div>
                                         </TableCell>
@@ -155,18 +176,32 @@ export function ResidentTable({ residents, filters, onView, onEdit, onDelete }: 
                                                                 <Button
                                                                     variant="ghost"
                                                                     size="sm"
-                                                                    onClick={() => onView(resident)}
-                                                                    disabled={!hasPermission('view-residents')}
+                                                                    onClick={() =>
+                                                                        onView(
+                                                                            resident,
+                                                                        )
+                                                                    }
+                                                                    disabled={
+                                                                        !hasPermission(
+                                                                            'view-residents',
+                                                                        )
+                                                                    }
                                                                 >
                                                                     <Eye className="h-4 w-4" />
                                                                 </Button>
                                                             </span>
                                                         </TooltipTrigger>
-                                                        {!hasPermission('view-residents') && (
+                                                        {!hasPermission(
+                                                            'view-residents',
+                                                        ) && (
                                                             <TooltipContent>
                                                                 <p>
-                                                                    You don't have permission to view
-                                                                    resident details
+                                                                    You don't
+                                                                    have
+                                                                    permission
+                                                                    to view
+                                                                    resident
+                                                                    details
                                                                 </p>
                                                             </TooltipContent>
                                                         )}
@@ -179,17 +214,60 @@ export function ResidentTable({ residents, filters, onView, onEdit, onDelete }: 
                                                                 <Button
                                                                     variant="ghost"
                                                                     size="sm"
-                                                                    onClick={() => onEdit(resident)}
-                                                                    disabled={!hasPermission('edit-residents')}
+                                                                    onClick={() =>
+                                                                        onViewLogs(
+                                                                            resident,
+                                                                        )
+                                                                    }
+                                                                    disabled={
+                                                                        !hasPermission(
+                                                                            'view-residents',
+                                                                        )
+                                                                    }
+                                                                >
+                                                                    <FileText className="h-4 w-4" />
+                                                                </Button>
+                                                            </span>
+                                                        </TooltipTrigger>
+                                                        <TooltipContent>
+                                                            <p>
+                                                                View activity
+                                                                logs
+                                                            </p>
+                                                        </TooltipContent>
+                                                    </Tooltip>
+                                                </TooltipProvider>
+                                                <TooltipProvider>
+                                                    <Tooltip>
+                                                        <TooltipTrigger asChild>
+                                                            <span className="inline-block">
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    onClick={() =>
+                                                                        onEdit(
+                                                                            resident,
+                                                                        )
+                                                                    }
+                                                                    disabled={
+                                                                        !hasPermission(
+                                                                            'edit-residents',
+                                                                        )
+                                                                    }
                                                                 >
                                                                     <Edit className="h-4 w-4" />
                                                                 </Button>
                                                             </span>
                                                         </TooltipTrigger>
-                                                        {!hasPermission('edit-residents') && (
+                                                        {!hasPermission(
+                                                            'edit-residents',
+                                                        ) && (
                                                             <TooltipContent>
                                                                 <p>
-                                                                    You don't have permission to edit
+                                                                    You don't
+                                                                    have
+                                                                    permission
+                                                                    to edit
                                                                     residents
                                                                 </p>
                                                             </TooltipContent>
@@ -204,18 +282,29 @@ export function ResidentTable({ residents, filters, onView, onEdit, onDelete }: 
                                                                     variant="ghost"
                                                                     size="sm"
                                                                     onClick={() =>
-                                                                        onDelete(resident)
+                                                                        onDelete(
+                                                                            resident,
+                                                                        )
                                                                     }
-                                                                    disabled={!hasPermission('delete-residents')}
+                                                                    disabled={
+                                                                        !hasPermission(
+                                                                            'delete-residents',
+                                                                        )
+                                                                    }
                                                                 >
                                                                     <Trash2 className="h-4 w-4 text-destructive" />
                                                                 </Button>
                                                             </span>
                                                         </TooltipTrigger>
-                                                        {!hasPermission('delete-residents') && (
+                                                        {!hasPermission(
+                                                            'delete-residents',
+                                                        ) && (
                                                             <TooltipContent>
                                                                 <p>
-                                                                    You don't have permission to delete
+                                                                    You don't
+                                                                    have
+                                                                    permission
+                                                                    to delete
                                                                     residents
                                                                 </p>
                                                             </TooltipContent>
@@ -236,13 +325,16 @@ export function ResidentTable({ residents, filters, onView, onEdit, onDelete }: 
                             {residents.links.map((link, index) => (
                                 <Button
                                     key={index}
-                                    variant={link.active ? 'default' : 'outline'}
+                                    variant={
+                                        link.active ? 'default' : 'outline'
+                                    }
                                     size="sm"
                                     disabled={!link.url}
                                     onClick={() => {
                                         if (link.url) {
                                             const url = new URL(link.url);
-                                            const page = url.searchParams.get('page');
+                                            const page =
+                                                url.searchParams.get('page');
                                             router.get(
                                                 '/residents',
                                                 { ...filters, page },
@@ -253,7 +345,9 @@ export function ResidentTable({ residents, filters, onView, onEdit, onDelete }: 
                                             );
                                         }
                                     }}
-                                    dangerouslySetInnerHTML={{ __html: link.label }}
+                                    dangerouslySetInnerHTML={{
+                                        __html: link.label,
+                                    }}
                                 />
                             ))}
                         </div>
@@ -263,4 +357,3 @@ export function ResidentTable({ residents, filters, onView, onEdit, onDelete }: 
         </Card>
     );
 }
-

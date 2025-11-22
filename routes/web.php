@@ -72,6 +72,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('residents/{resident}', [App\Http\Controllers\ResidentController::class, 'show'])
         ->middleware('permission:view-residents')
         ->name('residents.show');
+    Route::get('residents/{resident}/logs', [App\Http\Controllers\ResidentController::class, 'logs'])
+        ->middleware('permission:view-residents')
+        ->name('residents.logs');
     Route::patch('residents/{resident}', [App\Http\Controllers\ResidentController::class, 'update'])
         ->middleware('permission:edit-residents')
         ->name('residents.update');

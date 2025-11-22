@@ -4,6 +4,7 @@ import HeadingSmall from '@/components/heading-small';
 import { CreateResidentSheet } from '@/components/residents/create-resident-sheet';
 import { EditResidentSheet } from '@/components/residents/edit-resident-sheet';
 import { ResidentFilters } from '@/components/residents/resident-filters';
+import { ResidentLogsSheet } from '@/components/residents/resident-logs-sheet';
 import { ResidentTable } from '@/components/residents/resident-table';
 import { ViewResidentSheet } from '@/components/residents/view-resident-sheet';
 import { StatCard } from '@/components/stat-card';
@@ -109,6 +110,9 @@ export default function ResidentsIndex({
     );
     const [addingResident, setAddingResident] = useState(false);
     const [deletingResident, setDeletingResident] = useState<Resident | null>(
+        null,
+    );
+    const [viewingLogsResident, setViewingLogsResident] = useState<Resident | null>(
         null,
     );
     const { errors } = usePage<{ errors: Record<string, string> }>().props;
@@ -297,6 +301,7 @@ export default function ResidentsIndex({
                     onView={handleViewResident}
                     onEdit={setEditingResident}
                     onDelete={setDeletingResident}
+                    onViewLogs={setViewingLogsResident}
                 />
             </div>
 
@@ -349,6 +354,17 @@ export default function ResidentsIndex({
                 confirmText="Delete Resident"
                 onConfirm={confirmDelete}
                 onCancel={() => setDeletingResident(null)}
+            />
+
+            {/* Resident Logs Sheet */}
+            <ResidentLogsSheet
+                resident={viewingLogsResident}
+                open={!!viewingLogsResident}
+                onOpenChange={(open) => {
+                    if (!open) {
+                        setViewingLogsResident(null);
+                    }
+                }}
             />
         </AppLayout>
     );

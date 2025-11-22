@@ -5,6 +5,9 @@ namespace App\Http\Controllers;
 use App\Exports\ResidentsExport;
 use App\Models\Organization;
 use App\Models\Resident;
+use App\Services\ActivityLog\ResidentActivityLogService;
+use App\Traits\LogsActivity;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -14,6 +17,12 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class ResidentController extends Controller
 {
+    use LogsActivity;
+
+    public function __construct(
+        protected ResidentActivityLogService $activityLogService
+    ) {
+    }
     /**
      * Display a listing of residents with search and filters.
      */
@@ -145,6 +154,9 @@ class ResidentController extends Controller
             // Assign "Resident" role to the user
             $user->assignRole('Resident');
 
+            // Log resident creation
+            $this->activityLogService->logResidentCreated($resident);
+
             return back()->with('success', 'Resident created successfully');
         } catch (\Exception $e) {
             \Log::error('Error creating resident: ' . $e->getMessage(), [
@@ -225,7 +237,21 @@ class ResidentController extends Controller
             'password.confirmed' => "Passwords don't match",
         ]);
 
-        $resident->update($validated);
+        // Capture old values before updating
+        $oldFirstName = $resident->first_name;
+        $oldMiddleName = $resident->middle_name;
+        $oldLastName = $resident->last_name;
+        $oldEmail = $resident->email;
+        $oldContactNumber = $resident->contact_number;
+        $oldCourse = $resident->course;
+        $oldYearLevel = $resident->year_level;
+        $oldStatus = $resident->status;
+        $passwordChanged = ! empty($validated['password']);
+
+        // Temporarily disable automatic logging to prevent duplicates
+        $this->withoutActivityLogging(function () use ($resident, $validated) {
+            $resident->update($validated);
+        });
 
         // Update linked user if exists
         if ($resident->user) {
@@ -235,11 +261,35 @@ class ResidentController extends Controller
             ]);
 
             // Update password if provided
-            if (! empty($validated['password'])) {
+            if ($passwordChanged) {
                 $resident->user->update([
                     'password' => bcrypt($validated['password']),
                 ]);
             }
+        }
+
+        // Build consolidated log entry with all changes using service
+        $logData = $this->activityLogService->buildUpdateLogData(
+            $resident,
+            $validated,
+            $oldFirstName,
+            $oldMiddleName,
+            $oldLastName,
+            $oldEmail,
+            $oldContactNumber,
+            $oldCourse,
+            $oldYearLevel,
+            $oldStatus,
+            $passwordChanged
+        );
+
+        // Log all changes in a single entry
+        if ($logData['hasChanges']) {
+            $this->activityLogService->logResidentUpdated(
+                $resident,
+                $logData['attributes'],
+                $logData['oldValues']
+            );
         }
 
         return back()->with('success', 'Resident updated successfully');
@@ -250,6 +300,9 @@ class ResidentController extends Controller
      */
     public function destroy(Resident $resident): RedirectResponse
     {
+        // Log deletion before deleting
+        $this->activityLogService->logResidentDeleted($resident);
+
         $resident->delete();
 
         return back()->with('success', 'Resident deleted successfully');
@@ -301,5 +354,17 @@ class ResidentController extends Controller
         }
 
         return back()->withErrors(['error' => 'Cannot remove resident from their home organization or organization not found']);
+    }
+
+    /**
+     * Get activity logs for a resident.
+     */
+    public function logs(Resident $resident): JsonResponse
+    {
+        $logs = $this->activityLogService->getLogs($resident);
+
+        return response()->json([
+            'logs' => $logs,
+        ]);
     }
 }
