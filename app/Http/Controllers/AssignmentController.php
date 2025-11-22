@@ -5,6 +5,10 @@ namespace App\Http\Controllers;
 use App\Models\Assignment;
 use App\Models\Submission;
 use App\Models\SubmissionFile;
+use App\Services\ActivityLog\AssignmentActivityLogService;
+use App\Traits\LogsActivity;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -13,6 +17,12 @@ use Inertia\Response;
 
 class AssignmentController extends Controller
 {
+    use LogsActivity;
+
+    public function __construct(
+        protected AssignmentActivityLogService $activityLogService
+    ) {}
+
     /**
      * Display list of assignments for training officers.
      */
@@ -152,6 +162,9 @@ class AssignmentController extends Controller
         $validated['created_by'] = $user->id;
 
         $assignment = Assignment::create($validated);
+
+        // Log assignment creation
+        $this->activityLogService->logAssignmentCreated($assignment);
 
         return redirect()->route('assignments.index')
             ->with('success', 'Assignment created successfully!');
@@ -301,7 +314,36 @@ class AssignmentController extends Controller
             'is_published' => ['required', 'boolean'],
         ]);
 
-        $assignment->update($validated);
+        // Capture old values before update
+        $oldValues = [
+            'title' => $assignment->title,
+            'description' => $assignment->description,
+            'instructions' => $assignment->instructions,
+            'assignment_type' => $assignment->assignment_type,
+            'target_year_levels' => $assignment->target_year_levels,
+            'max_score' => $assignment->max_score,
+            'due_date' => $assignment->due_date?->format('Y-m-d\TH:i'),
+            'allow_late_submission' => $assignment->allow_late_submission,
+            'late_submission_until' => $assignment->late_submission_until?->format('Y-m-d\TH:i'),
+            'late_penalty_percent' => $assignment->late_penalty_percent,
+            'allow_resubmission' => $assignment->allow_resubmission,
+            'max_submissions' => $assignment->max_submissions,
+            'allowed_file_types' => $assignment->allowed_file_types,
+            'max_file_size_mb' => $assignment->max_file_size_mb,
+            'max_files' => $assignment->max_files,
+            'is_published' => $assignment->is_published,
+        ];
+
+        // Update assignment without logging (to avoid duplicate logs)
+        $this->withoutActivityLogging(function () use ($assignment, $validated) {
+            $assignment->update($validated);
+        });
+
+        // Build log data and log changes
+        $logData = $this->activityLogService->buildUpdateLogData($assignment, $validated, $oldValues);
+        if (! empty($logData['attributes']) || ! empty($logData['old'])) {
+            $this->activityLogService->logAssignmentUpdated($assignment, $logData['attributes'], $logData['old']);
+        }
 
         return back()->with('success', 'Assignment updated successfully!');
     }
@@ -309,7 +351,7 @@ class AssignmentController extends Controller
     /**
      * Delete an assignment.
      */
-    public function destroy(Request $request, Assignment $assignment): \Illuminate\Http\RedirectResponse
+    public function destroy(Request $request, Assignment $assignment): RedirectResponse
     {
         $user = $request->user();
 
@@ -318,10 +360,32 @@ class AssignmentController extends Controller
             abort(403, 'You do not have access to this assignment.');
         }
 
+        // Log assignment deletion before deleting
+        $this->activityLogService->logAssignmentDeleted($assignment);
+
         $assignment->delete();
 
         return redirect()->route('assignments.index')
             ->with('success', 'Assignment deleted successfully!');
+    }
+
+    /**
+     * Get activity logs for an assignment.
+     */
+    public function logs(Request $request, Assignment $assignment): JsonResponse
+    {
+        $user = $request->user();
+
+        // Verify assignment belongs to user's organization
+        if ($assignment->organization_id !== $user->currentOrganization?->id) {
+            abort(403, 'You do not have access to this assignment.');
+        }
+
+        $logs = $this->activityLogService->getLogs($assignment);
+
+        return response()->json([
+            'logs' => $logs,
+        ]);
     }
 
     /**

@@ -244,6 +244,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::delete('assignments/{assignment}', [App\Http\Controllers\AssignmentController::class, 'destroy'])
         ->middleware('permission:delete-assignments')
         ->name('assignments.destroy');
+    Route::get('assignments/{assignment}/logs', [App\Http\Controllers\AssignmentController::class, 'logs'])
+        ->middleware('permission:view-assignments')
+        ->name('assignments.logs');
 
     // API endpoint for fetching submissions (returns JSON)
     Route::get('api/assignments/{assignment}/submissions', [App\Http\Controllers\AssignmentController::class, 'getSubmissions'])

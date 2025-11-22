@@ -2,6 +2,7 @@ import {
     CreateAssignmentSheet,
     EditAssignmentSheet,
     ViewAssignmentSheet,
+    AssignmentLogsSheet,
 } from '@/components/assignments';
 import {
     AlertDialog,
@@ -27,7 +28,7 @@ import {
 } from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
 import { Head, router } from '@inertiajs/react';
-import { Calendar, Eye, Pencil, Plus, SquarePen, Trash2 } from 'lucide-react';
+import { Calendar, Eye, FileText, Pencil, Plus, SquarePen, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 
 interface Assignment {
@@ -101,6 +102,9 @@ export default function AssignmentsIndex({ assignments }: Props) {
     const [selectedAssignment, setSelectedAssignment] =
         useState<Assignment | null>(null);
     const [submissions, setSubmissions] = useState<Submission[]>([]);
+    const [viewingLogsAssignment, setViewingLogsAssignment] =
+        useState<Assignment | null>(null);
+    const [showLogsSheet, setShowLogsSheet] = useState(false);
 
     const handleDelete = (id: number) => {
         router.delete(`/assignments/${id}`, {
@@ -142,6 +146,11 @@ export default function AssignmentsIndex({ assignments }: Props) {
     const handleEdit = (assignment: Assignment) => {
         setSelectedAssignment(assignment);
         setEditSheetOpen(true);
+    };
+
+    const handleViewLogs = (assignment: Assignment) => {
+        setViewingLogsAssignment(assignment);
+        setShowLogsSheet(true);
     };
 
     return (
@@ -257,8 +266,21 @@ export default function AssignmentsIndex({ assignments }: Props) {
                                                                 assignment,
                                                             )
                                                         }
+                                                        title="View"
                                                     >
                                                         <Eye className="size-4" />
+                                                    </Button>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        onClick={() =>
+                                                            handleViewLogs(
+                                                                assignment,
+                                                            )
+                                                        }
+                                                        title="View Activity Logs"
+                                                    >
+                                                        <FileText className="size-4" />
                                                     </Button>
                                                     <Button
                                                         variant="ghost"
@@ -268,6 +290,7 @@ export default function AssignmentsIndex({ assignments }: Props) {
                                                                 assignment,
                                                             )
                                                         }
+                                                        title="Edit"
                                                     >
                                                         <SquarePen className="size-4" />
                                                     </Button>
@@ -365,6 +388,20 @@ export default function AssignmentsIndex({ assignments }: Props) {
                 assignment={selectedAssignment}
                 onClose={() => setEditSheetOpen(false)}
             />
+
+            {/* Assignment Logs Sheet */}
+            {viewingLogsAssignment && (
+                <AssignmentLogsSheet
+                    open={showLogsSheet}
+                    onOpenChange={(open) => {
+                        setShowLogsSheet(open);
+                        if (!open) {
+                            setViewingLogsAssignment(null);
+                        }
+                    }}
+                    assignment={viewingLogsAssignment}
+                />
+            )}
         </AppLayout>
     );
 }
