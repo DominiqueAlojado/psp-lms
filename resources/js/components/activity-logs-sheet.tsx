@@ -169,9 +169,14 @@ export function ActivityLogsSheet({
             if (typeof value === 'boolean') {
                 return value ? 'Yes' : 'No';
             }
-            // Handle numeric booleans (1/0 from database)
-            if (value === 1 || value === 0) {
-                return value === 1 ? 'Yes' : 'No';
+            // Handle numeric booleans (1/0 from database) - but only for fields that are likely booleans
+            // Don't convert numeric values like points, counts, etc.
+            // Only convert if the old value was also a boolean or if it's a known boolean field
+            if ((value === 1 || value === 0) && typeof value === 'number') {
+                // Check if this looks like a boolean field (field name suggests boolean)
+                // For now, we'll be more conservative and only convert if it's explicitly boolean
+                // This prevents converting points, counts, etc.
+                return String(value);
             }
             if (typeof value === 'object' && value !== null) {
                 try {

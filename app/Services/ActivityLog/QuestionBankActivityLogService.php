@@ -15,6 +15,15 @@ class QuestionBankActivityLogService
     {
         $topicName = $question->topic_id ? Topic::find($question->topic_id)?->name : 'None';
         
+        // Get choices with correct answer marked
+        $choices = $question->choices()->orderBy('order')->get()->map(function ($choice) {
+            $text = substr(strip_tags($choice->choice_text), 0, 50);
+            return $choice->is_correct ? "{$text} (Correct)" : $text;
+        })->toArray();
+        
+        $correctAnswer = $question->choices()->where('is_correct', true)->first();
+        $correctAnswerText = $correctAnswer ? substr(strip_tags($correctAnswer->choice_text), 0, 50) : 'None';
+        
         activity()
             ->performedOn($question)
             ->causedBy(auth()->user() ?? null)
@@ -24,8 +33,10 @@ class QuestionBankActivityLogService
                     'question_text' => substr($question->question_text, 0, 100),
                     'question_type' => $question->question_type,
                     'topic' => $topicName,
-                    'points' => $question->points,
+                    'points' => (int) $question->points,
                     'difficulty_level' => $question->difficulty_level,
+                    'correct_answer' => $correctAnswerText,
+                    'choices' => implode(' | ', $choices),
                 ],
             ])
             ->log('Question created');

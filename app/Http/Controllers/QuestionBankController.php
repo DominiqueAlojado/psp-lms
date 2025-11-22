@@ -215,6 +215,9 @@ class QuestionBankController extends Controller
             ]);
         }
 
+        // Reload question with choices for logging
+        $question->load('choices');
+
         // Log question creation
         $this->activityLogService->logQuestionCreated($question);
 
