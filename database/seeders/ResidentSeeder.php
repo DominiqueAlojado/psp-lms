@@ -15,16 +15,17 @@ class ResidentSeeder extends Seeder
      */
     public function run(): void
     {
-        // Get all institutions (hospitals) - these are the training sites
-        $institutions = Organization::where('type', 'institution')->get();
+        // Only seed for Bataan General Hospital
+        $institution = Organization::where('slug', 'bataan-general-hospital')->first();
 
-        if ($institutions->isEmpty()) {
-            $this->command->warn('No institutions found. Please run OrganizationSeeder first.');
+        if (! $institution) {
+            $this->command->warn('Bataan General Hospital not found. Please run OrganizationSeeder first.');
 
             return;
         }
 
-        $this->command->info('Creating residents across '.count($institutions).' institutions...');
+        $institutions = collect([$institution]);
+        $this->command->info('Creating residents for Bataan General Hospital only...');
 
         // Create 3-8 residents per institution (randomized)
         foreach ($institutions as $institution) {

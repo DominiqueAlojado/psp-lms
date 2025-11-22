@@ -35,6 +35,7 @@ class DatabaseSeeder extends Seeder
             InServiceExamCompletedAttemptsSeeder::class, // Create completed exam attempts with answers for statistics
             BataanGeneralHospitalExamsSeeder::class, // Create dummy exams
             LongFormQuestionsExamSeeder::class,      // Create exam with long questions
+            InstitutionExamCompletedAttemptsSeeder::class, // Create completed institution exam attempts for Bataan
             AnnouncementSeeder::class,   // Create sample announcements
             LearningResourceSeeder::class, // Create sample learning resources
         ]);

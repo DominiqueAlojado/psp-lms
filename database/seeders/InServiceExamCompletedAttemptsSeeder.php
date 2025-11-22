@@ -16,10 +16,20 @@ class InServiceExamCompletedAttemptsSeeder extends Seeder
      */
     public function run(): void
     {
-        // Get all active residents with user accounts
+        // Only seed for Bataan General Hospital residents
+        $bataanOrg = \App\Models\Organization::where('slug', 'bataan-general-hospital')->first();
+
+        if (! $bataanOrg) {
+            $this->command->warn('Bataan General Hospital not found. Please run OrganizationSeeder first.');
+
+            return;
+        }
+
+        // Get only active residents from Bataan General Hospital with user accounts
         $residents = Resident::with('user')
             ->whereHas('user')
             ->where('status', 'active')
+            ->where('organization_id', $bataanOrg->id)
             ->get();
 
         if ($residents->isEmpty()) {
