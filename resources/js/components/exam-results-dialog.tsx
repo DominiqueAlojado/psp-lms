@@ -271,9 +271,12 @@ export function ExamResultsSheet({
                                         </div>
                                         <div>
                                             <p className="text-xl font-bold">
-                                                {data.attempt
-                                                    .time_taken_minutes ||
-                                                    'N/A'}
+                                                {data.attempt.time_taken_minutes
+                                                    ? Number(
+                                                          data.attempt
+                                                              .time_taken_minutes,
+                                                      ).toFixed(2)
+                                                    : 'N/A'}
                                             </p>
                                             <p className="text-xs text-muted-foreground">
                                                 {data.attempt.time_taken_minutes
@@ -301,10 +304,14 @@ export function ExamResultsSheet({
                                             <Badge
                                                 variant={
                                                     question.is_correct
-                                                        ? 'default'
+                                                        ? 'outline'
                                                         : 'destructive'
                                                 }
-                                                className="shrink-0"
+                                                className={cn(
+                                                    'shrink-0',
+                                                    question.is_correct &&
+                                                        'border-green-500 bg-green-50 text-green-700 dark:border-green-400 dark:bg-green-900/30 dark:text-green-400',
+                                                )}
                                             >
                                                 {question.is_correct ? (
                                                     <>
