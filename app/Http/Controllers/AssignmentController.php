@@ -106,6 +106,8 @@ class AssignmentController extends Controller
                 'assignment_type' => $assignment->assignment_type,
                 'target_year_levels' => $assignment->target_year_levels,
                 'max_score' => $assignment->max_score,
+                'cme_credits' => $assignment->cme_credits,
+                'credit_type' => $assignment->credit_type,
                 'due_date' => $assignment->due_date?->format('Y-m-d\TH:i'),
                 'allow_late_submission' => $assignment->allow_late_submission,
                 'late_submission_until' => $assignment->late_submission_until?->format('Y-m-d\TH:i'),
@@ -145,6 +147,8 @@ class AssignmentController extends Controller
             'target_year_levels' => ['required', 'array', 'min:1'],
             'target_year_levels.*' => ['string'],
             'max_score' => ['required', 'integer', 'min:1'],
+            'cme_credits' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'credit_type' => ['nullable', 'string', 'in:cme,cpd'],
             'due_date' => ['required', 'date'],
             'allow_late_submission' => ['required', 'boolean'],
             'late_submission_until' => ['nullable', 'date', 'after:due_date', 'required_if:allow_late_submission,true'],
@@ -262,6 +266,7 @@ class AssignmentController extends Controller
                 'assignment_type' => $assignment->assignment_type,
                 'target_year_levels' => $assignment->target_year_levels,
                 'max_score' => $assignment->max_score,
+                'cme_credits' => $assignment->cme_credits,
                 'due_date' => $assignment->due_date?->format('Y-m-d H:i:s'),
                 'allow_late_submission' => $assignment->allow_late_submission,
                 'late_submission_until' => $assignment->late_submission_until?->format('Y-m-d H:i:s'),
@@ -301,6 +306,8 @@ class AssignmentController extends Controller
             'target_year_levels' => ['required', 'array', 'min:1'],
             'target_year_levels.*' => ['string'],
             'max_score' => ['required', 'integer', 'min:1'],
+            'cme_credits' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'credit_type' => ['nullable', 'string', 'in:cme,cpd'],
             'due_date' => ['required', 'date'],
             'allow_late_submission' => ['required', 'boolean'],
             'late_submission_until' => ['nullable', 'date', 'after:due_date', 'required_if:allow_late_submission,true'],
@@ -322,6 +329,8 @@ class AssignmentController extends Controller
             'assignment_type' => $assignment->assignment_type,
             'target_year_levels' => $assignment->target_year_levels,
             'max_score' => $assignment->max_score,
+            'cme_credits' => $assignment->cme_credits,
+            'credit_type' => $assignment->credit_type,
             'due_date' => $assignment->due_date?->format('Y-m-d\TH:i'),
             'allow_late_submission' => $assignment->allow_late_submission,
             'late_submission_until' => $assignment->late_submission_until?->format('Y-m-d\TH:i'),
@@ -627,6 +636,10 @@ class AssignmentController extends Controller
             'graded_by' => $user->id,
             'graded_at' => now(),
         ]);
+
+        // Award CME credits if assignment has credits and submission passes
+        $cmeCreditService = app(\App\Services\CmeCreditService::class);
+        $cmeCreditService->awardCreditsForAssignment($submission, $user->id);
 
         return back()->with('success', 'Grade saved successfully!');
     }

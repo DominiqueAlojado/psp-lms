@@ -31,6 +31,7 @@ class Event extends Model
         'is_free',
         'image_path',
         'cme_credits',
+        'credit_type',
         'target_year_levels',
         'requirements',
         'requires_approval',
@@ -54,6 +55,7 @@ class Event extends Model
             'is_free' => 'boolean',
             'price' => 'decimal:2',
             'cme_credits' => 'decimal:2',
+            'credit_type' => 'string',
         ];
     }
 

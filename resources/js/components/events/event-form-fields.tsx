@@ -24,6 +24,7 @@ interface EventFormData {
     price: string;
     is_free: boolean;
     cme_credits: string;
+    credit_type?: string | null;
     requirements: string;
     requires_approval: boolean;
     is_published: boolean;
@@ -341,6 +342,40 @@ export function EventFormFields({ data, setData, errors = {} }: Props) {
                             </p>
                         )}
                     </div>
+
+                    {data.cme_credits && parseFloat(data.cme_credits) > 0 && (
+                        <div className="space-y-2">
+                            <Label htmlFor="credit_type">
+                                Credit Type{' '}
+                                <span className="text-destructive">*</span>
+                            </Label>
+                            <Select
+                                value={data.credit_type || 'cme'}
+                                onValueChange={(value) =>
+                                    setData({
+                                        ...data,
+                                        credit_type: value,
+                                    })
+                                }
+                            >
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select credit type" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="cme">CME (Continuing Medical Education)</SelectItem>
+                                    <SelectItem value="cpd">CPD (Continuing Professional Development)</SelectItem>
+                                </SelectContent>
+                            </Select>
+                            <p className="text-xs text-muted-foreground">
+                                CME: Clinical knowledge & skills | CPD: Professional development (leadership, ethics, etc.)
+                            </p>
+                            {errors.credit_type && (
+                                <p className="text-sm text-destructive">
+                                    {errors.credit_type}
+                                </p>
+                            )}
+                        </div>
+                    )}
                 </div>
 
                 <div className="space-y-3">

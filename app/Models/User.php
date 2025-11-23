@@ -153,6 +153,14 @@ class User extends Authenticatable
         return $this->hasOne(Resident::class);
     }
 
+    /**
+     * Get the CME/CPD credits earned by this user.
+     */
+    public function cmeCredits()
+    {
+        return $this->hasMany(CmeCredit::class);
+    }
+
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()

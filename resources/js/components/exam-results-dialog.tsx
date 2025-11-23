@@ -50,6 +50,7 @@ interface Exam {
     type: 'institution' | 'inservice';
     total_points: number;
     passing_score: number;
+    cme_credits: number | null;
     questions: Question[];
 }
 
@@ -60,6 +61,7 @@ interface Attempt {
     started_at: string;
     submitted_at: string;
     time_taken_minutes: number | null;
+    cme_credits_earned: number | null;
 }
 
 interface ResultsData {
@@ -206,7 +208,15 @@ export function ExamResultsSheet({
                                     </Badge>
                                 </div>
 
-                                <div className="grid gap-4 md:grid-cols-4">
+                                <div
+                                    className={cn(
+                                        'grid gap-4',
+                                        data.exam.cme_credits ||
+                                            data.attempt.cme_credits_earned
+                                            ? 'md:grid-cols-5'
+                                            : 'md:grid-cols-4',
+                                    )}
+                                >
                                     {/* Score */}
                                     <div className="flex items-center gap-3 rounded-lg border bg-background p-4">
                                         <div
@@ -285,6 +295,33 @@ export function ExamResultsSheet({
                                             </p>
                                         </div>
                                     </div>
+
+                                    {/* CME Credits - Only show if exam has credits or credits were earned */}
+                                    {(data.exam.cme_credits ||
+                                        data.attempt.cme_credits_earned) && (
+                                        <div className="flex items-center gap-3 rounded-lg border bg-background p-4">
+                                            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400">
+                                                <Award className="h-5 w-5" />
+                                            </div>
+                                            <div>
+                                                <p className="text-xl font-bold">
+                                                    {data.attempt
+                                                        .cme_credits_earned
+                                                        ? data.attempt.cme_credits_earned.toFixed(
+                                                              2,
+                                                          )
+                                                        : data.exam.cme_credits
+                                                          ? data.exam.cme_credits.toFixed(
+                                                                2,
+                                                            )
+                                                          : '0.00'}
+                                                </p>
+                                                <p className="text-xs text-muted-foreground">
+                                                    CME Credits
+                                                </p>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 

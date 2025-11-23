@@ -21,6 +21,7 @@ class Organization extends Model
         'type',
         'logo',
         'is_active',
+        'cme_cpd_enabled',
         'settings',
         'training_officers',
     ];
@@ -29,6 +30,7 @@ class Organization extends Model
     {
         return [
             'is_active' => 'boolean',
+            'cme_cpd_enabled' => 'boolean',
             'settings' => 'array',
             'training_officers' => 'array',
         ];

@@ -21,6 +21,8 @@ class Assignment extends Model
         'target_year_levels',
         'course_id',
         'max_score',
+        'cme_credits',
+        'credit_type',
         'due_date',
         'allow_late_submission',
         'late_submission_until',
@@ -44,6 +46,8 @@ class Assignment extends Model
             'allow_late_submission' => 'boolean',
             'allow_resubmission' => 'boolean',
             'is_published' => 'boolean',
+            'cme_credits' => 'decimal:2',
+            'credit_type' => 'string',
         ];
     }
 

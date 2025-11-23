@@ -31,6 +31,7 @@ export function CreateEventSheet({ open, onClose }: Props) {
         price: string;
         is_free: boolean;
         cme_credits: string;
+        credit_type?: string | null;
         requirements: string;
         requires_approval: boolean;
         is_published: boolean;
@@ -46,11 +47,12 @@ export function CreateEventSheet({ open, onClose }: Props) {
         location: '',
         virtual_link: '',
         capacity: '',
-        price: '0',
-        is_free: true,
-        cme_credits: '',
-        requirements: '',
-        requires_approval: false,
+            price: '0',
+            is_free: true,
+            cme_credits: '',
+            credit_type: 'cme',
+            requirements: '',
+            requires_approval: false,
         is_published: false,
         image: null,
     });
@@ -75,6 +77,7 @@ export function CreateEventSheet({ open, onClose }: Props) {
             price: '0',
             is_free: true,
             cme_credits: '',
+            credit_type: 'cme',
             requirements: '',
             requires_approval: false,
             is_published: false,

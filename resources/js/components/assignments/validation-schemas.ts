@@ -12,6 +12,16 @@ export const assignmentSchema = z
         max_score: z
             .number({ invalid_type_error: 'Max score must be a number' })
             .min(1, 'Max score must be at least 1'),
+        cme_credits: z
+            .number({ invalid_type_error: 'CME credits must be a number' })
+            .min(0, 'CME credits cannot be negative')
+            .max(100, 'CME credits cannot exceed 100')
+            .nullable()
+            .optional(),
+        credit_type: z
+            .enum(['cme', 'cpd'])
+            .nullable()
+            .optional(),
         due_date: z.string().min(1, 'Due date is required'),
         allow_late_submission: z.boolean(),
         late_submission_until: z.string(),

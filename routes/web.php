@@ -59,6 +59,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('exams/{type}/{attempt}/current-ip', [App\Http\Controllers\ResidentExamController::class, 'getCurrentIp'])
         ->name('exams.current-ip');
 
+    // CME/CPD Credits
+    Route::get('cme-credits', [App\Http\Controllers\CmeCreditController::class, 'index'])
+        ->name('cme-credits.index');
+    Route::get('cme-credits/history', [App\Http\Controllers\CmeCreditController::class, 'history'])
+        ->name('cme-credits.history');
+    Route::get('cme-credits/statistics', [App\Http\Controllers\CmeCreditController::class, 'statistics'])
+        ->name('cme-credits.statistics');
+
     // Residents
     Route::get('residents', [App\Http\Controllers\ResidentController::class, 'index'])
         ->middleware('permission:view-residents')
@@ -468,4 +476,4 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('organization.switch');
 });
 
-require __DIR__ . '/settings.php';
+require __DIR__.'/settings.php';

@@ -54,6 +54,12 @@ const mainNavItems: NavItem[] = [
         permission: 'view-resident-grades',
     },
     {
+        title: 'CME/CPD Credits',
+        href: '/cme-credits',
+        icon: Award,
+        permission: 'take-assessments', // Same permission as exams - residents can view their credits
+    },
+    {
         title: 'My Assignments',
         href: '/my-assignments',
         icon: Pencil,

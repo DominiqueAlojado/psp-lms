@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Observers\MeetingAttendanceObserver;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -9,6 +10,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class MeetingAttendance extends Model
 {
     use HasFactory;
+
+    protected static function booted(): void
+    {
+        static::observe(MeetingAttendanceObserver::class);
+    }
 
     protected $fillable = [
         'event_id',

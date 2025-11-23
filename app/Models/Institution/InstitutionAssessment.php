@@ -25,6 +25,8 @@ class InstitutionAssessment extends Model
         'duration_minutes',
         'total_points',
         'passing_score',
+        'cme_credits',
+        'credit_type',
         'randomize_questions',
         'randomize_choices',
         'show_results_immediately',
@@ -43,6 +45,8 @@ class InstitutionAssessment extends Model
             'show_results_immediately' => 'boolean',
             'allow_review' => 'boolean',
             'is_published' => 'boolean',
+            'cme_credits' => 'decimal:2',
+            'credit_type' => 'string',
             'available_from' => 'datetime',
             'available_until' => 'datetime',
         ];

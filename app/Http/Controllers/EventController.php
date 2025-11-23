@@ -54,9 +54,9 @@ class EventController extends Controller
         // Search
         if ($request->filled('search')) {
             $query->where(function ($q) use ($request) {
-                $q->where('title', 'like', '%' . $request->search . '%')
-                    ->orWhere('description', 'like', '%' . $request->search . '%')
-                    ->orWhere('location', 'like', '%' . $request->search . '%');
+                $q->where('title', 'like', '%'.$request->search.'%')
+                    ->orWhere('description', 'like', '%'.$request->search.'%')
+                    ->orWhere('location', 'like', '%'.$request->search.'%');
             });
         }
 
@@ -140,7 +140,7 @@ class EventController extends Controller
 
         // Search
         if ($request->filled('search')) {
-            $query->where('title', 'like', '%' . $request->search . '%');
+            $query->where('title', 'like', '%'.$request->search.'%');
         }
 
         $events = $query->orderBy('start_date', 'desc')
@@ -176,6 +176,7 @@ class EventController extends Controller
             'is_free' => ['boolean'],
             'image' => ['nullable', 'image', 'max:5120', 'mimes:jpeg,jpg,png,gif,webp'], // 5MB max
             'cme_credits' => ['nullable', 'numeric', 'min:0'],
+            'credit_type' => ['nullable', 'string', 'in:cme,cpd'],
             'target_year_levels' => ['nullable', 'array'],
             'requirements' => ['nullable', 'string'],
             'requires_approval' => ['boolean'],
@@ -186,7 +187,7 @@ class EventController extends Controller
         $imagePath = null;
         if ($request->hasFile('image')) {
             $file = $request->file('image');
-            $fileName = Str::uuid() . '.' . $file->getClientOriginalExtension();
+            $fileName = Str::uuid().'.'.$file->getClientOriginalExtension();
             $imagePath = $file->storeAs('event-posters', $fileName, 'public');
         }
 
@@ -232,6 +233,7 @@ class EventController extends Controller
             'is_free' => ['nullable', 'boolean'],
             'image' => ['nullable', 'image', 'max:5120', 'mimes:jpeg,jpg,png,gif,webp'],
             'cme_credits' => ['nullable', 'numeric', 'min:0'],
+            'credit_type' => ['nullable', 'string', 'in:cme,cpd'],
             'target_year_levels' => ['nullable', 'array'],
             'requirements' => ['nullable', 'string'],
             'requires_approval' => ['nullable', 'boolean'],
@@ -253,6 +255,7 @@ class EventController extends Controller
             'price' => $event->price,
             'is_free' => $event->is_free,
             'cme_credits' => $event->cme_credits,
+            'credit_type' => $event->credit_type,
             'requires_approval' => $event->requires_approval,
             'is_published' => $event->is_published,
         ];
@@ -266,7 +269,7 @@ class EventController extends Controller
 
             // Store new image
             $file = $request->file('image');
-            $fileName = Str::uuid() . '.' . $file->getClientOriginalExtension();
+            $fileName = Str::uuid().'.'.$file->getClientOriginalExtension();
             $validated['image_path'] = $file->storeAs('event-posters', $fileName, 'public');
         }
 
@@ -429,8 +432,8 @@ class EventController extends Controller
         // Search
         if ($request->filled('search')) {
             $query->whereHas('user', function ($q) use ($request) {
-                $q->where('name', 'like', '%' . $request->search . '%')
-                    ->orWhere('email', 'like', '%' . $request->search . '%');
+                $q->where('name', 'like', '%'.$request->search.'%')
+                    ->orWhere('email', 'like', '%'.$request->search.'%');
             });
         }
 
@@ -479,8 +482,8 @@ class EventController extends Controller
         // Search
         if ($request->filled('search')) {
             $query->whereHas('user', function ($q) use ($request) {
-                $q->where('name', 'like', '%' . $request->search . '%')
-                    ->orWhere('email', 'like', '%' . $request->search . '%');
+                $q->where('name', 'like', '%'.$request->search.'%')
+                    ->orWhere('email', 'like', '%'.$request->search.'%');
             });
         }
 

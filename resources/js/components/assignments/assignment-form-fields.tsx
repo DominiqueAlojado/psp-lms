@@ -22,6 +22,8 @@ interface AssignmentFormData {
     assignment_type: string;
     target_year_levels: string[];
     max_score: number;
+    cme_credits?: number | null;
+    credit_type?: string | null;
     due_date: string;
     allow_late_submission: boolean;
     late_submission_until: string;
@@ -223,6 +225,69 @@ export function AssignmentFormFields({
                             </p>
                         )}
                     </div>
+
+                    <div>
+                        <Label htmlFor="cme_credits">
+                            CME/CPD Credits (Optional)
+                        </Label>
+                        <Input
+                            id="cme_credits"
+                            type="number"
+                            step="0.01"
+                            value={data.cme_credits ?? ''}
+                            onChange={(e) =>
+                                setData(
+                                    'cme_credits',
+                                    e.target.value === ''
+                                        ? null
+                                        : parseFloat(e.target.value),
+                                )
+                            }
+                            min={0}
+                            max={100}
+                            placeholder="0.00"
+                        />
+                        <p className="mt-1 text-xs text-muted-foreground">
+                            Credits awarded when assignment is graded and passes
+                            (60% minimum)
+                        </p>
+                        {errors.cme_credits && (
+                            <p className="mt-1 text-sm text-destructive">
+                                {errors.cme_credits}
+                            </p>
+                        )}
+                    </div>
+
+                    {data.cme_credits && data.cme_credits > 0 && (
+                        <div>
+                            <Label htmlFor="credit_type">
+                                Credit Type{' '}
+                                <span className="text-destructive">*</span>
+                            </Label>
+                            <Select
+                                value={data.credit_type || 'cme'}
+                                onValueChange={(value) =>
+                                    setData('credit_type', value)
+                                }
+                            >
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select credit type" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="cme">CME (Continuing Medical Education)</SelectItem>
+                                    <SelectItem value="cpd">CPD (Continuing Professional Development)</SelectItem>
+                                </SelectContent>
+                            </Select>
+                            <p className="mt-1 text-xs text-muted-foreground">
+                                CME: Clinical knowledge & skills | CPD: Professional development (leadership, ethics, etc.)
+                            </p>
+                            {errors.credit_type && (
+                                <p className="mt-1 text-sm text-destructive">
+                                    {errors.credit_type}
+                                </p>
+                            )}
+                        </div>
+                    )}
                 </div>
 
                 <div className="flex items-center space-x-2">

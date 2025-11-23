@@ -21,6 +21,8 @@ interface Assignment {
     assignment_type: string;
     target_year_levels?: string[] | null;
     max_score?: number;
+    cme_credits?: number | null;
+    credit_type?: string | null;
     due_date: string | null;
     allow_late_submission?: boolean;
     late_submission_until?: string | null;
@@ -47,6 +49,8 @@ export function EditAssignmentSheet({ open, assignment, onClose }: Props) {
         assignment_type: assignment?.assignment_type || 'case_report',
         target_year_levels: (assignment?.target_year_levels || []) as string[],
         max_score: assignment?.max_score || 100,
+        cme_credits: assignment?.cme_credits ?? null,
+        credit_type: assignment?.credit_type ?? 'cme',
         due_date: assignment?.due_date || '',
         allow_late_submission: assignment?.allow_late_submission || false,
         late_submission_until: assignment?.late_submission_until || '',
@@ -85,6 +89,8 @@ export function EditAssignmentSheet({ open, assignment, onClose }: Props) {
                 target_year_levels: (assignment.target_year_levels ||
                     []) as string[],
                 max_score: assignment.max_score || 100,
+                cme_credits: assignment.cme_credits ?? null,
+                credit_type: assignment.credit_type ?? 'cme',
                 due_date: assignment.due_date || '',
                 allow_late_submission: assignment.allow_late_submission || false,
                 late_submission_until: assignment.late_submission_until || '',

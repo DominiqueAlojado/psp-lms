@@ -27,6 +27,7 @@ interface Event {
     is_free: boolean;
     image_path: string | null;
     cme_credits: string | null;
+    credit_type: string | null;
     requirements: string | null;
     requires_approval: boolean;
     is_published: boolean;
@@ -53,6 +54,7 @@ export function EditEventSheet({ open, onClose, event }: Props) {
         price: string;
         is_free: boolean;
         cme_credits: string;
+        credit_type?: string | null;
         requirements: string;
         requires_approval: boolean;
         is_published: boolean;
@@ -101,6 +103,7 @@ export function EditEventSheet({ open, onClose, event }: Props) {
                 price: event.price || '0',
                 is_free: event.is_free ?? true,
                 cme_credits: event.cme_credits || '',
+                credit_type: event.credit_type || 'cme',
                 requirements: event.requirements || '',
                 requires_approval: event.requires_approval || false,
                 is_published: event.is_published || false,

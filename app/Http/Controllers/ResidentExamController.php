@@ -515,6 +515,10 @@ class ResidentExamController extends Controller
                 'status' => 'completed',
             ]);
 
+            // Award CME credits if exam has credits
+            $cmeCreditService = app(\App\Services\CmeCreditService::class);
+            $cmeCreditService->awardCreditsForInstitutionExam($attemptModel, $user->id);
+
             return redirect('/resident-exams')->with('success', 'Exam submitted successfully! Score: '.$attemptModel->percentage.'%');
         } elseif ($type === 'inservice') {
             $attemptModel = \App\Models\National\NationalAttempt::findOrFail($attempt);
@@ -537,7 +541,7 @@ class ResidentExamController extends Controller
             // Update question bank statistics for each answer
             foreach ($attemptModel->answers as $answer) {
                 $question = $answer->question;
-                
+
                 if (! $question) {
                     continue;
                 }
@@ -569,7 +573,7 @@ class ResidentExamController extends Controller
                 if ($bankQuestion) {
                     // Calculate time spent (if available, otherwise use a default)
                     $timeSeconds = null; // Could be calculated from attempt timestamps if needed
-                    
+
                     // Update statistics for national scope
                     $bankQuestion->updateStatistics(
                         $answer->is_correct ?? false,
@@ -594,6 +598,10 @@ class ResidentExamController extends Controller
                 'submitted_at' => now(),
                 'status' => 'completed',
             ]);
+
+            // Award CME credits if exam has credits
+            $cmeCreditService = app(\App\Services\CmeCreditService::class);
+            $cmeCreditService->awardCreditsForNationalExam($attemptModel, $user->id);
 
             return redirect('/resident-exams')->with('success', 'Exam submitted successfully! Score: '.$attemptModel->percentage.'%');
         }
@@ -834,6 +842,13 @@ class ResidentExamController extends Controller
                 ];
             });
 
+            // Check if credits were earned for this attempt
+            $cmeCredit = \App\Models\CmeCredit::where('user_id', $user->id)
+                ->where('source_type', 'exam_institution')
+                ->where('source_id', $attempt->id)
+                ->where('status', 'approved')
+                ->first();
+
             return response()->json([
                 'exam' => [
                     'id' => $assessment->id,
@@ -842,6 +857,7 @@ class ResidentExamController extends Controller
                     'type' => 'institution',
                     'total_points' => $assessment->total_points,
                     'passing_score' => $assessment->passing_score,
+                    'cme_credits' => $assessment->cme_credits,
                     'questions' => $questionsData,
                 ],
                 'attempt' => [
@@ -853,6 +869,7 @@ class ResidentExamController extends Controller
                     'time_taken_minutes' => $attempt->started_at && $attempt->submitted_at
                         ? $attempt->started_at->diffInMinutes($attempt->submitted_at)
                         : null,
+                    'cme_credits_earned' => $cmeCredit ? $cmeCredit->credits : null,
                 ],
             ]);
         } elseif ($type === 'inservice') {
@@ -914,6 +931,13 @@ class ResidentExamController extends Controller
                 ];
             });
 
+            // Check if credits were earned for this attempt
+            $cmeCredit = \App\Models\CmeCredit::where('user_id', $user->id)
+                ->where('source_type', 'exam_national')
+                ->where('source_id', $attempt->id)
+                ->where('status', 'approved')
+                ->first();
+
             return response()->json([
                 'exam' => [
                     'id' => $assessment->id,
@@ -922,6 +946,7 @@ class ResidentExamController extends Controller
                     'type' => 'inservice',
                     'total_points' => $assessment->total_points,
                     'passing_score' => $assessment->passing_score,
+                    'cme_credits' => $assessment->cme_credits,
                     'questions' => $questionsData,
                 ],
                 'attempt' => [
@@ -933,6 +958,7 @@ class ResidentExamController extends Controller
                     'time_taken_minutes' => $attempt->started_at && $attempt->submitted_at
                         ? $attempt->started_at->diffInMinutes($attempt->submitted_at)
                         : null,
+                    'cme_credits_earned' => $cmeCredit ? $cmeCredit->credits : null,
                 ],
             ]);
         }
