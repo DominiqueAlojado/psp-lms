@@ -116,7 +116,7 @@ export default function ResidentExams() {
     };
 
     return (
-        <AppLayout breadcrumbs={breadcrumbs}>
+        <AppLayout>
             <Head title="My Exams" />
 
             <div className="flex h-full flex-1 flex-col gap-6 overflow-x-auto rounded-xl p-6">
@@ -146,6 +146,22 @@ export default function ResidentExams() {
                                 >
                                     <CardContent className="p-6">
                                         <div className="space-y-4">
+                                            <div>
+                                                {' '}
+                                                <Badge
+                                                    variant={
+                                                        exam.type ===
+                                                        'inservice'
+                                                            ? 'default'
+                                                            : 'secondary'
+                                                    }
+                                                    className="shrink-0"
+                                                >
+                                                    {exam.type === 'inservice'
+                                                        ? 'In-Service'
+                                                        : 'Institution'}
+                                                </Badge>
+                                            </div>
                                             <div className="flex items-start justify-between gap-2">
                                                 <div className="flex-1">
                                                     <div className="flex flex-wrap items-center gap-2">
@@ -169,19 +185,6 @@ export default function ResidentExams() {
                                                         </p>
                                                     )}
                                                 </div>
-                                                <Badge
-                                                    variant={
-                                                        exam.type ===
-                                                        'inservice'
-                                                            ? 'default'
-                                                            : 'secondary'
-                                                    }
-                                                    className="shrink-0"
-                                                >
-                                                    {exam.type === 'inservice'
-                                                        ? 'In-Service'
-                                                        : 'Institution'}
-                                                </Badge>
                                             </div>
 
                                             <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
