@@ -1,13 +1,13 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogHeader,
-    DialogTitle,
-} from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
+import {
+    Sheet,
+    SheetContent,
+    SheetDescription,
+    SheetHeader,
+    SheetTitle,
+} from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
 import {
     Award,
@@ -20,7 +20,7 @@ import {
     TrendingUp,
     XCircle,
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 interface Choice {
     id: number;
@@ -67,7 +67,7 @@ interface ResultsData {
     attempt: Attempt;
 }
 
-interface ExamResultsDialogProps {
+interface ExamResultsSheetProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     examId: number;
@@ -76,27 +76,19 @@ interface ExamResultsDialogProps {
     onRetake?: () => void;
 }
 
-export function ExamResultsDialog({
+export function ExamResultsSheet({
     open,
     onOpenChange,
     examId,
     examType,
     examTitle,
     onRetake,
-}: ExamResultsDialogProps) {
+}: ExamResultsSheetProps) {
     const [loading, setLoading] = useState(false);
     const [data, setData] = useState<ResultsData | null>(null);
     const [error, setError] = useState<string | null>(null);
 
-    // Always fetch fresh data when dialog opens or exam changes
-    useEffect(() => {
-        if (open) {
-            setData(null); // Clear old data first
-            fetchResults(); // Fetch fresh data
-        }
-    }, [open, examId, examType]);
-
-    const fetchResults = async () => {
+    const fetchResults = useCallback(async () => {
         setLoading(true);
         setError(null);
 
@@ -126,7 +118,15 @@ export function ExamResultsDialog({
         } finally {
             setLoading(false);
         }
-    };
+    }, [examId, examType]);
+
+    // Always fetch fresh data when dialog opens or exam changes
+    useEffect(() => {
+        if (open) {
+            setData(null); // Clear old data first
+            fetchResults(); // Fetch fresh data
+        }
+    }, [open, fetchResults]);
 
     const handleRetake = () => {
         onOpenChange(false);
@@ -141,22 +141,24 @@ export function ExamResultsDialog({
 
     const correctCount =
         data?.exam.questions.filter((q) => q.is_correct).length || 0;
-    const incorrectCount = (data?.exam.questions.length || 0) - correctCount;
     const passed =
         (data?.attempt.percentage || 0) >= (data?.exam.passing_score || 0);
 
     return (
-        <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-h-[95vh] w-[85vw] !max-w-[85vw] p-0">
-                <DialogHeader className="border-b p-6 pb-4">
-                    <DialogTitle className="text-2xl">{examTitle}</DialogTitle>
-                    <DialogDescription className="sr-only">
+        <Sheet open={open} onOpenChange={onOpenChange}>
+            <SheetContent
+                side="right"
+                className="w-full overflow-y-auto sm:max-w-2xl lg:max-w-4xl"
+            >
+                <SheetHeader className="border-b pb-4">
+                    <SheetTitle className="text-2xl">{examTitle}</SheetTitle>
+                    <SheetDescription className="sr-only">
                         Detailed exam results including score, questions, and
                         answers
-                    </DialogDescription>
-                </DialogHeader>
+                    </SheetDescription>
+                </SheetHeader>
 
-                <div className="max-h-[calc(95vh-180px)] overflow-y-auto p-6">
+                <div className="mt-0 space-y-6 p-4">
                     {loading && (
                         <div className="flex items-center justify-center py-12">
                             <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -170,7 +172,7 @@ export function ExamResultsDialog({
                     )}
 
                     {data && (
-                        <div className="space-y-6">
+                        <>
                             {/* Summary Card */}
                             <div
                                 className={cn(
@@ -219,7 +221,10 @@ export function ExamResultsDialog({
                                         </div>
                                         <div>
                                             <p className="text-xl font-bold">
-                                                {data.attempt.percentage}%
+                                                {data.attempt.percentage.toFixed(
+                                                    2,
+                                                )}
+                                                %
                                             </p>
                                             <p className="text-xs text-muted-foreground">
                                                 Score
@@ -293,6 +298,26 @@ export function ExamResultsDialog({
                                     >
                                         <div className="space-y-4">
                                             {/* Question Header */}
+                                            <Badge
+                                                variant={
+                                                    question.is_correct
+                                                        ? 'default'
+                                                        : 'destructive'
+                                                }
+                                                className="shrink-0"
+                                            >
+                                                {question.is_correct ? (
+                                                    <>
+                                                        <CheckCircle2 className="mr-1 h-3 w-3" />
+                                                        Correct
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <XCircle className="mr-1 h-3 w-3" />
+                                                        Wrong
+                                                    </>
+                                                )}
+                                            </Badge>
                                             <div className="flex items-start gap-3">
                                                 <div
                                                     className={cn(
@@ -312,26 +337,6 @@ export function ExamResultsDialog({
                                                                 __html: question.question_text,
                                                             }}
                                                         />
-                                                        <Badge
-                                                            variant={
-                                                                question.is_correct
-                                                                    ? 'default'
-                                                                    : 'destructive'
-                                                            }
-                                                            className="shrink-0"
-                                                        >
-                                                            {question.is_correct ? (
-                                                                <>
-                                                                    <CheckCircle2 className="mr-1 h-3 w-3" />
-                                                                    Correct
-                                                                </>
-                                                            ) : (
-                                                                <>
-                                                                    <XCircle className="mr-1 h-3 w-3" />
-                                                                    Wrong
-                                                                </>
-                                                            )}
-                                                        </Badge>
                                                     </div>
 
                                                     {question.image_url && (
@@ -345,9 +350,7 @@ export function ExamResultsDialog({
                                                     )}
                                                 </div>
                                             </div>
-
                                             <Separator />
-
                                             {/* Choices */}
                                             <div className="space-y-2">
                                                 {question.choices.map(
@@ -409,7 +412,6 @@ export function ExamResultsDialog({
                                                     },
                                                 )}
                                             </div>
-
                                             {/* Explanation */}
                                             {question.explanation && (
                                                 <>
@@ -433,7 +435,7 @@ export function ExamResultsDialog({
                             </div>
 
                             {/* Actions */}
-                            <div className="flex justify-end gap-2 border-t pt-4">
+                            <div className="sticky bottom-2 flex justify-end gap-2 border-t bg-background pt-4">
                                 <Button
                                     variant="outline"
                                     onClick={() => onOpenChange(false)}
@@ -447,10 +449,10 @@ export function ExamResultsDialog({
                                     </Button>
                                 )}
                             </div>
-                        </div>
+                        </>
                     )}
                 </div>
-            </DialogContent>
-        </Dialog>
+            </SheetContent>
+        </Sheet>
     );
 }

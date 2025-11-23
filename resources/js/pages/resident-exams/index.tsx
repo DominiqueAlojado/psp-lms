@@ -1,4 +1,4 @@
-import { ExamResultsDialog } from '@/components/exam-results-dialog';
+import { ExamResultsSheet } from '@/components/exam-results-dialog';
 import HeadingSmall from '@/components/heading-small';
 import {
     AlertDialog,
@@ -16,17 +16,9 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import AppLayout from '@/layouts/app-layout';
-import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { AlertTriangle, Clock, FileText, Play } from 'lucide-react';
 import { useState } from 'react';
-
-const breadcrumbs: BreadcrumbItem[] = [
-    {
-        title: 'My Exams',
-        href: '/resident-exams',
-    },
-];
 
 interface Exam {
     id: number;
@@ -485,9 +477,9 @@ export default function ResidentExams() {
                     </div>
                 )}
 
-                {/* Results Dialog */}
+                {/* Results Sheet */}
                 {selectedExam && (
-                    <ExamResultsDialog
+                    <ExamResultsSheet
                         open={showResultsDialog}
                         onOpenChange={setShowResultsDialog}
                         examId={selectedExam.id}
