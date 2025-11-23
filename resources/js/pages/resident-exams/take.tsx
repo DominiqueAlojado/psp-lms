@@ -406,12 +406,6 @@ function ExamContent({ exam, attempt, savedAnswers }: PageProps) {
                                     </p>
                                 </div>
                             </div>
-                            {saving !== null && (
-                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                    <div className="h-2 w-2 animate-pulse rounded-full bg-blue-500" />
-                                    <span>Saving...</span>
-                                </div>
-                            )}
                         </div>
                     </div>
 
