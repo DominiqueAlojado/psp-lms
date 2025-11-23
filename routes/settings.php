@@ -29,14 +29,19 @@ Route::middleware('auth')->group(function () {
         ->name('two-factor.show');
 
     Route::get('settings/organization', [OrganizationSettingsController::class, 'index'])
+        ->middleware('permission:manage-organization-settings')
         ->name('organization.edit');
     Route::patch('settings/organization', [OrganizationSettingsController::class, 'update'])
+        ->middleware('permission:manage-organization-settings')
         ->name('organization.update');
     Route::post('settings/organization/logo', [OrganizationSettingsController::class, 'uploadLogo'])
+        ->middleware('permission:manage-organization-settings')
         ->name('organization.logo.upload');
     Route::delete('settings/organization/logo', [OrganizationSettingsController::class, 'deleteLogo'])
+        ->middleware('permission:manage-organization-settings')
         ->name('organization.logo.delete');
     Route::patch('settings/organization/residents/{resident}', [OrganizationSettingsController::class, 'updateResident'])
+        ->middleware('permission:manage-organization-settings')
         ->name('organization.residents.update');
 
     // Roles & Permissions Management

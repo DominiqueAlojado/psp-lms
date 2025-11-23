@@ -18,6 +18,12 @@ class OrganizationSettingsController extends Controller
     public function index(Request $request): Response
     {
         $user = $request->user();
+
+        // Check permission
+        if (! $user->hasPermissionTo('manage-organization-settings')) {
+            abort(403, 'You do not have permission to access organization settings.');
+        }
+
         $organization = $user->currentOrganization;
 
         if (! $organization) {
@@ -30,7 +36,7 @@ class OrganizationSettingsController extends Controller
             ->orderBy('last_name')
             ->orderBy('first_name')
             ->get()
-            ->map(fn ($resident) => [
+            ->map(fn($resident) => [
                 'id' => $resident->id,
                 'uuid' => $resident->uuid,
                 'first_name' => $resident->first_name,
@@ -64,6 +70,12 @@ class OrganizationSettingsController extends Controller
     public function update(Request $request): RedirectResponse
     {
         $user = $request->user();
+
+        // Check permission
+        if (! $user->hasPermissionTo('manage-organization-settings')) {
+            abort(403, 'You do not have permission to manage organization settings.');
+        }
+
         $organization = $user->currentOrganization;
 
         if (! $organization) {
@@ -87,6 +99,12 @@ class OrganizationSettingsController extends Controller
     public function uploadLogo(Request $request): RedirectResponse
     {
         $user = $request->user();
+
+        // Check permission
+        if (! $user->hasPermissionTo('manage-organization-settings')) {
+            abort(403, 'You do not have permission to manage organization settings.');
+        }
+
         $organization = $user->currentOrganization;
 
         if (! $organization) {
@@ -116,6 +134,12 @@ class OrganizationSettingsController extends Controller
     public function deleteLogo(Request $request): RedirectResponse
     {
         $user = $request->user();
+
+        // Check permission
+        if (! $user->hasPermissionTo('manage-organization-settings')) {
+            abort(403, 'You do not have permission to manage organization settings.');
+        }
+
         $organization = $user->currentOrganization;
 
         if (! $organization) {
@@ -136,6 +160,12 @@ class OrganizationSettingsController extends Controller
     public function updateResident(Request $request, $residentId): RedirectResponse
     {
         $user = $request->user();
+
+        // Check permission
+        if (! $user->hasPermissionTo('manage-organization-settings')) {
+            abort(403, 'You do not have permission to manage organization settings.');
+        }
+
         $organization = $user->currentOrganization;
 
         if (! $organization) {
@@ -149,7 +179,7 @@ class OrganizationSettingsController extends Controller
             'first_name' => ['required', 'string', 'max:255'],
             'middle_name' => ['nullable', 'string', 'max:255'],
             'last_name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email:rfc', 'max:255', 'unique:residents,email,'.$resident->id],
+            'email' => ['required', 'email:rfc', 'max:255', 'unique:residents,email,' . $resident->id],
             'contact_number' => ['required', 'string', 'regex:/^(\+63|0)?9\d{9}$/'],
             'course' => ['required', 'string', 'max:255'],
             'year_level' => ['required', 'string', 'in:Pre Resident,First Year,Second Year,Third Year,Fourth Year,Graduate'],

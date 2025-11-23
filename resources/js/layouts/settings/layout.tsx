@@ -8,8 +8,8 @@ import organization from '@/routes/organization';
 import { edit } from '@/routes/profile';
 import { show } from '@/routes/two-factor';
 import { edit as editPassword } from '@/routes/user-password';
-import { type NavItem } from '@/types';
-import { Link } from '@inertiajs/react';
+import { type NavItem, type SharedData } from '@/types';
+import { Link, usePage } from '@inertiajs/react';
 import { type PropsWithChildren } from 'react';
 
 const sidebarNavItems: NavItem[] = [
@@ -32,6 +32,8 @@ const sidebarNavItems: NavItem[] = [
         title: 'Organization',
         href: organization.edit(),
         icon: null,
+        permission: 'manage-organization-settings',
+        excludeRoles: ['Resident'],
     },
     {
         title: 'Roles & Permissions',
@@ -48,6 +50,7 @@ const sidebarNavItems: NavItem[] = [
 
 export default function SettingsLayout({ children }: PropsWithChildren) {
     const { hasPermission } = usePermissions();
+    const { auth } = usePage<SharedData>().props;
 
     // When server-side rendering, we only render the layout on the client...
     if (typeof window === 'undefined') {
@@ -56,11 +59,22 @@ export default function SettingsLayout({ children }: PropsWithChildren) {
 
     const currentPath = window.location.pathname;
     const isOrganizationPage = currentPath.includes('/settings/organization');
-    const isRolesPermissionsPage = currentPath.includes('/settings/roles-permissions');
+    const isRolesPermissionsPage = currentPath.includes(
+        '/settings/roles-permissions',
+    );
     const isWidePage = isOrganizationPage || isRolesPermissionsPage;
 
-    // Filter sidebar nav items based on permissions
+    // Filter sidebar nav items based on permissions and excluded roles
     const filteredSidebarNavItems = sidebarNavItems.filter((item) => {
+        // Exclude items based on roles
+        if (
+            item.excludeRoles &&
+            auth?.roles &&
+            item.excludeRoles.some((role) => auth.roles.includes(role))
+        ) {
+            return false;
+        }
+
         // If no permission is required, show the item
         if (!item.permission) {
             return true;
@@ -105,14 +119,18 @@ export default function SettingsLayout({ children }: PropsWithChildren) {
 
                 <Separator className="my-6 lg:hidden" />
 
-                <div className={cn(
-                    "flex-1",
-                    isWidePage ? "md:max-w-7xl" : "md:max-w-2xl"
-                )}>
-                    <section className={cn(
-                        "space-y-12",
-                        isWidePage ? "max-w-full" : "max-w-xl"
-                    )}>
+                <div
+                    className={cn(
+                        'flex-1',
+                        isWidePage ? 'md:max-w-7xl' : 'md:max-w-2xl',
+                    )}
+                >
+                    <section
+                        className={cn(
+                            'space-y-12',
+                            isWidePage ? 'max-w-full' : 'max-w-xl',
+                        )}
+                    >
                         {children}
                     </section>
                 </div>
