@@ -150,15 +150,17 @@ export function ExamResultsSheet({
                 side="right"
                 className="w-full overflow-y-auto sm:max-w-2xl lg:max-w-4xl"
             >
-                <SheetHeader className="border-b pb-4">
-                    <SheetTitle className="text-2xl">{examTitle}</SheetTitle>
+                <SheetHeader className="border-b pb-3 sm:pb-4">
+                    <SheetTitle className="text-xl sm:text-2xl">
+                        {examTitle}
+                    </SheetTitle>
                     <SheetDescription className="sr-only">
                         Detailed exam results including score, questions, and
                         answers
                     </SheetDescription>
                 </SheetHeader>
 
-                <div className="mt-0 space-y-6 p-4">
+                <div className="mt-0 space-y-4 p-3 sm:space-y-6 sm:p-4">
                     {loading && (
                         <div className="flex items-center justify-center py-12">
                             <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -176,14 +178,14 @@ export function ExamResultsSheet({
                             {/* Summary Card */}
                             <div
                                 className={cn(
-                                    'rounded-lg border-2 p-6',
+                                    'rounded-lg border-2 p-4 sm:p-6',
                                     passed
                                         ? 'border-green-200 bg-green-50/50 dark:border-green-900/50 dark:bg-green-900/20'
                                         : 'border-amber-200 bg-amber-50/50 dark:border-amber-900/50 dark:bg-amber-900/20',
                                 )}
                             >
-                                <div className="mb-4 flex items-center justify-between">
-                                    <h3 className="text-lg font-semibold">
+                                <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                                    <h3 className="text-base font-semibold sm:text-lg">
                                         Your Results
                                     </h3>
                                     <Badge
@@ -191,13 +193,13 @@ export function ExamResultsSheet({
                                             passed ? 'default' : 'secondary'
                                         }
                                         className={cn(
-                                            'text-base',
+                                            'text-sm sm:text-base',
                                             passed && 'bg-green-600',
                                         )}
                                     >
                                         {passed ? (
                                             <>
-                                                <Award className="mr-2 h-4 w-4" />
+                                                <Award className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
                                                 Passed
                                             </>
                                         ) : (
@@ -206,21 +208,21 @@ export function ExamResultsSheet({
                                     </Badge>
                                 </div>
 
-                                <div className="grid gap-4 md:grid-cols-4">
+                                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
                                     {/* Score */}
-                                    <div className="flex items-center gap-3 rounded-lg border bg-background p-4">
+                                    <div className="flex items-center gap-2 rounded-lg border bg-background p-3 sm:gap-3 sm:p-4">
                                         <div
                                             className={cn(
-                                                'flex h-10 w-10 items-center justify-center rounded-full',
+                                                'flex h-8 w-8 shrink-0 items-center justify-center rounded-full sm:h-10 sm:w-10',
                                                 passed
                                                     ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400'
                                                     : 'bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400',
                                             )}
                                         >
-                                            <TrendingUp className="h-5 w-5" />
+                                            <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5" />
                                         </div>
-                                        <div>
-                                            <p className="text-xl font-bold">
+                                        <div className="min-w-0">
+                                            <p className="text-lg font-bold sm:text-xl">
                                                 {data.attempt.percentage.toFixed(
                                                     2,
                                                 )}
@@ -233,12 +235,12 @@ export function ExamResultsSheet({
                                     </div>
 
                                     {/* Points */}
-                                    <div className="flex items-center gap-3 rounded-lg border bg-background p-4">
-                                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400">
-                                            <Target className="h-5 w-5" />
+                                    <div className="flex items-center gap-2 rounded-lg border bg-background p-3 sm:gap-3 sm:p-4">
+                                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-600 sm:h-10 sm:w-10 dark:bg-blue-900/30 dark:text-blue-400">
+                                            <Target className="h-4 w-4 sm:h-5 sm:w-5" />
                                         </div>
-                                        <div>
-                                            <p className="text-xl font-bold">
+                                        <div className="min-w-0">
+                                            <p className="text-lg font-bold sm:text-xl">
                                                 {data.attempt.score}/
                                                 {data.exam.total_points}
                                             </p>
@@ -249,12 +251,12 @@ export function ExamResultsSheet({
                                     </div>
 
                                     {/* Correct/Incorrect */}
-                                    <div className="flex items-center gap-3 rounded-lg border bg-background p-4">
-                                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400">
-                                            <FileText className="h-5 w-5" />
+                                    <div className="flex items-center gap-2 rounded-lg border bg-background p-3 sm:gap-3 sm:p-4">
+                                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-purple-100 text-purple-600 sm:h-10 sm:w-10 dark:bg-purple-900/30 dark:text-purple-400">
+                                            <FileText className="h-4 w-4 sm:h-5 sm:w-5" />
                                         </div>
-                                        <div>
-                                            <p className="text-xl font-bold">
+                                        <div className="min-w-0">
+                                            <p className="text-lg font-bold sm:text-xl">
                                                 {correctCount}/
                                                 {data.exam.questions.length}
                                             </p>
@@ -265,12 +267,12 @@ export function ExamResultsSheet({
                                     </div>
 
                                     {/* Time */}
-                                    <div className="flex items-center gap-3 rounded-lg border bg-background p-4">
-                                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400">
-                                            <Clock className="h-5 w-5" />
+                                    <div className="flex items-center gap-2 rounded-lg border bg-background p-3 sm:gap-3 sm:p-4">
+                                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-orange-100 text-orange-600 sm:h-10 sm:w-10 dark:bg-orange-900/30 dark:text-orange-400">
+                                            <Clock className="h-4 w-4 sm:h-5 sm:w-5" />
                                         </div>
-                                        <div>
-                                            <p className="text-xl font-bold">
+                                        <div className="min-w-0">
+                                            <p className="text-lg font-bold sm:text-xl">
                                                 {data.attempt.time_taken_minutes
                                                     ? Number(
                                                           data.attempt
@@ -289,15 +291,15 @@ export function ExamResultsSheet({
                             </div>
 
                             {/* Question Breakdown */}
-                            <div className="space-y-4">
-                                <h3 className="text-lg font-semibold">
+                            <div className="space-y-3 sm:space-y-4">
+                                <h3 className="text-base font-semibold sm:text-lg">
                                     Question Breakdown
                                 </h3>
 
                                 {data.exam.questions.map((question, index) => (
                                     <div
                                         key={question.id}
-                                        className="rounded-lg border p-4"
+                                        className="rounded-lg border p-3 sm:p-4"
                                     >
                                         <div className="space-y-4">
                                             {/* Question Header */}
@@ -325,10 +327,10 @@ export function ExamResultsSheet({
                                                     </>
                                                 )}
                                             </Badge>
-                                            <div className="flex items-start gap-3">
+                                            <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
                                                 <div
                                                     className={cn(
-                                                        'flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-medium',
+                                                        'flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-medium sm:h-8 sm:w-8 sm:text-sm',
                                                         question.is_correct
                                                             ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400'
                                                             : 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400',
@@ -336,10 +338,10 @@ export function ExamResultsSheet({
                                                 >
                                                     {index + 1}
                                                 </div>
-                                                <div className="flex-1">
+                                                <div className="min-w-0 flex-1">
                                                     <div className="flex items-start justify-between gap-2">
                                                         <div
-                                                            className="prose prose-sm dark:prose-invert max-w-none flex-1"
+                                                            className="prose prose-xs sm:prose-sm dark:prose-invert max-w-none flex-1 break-words"
                                                             dangerouslySetInnerHTML={{
                                                                 __html: question.question_text,
                                                             }}
@@ -347,13 +349,15 @@ export function ExamResultsSheet({
                                                     </div>
 
                                                     {question.image_url && (
-                                                        <img
-                                                            src={
-                                                                question.image_url
-                                                            }
-                                                            alt="Question"
-                                                            className="mt-4 max-w-md rounded-lg border"
-                                                        />
+                                                        <div className="mt-4 w-full">
+                                                            <img
+                                                                src={
+                                                                    question.image_url
+                                                                }
+                                                                alt="Question"
+                                                                className="w-full max-w-full rounded-lg border bg-white sm:max-w-md"
+                                                            />
+                                                        </div>
                                                     )}
                                                 </div>
                                             </div>
@@ -373,7 +377,7 @@ export function ExamResultsSheet({
                                                             <div
                                                                 key={choice.id}
                                                                 className={cn(
-                                                                    'rounded-lg border-2 p-3',
+                                                                    'rounded-lg border-2 p-2.5 sm:p-3',
                                                                     isCorrect &&
                                                                         'border-green-200 bg-green-50/50 dark:border-green-900/50 dark:bg-green-900/20',
                                                                     isSelected &&
@@ -386,7 +390,7 @@ export function ExamResultsSheet({
                                                             >
                                                                 <div className="flex items-start gap-2">
                                                                     <div
-                                                                        className="prose prose-sm dark:prose-invert max-w-none flex-1"
+                                                                        className="prose prose-xs sm:prose-sm dark:prose-invert max-w-none flex-1 break-words"
                                                                         dangerouslySetInnerHTML={{
                                                                             __html: choice.choice_text,
                                                                         }}
@@ -395,7 +399,7 @@ export function ExamResultsSheet({
                                                                         {isCorrect && (
                                                                             <Badge
                                                                                 variant="outline"
-                                                                                className="border-green-600 bg-green-50 text-green-600 dark:bg-green-900/20"
+                                                                                className="border-green-600 bg-green-50 text-xs text-green-600 dark:bg-green-900/20"
                                                                             >
                                                                                 ✓
                                                                             </Badge>
@@ -404,6 +408,7 @@ export function ExamResultsSheet({
                                                                             <Badge
                                                                                 variant="outline"
                                                                                 className={cn(
+                                                                                    'text-xs',
                                                                                     isCorrect
                                                                                         ? 'border-green-600 bg-green-50 text-green-600 dark:bg-green-900/20'
                                                                                         : 'border-red-600 bg-red-50 text-red-600 dark:bg-red-900/20',
@@ -428,7 +433,7 @@ export function ExamResultsSheet({
                                                             💡 Explanation
                                                         </p>
                                                         <div
-                                                            className="prose prose-sm dark:prose-invert max-w-none"
+                                                            className="prose prose-xs sm:prose-sm dark:prose-invert max-w-none break-words"
                                                             dangerouslySetInnerHTML={{
                                                                 __html: question.explanation,
                                                             }}
@@ -442,15 +447,19 @@ export function ExamResultsSheet({
                             </div>
 
                             {/* Actions */}
-                            <div className="sticky bottom-2 flex justify-end gap-2 border-t bg-background pt-4">
+                            <div className="sticky bottom-0 flex flex-col-reverse gap-2 border-t bg-background p-3 sm:flex-row sm:justify-end sm:p-4">
                                 <Button
                                     variant="outline"
                                     onClick={() => onOpenChange(false)}
+                                    className="w-full sm:w-auto"
                                 >
                                     Close
                                 </Button>
                                 {!passed && onRetake && (
-                                    <Button onClick={handleRetake}>
+                                    <Button
+                                        onClick={handleRetake}
+                                        className="w-full sm:w-auto"
+                                    >
                                         <Play className="mr-2 h-4 w-4" />
                                         Retake Exam
                                     </Button>
