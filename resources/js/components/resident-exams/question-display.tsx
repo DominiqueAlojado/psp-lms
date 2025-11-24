@@ -68,9 +68,9 @@ export function QuestionDisplay({
     };
 
     return (
-        <div className="flex-1 overflow-y-auto p-6">
+        <div className="flex-1 overflow-y-auto p-3 sm:p-6">
             <div className="mx-auto max-w-4xl">
-                {/* Mark for Review Button - Visible on small screens only */}
+                {/* Mark for Review Button */}
                 <div className="mb-4 flex justify-end">
                     <Button
                         variant={isMarked ? 'default' : 'outline'}
@@ -91,25 +91,25 @@ export function QuestionDisplay({
                         </span>
                     </Button>
                 </div>
-                <div className="space-y-6">
+                <div className="space-y-4 sm:space-y-6">
                     {/* Question Header */}
-                    <div className="flex items-start gap-4">
-                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary text-base font-medium text-primary-foreground">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:gap-4">
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-medium text-primary-foreground sm:h-10 sm:w-10 sm:text-base">
                             {questionIndex + 1}
                         </span>
-                        <div className="flex-1">
+                        <div className="min-w-0 flex-1">
                             <div
-                                className="prose prose-base dark:prose-invert max-w-none"
+                                className="prose prose-sm sm:prose-base dark:prose-invert max-w-none break-words"
                                 dangerouslySetInnerHTML={{
                                     __html: question.question_text,
                                 }}
                             />
                             {question.image_url && (
-                                <div className="relative mt-4 inline-block bg-muted/10 p-3">
+                                <div className="relative mt-4 w-full bg-muted/10 p-2 sm:inline-block sm:p-3">
                                     <img
                                         src={question.image_url}
                                         alt="Question"
-                                        className="max-w-md rounded-md border bg-white"
+                                        className="w-full max-w-full rounded-md border bg-white sm:max-w-md"
                                         onMouseEnter={() =>
                                             setIsMagnifierVisible(true)
                                         }
@@ -135,7 +135,7 @@ export function QuestionDisplay({
                                             }}
                                         />
                                     )}
-                                    <p className="mt-2 text-xs text-muted-foreground">
+                                    <p className="mt-2 hidden text-xs text-muted-foreground md:block">
                                         Hover to magnify image
                                     </p>
                                 </div>
@@ -144,13 +144,14 @@ export function QuestionDisplay({
                     </div>
 
                     {/* Choices */}
-                    <div className="space-y-3 pl-14">
+                    <div className="space-y-2 sm:space-y-3 sm:pl-14">
                         {question.choices.map((choice) => (
                             <label
                                 key={choice.id}
                                 className={cn(
-                                    'flex cursor-pointer items-start gap-3 rounded-lg border-2 p-4 transition-all',
-                                    !isChangingAnswer && 'hover:bg-muted/50',
+                                    'flex min-h-[44px] cursor-pointer items-start gap-3 rounded-lg border-2 p-3 transition-all sm:p-4',
+                                    !isChangingAnswer &&
+                                        'hover:bg-muted/50 active:bg-muted/70',
                                     isChangingAnswer &&
                                         'cursor-not-allowed opacity-60',
                                     (question.question_type ===
@@ -203,9 +204,9 @@ export function QuestionDisplay({
                                             );
                                         }
                                     }}
-                                    className="mt-0.5"
+                                    className="mt-0.5 h-4 w-4 shrink-0 sm:h-5 sm:w-5"
                                 />
-                                <span className="flex-1 text-base">
+                                <span className="flex-1 text-sm leading-relaxed sm:text-base">
                                     {choice.choice_text}
                                 </span>
                             </label>
