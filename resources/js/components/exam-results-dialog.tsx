@@ -329,20 +329,20 @@ export function ExamResultsSheet({
                                                     )}
                                                 </Badge>
                                             </div>
-                                            <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
-                                                <div className="flex min-w-0">
+                                            <div className="flex items-start gap-2 sm:gap-3">
+                                                <div
+                                                    className={cn(
+                                                        'flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-medium sm:h-7 sm:w-7 sm:text-sm',
+                                                        question.is_correct
+                                                            ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400'
+                                                            : 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400',
+                                                    )}
+                                                >
+                                                    {index + 1}
+                                                </div>
+                                                <div className="min-w-0 flex-1">
                                                     <div
-                                                        className={cn(
-                                                            'flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-medium sm:h-7 sm:w-7 sm:text-sm',
-                                                            question.is_correct
-                                                                ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400'
-                                                                : 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400',
-                                                        )}
-                                                    >
-                                                        {index + 1}
-                                                    </div>
-                                                    <div
-                                                        className="prose prose-xs sm:prose-sm dark:prose-invert ml-2 max-w-none break-words"
+                                                        className="prose prose-xs sm:prose-sm dark:prose-invert max-w-none break-words"
                                                         dangerouslySetInnerHTML={{
                                                             __html: question.question_text,
                                                         }}
