@@ -150,8 +150,8 @@ export function ExamResultsSheet({
                 side="right"
                 className="w-full overflow-y-auto sm:max-w-2xl lg:max-w-4xl"
             >
-                <SheetHeader className="border-b pb-3 sm:pb-4">
-                    <SheetTitle className="text-xl sm:text-2xl">
+                <SheetHeader className="border-b px-4 pt-4 pb-3 sm:px-6 sm:pb-4">
+                    <SheetTitle className="text-lg sm:text-xl lg:text-2xl">
                         {examTitle}
                     </SheetTitle>
                     <SheetDescription className="sr-only">
@@ -160,7 +160,7 @@ export function ExamResultsSheet({
                     </SheetDescription>
                 </SheetHeader>
 
-                <div className="mt-0 space-y-4 p-3 sm:space-y-6 sm:p-4">
+                <div className="mt-0 space-y-4 px-4 pb-20 sm:space-y-6 sm:px-6 sm:pb-4">
                     {loading && (
                         <div className="flex items-center justify-center py-12">
                             <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -301,55 +301,54 @@ export function ExamResultsSheet({
                                         key={question.id}
                                         className="rounded-lg border p-3 sm:p-4"
                                     >
-                                        <div className="space-y-4">
+                                        <div className="space-y-3 sm:space-y-4">
                                             {/* Question Header */}
-                                            <Badge
-                                                variant={
-                                                    question.is_correct
-                                                        ? 'outline'
-                                                        : 'destructive'
-                                                }
-                                                className={cn(
-                                                    'shrink-0',
-                                                    question.is_correct &&
-                                                        'border-green-500 bg-green-50 text-green-700 dark:border-green-400 dark:bg-green-900/30 dark:text-green-400',
-                                                )}
-                                            >
-                                                {question.is_correct ? (
-                                                    <>
-                                                        <CheckCircle2 className="mr-1 h-3 w-3" />
-                                                        Correct
-                                                    </>
-                                                ) : (
-                                                    <>
-                                                        <XCircle className="mr-1 h-3 w-3" />
-                                                        Wrong
-                                                    </>
-                                                )}
-                                            </Badge>
-                                            <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
-                                                <div
-                                                    className={cn(
-                                                        'flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-medium sm:h-8 sm:w-8 sm:text-sm',
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                <Badge
+                                                    variant={
                                                         question.is_correct
-                                                            ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400'
-                                                            : 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400',
+                                                            ? 'outline'
+                                                            : 'destructive'
+                                                    }
+                                                    className={cn(
+                                                        'shrink-0 text-xs sm:text-sm',
+                                                        question.is_correct &&
+                                                            'border-green-500 bg-green-50 text-green-700 dark:border-green-400 dark:bg-green-900/30 dark:text-green-400',
                                                     )}
                                                 >
-                                                    {index + 1}
-                                                </div>
-                                                <div className="min-w-0 flex-1">
-                                                    <div className="flex items-start justify-between gap-2">
-                                                        <div
-                                                            className="prose prose-xs sm:prose-sm dark:prose-invert max-w-none flex-1 break-words"
-                                                            dangerouslySetInnerHTML={{
-                                                                __html: question.question_text,
-                                                            }}
-                                                        />
+                                                    {question.is_correct ? (
+                                                        <>
+                                                            <CheckCircle2 className="mr-1 h-3 w-3" />
+                                                            Correct
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <XCircle className="mr-1 h-3 w-3" />
+                                                            Wrong
+                                                        </>
+                                                    )}
+                                                </Badge>
+                                            </div>
+                                            <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
+                                                <div className="flex min-w-0">
+                                                    <div
+                                                        className={cn(
+                                                            'flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-medium sm:h-7 sm:w-7 sm:text-sm',
+                                                            question.is_correct
+                                                                ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400'
+                                                                : 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400',
+                                                        )}
+                                                    >
+                                                        {index + 1}
                                                     </div>
-
+                                                    <div
+                                                        className="prose prose-xs sm:prose-sm dark:prose-invert ml-2 max-w-none break-words"
+                                                        dangerouslySetInnerHTML={{
+                                                            __html: question.question_text,
+                                                        }}
+                                                    />
                                                     {question.image_url && (
-                                                        <div className="mt-4 w-full">
+                                                        <div className="mt-3 w-full sm:mt-4">
                                                             <img
                                                                 src={
                                                                     question.image_url
@@ -388,18 +387,18 @@ export function ExamResultsSheet({
                                                                         'border-border',
                                                                 )}
                                                             >
-                                                                <div className="flex items-start gap-2">
+                                                                <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
                                                                     <div
                                                                         className="prose prose-xs sm:prose-sm dark:prose-invert max-w-none flex-1 break-words"
                                                                         dangerouslySetInnerHTML={{
                                                                             __html: choice.choice_text,
                                                                         }}
                                                                     />
-                                                                    <div className="flex shrink-0 gap-1">
+                                                                    <div className="flex shrink-0 flex-wrap gap-1.5 sm:flex-nowrap">
                                                                         {isCorrect && (
                                                                             <Badge
                                                                                 variant="outline"
-                                                                                className="border-green-600 bg-green-50 text-xs text-green-600 dark:bg-green-900/20"
+                                                                                className="border-green-600 bg-green-50 text-[10px] text-green-600 sm:text-xs dark:bg-green-900/20"
                                                                             >
                                                                                 ✓
                                                                             </Badge>
@@ -408,7 +407,7 @@ export function ExamResultsSheet({
                                                                             <Badge
                                                                                 variant="outline"
                                                                                 className={cn(
-                                                                                    'text-xs',
+                                                                                    'text-[10px] sm:text-xs',
                                                                                     isCorrect
                                                                                         ? 'border-green-600 bg-green-50 text-green-600 dark:bg-green-900/20'
                                                                                         : 'border-red-600 bg-red-50 text-red-600 dark:bg-red-900/20',
@@ -427,9 +426,9 @@ export function ExamResultsSheet({
                                             {/* Explanation */}
                                             {question.explanation && (
                                                 <>
-                                                    <Separator />
-                                                    <div className="rounded-lg border bg-blue-50/50 p-3 dark:bg-blue-900/10">
-                                                        <p className="mb-1 text-xs font-semibold text-blue-900 dark:text-blue-200">
+                                                    <Separator className="my-3 sm:my-4" />
+                                                    <div className="rounded-lg border bg-blue-50/50 p-2.5 sm:p-3 dark:bg-blue-900/10">
+                                                        <p className="mb-1.5 text-xs font-semibold text-blue-900 sm:mb-1 dark:text-blue-200">
                                                             💡 Explanation
                                                         </p>
                                                         <div
@@ -447,7 +446,7 @@ export function ExamResultsSheet({
                             </div>
 
                             {/* Actions */}
-                            <div className="sticky bottom-0 flex flex-col-reverse gap-2 border-t bg-background p-3 sm:flex-row sm:justify-end sm:p-4">
+                            <div className="sticky right-0 bottom-0 left-0 z-10 flex flex-col-reverse gap-2 border-t bg-background px-4 py-3 shadow-lg sm:relative sm:flex-row sm:justify-end sm:px-0 sm:py-4 sm:shadow-none">
                                 <Button
                                     variant="outline"
                                     onClick={() => onOpenChange(false)}

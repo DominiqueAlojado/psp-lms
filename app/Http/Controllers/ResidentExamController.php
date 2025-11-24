@@ -9,6 +9,7 @@ use App\Models\National\NationalAssessment;
 use App\Models\National\NationalAttempt;
 use App\Models\QuestionBank;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -76,7 +77,7 @@ class ResidentExamController extends Controller
 
             // Load questions with choices in proper order
             $questions = $assessment->questions()
-                ->with(['choices' => fn ($query) => $query->orderBy('order')])
+                ->with(['choices' => fn($query) => $query->orderBy('order')])
                 ->orderBy('order')
                 ->get();
 
@@ -146,8 +147,8 @@ class ResidentExamController extends Controller
                             'question_type' => $q->question_type,
                             'question_text' => $q->question_text,
                             'points' => $q->points,
-                            'image_url' => $q->image_path ? \Storage::disk('public')->url($q->image_path) : null,
-                            'choices' => $choices->map(fn ($c) => [
+                            'image_url' => $q->image_path ? Storage::disk('public')->url($q->image_path) : null,
+                            'choices' => $choices->map(fn($c) => [
                                 'id' => $c->id,
                                 'choice_text' => $c->choice_text,
                             ])->values(),
@@ -216,7 +217,7 @@ class ResidentExamController extends Controller
 
             // Load questions with choices in proper order
             $questions = $assessment->questions()
-                ->with(['choices' => fn ($query) => $query->orderBy('order')])
+                ->with(['choices' => fn($query) => $query->orderBy('order')])
                 ->orderBy('order')
                 ->get();
 
@@ -286,8 +287,8 @@ class ResidentExamController extends Controller
                             'question_type' => $q->question_type,
                             'question_text' => $q->question_text,
                             'points' => $q->points,
-                            'image_url' => $q->image_path ? \Storage::disk('public')->url($q->image_path) : null,
-                            'choices' => $choices->map(fn ($c) => [
+                            'image_url' => $q->image_path ? Storage::disk('public')->url($q->image_path) : null,
+                            'choices' => $choices->map(fn($c) => [
                                 'id' => $c->id,
                                 'choice_text' => $c->choice_text,
                             ])->values(),
@@ -515,7 +516,7 @@ class ResidentExamController extends Controller
                 'status' => 'completed',
             ]);
 
-            return redirect('/resident-exams')->with('success', 'Exam submitted successfully! Score: '.$attemptModel->percentage.'%');
+            return redirect('/resident-exams')->with('success', 'Exam submitted successfully! Score: ' . $attemptModel->percentage . '%');
         } elseif ($type === 'inservice') {
             $attemptModel = \App\Models\National\NationalAttempt::findOrFail($attempt);
 
@@ -537,7 +538,7 @@ class ResidentExamController extends Controller
             // Update question bank statistics for each answer
             foreach ($attemptModel->answers as $answer) {
                 $question = $answer->question;
-                
+
                 if (! $question) {
                     continue;
                 }
@@ -552,7 +553,7 @@ class ResidentExamController extends Controller
                     $bankQuestion = QuestionBank::where('owner_type', 'national')
                         ->where('question_type', $question->question_type)
                         ->whereHas('topic', function ($q) use ($question) {
-                            $q->where('name', 'like', '%'.$question->topic.'%');
+                            $q->where('name', 'like', '%' . $question->topic . '%');
                         })
                         ->first();
                 }
@@ -569,7 +570,7 @@ class ResidentExamController extends Controller
                 if ($bankQuestion) {
                     // Calculate time spent (if available, otherwise use a default)
                     $timeSeconds = null; // Could be calculated from attempt timestamps if needed
-                    
+
                     // Update statistics for national scope
                     $bankQuestion->updateStatistics(
                         $answer->is_correct ?? false,
@@ -595,7 +596,7 @@ class ResidentExamController extends Controller
                 'status' => 'completed',
             ]);
 
-            return redirect('/resident-exams')->with('success', 'Exam submitted successfully! Score: '.$attemptModel->percentage.'%');
+            return redirect('/resident-exams')->with('success', 'Exam submitted successfully! Score: ' . $attemptModel->percentage . '%');
         }
 
         abort(404);
@@ -629,7 +630,7 @@ class ResidentExamController extends Controller
 
             // Get answers with their questions to show in the order they were answered
             $answers = $attempt->answers()
-                ->with(['question.choices' => fn ($query) => $query->orderBy('order')])
+                ->with(['question.choices' => fn($query) => $query->orderBy('order')])
                 ->orderBy('id')
                 ->get();
 
@@ -650,9 +651,9 @@ class ResidentExamController extends Controller
                     'question_text' => $question->question_text,
                     'points' => $question->points,
                     'explanation' => $question->explanation,
-                    'image_url' => $question->image_url,
+                    'image_url' => $question->image_path ? Storage::disk('public')->url($question->image_path) : null,
                     'order' => $question->order,
-                    'choices' => $question->choices->map(fn ($choice) => [
+                    'choices' => $question->choices->map(fn($choice) => [
                         'id' => $choice->id,
                         'choice_text' => $choice->choice_text,
                         'is_correct' => $choice->is_correct,
@@ -702,7 +703,7 @@ class ResidentExamController extends Controller
 
             // Load questions with choices and answers
             $questions = $assessment->questions()
-                ->with(['choices' => fn ($query) => $query->orderBy('order')])
+                ->with(['choices' => fn($query) => $query->orderBy('order')])
                 ->orderBy('order')
                 ->get();
 
@@ -735,7 +736,7 @@ class ResidentExamController extends Controller
                     'explanation' => $question->explanation,
                     'image_url' => $question->image_url,
                     'order' => $question->order,
-                    'choices' => $question->choices->map(fn ($choice) => [
+                    'choices' => $question->choices->map(fn($choice) => [
                         'id' => $choice->id,
                         'choice_text' => $choice->choice_text,
                         'is_correct' => $choice->is_correct,
@@ -800,7 +801,7 @@ class ResidentExamController extends Controller
 
             // Get answers with their questions to show in the order they were answered
             $answers = $attempt->answers()
-                ->with(['question.choices' => fn ($query) => $query->orderBy('order')])
+                ->with(['question.choices' => fn($query) => $query->orderBy('order')])
                 ->orderBy('id')
                 ->get();
 
@@ -820,9 +821,9 @@ class ResidentExamController extends Controller
                     'question_text' => $question->question_text,
                     'points' => $question->points,
                     'explanation' => $question->explanation,
-                    'image_url' => $question->image_url,
+                    'image_url' => $question->image_path ? Storage::disk('public')->url($question->image_path) : null,
                     'order' => $question->order,
-                    'choices' => $question->choices->map(fn ($choice) => [
+                    'choices' => $question->choices->map(fn($choice) => [
                         'id' => $choice->id,
                         'choice_text' => $choice->choice_text,
                         'is_correct' => $choice->is_correct,
@@ -872,13 +873,13 @@ class ResidentExamController extends Controller
 
             // Load questions with choices and answers
             $questions = $assessment->questions()
-                ->with(['choices' => fn ($query) => $query->orderBy('order')])
+                ->with(['choices' => fn($query) => $query->orderBy('order')])
                 ->orderBy('order')
                 ->get();
 
             // Load user's answers for this attempt
             $answers = $attempt->answers()
-                ->with(['question.choices' => fn ($query) => $query->orderBy('order')])
+                ->with(['question.choices' => fn($query) => $query->orderBy('order')])
                 ->get()
                 ->keyBy('question_id');
 
@@ -900,9 +901,9 @@ class ResidentExamController extends Controller
                     'question_text' => $question->question_text,
                     'points' => $question->points,
                     'explanation' => $question->explanation,
-                    'image_url' => $question->image_path ? \Storage::disk('public')->url($question->image_path) : null,
+                    'image_url' => $question->image_path ? Storage::disk('public')->url($question->image_path) : null,
                     'order' => $question->order,
-                    'choices' => $question->choices->map(fn ($choice) => [
+                    'choices' => $question->choices->map(fn($choice) => [
                         'id' => $choice->id,
                         'choice_text' => $choice->choice_text,
                         'is_correct' => $choice->is_correct,
