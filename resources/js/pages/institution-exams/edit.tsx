@@ -249,16 +249,22 @@ export default function EditAssessment() {
         formData.append('file', file);
 
         try {
-            const response = await fetch(`/assessments/${assessment.id}/questions/preview`, {
-                method: 'POST',
-                body: formData,
-                headers: {
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+            const response = await fetch(
+                `/assessments/${assessment.id}/questions/preview`,
+                {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-CSRF-TOKEN':
+                            document
+                                .querySelector('meta[name="csrf-token"]')
+                                ?.getAttribute('content') || '',
+                    },
                 },
-            });
+            );
 
             const data = await response.json();
-            
+
             if (data.success) {
                 setPreviewData(data);
                 setShowImportPreview(true);
@@ -281,23 +287,27 @@ export default function EditAssessment() {
         const formData = new FormData();
         formData.append('file', importFile);
 
-        router.post(`/assessments/${assessment.id}/questions/import`, formData, {
-            forceFormData: true,
-            preserveScroll: true,
-            onSuccess: () => {
-                setShowImportPreview(false);
-                setImportFile(null);
-                setPreviewData(null);
-                router.reload({ only: ['assessment'] });
+        router.post(
+            `/assessments/${assessment.id}/questions/import`,
+            formData,
+            {
+                forceFormData: true,
+                preserveScroll: true,
+                onSuccess: () => {
+                    setShowImportPreview(false);
+                    setImportFile(null);
+                    setPreviewData(null);
+                    router.reload({ only: ['assessment'] });
+                },
+                onError: (errors) => {
+                    console.error('Import errors:', errors);
+                    toast.error('Import failed');
+                },
+                onFinish: () => {
+                    setIsImporting(false);
+                },
             },
-            onError: (errors) => {
-                console.error('Import errors:', errors);
-                toast.error('Import failed');
-            },
-            onFinish: () => {
-                setIsImporting(false);
-            },
-        });
+        );
     };
 
     const handleCancelImport = () => {
@@ -398,9 +408,48 @@ export default function EditAssessment() {
 
         setSavingQuestion(qi);
 
+        // Prepare question data, ensuring image is included if present
+        const questionData: {
+            id?: number;
+            topic_id: number | null;
+            question_type: DraftQuestion['question_type'];
+            question_text: string;
+            points: number;
+            order: number;
+            image?: string;
+            choices?: QuestionChoice[];
+            answer?: boolean;
+        } = {
+            id: question.id,
+            topic_id: question.topic_id || null,
+            question_type: question.question_type,
+            question_text: question.question_text,
+            points: question.points,
+            // Preserve existing order, or use index if not set (for new questions)
+            order: question.order !== undefined ? question.order : qi,
+        };
+
+        // Include image if present (base64 string)
+        if (question.image) {
+            questionData.image = question.image;
+        }
+
+        // Include choices for multiple choice/select
+        if (question.choices && question.choices.length > 0) {
+            questionData.choices = question.choices;
+        }
+
+        // Include answer for true/false
+        if (
+            question.question_type === 'true_false' &&
+            question.answer !== undefined
+        ) {
+            questionData.answer = question.answer;
+        }
+
         router.post(
             `/assessments/${assessment.id}/questions/save-one`,
-            question as any,
+            questionData as never,
             {
                 preserveState: true,
                 preserveScroll: true,
@@ -412,6 +461,20 @@ export default function EditAssessment() {
                             next[qi] = {
                                 ...next[qi],
                                 id: savedQuestion.id,
+                                // Update order if provided by server
+                                order:
+                                    savedQuestion.order !== undefined
+                                        ? savedQuestion.order
+                                        : next[qi].order,
+                                // Update image_path and image_url from server response
+                                image_path:
+                                    savedQuestion.image_path ||
+                                    next[qi].image_path,
+                                image_url:
+                                    savedQuestion.image_url ||
+                                    next[qi].image_url,
+                                // Clear base64 image after successful save (server has saved it)
+                                image: undefined,
                             };
                             return next;
                         });
@@ -681,7 +744,12 @@ export default function EditAssessment() {
                             <Button
                                 variant="outline"
                                 size="sm"
-                                onClick={() => window.open('/assessments/questions/template', '_blank')}
+                                onClick={() =>
+                                    window.open(
+                                        '/assessments/questions/template',
+                                        '_blank',
+                                    )
+                                }
                             >
                                 <Download className="mr-2 h-4 w-4" />
                                 Download Template
@@ -689,7 +757,11 @@ export default function EditAssessment() {
                             <Button
                                 variant="outline"
                                 size="sm"
-                                onClick={() => document.getElementById('import-file')?.click()}
+                                onClick={() =>
+                                    document
+                                        .getElementById('import-file')
+                                        ?.click()
+                                }
                             >
                                 <Upload className="mr-2 h-4 w-4" />
                                 Import from Excel

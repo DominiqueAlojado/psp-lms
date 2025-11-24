@@ -173,7 +173,9 @@ class InstitutionExamController extends Controller
             abort(403, 'You do not have access to this assessment.');
         }
 
-        $assessment->load(['questions.choices', 'creator:id,name']);
+        $assessment->load(['questions' => function ($query) {
+            $query->orderBy('order');
+        }, 'questions.choices', 'creator:id,name']);
 
         return Inertia::render('institution-exams/edit', [
             'assessment' => [

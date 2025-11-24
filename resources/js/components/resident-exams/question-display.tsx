@@ -105,7 +105,7 @@ export function QuestionDisplay({
                                 }}
                             />
                             {question.image_url && (
-                                <div className="relative mt-4 inline-block rounded-lg border bg-muted/10 p-3">
+                                <div className="relative mt-4 inline-block bg-muted/10 p-3">
                                     <img
                                         src={question.image_url}
                                         alt="Question"
