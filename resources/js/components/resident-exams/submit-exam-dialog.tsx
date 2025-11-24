@@ -85,7 +85,7 @@ export function SubmitExamDialog({
                         disabled={confirmText.toUpperCase() !== 'FINALIZE'}
                         className="bg-destructive hover:bg-destructive/90"
                     >
-                        Submit Exam1
+                        Submit Exam2
                     </AlertDialogAction>
                 </AlertDialogFooter>
             </AlertDialogContent>
