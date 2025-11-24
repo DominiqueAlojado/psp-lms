@@ -17,6 +17,22 @@ cmd = '/assets/start.sh'
 "start.sh" = '''
 #!/bin/bash
 
+# Create storage directories if they don't exist
+mkdir -p /app/storage/app/public
+mkdir -p /app/storage/framework/cache
+mkdir -p /app/storage/framework/sessions
+mkdir -p /app/storage/framework/views
+mkdir -p /app/storage/logs
+
+# Set proper permissions
+chmod -R 775 /app/storage
+chmod -R 775 /app/bootstrap/cache
+
+# Create storage link if it doesn't exist
+if [ ! -L /app/public/storage ]; then
+    php /app/artisan storage:link
+fi
+
 # Transform the nginx configuration
 node /assets/scripts/prestart.mjs /assets/nginx.template.conf /etc/nginx.conf
 
