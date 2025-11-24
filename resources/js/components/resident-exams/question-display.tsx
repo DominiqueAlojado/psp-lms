@@ -93,7 +93,7 @@ export function QuestionDisplay({
                 </div>
                 <div className="space-y-4 sm:space-y-6">
                     {/* Question Header */}
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:gap-4">
+                    <div className="flex items-start gap-2 sm:gap-4">
                         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-medium text-primary-foreground sm:h-10 sm:w-10 sm:text-base">
                             {questionIndex + 1}
                         </span>
