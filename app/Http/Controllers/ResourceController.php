@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\LearningResource;
+use App\Repositories\Contracts\LearningResourceRepositoryInterface;
 use App\Services\ActivityLog\ResourceActivityLogService;
 use App\Traits\LogsActivity;
 use Illuminate\Http\JsonResponse;
@@ -18,7 +19,8 @@ class ResourceController extends Controller
     use LogsActivity;
 
     public function __construct(
-        protected ResourceActivityLogService $activityLogService
+        protected ResourceActivityLogService $activityLogService,
+        protected LearningResourceRepositoryInterface $learningResourceRepository
     ) {}
 
     /**
@@ -29,22 +31,8 @@ class ResourceController extends Controller
         $user = $request->user();
         $organizationId = $user->current_organization_id;
 
-        $resources = LearningResource::query()
-            ->where('organization_id', $organizationId)
-            ->where('is_published', true)
-            ->with('uploader:id,name')
-            ->when($request->input('search'), function ($query, $search) {
-                $query->where(function ($q) use ($search) {
-                    $q->where('title', 'like', "%{$search}%")
-                        ->orWhere('description', 'like', "%{$search}%");
-                });
-            })
-            ->when($request->input('category'), function ($query, $category) {
-                $query->where('category', $category);
-            })
-            ->orderBy('created_at', 'desc')
-            ->paginate(20)
-            ->withQueryString()
+        $resources = $this->learningResourceRepository
+            ->paginatePublishedByOrganization($organizationId, $request->only(['search', 'category']))
             ->through(fn($resource) => [
                 'id' => $resource->id,
                 'title' => $resource->title,
@@ -59,13 +47,7 @@ class ResourceController extends Controller
                 'created_at' => $resource->created_at->format('M d, Y'),
             ]);
 
-        $categories = LearningResource::where('organization_id', $organizationId)
-            ->where('is_published', true)
-            ->distinct()
-            ->pluck('category')
-            ->filter()
-            ->sort()
-            ->values();
+        $categories = $this->learningResourceRepository->getPublishedCategoriesByOrganization($organizationId);
 
         return Inertia::render('resources/index', [
             'resources' => $resources,
@@ -82,24 +64,8 @@ class ResourceController extends Controller
         $user = $request->user();
         $organizationId = $user->current_organization_id;
 
-        $resources = LearningResource::query()
-            ->where('organization_id', $organizationId)
-            ->with('uploader:id,name')
-            ->when($request->input('search'), function ($query, $search) {
-                $query->where(function ($q) use ($search) {
-                    $q->where('title', 'like', "%{$search}%")
-                        ->orWhere('description', 'like', "%{$search}%");
-                });
-            })
-            ->when($request->input('category'), function ($query, $category) {
-                $query->where('category', $category);
-            })
-            ->when($request->has('is_published'), function ($query) use ($request) {
-                $query->where('is_published', $request->input('is_published'));
-            })
-            ->orderBy('created_at', 'desc')
-            ->paginate(20)
-            ->withQueryString()
+        $resources = $this->learningResourceRepository
+            ->paginateForManagementByOrganization($organizationId, $request->only(['search', 'category', 'is_published']))
             ->through(fn($resource) => [
                 'id' => $resource->id,
                 'title' => $resource->title,
@@ -117,12 +83,7 @@ class ResourceController extends Controller
                 'updated_at' => $resource->updated_at->diffForHumans(),
             ]);
 
-        $categories = LearningResource::where('organization_id', $organizationId)
-            ->distinct()
-            ->pluck('category')
-            ->filter()
-            ->sort()
-            ->values();
+        $categories = $this->learningResourceRepository->getCategoriesByOrganization($organizationId);
 
         return Inertia::render('resources/manage', [
             'resources' => $resources,
@@ -170,7 +131,7 @@ class ResourceController extends Controller
                 return back()->withErrors(['file' => 'Failed to store file']);
             }
 
-            $resource = LearningResource::create([
+            $resource = $this->learningResourceRepository->create([
                 'organization_id' => $request->user()->current_organization_id,
                 'uploaded_by' => $request->user()->id,
                 'title' => $validated['title'],
@@ -231,7 +192,7 @@ class ResourceController extends Controller
 
         // Update resource without logging (to avoid duplicate logs)
         $this->withoutActivityLogging(function () use ($resource, $validated) {
-            $resource->update($validated);
+            $this->learningResourceRepository->update($resource, $validated);
         });
 
         // Build log data and log changes
@@ -261,7 +222,7 @@ class ResourceController extends Controller
             Storage::disk('public')->delete($resource->file_path);
         }
 
-        $resource->delete();
+        $this->learningResourceRepository->delete($resource);
 
         return back()->with('success', 'Resource deleted successfully!');
     }
@@ -294,7 +255,7 @@ class ResourceController extends Controller
         }
 
         // Increment download count
-        $resource->incrementDownloadCount();
+        $this->learningResourceRepository->incrementDownloadCount($resource);
 
         return Storage::disk('public')->download($resource->file_path, $resource->file_name);
     }
