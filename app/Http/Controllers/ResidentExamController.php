@@ -2,19 +2,23 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\ExamSessionChange;
 use App\Models\Institution\InstitutionAssessment;
-use App\Models\Institution\InstitutionAttempt;
 use App\Models\National\NationalAssessment;
-use App\Models\National\NationalAttempt;
-use App\Models\QuestionBank;
+use App\Repositories\Contracts\ResidentExamRepositoryInterface;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class ResidentExamController extends Controller
 {
+    public function __construct(
+        private readonly ResidentExamRepositoryInterface $residentExamRepository,
+    ) {}
+
     /**
      * Show the exam taking page (start or resume).
      */
@@ -23,7 +27,7 @@ class ResidentExamController extends Controller
         $user = $request->user();
 
         if ($type === 'institution') {
-            $assessment = InstitutionAssessment::findOrFail($id);
+            $assessment = $this->residentExamRepository->findInstitutionAssessmentOrFail($id);
 
             // Verify user has access (same organization)
             if ($assessment->organization_id !== $user->current_organization_id) {
@@ -36,23 +40,15 @@ class ResidentExamController extends Controller
             }
 
             // Check for existing in-progress attempt (must have started_at to be considered in progress)
-            $attempt = $assessment->attempts()
-                ->where('user_id', $user->id)
-                ->where('status', 'in_progress')
-                ->whereNotNull('started_at')
-                ->first();
+            $attempt = $this->residentExamRepository->findInstitutionStartedAttempt($assessment, $user->id);
 
             // If no in-progress attempt, check for an unstarted attempt (from seeder) and reuse it
             if (! $attempt) {
-                $unstartedAttempt = $assessment->attempts()
-                    ->where('user_id', $user->id)
-                    ->where('status', 'in_progress')
-                    ->whereNull('started_at')
-                    ->first();
+                $unstartedAttempt = $this->residentExamRepository->findInstitutionUnstartedAttempt($assessment, $user->id);
 
                 if ($unstartedAttempt) {
                     // Reuse the unstarted attempt and mark it as started
-                    $unstartedAttempt->update([
+                    $this->residentExamRepository->updateAttempt($unstartedAttempt, [
                         'started_at' => now(),
                         'ip_address' => $request->ip(),
                         'user_agent' => $request->userAgent(),
@@ -61,7 +57,7 @@ class ResidentExamController extends Controller
                     $attempt = $unstartedAttempt;
                 } else {
                     // Create a new attempt
-                    $attempt = $assessment->attempts()->create([
+                    $attempt = $this->residentExamRepository->createInstitutionAttempt($assessment, [
                         'user_id' => $user->id,
                         'year_level' => $user->resident?->year_level,
                         'organization_id' => $user->current_organization_id,
@@ -76,10 +72,7 @@ class ResidentExamController extends Controller
             }
 
             // Load questions with choices in proper order
-            $questions = $assessment->questions()
-                ->with(['choices' => fn($query) => $query->orderBy('order')])
-                ->orderBy('order')
-                ->get();
+            $questions = $this->residentExamRepository->loadInstitutionQuestionsForTake($assessment);
 
             // Apply randomization if enabled (use attempt ID as seed for consistency)
             if ($assessment->randomize_questions) {
@@ -87,7 +80,7 @@ class ResidentExamController extends Controller
             }
 
             // Load existing answers and validate against current choices
-            $attempt->load('answers');
+            $attempt = $this->residentExamRepository->loadAttemptAnswers($attempt);
 
             // Create a map of valid choice IDs per question
             $validChoiceIds = $questions->mapWithKeys(function ($question) {
@@ -162,7 +155,7 @@ class ResidentExamController extends Controller
                 'savedAnswers' => $savedAnswers,
             ]);
         } elseif ($type === 'inservice') {
-            $assessment = NationalAssessment::findOrFail($id);
+            $assessment = $this->residentExamRepository->findNationalAssessmentOrFail($id);
 
             // Check if exam is available
             if (! $assessment->isAvailable()) {
@@ -170,23 +163,15 @@ class ResidentExamController extends Controller
             }
 
             // Check for existing in-progress attempt (must have started_at to be considered in progress)
-            $attempt = $assessment->attempts()
-                ->where('user_id', $user->id)
-                ->where('status', 'in_progress')
-                ->whereNotNull('started_at')
-                ->first();
+            $attempt = $this->residentExamRepository->findNationalStartedAttempt($assessment, $user->id);
 
             // If no in-progress attempt, check for an unstarted attempt (from seeder) and reuse it
             if (! $attempt) {
-                $unstartedAttempt = $assessment->attempts()
-                    ->where('user_id', $user->id)
-                    ->where('status', 'in_progress')
-                    ->whereNull('started_at')
-                    ->first();
+                $unstartedAttempt = $this->residentExamRepository->findNationalUnstartedAttempt($assessment, $user->id);
 
                 if ($unstartedAttempt) {
                     // Reuse the unstarted attempt and mark it as started
-                    $unstartedAttempt->update([
+                    $this->residentExamRepository->updateAttempt($unstartedAttempt, [
                         'started_at' => now(),
                         'ip_address' => $request->ip(),
                         'user_agent' => $request->userAgent(),
@@ -198,7 +183,7 @@ class ResidentExamController extends Controller
                     $attempt = $unstartedAttempt;
                 } else {
                     // Create a new attempt
-                    $attempt = $assessment->attempts()->create([
+                    $attempt = $this->residentExamRepository->createNationalAttempt($assessment, [
                         'user_id' => $user->id,
                         'year_level' => $user->resident?->year_level,
                         'organization_id' => $user->current_organization_id,
@@ -216,10 +201,7 @@ class ResidentExamController extends Controller
             }
 
             // Load questions with choices in proper order
-            $questions = $assessment->questions()
-                ->with(['choices' => fn($query) => $query->orderBy('order')])
-                ->orderBy('order')
-                ->get();
+            $questions = $this->residentExamRepository->loadNationalQuestionsForTake($assessment);
 
             // Apply randomization if enabled (use attempt ID as seed for consistency)
             if ($assessment->randomize_questions) {
@@ -227,7 +209,7 @@ class ResidentExamController extends Controller
             }
 
             // Load existing answers and validate against current choices
-            $attempt->load('answers');
+            $attempt = $this->residentExamRepository->loadAttemptAnswers($attempt);
 
             // Create a map of valid choice IDs per question
             $validChoiceIds = $questions->mapWithKeys(function ($question) {
@@ -309,7 +291,7 @@ class ResidentExamController extends Controller
     /**
      * Save a single answer (auto-save as resident answers).
      */
-    public function saveAnswer(Request $request, string $type, int $attempt): \Illuminate\Http\JsonResponse
+    public function saveAnswer(Request $request, string $type, int $attempt): JsonResponse
     {
         $user = $request->user();
 
@@ -326,7 +308,7 @@ class ResidentExamController extends Controller
         $validated['answer_data'] = $answerData;
 
         if ($type === 'institution') {
-            $attemptModel = \App\Models\Institution\InstitutionAttempt::findOrFail($attempt);
+            $attemptModel = $this->residentExamRepository->findInstitutionAttemptOrFail($attempt);
 
             // Verify this is the user's attempt
             if ($attemptModel->user_id !== $user->id) {
@@ -339,9 +321,7 @@ class ResidentExamController extends Controller
             }
 
             // Check for existing answer to track changes
-            $existingAnswer = \App\Models\Institution\InstitutionAnswer::where('attempt_id', $attemptModel->id)
-                ->where('question_id', $validated['question_id'])
-                ->first();
+            $existingAnswer = $this->residentExamRepository->findInstitutionAnswer($attemptModel->id, $validated['question_id']);
 
             if ($existingAnswer) {
                 // Update existing answer
@@ -349,7 +329,7 @@ class ResidentExamController extends Controller
 
                 // Log suspicious behavior: more than 5 changes on same question
                 if ($changeCount >= 5) {
-                    \Log::warning('Suspicious answer changes detected', [
+                    Log::warning('Suspicious answer changes detected', [
                         'user_id' => $user->id,
                         'attempt_id' => $attemptModel->id,
                         'question_id' => $validated['question_id'],
@@ -357,7 +337,7 @@ class ResidentExamController extends Controller
                     ]);
                 }
 
-                $existingAnswer->update([
+                $this->residentExamRepository->updateInstitutionAnswer($existingAnswer, [
                     'answer_data' => $validated['answer_data'],
                     'answer_change_count' => $changeCount + 1,
                 ]);
@@ -365,7 +345,7 @@ class ResidentExamController extends Controller
                 $answer = $existingAnswer;
             } else {
                 // Create new answer
-                $answer = \App\Models\Institution\InstitutionAnswer::create([
+                $answer = $this->residentExamRepository->createInstitutionAnswer([
                     'attempt_id' => $attemptModel->id,
                     'question_id' => $validated['question_id'],
                     'answer_data' => $validated['answer_data'],
@@ -375,7 +355,7 @@ class ResidentExamController extends Controller
 
             return response()->json(['success' => true]);
         } elseif ($type === 'inservice') {
-            $attemptModel = \App\Models\National\NationalAttempt::findOrFail($attempt);
+            $attemptModel = $this->residentExamRepository->findNationalAttemptOrFail($attempt);
 
             // Verify this is the user's attempt
             if ($attemptModel->user_id !== $user->id) {
@@ -388,9 +368,7 @@ class ResidentExamController extends Controller
             }
 
             // Check for existing answer to track changes
-            $existingAnswer = \App\Models\National\NationalAnswer::where('attempt_id', $attemptModel->id)
-                ->where('question_id', $validated['question_id'])
-                ->first();
+            $existingAnswer = $this->residentExamRepository->findNationalAnswer($attemptModel->id, $validated['question_id']);
 
             if ($existingAnswer) {
                 // Update existing answer
@@ -398,7 +376,7 @@ class ResidentExamController extends Controller
 
                 // Log suspicious behavior: more than 5 changes on same question
                 if ($changeCount >= 5) {
-                    \Log::warning('Suspicious answer changes detected', [
+                    Log::warning('Suspicious answer changes detected', [
                         'user_id' => $user->id,
                         'attempt_id' => $attemptModel->id,
                         'question_id' => $validated['question_id'],
@@ -406,7 +384,7 @@ class ResidentExamController extends Controller
                     ]);
                 }
 
-                $existingAnswer->update([
+                $this->residentExamRepository->updateNationalAnswer($existingAnswer, [
                     'answer_data' => $validated['answer_data'],
                     'answer_change_count' => $changeCount + 1,
                 ]);
@@ -414,7 +392,7 @@ class ResidentExamController extends Controller
                 $answer = $existingAnswer;
             } else {
                 // Create new answer
-                $answer = \App\Models\National\NationalAnswer::create([
+                $answer = $this->residentExamRepository->createNationalAnswer([
                     'attempt_id' => $attemptModel->id,
                     'question_id' => $validated['question_id'],
                     'answer_data' => $validated['answer_data'],
@@ -431,12 +409,12 @@ class ResidentExamController extends Controller
     /**
      * Finalize exam submission (calculate score and mark as completed).
      */
-    public function submit(Request $request, string $type, int $attempt): \Illuminate\Http\RedirectResponse
+    public function submit(Request $request, string $type, int $attempt): RedirectResponse
     {
         $user = $request->user();
 
         if ($type === 'institution') {
-            $attemptModel = \App\Models\Institution\InstitutionAttempt::findOrFail($attempt);
+            $attemptModel = $this->residentExamRepository->findInstitutionAttemptOrFail($attempt);
 
             // Verify this is the user's attempt
             if ($attemptModel->user_id !== $user->id) {
@@ -463,29 +441,12 @@ class ResidentExamController extends Controller
                 }
 
                 // Try exact match first
-                $bankQuestion = QuestionBank::where('question_text', $question->question_text)
-                    ->where('owner_type', 'institution')
-                    ->where('organization_id', $organizationId)
-                    ->first();
-
-                // If exact match fails, try fuzzy matching by question type and topic
-                if (! $bankQuestion && $question->topic_id) {
-                    $bankQuestion = QuestionBank::where('owner_type', 'institution')
-                        ->where('organization_id', $organizationId)
-                        ->where('question_type', $question->question_type)
-                        ->where('topic_id', $question->topic_id)
-                        ->first();
-                }
-
-                // If still not found, try matching by first part of question text (first 50 chars)
-                if (! $bankQuestion) {
-                    $questionStart = mb_substr(trim($question->question_text), 0, 50);
-                    $bankQuestion = QuestionBank::where('owner_type', 'institution')
-                        ->where('organization_id', $organizationId)
-                        ->where('question_type', $question->question_type)
-                        ->whereRaw('SUBSTRING(TRIM(question_text), 1, 50) = ?', [$questionStart])
-                        ->first();
-                }
+                $bankQuestion = $this->residentExamRepository->findInstitutionQuestionBankMatch(
+                    $question->question_text,
+                    $organizationId,
+                    $question->question_type,
+                    $question->topic_id
+                );
 
                 if ($bankQuestion) {
                     // Calculate time spent (if available, otherwise use a default)
@@ -500,7 +461,7 @@ class ResidentExamController extends Controller
                     );
                 } else {
                     // Log when question is not found for debugging
-                    \Log::warning('Question bank entry not found for institution question', [
+                    Log::warning('Question bank entry not found for institution question', [
                         'question_id' => $question->id,
                         'question_text_preview' => mb_substr($question->question_text, 0, 100),
                         'question_type' => $question->question_type,
@@ -511,14 +472,14 @@ class ResidentExamController extends Controller
 
             // Calculate final score and mark as completed
             $attemptModel->calculateScore();
-            $attemptModel->update([
+            $this->residentExamRepository->updateAttempt($attemptModel, [
                 'submitted_at' => now(),
                 'status' => 'completed',
             ]);
 
             return redirect('/resident-exams')->with('success', 'Exam submitted successfully! Score: ' . $attemptModel->percentage . '%');
         } elseif ($type === 'inservice') {
-            $attemptModel = \App\Models\National\NationalAttempt::findOrFail($attempt);
+            $attemptModel = $this->residentExamRepository->findNationalAttemptOrFail($attempt);
 
             // Verify this is the user's attempt
             if ($attemptModel->user_id !== $user->id) {
@@ -544,28 +505,11 @@ class ResidentExamController extends Controller
                 }
 
                 // Try exact match first
-                $bankQuestion = QuestionBank::where('question_text', $question->question_text)
-                    ->where('owner_type', 'national')
-                    ->first();
-
-                // If exact match fails, try fuzzy matching by question type and topic
-                if (! $bankQuestion && $question->topic) {
-                    $bankQuestion = QuestionBank::where('owner_type', 'national')
-                        ->where('question_type', $question->question_type)
-                        ->whereHas('topic', function ($q) use ($question) {
-                            $q->where('name', 'like', '%' . $question->topic . '%');
-                        })
-                        ->first();
-                }
-
-                // If still not found, try matching by first part of question text (first 50 chars)
-                if (! $bankQuestion) {
-                    $questionStart = mb_substr(trim($question->question_text), 0, 50);
-                    $bankQuestion = QuestionBank::where('owner_type', 'national')
-                        ->where('question_type', $question->question_type)
-                        ->whereRaw('SUBSTRING(TRIM(question_text), 1, 50) = ?', [$questionStart])
-                        ->first();
-                }
+                $bankQuestion = $this->residentExamRepository->findNationalQuestionBankMatch(
+                    $question->question_text,
+                    $question->question_type,
+                    $question->topic
+                );
 
                 if ($bankQuestion) {
                     // Calculate time spent (if available, otherwise use a default)
@@ -580,7 +524,7 @@ class ResidentExamController extends Controller
                     );
                 } else {
                     // Log when question is not found for debugging
-                    \Log::warning('Question bank entry not found for national question', [
+                    Log::warning('Question bank entry not found for national question', [
                         'question_id' => $question->id,
                         'question_text_preview' => mb_substr($question->question_text, 0, 100),
                         'question_type' => $question->question_type,
@@ -591,7 +535,7 @@ class ResidentExamController extends Controller
 
             // Calculate final score and mark as completed
             $attemptModel->calculateScore();
-            $attemptModel->update([
+            $this->residentExamRepository->updateAttempt($attemptModel, [
                 'submitted_at' => now(),
                 'status' => 'completed',
             ]);
@@ -610,7 +554,7 @@ class ResidentExamController extends Controller
         $user = $request->user();
 
         if ($type === 'institution') {
-            $assessment = InstitutionAssessment::findOrFail($id);
+            $assessment = $this->residentExamRepository->findInstitutionAssessmentOrFail($id);
 
             // Verify user has access
             if ($assessment->organization_id !== $user->current_organization_id) {
@@ -618,21 +562,14 @@ class ResidentExamController extends Controller
             }
 
             // Get the user's most recent completed attempt for THIS exam
-            $attempt = $assessment->attempts()
-                ->where('user_id', $user->id)
-                ->whereIn('status', ['completed', 'graded'])
-                ->orderBy('submitted_at', 'desc')
-                ->first();
+            $attempt = $this->residentExamRepository->latestCompletedInstitutionAttempt($assessment, $user->id);
 
             if (! $attempt) {
                 return redirect('/resident-exams')->with('error', 'No completed attempts found for this exam.');
             }
 
             // Get answers with their questions to show in the order they were answered
-            $answers = $attempt->answers()
-                ->with(['question.choices' => fn($query) => $query->orderBy('order')])
-                ->orderBy('id')
-                ->get();
+            $answers = $this->residentExamRepository->loadInstitutionResultAnswers($attempt);
 
             // Build results data
             $questionsData = $answers->map(function ($answer) {
@@ -687,31 +624,20 @@ class ResidentExamController extends Controller
                 ],
             ]);
         } elseif ($type === 'inservice') {
-            $assessment = NationalAssessment::findOrFail($id);
+            $assessment = $this->residentExamRepository->findNationalAssessmentOrFail($id);
 
             // Get the user's best completed attempt
-            $attempt = $assessment->attempts()
-                ->where('user_id', $user->id)
-                ->whereIn('status', ['completed', 'graded'])
-                ->orderBy('score', 'desc')
-                ->orderBy('submitted_at', 'desc')
-                ->first();
+            $attempt = $this->residentExamRepository->bestCompletedNationalAttempt($assessment, $user->id);
 
             if (! $attempt) {
                 return redirect('/resident-exams')->with('error', 'No completed attempts found for this exam.');
             }
 
             // Load questions with choices and answers
-            $questions = $assessment->questions()
-                ->with(['choices' => fn($query) => $query->orderBy('order')])
-                ->orderBy('order')
-                ->get();
+            $questions = $this->residentExamRepository->loadNationalQuestionsWithChoices($assessment);
 
             // Load user's answers for this attempt
-            $answers = $attempt->answers()
-                ->with('question.choices')
-                ->get()
-                ->keyBy('question_id');
+            $answers = $this->residentExamRepository->loadNationalAnswersKeyedByQuestion($attempt);
 
             // Build results data
             $questionsData = $questions->map(function ($question) use ($answers) {
@@ -777,33 +703,26 @@ class ResidentExamController extends Controller
     /**
      * Get exam results as JSON for API calls.
      */
-    public function resultsApi(Request $request, string $type, int $id): \Illuminate\Http\JsonResponse
+    public function resultsApi(Request $request, string $type, int $id): JsonResponse
     {
         $user = $request->user();
 
         if ($type === 'institution') {
-            $assessment = InstitutionAssessment::findOrFail($id);
+            $assessment = $this->residentExamRepository->findInstitutionAssessmentOrFail($id);
 
             if ($assessment->organization_id !== $user->current_organization_id) {
                 abort(403, 'You do not have access to this exam.');
             }
 
             // Get the user's most recent completed attempt for THIS exam
-            $attempt = $assessment->attempts()
-                ->where('user_id', $user->id)
-                ->whereIn('status', ['completed', 'graded'])
-                ->orderBy('submitted_at', 'desc')
-                ->first();
+            $attempt = $this->residentExamRepository->latestCompletedInstitutionAttempt($assessment, $user->id);
 
             if (! $attempt) {
                 return response()->json(['error' => 'No completed attempts found'], 404);
             }
 
             // Get answers with their questions to show in the order they were answered
-            $answers = $attempt->answers()
-                ->with(['question.choices' => fn($query) => $query->orderBy('order')])
-                ->orderBy('id')
-                ->get();
+            $answers = $this->residentExamRepository->loadInstitutionResultAnswers($attempt);
 
             $questionsData = $answers->map(function ($answer) {
                 $question = $answer->question;
@@ -857,31 +776,20 @@ class ResidentExamController extends Controller
                 ],
             ]);
         } elseif ($type === 'inservice') {
-            $assessment = NationalAssessment::findOrFail($id);
+            $assessment = $this->residentExamRepository->findNationalAssessmentOrFail($id);
 
             // Get the user's best completed attempt
-            $attempt = $assessment->attempts()
-                ->where('user_id', $user->id)
-                ->whereIn('status', ['completed', 'graded'])
-                ->orderBy('score', 'desc')
-                ->orderBy('submitted_at', 'desc')
-                ->first();
+            $attempt = $this->residentExamRepository->bestCompletedNationalAttempt($assessment, $user->id);
 
             if (! $attempt) {
                 return response()->json(['error' => 'No completed attempts found'], 404);
             }
 
             // Load questions with choices and answers
-            $questions = $assessment->questions()
-                ->with(['choices' => fn($query) => $query->orderBy('order')])
-                ->orderBy('order')
-                ->get();
+            $questions = $this->residentExamRepository->loadNationalQuestionsWithChoices($assessment);
 
             // Load user's answers for this attempt
-            $answers = $attempt->answers()
-                ->with(['question.choices' => fn($query) => $query->orderBy('order')])
-                ->get()
-                ->keyBy('question_id');
+            $answers = $this->residentExamRepository->loadNationalAnswersKeyedByQuestion($attempt);
 
             $questionsData = $questions->map(function ($question) use ($answers) {
                 $answer = $answers->get($question->id);
@@ -958,27 +866,15 @@ class ResidentExamController extends Controller
         // Get Institution Exams only if current organization is NOT national
         $institutionExams = collect();
         if (! $isNational) {
-            $institutionExams = InstitutionAssessment::query()
-                ->where('organization_id', $organizationId)
-                ->where('is_published', true)
-                ->with(['questions'])
-                ->withCount('questions')
-                ->get();
+            $institutionExams = $this->residentExamRepository->getPublishedInstitutionExamsForOrganization($organizationId);
         }
 
         foreach ($institutionExams as $exam) {
             // Check for in-progress attempt (must have started_at to be considered in progress)
-            $inProgressAttempt = $exam->attempts()
-                ->where('user_id', $user->id)
-                ->where('status', 'in_progress')
-                ->whereNotNull('started_at')
-                ->exists();
+            $inProgressAttempt = $this->residentExamRepository->hasStartedInProgressInstitutionAttempt($exam, $user->id);
 
             // Get user's completed/graded attempts for this exam
-            $attempts = $exam->attempts()
-                ->where('user_id', $user->id)
-                ->whereIn('status', ['completed', 'graded'])
-                ->get();
+            $attempts = $this->residentExamRepository->getCompletedInstitutionAttempts($exam, $user->id);
 
             $attemptCount = $attempts->count();
             $bestScore = $attempts->max('score');
@@ -1016,26 +912,15 @@ class ResidentExamController extends Controller
         // Get National In-Service Exams only if current organization IS national
         $nationalExams = collect();
         if ($isNational) {
-            $nationalExams = NationalAssessment::query()
-                ->where('is_published', true)
-                ->with(['questions'])
-                ->withCount('questions')
-                ->get();
+            $nationalExams = $this->residentExamRepository->getPublishedNationalExams();
         }
 
         foreach ($nationalExams as $exam) {
             // Check for in-progress attempt (must have started_at to be considered in progress)
-            $inProgressAttempt = $exam->attempts()
-                ->where('user_id', $user->id)
-                ->where('status', 'in_progress')
-                ->whereNotNull('started_at')
-                ->exists();
+            $inProgressAttempt = $this->residentExamRepository->hasStartedInProgressNationalAttempt($exam, $user->id);
 
             // Get user's completed/graded attempts
-            $attempts = $exam->attempts()
-                ->where('user_id', $user->id)
-                ->whereIn('status', ['completed', 'graded'])
-                ->get();
+            $attempts = $this->residentExamRepository->getCompletedNationalAttempts($exam, $user->id);
 
             $attemptCount = $attempts->count();
             $bestScore = $attempts->max('score');
@@ -1094,9 +979,9 @@ class ResidentExamController extends Controller
 
         // Verify attempt belongs to user
         if ($type === 'institution') {
-            $attempt = InstitutionAttempt::findOrFail($attemptId);
+            $attempt = $this->residentExamRepository->findInstitutionAttemptOrFail($attemptId);
         } else {
-            $attempt = NationalAttempt::findOrFail($attemptId);
+            $attempt = $this->residentExamRepository->findNationalAttemptOrFail($attemptId);
         }
 
         if ($attempt->user_id !== $user->id) {
@@ -1104,7 +989,7 @@ class ResidentExamController extends Controller
         }
 
         // Log the change
-        ExamSessionChange::create([
+        $this->residentExamRepository->createSessionChange([
             'attempt_type' => $type,
             'attempt_id' => $attemptId,
             'user_id' => $user->id,
@@ -1119,10 +1004,10 @@ class ResidentExamController extends Controller
 
         // Increment counters
         if ($validated['change_type'] === 'ip_address' || $validated['change_type'] === 'both') {
-            $attempt->increment('ip_changes_count');
+            $this->residentExamRepository->incrementAttemptField($attempt, 'ip_changes_count');
         }
         if ($validated['change_type'] === 'browser' || $validated['change_type'] === 'both') {
-            $attempt->increment('browser_changes_count');
+            $this->residentExamRepository->incrementAttemptField($attempt, 'browser_changes_count');
         }
 
         return response()->noContent();
@@ -1141,9 +1026,9 @@ class ResidentExamController extends Controller
 
         // Verify attempt belongs to user
         if ($type === 'institution') {
-            $attempt = InstitutionAttempt::findOrFail($attemptId);
+            $attempt = $this->residentExamRepository->findInstitutionAttemptOrFail($attemptId);
         } else {
-            $attempt = NationalAttempt::findOrFail($attemptId);
+            $attempt = $this->residentExamRepository->findNationalAttemptOrFail($attemptId);
         }
 
         if ($attempt->user_id !== $user->id) {
@@ -1151,7 +1036,7 @@ class ResidentExamController extends Controller
         }
 
         // Update last activity
-        $attempt->update(['last_activity_at' => now()]);
+        $this->residentExamRepository->updateAttempt($attempt, ['last_activity_at' => now()]);
 
         // If idle duration provided, log it
         if (isset($validated['idle_duration']) && $validated['idle_duration'] > 0) {
@@ -1162,7 +1047,7 @@ class ResidentExamController extends Controller
             $startedAt = $endedAt->copy()->subSeconds($idleDuration);
 
             // Store individual idle period with timestamps
-            \App\Models\ExamIdlePeriod::create([
+            $this->residentExamRepository->createIdlePeriod([
                 'attempt_type' => $type,
                 'attempt_id' => $attemptId,
                 'user_id' => $user->id,
@@ -1172,12 +1057,12 @@ class ResidentExamController extends Controller
             ]);
 
             // Update aggregate counters
-            $attempt->increment('total_idle_time', $idleDuration);
-            $attempt->increment('idle_periods_count');
+            $this->residentExamRepository->incrementAttemptField($attempt, 'total_idle_time', $idleDuration);
+            $this->residentExamRepository->incrementAttemptField($attempt, 'idle_periods_count');
 
             // Update max idle duration if this is longer
             if ($idleDuration > $attempt->max_idle_duration) {
-                $attempt->update(['max_idle_duration' => $idleDuration]);
+                $this->residentExamRepository->updateAttempt($attempt, ['max_idle_duration' => $idleDuration]);
             }
         }
 
@@ -1193,9 +1078,9 @@ class ResidentExamController extends Controller
 
         // Get attempt
         if ($type === 'institution') {
-            $attempt = InstitutionAttempt::findOrFail($attemptId);
+            $attempt = $this->residentExamRepository->findInstitutionAttemptOrFail($attemptId);
         } else {
-            $attempt = NationalAttempt::findOrFail($attemptId);
+            $attempt = $this->residentExamRepository->findNationalAttemptOrFail($attemptId);
         }
 
         // Verify ownership
@@ -1217,9 +1102,9 @@ class ResidentExamController extends Controller
 
         // Get attempt
         if ($type === 'institution') {
-            $attempt = InstitutionAttempt::findOrFail($attemptId);
+            $attempt = $this->residentExamRepository->findInstitutionAttemptOrFail($attemptId);
         } else {
-            $attempt = NationalAttempt::findOrFail($attemptId);
+            $attempt = $this->residentExamRepository->findNationalAttemptOrFail($attemptId);
         }
 
         // Verify ownership
@@ -1249,9 +1134,9 @@ class ResidentExamController extends Controller
 
         // Verify attempt belongs to user
         if ($type === 'institution') {
-            $attempt = InstitutionAttempt::findOrFail($attemptId);
+            $attempt = $this->residentExamRepository->findInstitutionAttemptOrFail($attemptId);
         } else {
-            $attempt = NationalAttempt::findOrFail($attemptId);
+            $attempt = $this->residentExamRepository->findNationalAttemptOrFail($attemptId);
         }
 
         if ($attempt->user_id !== $user->id) {
@@ -1281,7 +1166,7 @@ class ResidentExamController extends Controller
             $updateData['connection_speed'] = $validated['connection_speed'] ?? null;
         }
 
-        $attempt->update($updateData);
+        $this->residentExamRepository->updateAttempt($attempt, $updateData);
 
         return response()->json(['success' => true]);
     }
