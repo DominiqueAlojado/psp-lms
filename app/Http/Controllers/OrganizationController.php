@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Exports\InstitutionsExport;
 use App\Models\Organization;
-use App\Models\User;
+use App\Repositories\Contracts\OrganizationRepositoryInterface;
 use App\Services\ActivityLog\OrganizationActivityLogService;
 use App\Traits\LogsActivity;
 use Illuminate\Http\JsonResponse;
@@ -21,32 +21,16 @@ class OrganizationController extends Controller
     use LogsActivity;
 
     public function __construct(
-        protected OrganizationActivityLogService $activityLogService
+        protected OrganizationActivityLogService $activityLogService,
+        protected OrganizationRepositoryInterface $organizationRepository
     ) {}
     /**
      * Display a listing of institutions.
      */
     public function index(Request $request): Response
     {
-        $institutions = Organization::query()
-            ->withCount(['residents', 'users'])
-            ->when($request->input('search'), function ($query, $search) {
-                $query->where(function ($q) use ($search) {
-                    $q->where('name', 'like', "%{$search}%")
-                        ->orWhere('description', 'like', "%{$search}%")
-                        ->orWhere('type', 'like', "%{$search}%");
-                });
-            })
-            ->when($request->input('type'), function ($query, $type) {
-                $query->where('type', $type);
-            })
-            ->when($request->input('status'), function ($query, $status) {
-                $isActive = $status === 'active';
-                $query->where('is_active', $isActive);
-            })
-            ->orderBy($request->input('sort', 'name'), $request->input('direction', 'asc'))
-            ->paginate(15)
-            ->withQueryString()
+        $institutions = $this->organizationRepository
+            ->paginate($request->only(['search', 'type', 'status', 'sort', 'direction']))
             ->through(fn($institution) => [
                 'id' => $institution->id,
                 'name' => $institution->name,
@@ -61,15 +45,8 @@ class OrganizationController extends Controller
                 'updated_at' => $institution->updated_at->diffForHumans(),
             ]);
 
-        // Get statistics per type
-        $typeStats = Organization::query()
-            ->selectRaw('type, COUNT(*) as count')
-            ->groupBy('type')
-            ->pluck('count', 'type')
-            ->toArray();
-
-        // Get unique types
-        $types = Organization::distinct()->pluck('type')->filter()->values();
+        $typeStats = $this->organizationRepository->getTypeStats();
+        $types = $this->organizationRepository->getDistinctTypes();
 
         return Inertia::render('institutions/index', [
             'institutions' => $institutions,
@@ -107,7 +84,7 @@ class OrganizationController extends Controller
             $validated['training_officers'] = json_decode($validated['training_officers'], true);
         }
 
-        $institution = Organization::create($validated);
+        $institution = $this->organizationRepository->create($validated);
 
         // Log organization creation
         $this->activityLogService->logOrganizationCreated($institution);
@@ -162,7 +139,7 @@ class OrganizationController extends Controller
 
         // Temporarily disable automatic logging to prevent duplicates
         $this->withoutActivityLogging(function () use ($organization, $validated) {
-            $organization->update($validated);
+            $this->organizationRepository->update($organization, $validated);
         });
 
         // Build consolidated log entry with all changes using service
@@ -197,7 +174,7 @@ class OrganizationController extends Controller
     public function destroy(Organization $organization): RedirectResponse
     {
         // Check if institution has residents
-        if ($organization->residents()->count() > 0) {
+        if ($this->organizationRepository->hasResidents($organization)) {
             return back()->withErrors([
                 'error' => 'Cannot delete institution with active residents. Please reassign or delete residents first.',
             ]);
@@ -206,7 +183,7 @@ class OrganizationController extends Controller
         // Log deletion before deleting
         $this->activityLogService->logOrganizationDeleted($organization);
 
-        $organization->delete();
+        $this->organizationRepository->delete($organization);
 
         return back()->with('success', 'Institution deleted successfully');
     }
