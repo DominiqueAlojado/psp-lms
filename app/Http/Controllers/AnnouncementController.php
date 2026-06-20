@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Announcement;
+use App\Repositories\Contracts\AnnouncementRepositoryInterface;
 use App\Services\ActivityLog\AnnouncementActivityLogService;
 use App\Traits\LogsActivity;
 use Illuminate\Http\JsonResponse;
@@ -16,7 +17,8 @@ class AnnouncementController extends Controller
     use LogsActivity;
 
     public function __construct(
-        protected AnnouncementActivityLogService $activityLogService
+        protected AnnouncementActivityLogService $activityLogService,
+        protected AnnouncementRepositoryInterface $announcementRepository
     ) {}
 
     /**
@@ -27,18 +29,8 @@ class AnnouncementController extends Controller
         $user = $request->user();
         $organizationId = $user->current_organization_id;
 
-        $announcements = Announcement::query()
-            ->with('creator:id,name', 'organization:id,name')
-            ->visibleTo($organizationId)
-            ->active()
-            ->when($request->input('priority'), function ($query, $priority) {
-                $query->where('priority', $priority);
-            })
-            ->orderBy('is_pinned', 'desc')
-            ->orderBy('priority', 'desc')
-            ->orderBy('created_at', 'desc')
-            ->paginate(20)
-            ->withQueryString()
+        $announcements = $this->announcementRepository
+            ->paginateVisibleToOrganization($organizationId, $request->only(['priority']))
             ->through(fn($announcement) => [
                 'id' => $announcement->id,
                 'title' => $announcement->title,
@@ -69,31 +61,8 @@ class AnnouncementController extends Controller
         $organizationId = $user->current_organization_id;
         $canCreateSystem = $user->hasPermissionTo('create-system-announcements');
 
-        $query = Announcement::query()
-            ->with('creator:id,name', 'organization:id,name');
-
-        // System admins see all, regular users see only their org's announcements
-        if (! $canCreateSystem) {
-            $query->where('organization_id', $organizationId);
-        }
-
-        $announcements = $query
-            ->when($request->input('search'), function ($query, $search) {
-                $query->where(function ($q) use ($search) {
-                    $q->where('title', 'like', "%{$search}%")
-                        ->orWhere('content', 'like', "%{$search}%");
-                });
-            })
-            ->when($request->input('scope'), function ($query, $scope) {
-                $query->where('scope', $scope);
-            })
-            ->when($request->has('is_published'), function ($query) use ($request) {
-                $query->where('is_published', $request->input('is_published'));
-            })
-            ->orderBy('is_pinned', 'desc')
-            ->orderBy('created_at', 'desc')
-            ->paginate(20)
-            ->withQueryString()
+        $announcements = $this->announcementRepository
+            ->paginateForManagement($organizationId, $canCreateSystem, $request->only(['search', 'scope', 'is_published']))
             ->through(fn($announcement) => [
                 'id' => $announcement->id,
                 'title' => $announcement->title,
@@ -149,7 +118,7 @@ class AnnouncementController extends Controller
             return back()->withErrors(['scope' => 'You do not have permission to create system-wide announcements.']);
         }
 
-        $announcement = Announcement::create([
+        $announcement = $this->announcementRepository->create([
             'organization_id' => $validated['scope'] === 'organization' ? $user->current_organization_id : null,
             'created_by' => $user->id,
             'title' => $validated['title'],
@@ -226,7 +195,7 @@ class AnnouncementController extends Controller
 
         // Update announcement without logging (to avoid duplicate logs)
         $this->withoutActivityLogging(function () use ($announcement, $validated, $user) {
-            $announcement->update([
+            $this->announcementRepository->update($announcement, [
                 'organization_id' => $validated['scope'] === 'organization' ? $user->current_organization_id : null,
                 'title' => $validated['title'],
                 'content' => $validated['content'],
@@ -274,7 +243,7 @@ class AnnouncementController extends Controller
         // Log announcement deletion before deleting
         $this->activityLogService->logAnnouncementDeleted($announcement);
 
-        $announcement->delete();
+        $this->announcementRepository->delete($announcement);
 
         return back()->with('success', 'Announcement deleted successfully!');
     }
@@ -319,7 +288,7 @@ class AnnouncementController extends Controller
             abort(403, 'You do not have access to this announcement.');
         }
 
-        $announcement->markAsViewedBy($user->id);
+        $this->announcementRepository->markAsViewedBy($announcement, $user->id);
 
         return response()->noContent();
     }
