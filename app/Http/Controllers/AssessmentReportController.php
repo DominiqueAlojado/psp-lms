@@ -2,18 +2,17 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\ExamSessionChange;
-use App\Models\Institution\InstitutionAssessment;
-use App\Models\Institution\InstitutionAttempt;
-use App\Models\National\NationalAssessment;
-use App\Models\National\NationalAttempt;
-use App\Models\Organization;
+use App\Repositories\Contracts\AssessmentReportRepositoryInterface;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class AssessmentReportController extends Controller
 {
+    public function __construct(
+        private readonly AssessmentReportRepositoryInterface $assessmentReportRepository,
+    ) {}
+
     /**
      * Display resident exam attempts with filtering.
      */
@@ -29,89 +28,54 @@ class AssessmentReportController extends Controller
         $orgType = $currentOrg?->type ? strtolower($currentOrg->type) : null;
 
         // Get institution attempts
-        $institutionQuery = InstitutionAttempt::query()
-            ->with([
-                'user:id,name,email',
-                'assessment:id,title,total_points,passing_score,exam_category',
-                'organization:id,name',
-            ])
-            ->where('status', 'completed');
-
-        // Users with system-wide permissions see all organizations, others see only their org
-        if (! $canViewAllOrganizations) {
-            $institutionQuery->where('organization_id', $organizationId);
-        }
-
-        // Filter by search (resident name or email)
-        if ($request->filled('search')) {
-            $search = $request->input('search');
-            $institutionQuery->whereHas('user', function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                    ->orWhere('email', 'like', "%{$search}%");
-            });
-        }
-
-        // Filter by exam (only if it's an institution exam)
         $isInstitutionExam = false;
+        $isNationalExam = false;
+        $examId = null;
+        $examType = null;
+
         if ($request->filled('exam')) {
             $examFilter = $request->input('exam');
-            // Check if it's prefixed with 'institution_' or 'national_'
             if (str_starts_with($examFilter, 'institution_')) {
                 $examId = (int) str_replace('institution_', '', $examFilter);
-                $isInstitutionExam = InstitutionAssessment::where('id', $examId)->exists();
-                if ($isInstitutionExam) {
-                    $institutionQuery->where('assessment_id', $examId);
-                }
+                $examType = 'institution';
+                $isInstitutionExam = $this->assessmentReportRepository->institutionExamExists($examId);
             } elseif (str_starts_with($examFilter, 'national_')) {
-                // This will be handled in the national exam section
+                $examId = (int) str_replace('national_', '', $examFilter);
+                $examType = 'national';
+                $isNationalExam = $this->assessmentReportRepository->nationalExamExists($examId);
             } else {
-                // Legacy support: try to determine by checking both tables
                 $examId = (int) $examFilter;
-                $isInstitutionExam = InstitutionAssessment::where('id', $examId)->exists();
+                $isInstitutionExam = $this->assessmentReportRepository->institutionExamExists($examId);
                 if ($isInstitutionExam) {
-                    $institutionQuery->where('assessment_id', $examId);
+                    $examType = 'institution';
+                } else {
+                    $isNationalExam = $this->assessmentReportRepository->nationalExamExists($examId);
+                    if ($isNationalExam) {
+                        $examType = 'national';
+                    }
                 }
             }
         }
 
-        // Filter by institution (for users with system-wide permissions)
-        if ($request->filled('organization') && $canViewAllOrganizations) {
-            $institutionQuery->where('organization_id', $request->input('organization'));
-        }
-
-        // Filter by year level
-        if ($request->filled('year_level')) {
-            $institutionQuery->where('year_level', $request->input('year_level'));
-        }
-
-        // Filter by status
-        if ($request->filled('status')) {
-            $status = $request->input('status');
-            if ($status === 'passed') {
-                $institutionQuery->whereRaw('score >= (SELECT passing_score FROM institution_assessments WHERE id = assessment_id)');
-            } elseif ($status === 'failed') {
-                $institutionQuery->whereRaw('score < (SELECT passing_score FROM institution_assessments WHERE id = assessment_id)');
-            }
-        }
-
-        // Filter by date range
-        if ($request->filled('date_from')) {
-            $institutionQuery->whereDate('submitted_at', '>=', $request->input('date_from'));
-        }
-        if ($request->filled('date_to')) {
-            $institutionQuery->whereDate('submitted_at', '<=', $request->input('date_to'));
-        }
+        $filters = array_merge(
+            $request->only(['search', 'organization', 'year_level', 'status', 'date_from', 'date_to']),
+            [
+                'exam_id' => $examId,
+                'exam_type' => $examType,
+                'can_view_all_organizations' => $canViewAllOrganizations,
+            ]
+        );
 
         // Only get institution attempts if:
         // 1. No exam filter OR it's an institution exam
         // 2. AND (organization is institution type OR system admin viewing all orgs)
         $institutionAttempts = collect();
-        $shouldShowInstitutionAttempts = (! $request->filled('exam') || $isInstitutionExam) 
+        $shouldShowInstitutionAttempts = (! $request->filled('exam') || $isInstitutionExam)
             && ($orgType === 'institution' || ($canViewAllOrganizations && ! $orgType));
-        
+
         if ($shouldShowInstitutionAttempts) {
-            $institutionAttempts = $institutionQuery
-                ->get()
+            $institutionAttempts = $this->assessmentReportRepository
+                ->getCompletedInstitutionAttemptsForReport($filters, $organizationId, $canViewAllOrganizations)
                 ->map(fn($attempt) => [
                     'id' => $attempt->id,
                     'type' => 'institution',
@@ -133,90 +97,16 @@ class AssessmentReportController extends Controller
                 ]);
         }
 
-        // Get national attempts (in-service exams)
-        $nationalQuery = NationalAttempt::query()
-            ->with([
-                'user:id,name,email',
-                'assessment:id,title,total_points,passing_score,category',
-                'organization:id,name',
-            ])
-            ->whereIn('status', ['completed', 'graded']);
-
-        // Users with system-wide permissions see all organizations, others see only their org
-        if (! $canViewAllOrganizations) {
-            $nationalQuery->where('organization_id', $organizationId);
-        }
-
-        // Filter by search (resident name or email)
-        if ($request->filled('search')) {
-            $search = $request->input('search');
-            $nationalQuery->whereHas('user', function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                    ->orWhere('email', 'like', "%{$search}%");
-            });
-        }
-
-        // Filter by exam (only if it's a national exam)
-        $isNationalExam = false;
-        if ($request->filled('exam')) {
-            $examFilter = $request->input('exam');
-            // Check if it's prefixed with 'national_'
-            if (str_starts_with($examFilter, 'national_')) {
-                $examId = (int) str_replace('national_', '', $examFilter);
-                $isNationalExam = NationalAssessment::where('id', $examId)->exists();
-                if ($isNationalExam) {
-                    $nationalQuery->where('assessment_id', $examId);
-                }
-            } elseif (! str_starts_with($examFilter, 'institution_')) {
-                // Legacy support: check if it's a national exam (and not an institution exam)
-                if (! $isInstitutionExam) {
-                    $examId = (int) $examFilter;
-                    $isNationalExam = NationalAssessment::where('id', $examId)->exists();
-                    if ($isNationalExam) {
-                        $nationalQuery->where('assessment_id', $examId);
-                    }
-                }
-            }
-        }
-
-        // Filter by institution (for users with system-wide permissions)
-        if ($request->filled('organization') && $canViewAllOrganizations) {
-            $nationalQuery->where('organization_id', $request->input('organization'));
-        }
-
-        // Filter by year level
-        if ($request->filled('year_level')) {
-            $nationalQuery->where('year_level', $request->input('year_level'));
-        }
-
-        // Filter by status
-        if ($request->filled('status')) {
-            $status = $request->input('status');
-            if ($status === 'passed') {
-                $nationalQuery->whereRaw('score >= (SELECT passing_score FROM national_assessments WHERE id = assessment_id)');
-            } elseif ($status === 'failed') {
-                $nationalQuery->whereRaw('score < (SELECT passing_score FROM national_assessments WHERE id = assessment_id)');
-            }
-        }
-
-        // Filter by date range
-        if ($request->filled('date_from')) {
-            $nationalQuery->whereDate('submitted_at', '>=', $request->input('date_from'));
-        }
-        if ($request->filled('date_to')) {
-            $nationalQuery->whereDate('submitted_at', '<=', $request->input('date_to'));
-        }
-
         // Only get national attempts if:
         // 1. No exam filter OR it's a national exam
         // 2. AND (organization is national/inservice type OR system admin viewing all orgs)
         $nationalAttempts = collect();
-        $shouldShowNationalAttempts = (! $request->filled('exam') || $isNationalExam) 
+        $shouldShowNationalAttempts = (! $request->filled('exam') || $isNationalExam)
             && (($orgType && in_array($orgType, ['national', 'inservice'])) || ($canViewAllOrganizations && ! $orgType));
-        
+
         if ($shouldShowNationalAttempts) {
-            $nationalAttempts = $nationalQuery
-                ->get()
+            $nationalAttempts = $this->assessmentReportRepository
+                ->getCompletedNationalAttemptsForReport($filters, $organizationId, $canViewAllOrganizations)
                 ->map(fn($attempt) => [
                     'id' => $attempt->id,
                     'type' => 'inservice',
@@ -275,7 +165,7 @@ class AssessmentReportController extends Controller
 
         // Get filter options
         $organizations = $canViewAllOrganizations
-            ? Organization::select('id', 'name')->orderBy('name')->get()
+            ? $this->assessmentReportRepository->getOrganizations()
             : collect();
 
         // Get current organization to determine exam type filtering
@@ -283,19 +173,12 @@ class AssessmentReportController extends Controller
         $orgType = $currentOrg?->type;
 
         // Get both institution and national exams
-        $institutionExams = InstitutionAssessment::query()
-            ->when(! $canViewAllOrganizations, function ($q) use ($organizationId) {
-                $q->where('organization_id', $organizationId);
-            })
-            ->where('is_published', true)
-            ->orderBy('title')
-            ->get(['id', 'title'])
+        $institutionExams = $this->assessmentReportRepository
+            ->getPublishedInstitutionExamOptions($organizationId, $canViewAllOrganizations)
             ->map(fn($exam) => ['id' => 'institution_' . $exam->id, 'title' => $exam->title, 'type' => 'institution', 'original_id' => $exam->id]);
 
-        $nationalExams = NationalAssessment::query()
-            ->where('is_published', true)
-            ->orderBy('title')
-            ->get(['id', 'title'])
+        $nationalExams = $this->assessmentReportRepository
+            ->getPublishedNationalExamOptions()
             ->map(fn($exam) => ['id' => 'national_' . $exam->id, 'title' => $exam->title, 'type' => 'inservice', 'original_id' => $exam->id]);
 
         // Filter exams based on organization type
@@ -340,57 +223,15 @@ class AssessmentReportController extends Controller
         // Check if user has permission to view all organizations' assessment reports
         $canViewAllOrganizations = $user->hasPermissionTo('view-all-assessment-reports');
 
-        $query = InstitutionAttempt::query()
-            ->with([
-                'user:id,name,email',
-                'assessment:id,title,exam_category',
-                'organization:id,name',
-            ])
-            ->where('status', 'in_progress');
-
-        // Users with system-wide permissions see all, others see only their org
-        if (! $canViewAllOrganizations) {
-            $query->where('organization_id', $organizationId);
-        }
-
-        // Filter by exam
-        if ($request->filled('exam')) {
-            $query->where('assessment_id', $request->input('exam'));
-        }
-
-        // Filter by institution
-        if ($request->filled('organization') && $canViewAllOrganizations) {
-            $query->where('organization_id', $request->input('organization'));
-        }
-
-        // Filter by activity status
-        if ($request->filled('activity_status')) {
-            $status = $request->input('activity_status');
-            if ($status === 'idle') {
-                // No activity in last 2 minutes
-                $query->where('last_activity_at', '<', now()->subMinutes(2));
-            } elseif ($status === 'suspicious') {
-                // Has IP or browser changes
-                $query->where(function ($q) {
-                    $q->where('ip_changes_count', '>', 0)
-                        ->orWhere('browser_changes_count', '>', 0);
-                });
-            } elseif ($status === 'active') {
-                // Active in last 2 minutes
-                $query->where('last_activity_at', '>=', now()->subMinutes(2));
-            }
-        }
-
-        $activeSessions = $query
-            ->orderBy('started_at', 'desc')
-            ->get()
+        $activeSessions = $this->assessmentReportRepository
+            ->getLiveInstitutionAttempts($request->only(['exam', 'organization', 'activity_status']), $organizationId, $canViewAllOrganizations)
             ->map(function ($attempt) {
+                $sessionChanges = $this->assessmentReportRepository->getSessionChangesForInstitutionAttempt($attempt->id);
+
                 // Get browser change details (deduplicated)
-                $browserChanges = ExamSessionChange::where('attempt_type', 'institution')
-                    ->where('attempt_id', $attempt->id)
+                $browserChanges = $sessionChanges
                     ->whereIn('change_type', ['browser', 'both'])
-                    ->orderBy('detected_at', 'asc')
-                    ->get()
+                    ->sortBy('detected_at')
                     ->unique(function ($change) {
                         // Deduplicate by combining user agents and timestamp (rounded to minute)
                         return $change->previous_user_agent .
@@ -405,11 +246,9 @@ class AssessmentReportController extends Controller
                     ->values(); // Reset array keys after deduplication
 
                 // Get IP change details (deduplicated)
-                $ipChanges = ExamSessionChange::where('attempt_type', 'institution')
-                    ->where('attempt_id', $attempt->id)
+                $ipChanges = $sessionChanges
                     ->whereIn('change_type', ['ip_address', 'both'])
-                    ->orderBy('detected_at', 'asc')
-                    ->get()
+                    ->sortBy('detected_at')
                     ->unique(function ($change) {
                         // Deduplicate by IP addresses and timestamp (rounded to minute)
                         return $change->previous_ip_address .
@@ -424,10 +263,8 @@ class AssessmentReportController extends Controller
                     ->values();
 
                 // Get idle period details
-                $idlePeriods = \App\Models\ExamIdlePeriod::where('attempt_type', 'institution')
-                    ->where('attempt_id', $attempt->id)
-                    ->orderBy('started_at', 'asc')
-                    ->get()
+                $idlePeriods = $this->assessmentReportRepository
+                    ->getIdlePeriodsForInstitutionAttempt($attempt->id)
                     ->map(fn($period) => [
                         'started_at' => $period->started_at->format('M d, h:i A'),
                         'ended_at' => $period->ended_at->format('M d, h:i A'),
@@ -466,16 +303,11 @@ class AssessmentReportController extends Controller
 
         // Filter options
         $organizations = $canViewAllOrganizations
-            ? Organization::select('id', 'name')->orderBy('name')->get()
+            ? $this->assessmentReportRepository->getOrganizations()
             : collect();
 
-        $exams = InstitutionAssessment::query()
-            ->when(! $canViewAllOrganizations, function ($q) use ($organizationId) {
-                $q->where('organization_id', $organizationId);
-            })
-            ->where('is_published', true)
-            ->orderBy('title')
-            ->get(['id', 'title']);
+        $exams = $this->assessmentReportRepository
+            ->getPublishedInstitutionExamOptions($organizationId, $canViewAllOrganizations);
 
         return Inertia::render('assessment-reports/live-monitor', [
             'activeSessions' => $activeSessions,

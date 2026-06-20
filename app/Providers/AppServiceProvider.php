@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Repositories\Contracts\EventRegistrationRepositoryInterface;
 use App\Repositories\Contracts\EventRepositoryInterface;
 use App\Repositories\Contracts\AnnouncementRepositoryInterface;
+use App\Repositories\Contracts\AssessmentReportRepositoryInterface;
 use App\Repositories\Contracts\AssignmentRepositoryInterface;
 use App\Repositories\Contracts\GradebookRepositoryInterface;
 use App\Repositories\Contracts\InstitutionAssessmentRepositoryInterface;
@@ -25,6 +26,7 @@ use App\Repositories\Contracts\StaffRepositoryInterface;
 use App\Repositories\Contracts\SubmissionFileRepositoryInterface;
 use App\Repositories\Contracts\SubmissionRepositoryInterface;
 use App\Repositories\Eloquent\AssignmentRepository;
+use App\Repositories\Eloquent\AssessmentReportRepository;
 use App\Repositories\Eloquent\EventRegistrationRepository;
 use App\Repositories\Eloquent\EventRepository;
 use App\Repositories\Eloquent\AnnouncementRepository;
@@ -57,6 +59,7 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->bind(AnnouncementRepositoryInterface::class, AnnouncementRepository::class);
+        $this->app->bind(AssessmentReportRepositoryInterface::class, AssessmentReportRepository::class);
         $this->app->bind(AssignmentRepositoryInterface::class, AssignmentRepository::class);
         $this->app->bind(EventRegistrationRepositoryInterface::class, EventRegistrationRepository::class);
         $this->app->bind(EventRepositoryInterface::class, EventRepository::class);
