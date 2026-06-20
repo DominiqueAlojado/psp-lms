@@ -6,6 +6,7 @@ use App\Exports\ResidentsExport;
 use App\Models\Resident;
 use App\Repositories\Contracts\ResidentRepositoryInterface;
 use App\Services\ActivityLog\ResidentActivityLogService;
+use App\Services\ResidentManagementService;
 use App\Traits\LogsActivity;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -21,7 +22,8 @@ class ResidentController extends Controller
 
     public function __construct(
         protected ResidentActivityLogService $activityLogService,
-        protected ResidentRepositoryInterface $residentRepository
+        protected ResidentRepositoryInterface $residentRepository,
+        protected ResidentManagementService $residentManagementService,
     ) {
     }
     /**
@@ -99,32 +101,7 @@ class ResidentController extends Controller
                 'password.confirmed' => "Passwords don't match",
             ]);
 
-            // Create the resident (exclude password fields)
-            $residentData = collect($validated)->except(['password', 'password_confirmation'])->toArray();
-            $resident = $this->residentRepository->create($residentData);
-
-            // Create a user account for the resident
-            $user = \App\Models\User::create([
-                'name' => $resident->full_name,
-                'email' => $validated['email'],
-                'password' => bcrypt($validated['password']),
-                'current_organization_id' => $validated['organization_id'], // Set current org
-            ]);
-
-            // Link the user to the resident
-            $this->residentRepository->update($resident, ['user_id' => $user->id]);
-
-            // Attach user to organization
-            $user->organizations()->attach($validated['organization_id'], [
-                'joined_at' => now(),
-                'is_active' => true,
-            ]);
-
-            // Set permission context for this organization
-            setPermissionsTeamId($validated['organization_id']);
-
-            // Assign "Resident" role to the user
-            $user->assignRole('Resident');
+            $resident = $this->residentManagementService->create($validated);
 
             // Log resident creation
             $this->activityLogService->logResidentCreated($resident);
@@ -215,27 +192,11 @@ class ResidentController extends Controller
         $oldCourse = $resident->course;
         $oldYearLevel = $resident->year_level;
         $oldStatus = $resident->status;
-        $passwordChanged = ! empty($validated['password']);
-
         // Temporarily disable automatic logging to prevent duplicates
-        $this->withoutActivityLogging(function () use ($resident, $validated) {
-            $this->residentRepository->update($resident, $validated);
+        $updateResult = [];
+        $this->withoutActivityLogging(function () use ($resident, $validated, &$updateResult) {
+            $updateResult = $this->residentManagementService->update($resident, $validated);
         });
-
-        // Update linked user if exists
-        if ($resident->user) {
-            $resident->user->update([
-                'name' => $resident->full_name,
-                'email' => $validated['email'],
-            ]);
-
-            // Update password if provided
-            if ($passwordChanged) {
-                $resident->user->update([
-                    'password' => bcrypt($validated['password']),
-                ]);
-            }
-        }
 
         // Build consolidated log entry with all changes using service
         $logData = $this->activityLogService->buildUpdateLogData(
@@ -249,7 +210,7 @@ class ResidentController extends Controller
             $oldCourse,
             $oldYearLevel,
             $oldStatus,
-            $passwordChanged
+            $updateResult['passwordChanged']
         );
 
         // Log all changes in a single entry

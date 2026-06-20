@@ -3,19 +3,17 @@
 namespace App\Http\Controllers;
 
 use App\Exports\StaffExport;
-use App\Repositories\Contracts\StaffRepositoryInterface;
 use App\Models\User;
+use App\Repositories\Contracts\StaffRepositoryInterface;
+use App\Services\StaffManagementService;
 use App\Services\ActivityLog\StaffActivityLogService;
 use App\Traits\LogsActivity;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
 use Maatwebsite\Excel\Facades\Excel;
-use Spatie\Permission\Models\Role;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class StaffController extends Controller
@@ -24,7 +22,8 @@ class StaffController extends Controller
 
     public function __construct(
         protected StaffActivityLogService $activityLogService,
-        protected StaffRepositoryInterface $staffRepository
+        protected StaffRepositoryInterface $staffRepository,
+        protected StaffManagementService $staffManagementService,
     ) {}
     /**
      * Display a listing of staff members.
@@ -91,23 +90,7 @@ class StaffController extends Controller
             'roles.required' => 'At least one role must be selected',
         ]);
 
-        // Create user
-        $user = $this->staffRepository->create([
-            'uuid' => Str::uuid(),
-            'name' => $validated['name'],
-            'email' => $validated['email'],
-            'password' => Hash::make($validated['password']),
-            'email_verified_at' => now(),
-            'current_organization_id' => $validated['current_organization_id'] ?? null,
-        ]);
-
-        // Assign roles
-        $this->staffRepository->syncRoles($user, $validated['roles']);
-
-        // Attach organizations
-        if (! empty($validated['organizations'])) {
-            $this->staffRepository->attachOrganizations($user, $validated['organizations']);
-        }
+        $user = $this->staffManagementService->create($validated);
 
         // Log user creation
         $this->activityLogService->logUserCreated($user);
@@ -153,38 +136,12 @@ class StaffController extends Controller
         $oldRoles = $staff->roles->pluck('name')->sort()->values()->toArray();
         $oldOrganizations = $staff->organizations->pluck('name')->sort()->values()->toArray();
 
-        // Update user (disable automatic logging to prevent duplicates)
-        $updateData = [
-            'name' => $validated['name'],
-            'email' => $validated['email'],
-            'current_organization_id' => $validated['current_organization_id'] ?? null,
-        ];
-
-        // Check if password is being changed
-        $passwordChanged = ! empty($validated['password']);
-
-        if ($passwordChanged) {
-            $updateData['password'] = Hash::make($validated['password']);
-        }
-
         // Temporarily disable automatic logging to prevent duplicates
         // We'll manually log all changes in one consolidated entry below
-        $this->withoutActivityLogging(function () use ($staff, $updateData) {
-            $this->staffRepository->update($staff, $updateData);
+        $updateResult = [];
+        $this->withoutActivityLogging(function () use ($staff, $validated, &$updateResult) {
+            $updateResult = $this->staffManagementService->update($staff, $validated);
         });
-
-        // Update roles
-        $newRoleIds = $validated['roles'];
-        $newRoles = Role::whereIn('id', $newRoleIds)->pluck('name')->sort()->values()->toArray();
-        $this->staffRepository->syncRoles($staff, $validated['roles']);
-
-        // Update organizations
-        $newOrganizations = $oldOrganizations;
-        if (isset($validated['organizations'])) {
-            $newOrgIds = $validated['organizations'];
-            $newOrganizations = $this->staffRepository->getOrganizationNamesByIds($newOrgIds);
-            $this->staffRepository->syncOrganizations($staff, $validated['organizations']);
-        }
 
         // Build consolidated log entry with all changes using service
         $logData = $this->activityLogService->buildUpdateLogData(
@@ -195,9 +152,9 @@ class StaffController extends Controller
             $oldCurrentOrgId,
             $oldRoles,
             $oldOrganizations,
-            $passwordChanged,
-            $newRoles,
-            $newOrganizations
+            $updateResult['passwordChanged'],
+            $updateResult['newRoles'],
+            $updateResult['newOrganizations']
         );
 
         // Log all changes in a single entry (only once per request)
