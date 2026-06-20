@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Exports\StaffExport;
-use App\Models\Organization;
+use App\Repositories\Contracts\StaffRepositoryInterface;
 use App\Models\User;
 use App\Services\ActivityLog\StaffActivityLogService;
 use App\Traits\LogsActivity;
@@ -11,6 +11,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
 use Maatwebsite\Excel\Facades\Excel;
@@ -22,47 +23,27 @@ class StaffController extends Controller
     use LogsActivity;
 
     public function __construct(
-        protected StaffActivityLogService $activityLogService
+        protected StaffActivityLogService $activityLogService,
+        protected StaffRepositoryInterface $staffRepository
     ) {}
     /**
      * Display a listing of staff members.
      */
     public function index(Request $request): Response
     {
-        // Get all roles except 'Resident'
-        $staffRoleNames = Role::where('name', '!=', 'Resident')->pluck('name')->toArray();
+        $staffRoleNames = $this->staffRepository->getStaffRoleNames();
 
         // Get organization IDs that the current user belongs to
         $userOrgIds = auth()->user()->organizations()->pluck('organizations.id')->toArray();
         $isSystemAdmin = auth()->user()->hasRole('System Admin');
 
-        $staff = User::query()
-            ->whereHas('roles', function ($query) use ($staffRoleNames) {
-                $query->whereIn('name', $staffRoleNames);
-            })
-            ->when(! $isSystemAdmin, function ($query) use ($userOrgIds) {
-                $query->whereHas('organizations', function ($q) use ($userOrgIds) {
-                    $q->whereIn('organizations.id', $userOrgIds);
-                });
-            })
-            ->with(['roles', 'currentOrganization'])
-            ->when($request->input('search'), function ($query, $search) {
-                $query->where(function ($q) use ($search) {
-                    $q->where('name', 'like', "%{$search}%")
-                        ->orWhere('email', 'like', "%{$search}%");
-                });
-            })
-            ->when($request->input('role'), function ($query, $role) {
-                $query->whereHas('roles', function ($q) use ($role) {
-                    $q->where('name', $role);
-                });
-            })
-            ->when($request->input('organization'), function ($query, $orgId) {
-                $query->where('current_organization_id', $orgId);
-            })
-            ->orderBy($request->input('sort', 'name'), $request->input('direction', 'asc'))
-            ->paginate(15)
-            ->withQueryString()
+        $staff = $this->staffRepository
+            ->paginate(
+                $request->only(['search', 'role', 'organization', 'sort', 'direction']),
+                $staffRoleNames,
+                $userOrgIds,
+                $isSystemAdmin
+            )
             ->through(fn($user) => [
                 'id' => $user->id,
                 'uuid' => $user->uuid,
@@ -76,34 +57,14 @@ class StaffController extends Controller
                 'updated_at' => $user->updated_at->diffForHumans(),
             ]);
 
-        // Get role statistics (only for staff in user's organizations, unless System Admin)
-        $roleStats = Role::where('name', '!=', 'Resident')
-            ->get()
-            ->map(function ($role) use ($userOrgIds, $isSystemAdmin) {
-                $query = User::whereHas('roles', function ($q) use ($role) {
-                    $q->where('name', $role->name);
-                });
-
-                if (! $isSystemAdmin) {
-                    $query->whereHas('organizations', function ($q) use ($userOrgIds) {
-                        $q->whereIn('organizations.id', $userOrgIds);
-                    });
-                }
-
-                return [
-                    'role' => $role->name,
-                    'count' => $query->count(),
-                ];
-            });
+        $roleStats = $this->staffRepository->getRoleStats($userOrgIds, $isSystemAdmin);
 
         return Inertia::render('staff/index', [
             'staff' => $staff,
             'filters' => $request->only(['search', 'role', 'organization', 'sort', 'direction']),
             'roleStats' => $roleStats,
-            'roles' => Role::where('name', '!=', 'Resident')->get(['id', 'name']),
-            'organizations' => $isSystemAdmin
-                ? Organization::where('is_active', true)->get(['id', 'name'])
-                : auth()->user()->organizations()->wherePivot('organization_user.is_active', true)->get(['organizations.id', 'organizations.name']),
+            'roles' => $this->staffRepository->getSelectableRoles(),
+            'organizations' => $this->staffRepository->getSelectableOrganizations(auth()->user(), $isSystemAdmin),
         ]);
     }
 
@@ -131,8 +92,8 @@ class StaffController extends Controller
         ]);
 
         // Create user
-        $user = User::create([
-            'uuid' => \Illuminate\Support\Str::uuid(),
+        $user = $this->staffRepository->create([
+            'uuid' => Str::uuid(),
             'name' => $validated['name'],
             'email' => $validated['email'],
             'password' => Hash::make($validated['password']),
@@ -141,15 +102,11 @@ class StaffController extends Controller
         ]);
 
         // Assign roles
-        $user->syncRoles($validated['roles']);
+        $this->staffRepository->syncRoles($user, $validated['roles']);
 
         // Attach organizations
         if (! empty($validated['organizations'])) {
-            $organizationData = collect($validated['organizations'])->mapWithKeys(function ($orgId) {
-                return [$orgId => ['joined_at' => now(), 'is_active' => true]];
-            })->toArray();
-
-            $user->organizations()->attach($organizationData);
+            $this->staffRepository->attachOrganizations($user, $validated['organizations']);
         }
 
         // Log user creation
@@ -213,25 +170,20 @@ class StaffController extends Controller
         // Temporarily disable automatic logging to prevent duplicates
         // We'll manually log all changes in one consolidated entry below
         $this->withoutActivityLogging(function () use ($staff, $updateData) {
-            $staff->update($updateData);
+            $this->staffRepository->update($staff, $updateData);
         });
 
         // Update roles
         $newRoleIds = $validated['roles'];
         $newRoles = Role::whereIn('id', $newRoleIds)->pluck('name')->sort()->values()->toArray();
-        $staff->syncRoles($validated['roles']);
+        $this->staffRepository->syncRoles($staff, $validated['roles']);
 
         // Update organizations
         $newOrganizations = $oldOrganizations;
         if (isset($validated['organizations'])) {
             $newOrgIds = $validated['organizations'];
-            $newOrganizations = Organization::whereIn('id', $newOrgIds)->pluck('name')->sort()->values()->toArray();
-
-            $organizationData = collect($validated['organizations'])->mapWithKeys(function ($orgId) {
-                return [$orgId => ['joined_at' => now(), 'is_active' => true]];
-            })->toArray();
-
-            $staff->organizations()->sync($organizationData);
+            $newOrganizations = $this->staffRepository->getOrganizationNamesByIds($newOrgIds);
+            $this->staffRepository->syncOrganizations($staff, $validated['organizations']);
         }
 
         // Build consolidated log entry with all changes using service
@@ -276,7 +228,7 @@ class StaffController extends Controller
         // Log deletion before deleting
         $this->activityLogService->logUserDeleted($staff);
 
-        $staff->delete();
+        $this->staffRepository->delete($staff);
 
         return back()->with('success', 'Staff member deleted successfully');
     }

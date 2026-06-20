@@ -5,9 +5,11 @@ namespace App\Providers;
 use App\Repositories\Contracts\LearningResourceRepositoryInterface;
 use App\Repositories\Contracts\OrganizationRepositoryInterface;
 use App\Repositories\Contracts\ResidentRepositoryInterface;
+use App\Repositories\Contracts\StaffRepositoryInterface;
 use App\Repositories\Eloquent\LearningResourceRepository;
 use App\Repositories\Eloquent\OrganizationRepository;
 use App\Repositories\Eloquent\ResidentRepository;
+use App\Repositories\Eloquent\StaffRepository;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 
@@ -21,6 +23,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(LearningResourceRepositoryInterface::class, LearningResourceRepository::class);
         $this->app->bind(OrganizationRepositoryInterface::class, OrganizationRepository::class);
         $this->app->bind(ResidentRepositoryInterface::class, ResidentRepository::class);
+        $this->app->bind(StaffRepositoryInterface::class, StaffRepository::class);
     }
 
     /**
