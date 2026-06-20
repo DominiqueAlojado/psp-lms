@@ -4,15 +4,20 @@ namespace App\Http\Controllers;
 
 use App\Imports\QuestionsImport;
 use App\Models\Institution\InstitutionAssessment;
-use App\Models\Topic;
+use App\Repositories\Contracts\TopicRepositoryInterface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Maatwebsite\Excel\Facades\Excel;
 
 class QuestionImportController extends Controller
 {
+    public function __construct(
+        private readonly TopicRepositoryInterface $topicRepository,
+    ) {}
+
     /**
      * Preview questions from uploaded Excel file.
      */
@@ -91,12 +96,8 @@ class QuestionImportController extends Controller
                     $slug = Str::slug($topicName);
 
                     // Check if topic exists
-                    $existingTopic = Topic::where('slug', $slug)
-                        ->where(function ($query) use ($assessment) {
-                            $query->where('organization_id', $assessment->organization_id)
-                                ->orWhere('is_global', true);
-                        })
-                        ->first();
+                    $existingTopic = $this->topicRepository
+                        ->findBySlugForOrganizationWithGlobals($slug, $assessment->organization_id);
 
                     $topicInfo = [
                         'name' => $topicName,
@@ -124,7 +125,7 @@ class QuestionImportController extends Controller
                 'total_errors' => count($errors),
             ]);
         } catch (\Exception $e) {
-            \Log::error('Question preview failed', ['error' => $e->getMessage()]);
+            Log::error('Question preview failed', ['error' => $e->getMessage()]);
 
             return response()->json([
                 'success' => false,
@@ -165,7 +166,7 @@ class QuestionImportController extends Controller
 
             return back()->with('success', "Successfully imported {$successCount} questions!");
         } catch (\Exception $e) {
-            \Log::error('Question import failed', ['error' => $e->getMessage()]);
+            Log::error('Question import failed', ['error' => $e->getMessage()]);
 
             return back()->withErrors(['file' => 'Import failed: '.$e->getMessage()]);
         }

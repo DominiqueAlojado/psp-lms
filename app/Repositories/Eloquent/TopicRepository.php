@@ -20,6 +20,17 @@ class TopicRepository implements TopicRepositoryInterface
             ->get(['id', 'name', 'slug', 'is_global']);
     }
 
+    public function findBySlugForOrganizationWithGlobals(string $slug, int $organizationId): ?Topic
+    {
+        return Topic::query()
+            ->where('slug', $slug)
+            ->where(function ($query) use ($organizationId) {
+                $query->where('organization_id', $organizationId)
+                    ->orWhere('is_global', true);
+            })
+            ->first();
+    }
+
     public function create(array $attributes): Topic
     {
         return Topic::create($attributes);
