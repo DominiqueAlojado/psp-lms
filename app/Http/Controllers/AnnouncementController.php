@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\StoreAnnouncementRequest;
+use App\Http\Requests\UpdateAnnouncementRequest;
 use App\Models\Announcement;
 use App\Repositories\Contracts\AnnouncementRepositoryInterface;
 use App\Services\ActivityLog\AnnouncementActivityLogService;
@@ -90,7 +92,7 @@ class AnnouncementController extends Controller
     /**
      * Store a newly created announcement.
      */
-    public function store(Request $request): RedirectResponse
+    public function store(StoreAnnouncementRequest $request): RedirectResponse
     {
         $user = $request->user();
 
@@ -101,17 +103,7 @@ class AnnouncementController extends Controller
 
         $canCreateSystem = $user->hasPermissionTo('create-system-announcements');
 
-        $validated = $request->validate([
-            'title' => ['required', 'string', 'max:255'],
-            'content' => ['required', 'string'],
-            'scope' => ['required', 'in:organization,system'],
-            'priority' => ['required', 'in:normal,important,urgent'],
-            'is_published' => ['boolean'],
-            'is_pinned' => ['boolean'],
-            'target_year_levels' => ['nullable', 'array'],
-            'target_year_levels.*' => ['string'],
-            'expires_at' => ['nullable', 'date', 'after:today'],
-        ]);
+        $validated = $request->validated();
 
         // Ensure non-admins can only create organization-scoped announcements
         if ($validated['scope'] === 'system' && ! $canCreateSystem) {
@@ -140,7 +132,7 @@ class AnnouncementController extends Controller
     /**
      * Update the specified announcement.
      */
-    public function update(Request $request, Announcement $announcement): RedirectResponse
+    public function update(UpdateAnnouncementRequest $request, Announcement $announcement): RedirectResponse
     {
         $user = $request->user();
 
@@ -164,17 +156,7 @@ class AnnouncementController extends Controller
             }
         }
 
-        $validated = $request->validate([
-            'title' => ['required', 'string', 'max:255'],
-            'content' => ['required', 'string'],
-            'scope' => ['required', 'in:organization,system'],
-            'priority' => ['required', 'in:normal,important,urgent'],
-            'is_published' => ['boolean'],
-            'is_pinned' => ['boolean'],
-            'target_year_levels' => ['nullable', 'array'],
-            'target_year_levels.*' => ['string'],
-            'expires_at' => ['nullable', 'date', 'after:today'],
-        ]);
+        $validated = $request->validated();
 
         // Ensure non-admins can only create organization-scoped announcements
         if ($validated['scope'] === 'system' && ! $canCreateSystem) {

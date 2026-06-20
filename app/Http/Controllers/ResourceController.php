@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\StoreLearningResourceRequest;
+use App\Http\Requests\UpdateLearningResourceRequest;
 use App\Models\LearningResource;
 use App\Repositories\Contracts\LearningResourceRepositoryInterface;
 use App\Services\ActivityLog\ResourceActivityLogService;
@@ -95,7 +97,7 @@ class ResourceController extends Controller
     /**
      * Store a newly uploaded resource.
      */
-    public function store(Request $request): RedirectResponse
+    public function store(StoreLearningResourceRequest $request): RedirectResponse
     {
         Log::info('Resource upload attempt', [
             'user' => $request->user()->email,
@@ -104,15 +106,7 @@ class ResourceController extends Controller
         ]);
 
         try {
-            $validated = $request->validate([
-                'title' => ['required', 'string', 'max:255'],
-                'description' => ['nullable', 'string'],
-                'category' => ['required', 'string', 'max:255'],
-                'target_year_levels' => ['nullable', 'array'],
-                'target_year_levels.*' => ['string'],
-                'is_published' => ['nullable', 'boolean'],
-                'file' => ['required', 'file', 'max:51200', 'mimes:pdf,doc,docx,xls,xlsx,ppt,pptx,mp4,mp3,jpg,jpeg,png,gif,txt,zip'], // 50MB max
-            ]);
+            $validated = $request->validated();
 
             if (! $request->hasFile('file')) {
                 return back()->withErrors(['file' => 'No file uploaded']);
@@ -165,21 +159,14 @@ class ResourceController extends Controller
     /**
      * Update the specified resource.
      */
-    public function update(Request $request, LearningResource $resource): RedirectResponse
+    public function update(UpdateLearningResourceRequest $request, LearningResource $resource): RedirectResponse
     {
         // Verify user has access
         if ($resource->organization_id !== $request->user()->current_organization_id) {
             abort(403, 'You do not have access to this resource.');
         }
 
-        $validated = $request->validate([
-            'title' => ['required', 'string', 'max:255'],
-            'description' => ['nullable', 'string'],
-            'category' => ['required', 'string', 'max:255'],
-            'target_year_levels' => ['nullable', 'array'],
-            'target_year_levels.*' => ['string'],
-            'is_published' => ['boolean'],
-        ]);
+        $validated = $request->validated();
 
         // Capture old values before update
         $oldValues = [
