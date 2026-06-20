@@ -18,9 +18,15 @@ interface QuestionBankRepositoryInterface
 
     public function delete(QuestionBank $question): bool;
 
+    public function findByIdsForOrganization(array $questionIds, int $organizationId): Collection;
+
+    public function existsForInstitutionCreator(string $questionText, int $organizationId, int $userId): bool;
+
     public function assessmentsCount(QuestionBank $question): int;
 
     public function approve(QuestionBank $question, int $approvedBy): bool;
 
     public function getStatisticsData(?int $organizationId, bool $isNational): array;
+
+    public function incrementUsage(QuestionBank $question): void;
 }

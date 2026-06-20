@@ -91,6 +91,24 @@ class QuestionBankRepository implements QuestionBankRepositoryInterface
         return (bool) $question->delete();
     }
 
+    public function findByIdsForOrganization(array $questionIds, int $organizationId): Collection
+    {
+        return QuestionBank::with('choices')
+            ->whereIn('id', $questionIds)
+            ->where('organization_id', $organizationId)
+            ->get();
+    }
+
+    public function existsForInstitutionCreator(string $questionText, int $organizationId, int $userId): bool
+    {
+        return QuestionBank::query()
+            ->where('question_text', $questionText)
+            ->where('owner_type', 'institution')
+            ->where('organization_id', $organizationId)
+            ->where('created_by', $userId)
+            ->exists();
+    }
+
     public function assessmentsCount(QuestionBank $question): int
     {
         return $question->assessments()->count();
@@ -138,6 +156,11 @@ class QuestionBankRepository implements QuestionBankRepositoryInterface
                 })
                 ->get(),
         ];
+    }
+
+    public function incrementUsage(QuestionBank $question): void
+    {
+        $question->incrementUsage();
     }
 
     private function scopedQuery(?int $organizationId, bool $isNational, bool $withCreator = false): Builder
