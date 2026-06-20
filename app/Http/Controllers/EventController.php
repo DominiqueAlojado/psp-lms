@@ -5,6 +5,9 @@ namespace App\Http\Controllers;
 use App\Models\Event;
 use App\Models\EventRegistration;
 use App\Models\MeetingAttendance;
+use App\Repositories\Contracts\EventRegistrationRepositoryInterface;
+use App\Repositories\Contracts\EventRepositoryInterface;
+use App\Repositories\Contracts\MeetingAttendanceRepositoryInterface;
 use App\Services\ActivityLog\EventActivityLogService;
 use App\Traits\LogsActivity;
 use Illuminate\Http\JsonResponse;
@@ -19,7 +22,10 @@ class EventController extends Controller
     use LogsActivity;
 
     public function __construct(
-        protected EventActivityLogService $activityLogService
+        protected EventActivityLogService $activityLogService,
+        protected EventRepositoryInterface $eventRepository,
+        protected EventRegistrationRepositoryInterface $eventRegistrationRepository,
+        protected MeetingAttendanceRepositoryInterface $meetingAttendanceRepository
     ) {}
 
     /**
@@ -29,49 +35,10 @@ class EventController extends Controller
     {
         $user = $request->user();
 
-        // Show ALL published events to residents (cross-organization)
-        $query = Event::query()
-            ->with(['creator:id,name', 'organization:id,name'])
-            ->published();
-
-        // Filter by category
-        if ($request->filled('category')) {
-            $query->where('event_category', $request->category);
-        }
-
-        // Filter by type
-        if ($request->filled('type')) {
-            $query->where('event_type', $request->type);
-        }
-
-        // Filter upcoming/past
-        if ($request->get('filter') === 'upcoming') {
-            $query->upcoming();
-        } elseif ($request->get('filter') === 'past') {
-            $query->where('end_date', '<', now());
-        }
-
-        // Search
-        if ($request->filled('search')) {
-            $query->where(function ($q) use ($request) {
-                $q->where('title', 'like', '%' . $request->search . '%')
-                    ->orWhere('description', 'like', '%' . $request->search . '%')
-                    ->orWhere('location', 'like', '%' . $request->search . '%');
-            });
-        }
-
-        $events = $query->orderBy('start_date', 'asc')
-            ->paginate(12)
-            ->withQueryString();
-
-        // Add registration status for current user
-        $events->getCollection()->transform(function ($event) use ($user) {
-            $event->user_registration = $event->registrations()
-                ->where('user_id', $user->id)
-                ->first();
-
-            return $event;
-        });
+        $events = $this->eventRepository->paginatePublished(
+            $request->only(['category', 'type', 'filter', 'search'])
+        );
+        $events = $this->eventRepository->attachUserRegistrations($events, $user);
 
         return Inertia::render('events/index', [
             'events' => $events,
@@ -86,23 +53,9 @@ class EventController extends Controller
     {
         $user = $request->user();
 
-        // Load relationships
-        $event->load([
-            'creator:id,name',
-            'organization:id,name',
-        ]);
-
-        // Get user's registration if exists
-        $userRegistration = $event->registrations()
-            ->where('user_id', $user->id)
-            ->first();
-
-        // Get registration statistics
-        $registrationStats = [
-            'total' => $event->registrations()->whereIn('registration_status', ['confirmed', 'approved'])->count(),
-            'capacity' => $event->capacity,
-            'remaining' => $event->getRemainingCapacity(),
-        ];
+        $event = $this->eventRepository->loadEventDetails($event);
+        $userRegistration = $this->eventRegistrationRepository->findUserRegistrationForEvent($event, $user->id);
+        $registrationStats = $this->eventRepository->getRegistrationStats($event);
 
         return Inertia::render('events/show', [
             'event' => $event,
@@ -120,32 +73,11 @@ class EventController extends Controller
         $user = $request->user();
         $organizationId = $user->currentOrganization?->id;
 
-        $query = Event::query()
-            ->with(['creator:id,name', 'organization:id,name'])
-            ->withCount('registrations');
-
-        // System Admins and BOP see ALL events, others see only their organization's events
-        if (! $user->hasAnyRole(['System Admin', 'BOP'])) {
-            $query->where('organization_id', $organizationId);
-        }
-
-        // Filter by status
-        if ($request->filled('status')) {
-            if ($request->status === 'published') {
-                $query->where('is_published', true);
-            } elseif ($request->status === 'draft') {
-                $query->where('is_published', false);
-            }
-        }
-
-        // Search
-        if ($request->filled('search')) {
-            $query->where('title', 'like', '%' . $request->search . '%');
-        }
-
-        $events = $query->orderBy('start_date', 'desc')
-            ->paginate(15)
-            ->withQueryString();
+        $events = $this->eventRepository->paginateForManagement(
+            $organizationId,
+            $user->hasAnyRole(['System Admin', 'BOP']),
+            $request->only(['status', 'search'])
+        );
 
         return Inertia::render('events/manage', [
             'events' => $events,
@@ -190,7 +122,7 @@ class EventController extends Controller
             $imagePath = $file->storeAs('event-posters', $fileName, 'public');
         }
 
-        $event = Event::create([
+        $event = $this->eventRepository->create([
             ...$validated,
             'image_path' => $imagePath,
             'organization_id' => $organizationId,
@@ -272,7 +204,7 @@ class EventController extends Controller
 
         // Update event without logging (to avoid duplicate logs)
         $this->withoutActivityLogging(function () use ($event, $validated) {
-            $event->update($validated);
+            $this->eventRepository->update($event, $validated);
         });
 
         // Build log data and log changes
@@ -298,15 +230,14 @@ class EventController extends Controller
         }
 
         // Check if there are confirmed registrations
-        $confirmedCount = $event->registrations()->confirmed()->count();
-        if ($confirmedCount > 0) {
+        if ($this->eventRepository->hasConfirmedRegistrations($event)) {
             return back()->with('error', 'Cannot delete event with confirmed registrations.');
         }
 
         // Log event deletion before deleting
         $this->activityLogService->logEventDeleted($event);
 
-        $event->delete();
+        $this->eventRepository->delete($event);
 
         return redirect()->route('events.manage')
             ->with('success', 'Event deleted successfully.');
@@ -331,9 +262,7 @@ class EventController extends Controller
         }
 
         // Check if already registered
-        $existingRegistration = $event->registrations()
-            ->where('user_id', $user->id)
-            ->first();
+        $existingRegistration = $this->eventRegistrationRepository->findUserRegistrationForEvent($event, $user->id);
 
         if ($existingRegistration) {
             return back()->with('error', 'You are already registered for this event.');
@@ -345,7 +274,7 @@ class EventController extends Controller
             // Determine payment amount for waitlisted
             $paymentAmount = $event->is_free ? 0 : $event->price;
 
-            EventRegistration::create([
+            $this->eventRegistrationRepository->create([
                 'event_id' => $event->id,
                 'user_id' => $user->id,
                 'organization_id' => $organizationId,
@@ -365,7 +294,7 @@ class EventController extends Controller
         $paymentAmount = $event->is_free ? 0 : $event->price;
 
         // Create registration
-        EventRegistration::create([
+        $this->eventRegistrationRepository->create([
             'event_id' => $event->id,
             'user_id' => $user->id,
             'organization_id' => $organizationId,
@@ -418,25 +347,10 @@ class EventController extends Controller
             abort(403, 'You do not have access to this event.');
         }
 
-        $query = $event->registrations()
-            ->with(['user.resident', 'organization:id,name']);
-
-        // Filter by status
-        if ($request->filled('status')) {
-            $query->where('registration_status', $request->status);
-        }
-
-        // Search
-        if ($request->filled('search')) {
-            $query->whereHas('user', function ($q) use ($request) {
-                $q->where('name', 'like', '%' . $request->search . '%')
-                    ->orWhere('email', 'like', '%' . $request->search . '%');
-            });
-        }
-
-        $registrations = $query->orderBy('created_at', 'desc')
-            ->paginate(20)
-            ->withQueryString();
+        $registrations = $this->eventRegistrationRepository->paginateAttendeesForEvent(
+            $event,
+            $request->only(['status', 'search'])
+        );
 
         return Inertia::render('events/attendees', [
             'event' => $event,
@@ -463,45 +377,11 @@ class EventController extends Controller
             return back()->with('error', 'Meeting attendance tracking is only available for virtual and hybrid events.');
         }
 
-        $query = MeetingAttendance::where('event_id', $event->id)
-            ->with(['user.resident', 'organization:id,name', 'eventRegistration']);
-
-        // Filter by attendance type (for hybrid events)
-        if ($request->filled('attendance_type')) {
-            $query->whereJsonContains('metadata->attendance_type', $request->attendance_type);
-        }
-
-        // Filter by status
-        if ($request->filled('status')) {
-            $query->where('status', $request->status);
-        }
-
-        // Search
-        if ($request->filled('search')) {
-            $query->whereHas('user', function ($q) use ($request) {
-                $q->where('name', 'like', '%' . $request->search . '%')
-                    ->orWhere('email', 'like', '%' . $request->search . '%');
-            });
-        }
-
-        $attendances = $query->orderBy('joined_at', 'desc')
-            ->paginate(20)
-            ->withQueryString();
-
-        // Calculate statistics
-        $stats = [
-            'total_attendees' => MeetingAttendance::where('event_id', $event->id)->count(),
-            'active_now' => MeetingAttendance::where('event_id', $event->id)
-                ->whereNull('left_at')
-                ->where('status', '!=', 'left')
-                ->count(),
-            'total_duration_minutes' => MeetingAttendance::where('event_id', $event->id)
-                ->whereNotNull('duration_seconds')
-                ->sum('duration_seconds') / 60,
-            'average_duration_minutes' => MeetingAttendance::where('event_id', $event->id)
-                ->whereNotNull('duration_seconds')
-                ->avg('duration_seconds') / 60,
-        ];
+        $attendances = $this->meetingAttendanceRepository->paginateForEvent(
+            $event,
+            $request->only(['status', 'search', 'attendance_type'])
+        );
+        $stats = $this->meetingAttendanceRepository->getStatsForEvent($event);
 
         return Inertia::render('events/meeting-attendance', [
             'event' => $event,
@@ -528,7 +408,7 @@ class EventController extends Controller
             abort(403);
         }
 
-        $registration->update(['registration_status' => 'approved']);
+        $this->eventRegistrationRepository->update($registration, ['registration_status' => 'approved']);
 
         return back()->with('success', 'Registration approved successfully.');
     }
@@ -560,18 +440,10 @@ class EventController extends Controller
     {
         $user = $request->user();
 
-        $query = EventRegistration::query()
-            ->where('user_id', $user->id)
-            ->with(['event.organization:id,name']);
-
-        // Filter by status
-        if ($request->filled('status')) {
-            $query->where('registration_status', $request->status);
-        }
-
-        $registrations = $query->orderBy('created_at', 'desc')
-            ->paginate(15)
-            ->withQueryString();
+        $registrations = $this->eventRegistrationRepository->paginateForUser(
+            $user->id,
+            $request->only(['status'])
+        );
 
         return Inertia::render('events/my-registrations', [
             'registrations' => $registrations,
@@ -594,16 +466,10 @@ class EventController extends Controller
         }
 
         // Check if user is registered (optional - can track without registration)
-        $registration = $event->registrations()
-            ->where('user_id', $user->id)
-            ->first();
+        $registration = $this->eventRegistrationRepository->findUserRegistrationForEvent($event, $user->id);
 
         // Check for existing active attendance
-        $existingAttendance = MeetingAttendance::where('event_id', $event->id)
-            ->where('user_id', $user->id)
-            ->where('status', '!=', 'left')
-            ->whereNull('left_at')
-            ->first();
+        $existingAttendance = $this->meetingAttendanceRepository->findActiveForUserAndEvent($user->id, $event->id);
 
         if ($existingAttendance) {
             // Update existing attendance
@@ -658,7 +524,7 @@ class EventController extends Controller
             }
         }
 
-        $attendance = MeetingAttendance::create([
+        $attendance = $this->meetingAttendanceRepository->create([
             'event_id' => $event->id,
             'event_registration_id' => $registration?->id, // Nullable - can track without registration
             'user_id' => $user->id,
@@ -684,11 +550,7 @@ class EventController extends Controller
         $user = $request->user();
 
         // Find active attendance
-        $attendance = MeetingAttendance::where('event_id', $event->id)
-            ->where('user_id', $user->id)
-            ->whereNull('left_at')
-            ->latest('joined_at')
-            ->first();
+        $attendance = $this->meetingAttendanceRepository->findActiveForUserAndEvent($user->id, $event->id);
 
         if (! $attendance) {
             return response()->json(['error' => 'No active attendance found.'], 404);
@@ -697,7 +559,7 @@ class EventController extends Controller
         // Check if user has been inactive for too long (5 minutes = timeout)
         $inactiveThreshold = now()->subMinutes(5);
         if ($attendance->last_seen_at && $attendance->last_seen_at->isBefore($inactiveThreshold)) {
-            $attendance->update([
+            $this->meetingAttendanceRepository->update($attendance, [
                 'status' => 'timeout',
                 'left_at' => $attendance->last_seen_at,
             ]);
@@ -728,11 +590,7 @@ class EventController extends Controller
         $user = $request->user();
 
         // Find active attendance
-        $attendance = MeetingAttendance::where('event_id', $event->id)
-            ->where('user_id', $user->id)
-            ->whereNull('left_at')
-            ->latest('joined_at')
-            ->first();
+        $attendance = $this->meetingAttendanceRepository->findActiveForUserAndEvent($user->id, $event->id);
 
         if (! $attendance) {
             return response()->json(['error' => 'No active attendance found.'], 404);

@@ -2,13 +2,19 @@
 
 namespace App\Providers;
 
+use App\Repositories\Contracts\EventRegistrationRepositoryInterface;
+use App\Repositories\Contracts\EventRepositoryInterface;
 use App\Repositories\Contracts\AnnouncementRepositoryInterface;
 use App\Repositories\Contracts\LearningResourceRepositoryInterface;
+use App\Repositories\Contracts\MeetingAttendanceRepositoryInterface;
 use App\Repositories\Contracts\OrganizationRepositoryInterface;
 use App\Repositories\Contracts\ResidentRepositoryInterface;
 use App\Repositories\Contracts\StaffRepositoryInterface;
+use App\Repositories\Eloquent\EventRegistrationRepository;
+use App\Repositories\Eloquent\EventRepository;
 use App\Repositories\Eloquent\AnnouncementRepository;
 use App\Repositories\Eloquent\LearningResourceRepository;
+use App\Repositories\Eloquent\MeetingAttendanceRepository;
 use App\Repositories\Eloquent\OrganizationRepository;
 use App\Repositories\Eloquent\ResidentRepository;
 use App\Repositories\Eloquent\StaffRepository;
@@ -23,7 +29,10 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->bind(AnnouncementRepositoryInterface::class, AnnouncementRepository::class);
+        $this->app->bind(EventRegistrationRepositoryInterface::class, EventRegistrationRepository::class);
+        $this->app->bind(EventRepositoryInterface::class, EventRepository::class);
         $this->app->bind(LearningResourceRepositoryInterface::class, LearningResourceRepository::class);
+        $this->app->bind(MeetingAttendanceRepositoryInterface::class, MeetingAttendanceRepository::class);
         $this->app->bind(OrganizationRepositoryInterface::class, OrganizationRepository::class);
         $this->app->bind(ResidentRepositoryInterface::class, ResidentRepository::class);
         $this->app->bind(StaffRepositoryInterface::class, StaffRepository::class);
