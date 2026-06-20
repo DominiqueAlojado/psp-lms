@@ -349,4 +349,3 @@ class GenerateSampleQuestionsCommand extends Command
         ];
     }
 }
-
