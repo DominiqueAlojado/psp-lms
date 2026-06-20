@@ -27,6 +27,7 @@ class InstitutionAttempt extends Model
         'score',
         'total_points',
         'status',
+        'active_session_id',
         'ip_address',
         'user_agent',
         'browser_metadata',

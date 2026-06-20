@@ -30,6 +30,7 @@ class NationalAttempt extends Model
         'institution_rank',
         'percentile',
         'status',
+        'active_session_id',
         'ip_address',
         'user_agent',
         'browser_metadata',

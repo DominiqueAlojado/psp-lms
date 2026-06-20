@@ -8,7 +8,10 @@ import {
     SheetHeader,
     SheetTitle,
 } from '@/components/ui/sheet';
-import { cn } from '@/lib/utils';
+import { cn, preserveOrgParam } from '@/lib/utils';
+import type { SharedData } from '@/types';
+import axios from 'axios';
+import { usePage } from '@inertiajs/react';
 import {
     Award,
     CheckCircle2,
@@ -84,6 +87,7 @@ export function ExamResultsSheet({
     examTitle,
     onRetake,
 }: ExamResultsSheetProps) {
+    const { auth } = usePage<SharedData>().props;
     const [loading, setLoading] = useState(false);
     const [data, setData] = useState<ResultsData | null>(null);
     const [error, setError] = useState<string | null>(null);
@@ -93,32 +97,48 @@ export function ExamResultsSheet({
         setError(null);
 
         try {
-            const response = await fetch(
+            const resultsUrl = preserveOrgParam(
                 `/exams/${examType}/${examId}/results-data`,
+                auth.currentOrganization?.slug,
+            );
+            const response = await axios.get<ResultsData>(
+                typeof resultsUrl === 'string' ? resultsUrl : resultsUrl.url,
                 {
                     headers: {
                         Accept: 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest',
                     },
-                    credentials: 'same-origin',
                 },
             );
 
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                console.error('API Error:', response.status, errorData);
-                throw new Error(errorData.error || 'Failed to load results');
-            }
-
-            const data = await response.json();
-            setData(data);
+            setData(response.data);
         } catch (err) {
-            setError('Failed to load exam results. Please try again.');
-            console.error('Fetch error:', err);
+            if (axios.isAxiosError(err)) {
+                const status = err.response?.status;
+                const responseData = err.response?.data as
+                    | { error?: string; message?: string }
+                    | undefined;
+                const message =
+                    responseData?.error || responseData?.message || null;
+
+                if (status === 401 || status === 419) {
+                    window.location.href = '/login';
+                    return;
+                }
+
+                setError(message || 'Failed to load exam results. Please try again.');
+                console.error('Exam results API error:', {
+                    status,
+                    data: responseData,
+                    message: err.message,
+                });
+            } else {
+                setError('Failed to load exam results. Please try again.');
+                console.error('Exam results fetch error:', err);
+            }
         } finally {
             setLoading(false);
         }
-    }, [examId, examType]);
+    }, [auth.currentOrganization?.slug, examId, examType]);
 
     // Always fetch fresh data when dialog opens or exam changes
     useEffect(() => {

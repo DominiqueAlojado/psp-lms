@@ -15,7 +15,9 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { preserveOrgParam } from '@/lib/utils';
 import AppLayout from '@/layouts/app-layout';
+import type { SharedData } from '@/types';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { AlertTriangle, Clock, FileText, Play } from 'lucide-react';
 import { useState } from 'react';
@@ -48,8 +50,9 @@ interface PageProps {
 }
 
 export default function ResidentExams() {
-    const { availableExams, completedExams, upcomingExams } =
-        usePage<PageProps>().props;
+    const { availableExams, completedExams, upcomingExams, auth } =
+        usePage<PageProps & SharedData>().props;
+    const currentOrgSlug = auth.currentOrganization?.slug;
 
     const [showStartDialog, setShowStartDialog] = useState(false);
     const [showResultsDialog, setShowResultsDialog] = useState(false);
@@ -92,7 +95,12 @@ export default function ResidentExams() {
 
         if (selectedExam) {
             // Navigate to exam - metadata will be captured on the exam page
-            router.visit(`/exams/${selectedExam.type}/${selectedExam.id}/take`);
+            router.visit(
+                preserveOrgParam(
+                    `/exams/${selectedExam.type}/${selectedExam.id}/take`,
+                    currentOrgSlug,
+                ) as string,
+            );
         }
     };
 
@@ -447,7 +455,10 @@ export default function ResidentExams() {
                                                     className="flex-1"
                                                 >
                                                     <Link
-                                                        href={`/exams/${exam.type}/${exam.id}/results`}
+                                                        href={preserveOrgParam(
+                                                            `/exams/${exam.type}/${exam.id}/results`,
+                                                            currentOrgSlug,
+                                                        )}
                                                     >
                                                         View Results
                                                     </Link>

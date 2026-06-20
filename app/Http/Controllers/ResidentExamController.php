@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\Institution\InstitutionAssessment;
+use App\Models\Institution\InstitutionAttempt;
 use App\Models\National\NationalAssessment;
+use App\Models\National\NationalAttempt;
 use App\Repositories\Contracts\ResidentExamRepositoryInterface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -15,6 +17,8 @@ use Inertia\Response;
 
 class ResidentExamController extends Controller
 {
+    private const EXAM_SESSION_CONFLICT_MESSAGE = 'This exam is already active in another browser or device.';
+
     public function __construct(
         private readonly ResidentExamRepositoryInterface $residentExamRepository,
     ) {}
@@ -50,6 +54,7 @@ class ResidentExamController extends Controller
                     // Reuse the unstarted attempt and mark it as started
                     $this->residentExamRepository->updateAttempt($unstartedAttempt, [
                         'started_at' => now(),
+                        'active_session_id' => $request->session()->getId(),
                         'ip_address' => $request->ip(),
                         'user_agent' => $request->userAgent(),
                         'last_activity_at' => now(),
@@ -64,12 +69,15 @@ class ResidentExamController extends Controller
                         'started_at' => now(),
                         'total_points' => $assessment->total_points,
                         'status' => 'in_progress',
+                        'active_session_id' => $request->session()->getId(),
                         'ip_address' => $request->ip(),
                         'user_agent' => $request->userAgent(),
                         'last_activity_at' => now(),
                     ]);
                 }
             }
+
+            $this->claimOrAbortAttemptSession($request, $attempt);
 
             // Load questions with choices in proper order
             $questions = $this->residentExamRepository->loadInstitutionQuestionsForTake($assessment);
@@ -173,6 +181,7 @@ class ResidentExamController extends Controller
                     // Reuse the unstarted attempt and mark it as started
                     $this->residentExamRepository->updateAttempt($unstartedAttempt, [
                         'started_at' => now(),
+                        'active_session_id' => $request->session()->getId(),
                         'ip_address' => $request->ip(),
                         'user_agent' => $request->userAgent(),
                         'browser_metadata' => $request->input('browser_metadata'),
@@ -190,6 +199,7 @@ class ResidentExamController extends Controller
                         'started_at' => now(),
                         'total_points' => $assessment->total_points,
                         'status' => 'in_progress',
+                        'active_session_id' => $request->session()->getId(),
                         'ip_address' => $request->ip(),
                         'user_agent' => $request->userAgent(),
                         'browser_metadata' => $request->input('browser_metadata'),
@@ -199,6 +209,8 @@ class ResidentExamController extends Controller
                     ]);
                 }
             }
+
+            $this->claimOrAbortAttemptSession($request, $attempt);
 
             // Load questions with choices in proper order
             $questions = $this->residentExamRepository->loadNationalQuestionsForTake($assessment);
@@ -315,6 +327,8 @@ class ResidentExamController extends Controller
                 abort(403);
             }
 
+            $this->ensureAttemptSessionAccess($request, $attemptModel);
+
             // Verify attempt is still in progress
             if ($attemptModel->status !== 'in_progress') {
                 return response()->json(['error' => 'This exam has already been submitted.'], 403);
@@ -361,6 +375,8 @@ class ResidentExamController extends Controller
             if ($attemptModel->user_id !== $user->id) {
                 abort(403);
             }
+
+            $this->ensureAttemptSessionAccess($request, $attemptModel);
 
             // Verify attempt is still in progress
             if ($attemptModel->status !== 'in_progress') {
@@ -421,6 +437,8 @@ class ResidentExamController extends Controller
                 abort(403, 'You do not have access to this attempt.');
             }
 
+            $this->ensureAttemptSessionAccess($request, $attemptModel);
+
             // Verify attempt is still in progress
             if ($attemptModel->status !== 'in_progress') {
                 return back()->withErrors(['error' => 'This exam has already been submitted.']);
@@ -475,6 +493,7 @@ class ResidentExamController extends Controller
             $this->residentExamRepository->updateAttempt($attemptModel, [
                 'submitted_at' => now(),
                 'status' => 'completed',
+                'active_session_id' => null,
             ]);
 
             return redirect('/resident-exams')->with('success', 'Exam submitted successfully! Score: ' . $attemptModel->percentage . '%');
@@ -485,6 +504,8 @@ class ResidentExamController extends Controller
             if ($attemptModel->user_id !== $user->id) {
                 abort(403, 'You do not have access to this attempt.');
             }
+
+            $this->ensureAttemptSessionAccess($request, $attemptModel);
 
             // Verify attempt is still in progress
             if ($attemptModel->status !== 'in_progress') {
@@ -538,6 +559,7 @@ class ResidentExamController extends Controller
             $this->residentExamRepository->updateAttempt($attemptModel, [
                 'submitted_at' => now(),
                 'status' => 'completed',
+                'active_session_id' => null,
             ]);
 
             return redirect('/resident-exams')->with('success', 'Exam submitted successfully! Score: ' . $attemptModel->percentage . '%');
@@ -988,6 +1010,8 @@ class ResidentExamController extends Controller
             abort(403, 'Unauthorized');
         }
 
+        $this->ensureAttemptSessionAccess($request, $attempt);
+
         // Log the change
         $this->residentExamRepository->createSessionChange([
             'attempt_type' => $type,
@@ -1034,6 +1058,8 @@ class ResidentExamController extends Controller
         if ($attempt->user_id !== $user->id) {
             abort(403, 'Unauthorized');
         }
+
+        $this->ensureAttemptSessionAccess($request, $attempt);
 
         // Update last activity
         $this->residentExamRepository->updateAttempt($attempt, ['last_activity_at' => now()]);
@@ -1088,6 +1114,8 @@ class ResidentExamController extends Controller
             abort(403, 'Unauthorized');
         }
 
+        $this->ensureAttemptSessionAccess($request, $attempt);
+
         return response()->json([
             'ip_address' => $request->ip(),
         ]);
@@ -1111,6 +1139,8 @@ class ResidentExamController extends Controller
         if ($attempt->user_id !== $user->id) {
             abort(403, 'Unauthorized');
         }
+
+        $this->ensureAttemptSessionAccess($request, $attempt);
 
         return response()->json([
             'user_agent' => $attempt->user_agent,
@@ -1143,6 +1173,8 @@ class ResidentExamController extends Controller
             abort(403, 'Unauthorized');
         }
 
+        $this->ensureAttemptSessionAccess($request, $attempt);
+
         // Always capture IP and user agent at exam start
         // Update browser metadata, connection info if not already set
         $updateData = [
@@ -1169,5 +1201,47 @@ class ResidentExamController extends Controller
         $this->residentExamRepository->updateAttempt($attempt, $updateData);
 
         return response()->json(['success' => true]);
+    }
+
+    private function claimOrAbortAttemptSession(Request $request, InstitutionAttempt|NationalAttempt $attempt): void
+    {
+        $currentSessionId = $request->session()->getId();
+
+        if (! $attempt->active_session_id) {
+            $this->residentExamRepository->updateAttempt($attempt, [
+                'active_session_id' => $currentSessionId,
+            ]);
+            $attempt->active_session_id = $currentSessionId;
+
+            return;
+        }
+
+        if ($attempt->active_session_id !== $currentSessionId) {
+            abort(409, self::EXAM_SESSION_CONFLICT_MESSAGE);
+        }
+    }
+
+    private function ensureAttemptSessionAccess(Request $request, InstitutionAttempt|NationalAttempt $attempt): void
+    {
+        $currentSessionId = $request->session()->getId();
+
+        if (! $attempt->active_session_id) {
+            $this->residentExamRepository->updateAttempt($attempt, [
+                'active_session_id' => $currentSessionId,
+            ]);
+            $attempt->active_session_id = $currentSessionId;
+
+            return;
+        }
+
+        if ($attempt->active_session_id !== $currentSessionId) {
+            if ($request->expectsJson() || $request->ajax()) {
+                response()->json([
+                    'error' => self::EXAM_SESSION_CONFLICT_MESSAGE,
+                ], 409)->throwResponse();
+            }
+
+            abort(409, self::EXAM_SESSION_CONFLICT_MESSAGE);
+        }
     }
 }
