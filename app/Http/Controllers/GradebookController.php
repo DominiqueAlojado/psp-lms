@@ -2,18 +2,18 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Institution\InstitutionAttempt;
-use App\Models\National\NationalAttempt;
-use App\Models\Organization;
 use App\Models\Resident;
-use App\Models\Topic;
+use App\Repositories\Contracts\GradebookRepositoryInterface;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class GradebookController extends Controller
 {
+    public function __construct(
+        private readonly GradebookRepositoryInterface $gradebookRepository,
+    ) {}
+
     /**
      * Display the resident's personal performance dashboard.
      */
@@ -29,18 +29,10 @@ class GradebookController extends Controller
 
         if ($isNational) {
             // If current org is national, only show national/in-service exams
-            $nationalAttempts = NationalAttempt::with(['assessment'])
-                ->where('user_id', $user->id)
-                ->where('status', 'completed')
-                ->orderBy('submitted_at', 'desc')
-                ->get();
+            $nationalAttempts = $this->gradebookRepository->getCompletedNationalAttemptsForUser($user->id, true);
         } else {
             // If current org is institution, only show institution exams
-            $institutionAttempts = InstitutionAttempt::with(['assessment'])
-                ->where('user_id', $user->id)
-                ->where('status', 'completed')
-                ->orderBy('submitted_at', 'desc')
-                ->get();
+            $institutionAttempts = $this->gradebookRepository->getCompletedInstitutionAttemptsForUser($user->id, true);
         }
 
         // Calculate overall statistics (filtered by org type)
@@ -80,10 +72,8 @@ class GradebookController extends Controller
         }
 
         // Get all residents in the organization
-        $residents = Resident::where('organization_id', $organizationId)
-            ->with('user')
-            ->orderBy('last_name')
-            ->get()
+        $residents = $this->gradebookRepository
+            ->getResidentsForOrganization($organizationId)
             ->map(function ($resident) {
                 return [
                     'id' => $resident->id,
@@ -120,11 +110,8 @@ class GradebookController extends Controller
         $performanceTrend = $this->getPerformanceTrend($resident->user_id);
 
         // Get all attempts
-        $institutionAttempts = InstitutionAttempt::with(['assessment'])
-            ->where('user_id', $resident->user_id)
-            ->where('status', 'completed')
-            ->orderBy('submitted_at', 'desc')
-            ->get()
+        $institutionAttempts = $this->gradebookRepository
+            ->getCompletedInstitutionAttemptsForUser($resident->user_id, true)
             ->map(fn ($attempt) => [
                 'id' => $attempt->id,
                 'type' => 'institution',
@@ -138,11 +125,8 @@ class GradebookController extends Controller
                 'submitted_at' => $attempt->submitted_at?->format('Y-m-d H:i:s'),
             ]);
 
-        $nationalAttempts = NationalAttempt::with(['assessment'])
-            ->where('user_id', $resident->user_id)
-            ->where('status', 'completed')
-            ->orderBy('submitted_at', 'desc')
-            ->get()
+        $nationalAttempts = $this->gradebookRepository
+            ->getCompletedNationalAttemptsForUser($resident->user_id, true)
             ->map(fn ($attempt) => [
                 'id' => $attempt->id,
                 'type' => 'national',
@@ -187,14 +171,10 @@ class GradebookController extends Controller
 
         if ($isNational) {
             // Only get national attempts
-            $nationalAttempts = NationalAttempt::where('user_id', $userId)
-                ->where('status', 'completed')
-                ->get();
+            $nationalAttempts = $this->gradebookRepository->getCompletedNationalAttemptsForUser($userId);
         } else {
             // Only get institution attempts
-            $institutionAttempts = InstitutionAttempt::where('user_id', $userId)
-                ->where('status', 'completed')
-                ->get();
+            $institutionAttempts = $this->gradebookRepository->getCompletedInstitutionAttemptsForUser($userId);
         }
 
         $allAttempts = $institutionAttempts->merge($nationalAttempts);
@@ -237,10 +217,8 @@ class GradebookController extends Controller
      */
     private function getCategoryPerformance(int $userId): array
     {
-        $categoryStats = InstitutionAttempt::with('assessment')
-            ->where('user_id', $userId)
-            ->where('status', 'completed')
-            ->get()
+        $categoryStats = $this->gradebookRepository
+            ->getCompletedInstitutionAttemptsForUser($userId, true)
             ->groupBy(fn ($attempt) => $attempt->assessment->exam_category ?? 'Uncategorized')
             ->map(function ($attempts, $category) {
                 $totalScore = $attempts->sum('score');
@@ -273,46 +251,10 @@ class GradebookController extends Controller
 
         if ($isNational) {
             // Only get national topics
-            $nationalTopics = DB::table('national_answers as a')
-                ->join('national_attempts as at', 'a.attempt_id', '=', 'at.id')
-                ->join('national_questions as q', 'a.question_id', '=', 'q.id')
-                ->leftJoin('topics as t', 'q.topic_id', '=', 't.id')
-                ->where('at.user_id', $userId)
-                ->where('at.status', 'completed')
-                ->whereNull('a.deleted_at')
-                ->whereNull('at.deleted_at')
-                ->whereNull('q.deleted_at')
-                ->select([
-                    't.name as topic_name',
-                    't.id as topic_id',
-                    DB::raw('COUNT(*) as total_questions'),
-                    DB::raw('SUM(CASE WHEN a.is_correct THEN 1 ELSE 0 END) as correct_answers'),
-                    DB::raw('SUM(a.points_earned) as total_points_earned'),
-                    DB::raw('SUM(q.points) as total_possible_points'),
-                ])
-                ->groupBy('t.id', 't.name')
-                ->get();
+            $nationalTopics = $this->gradebookRepository->getNationalTopicPerformanceRows($userId);
         } else {
             // Only get institution topics
-            $institutionTopics = DB::table('institution_answers as a')
-                ->join('institution_attempts as at', 'a.attempt_id', '=', 'at.id')
-                ->join('institution_questions as q', 'a.question_id', '=', 'q.id')
-                ->leftJoin('topics as t', 'q.topic_id', '=', 't.id')
-                ->where('at.user_id', $userId)
-                ->where('at.status', 'completed')
-                ->whereNull('a.deleted_at')
-                ->whereNull('at.deleted_at')
-                ->whereNull('q.deleted_at')
-                ->select([
-                    't.name as topic_name',
-                    't.id as topic_id',
-                    DB::raw('COUNT(*) as total_questions'),
-                    DB::raw('SUM(CASE WHEN a.is_correct THEN 1 ELSE 0 END) as correct_answers'),
-                    DB::raw('SUM(a.points_earned) as total_points_earned'),
-                    DB::raw('SUM(q.points) as total_possible_points'),
-                ])
-                ->groupBy('t.id', 't.name')
-                ->get();
+            $institutionTopics = $this->gradebookRepository->getInstitutionTopicPerformanceRows($userId);
         }
 
         // Merge and aggregate both
@@ -372,10 +314,8 @@ class GradebookController extends Controller
 
         if ($isNational) {
             // Only get national attempts
-            $nationalAttempts = NationalAttempt::with('assessment')
-                ->where('user_id', $userId)
-                ->where('status', 'completed')
-                ->get()
+            $nationalAttempts = $this->gradebookRepository
+                ->getCompletedNationalAttemptsForUser($userId, true)
                 ->filter(fn ($attempt) => $attempt->assessment !== null) // Filter out attempts without assessments
                 ->map(fn ($attempt) => [
                     'type' => 'National',
@@ -389,10 +329,8 @@ class GradebookController extends Controller
                 ]);
         } else {
             // Only get institution attempts
-            $institutionAttempts = InstitutionAttempt::with('assessment')
-                ->where('user_id', $userId)
-                ->where('status', 'completed')
-                ->get()
+            $institutionAttempts = $this->gradebookRepository
+                ->getCompletedInstitutionAttemptsForUser($userId, true)
                 ->filter(fn ($attempt) => $attempt->assessment !== null) // Filter out attempts without assessments
                 ->map(fn ($attempt) => [
                     'type' => 'Institution',
@@ -428,20 +366,16 @@ class GradebookController extends Controller
 
         if ($isNational) {
             // Only get national attempts
-            $nationalAttempts = NationalAttempt::where('user_id', $userId)
-                ->where('status', 'completed')
-                ->select(['id', 'score', 'total_points', 'submitted_at'])
-                ->get()
+            $nationalAttempts = $this->gradebookRepository
+                ->getCompletedNationalAttemptsForUser($userId)
                 ->map(fn ($attempt) => [
                     'date' => $attempt->submitted_at?->format('Y-m-d'),
                     'percentage' => round($attempt->percentage, 2),
                 ]);
         } else {
             // Only get institution attempts
-            $institutionAttempts = InstitutionAttempt::where('user_id', $userId)
-                ->where('status', 'completed')
-                ->select(['id', 'score', 'total_points', 'submitted_at'])
-                ->get()
+            $institutionAttempts = $this->gradebookRepository
+                ->getCompletedInstitutionAttemptsForUser($userId)
                 ->map(fn ($attempt) => [
                     'date' => $attempt->submitted_at?->format('Y-m-d'),
                     'percentage' => round($attempt->percentage, 2),
