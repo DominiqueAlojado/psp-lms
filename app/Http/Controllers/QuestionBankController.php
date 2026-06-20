@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\QuestionBank;
-use App\Models\QuestionBankChoice;
+use App\Repositories\Contracts\QuestionBankChoiceRepositoryInterface;
+use App\Repositories\Contracts\QuestionBankRepositoryInterface;
+use App\Repositories\Contracts\QuestionBankStatisticRepositoryInterface;
 use App\Services\ActivityLog\QuestionBankActivityLogService;
 use App\Traits\LogsActivity;
 use Illuminate\Http\JsonResponse;
@@ -20,7 +22,10 @@ class QuestionBankController extends Controller
     use LogsActivity;
 
     public function __construct(
-        protected QuestionBankActivityLogService $activityLogService
+        protected QuestionBankActivityLogService $activityLogService,
+        protected QuestionBankRepositoryInterface $questionBankRepository,
+        protected QuestionBankChoiceRepositoryInterface $questionBankChoiceRepository,
+        protected QuestionBankStatisticRepositoryInterface $questionBankStatisticRepository
     ) {}
     /**
      * Display question bank listing.
@@ -35,55 +40,11 @@ class QuestionBankController extends Controller
         // If organization type is 'national' => show national questions, else institution questions
         $isNational = $currentOrganization?->type === 'national';
 
-        $query = QuestionBank::query()
-            ->with(['topic:id,name', 'creator:id,name', 'statistics', 'choices']);
-
-        if ($isNational) {
-            // Show national questions (owner_type = 'national', organization_id = null)
-            $query->national();
-        } else {
-            // Show institution questions (owner_type = 'institution', organization_id = current org)
-            $query->institution()->forOrganization($organizationId);
-        }
-
-        // Search
-        if ($request->filled('search')) {
-            $query->where('question_text', 'like', '%' . $request->search . '%');
-        }
-
-        // Filter by topic
-        if ($request->filled('topic')) {
-            $query->where('topic_id', $request->topic);
-        }
-
-        // Filter by type
-        if ($request->filled('type')) {
-            $query->where('question_type', $request->type);
-        }
-
-        // Filter by difficulty
-        if ($request->filled('difficulty')) {
-            if ($request->difficulty === 'manual') {
-                $query->whereNotNull('difficulty_level');
-            } else {
-                $query->whereHas('statistics', function ($q) use ($request) {
-                    $q->where('computed_difficulty', $request->difficulty);
-                });
-            }
-        }
-
-        // Filter by approval status
-        if ($request->filled('approval')) {
-            if ($request->approval === 'approved') {
-                $query->where('is_approved', true);
-            } elseif ($request->approval === 'pending') {
-                $query->where('is_approved', false);
-            }
-        }
-
-        $questions = $query->orderBy('created_at', 'desc')
-            ->paginate(20)
-            ->withQueryString();
+        $questions = $this->questionBankRepository->paginateScoped(
+            $organizationId,
+            $isNational,
+            $request->only(['search', 'topic', 'type', 'difficulty', 'approval'])
+        );
 
         return Inertia::render('question-bank/index', [
             'questions' => $questions,
@@ -104,50 +65,11 @@ class QuestionBankController extends Controller
         // If organization type is 'national' => show national questions, else institution questions
         $isNational = $currentOrganization?->type === 'national';
 
-        $query = QuestionBank::query()
-            ->with(['topic:id,name', 'statistics', 'choices']);
-
-        if ($isNational) {
-            // Show national questions (owner_type = 'national', organization_id = null)
-            $query->national();
-        } else {
-            // Show institution questions (owner_type = 'institution', organization_id = current org)
-            $query->institution()->forOrganization($organizationId);
-        }
-
-        if ($request->filled('search')) {
-            $query->where('question_text', 'like', '%' . $request->search . '%');
-        }
-
-        if ($request->filled('topic')) {
-            $query->where('topic_id', $request->topic);
-        }
-
-        if ($request->filled('type')) {
-            $query->where('question_type', $request->type);
-        }
-
-        if ($request->filled('difficulty')) {
-            if ($request->difficulty === 'manual') {
-                $query->whereNotNull('difficulty_level');
-            } else {
-                $query->whereHas('statistics', function ($q) use ($request) {
-                    $q->where('computed_difficulty', $request->difficulty);
-                });
-            }
-        }
-
-        if ($request->filled('approval')) {
-            if ($request->approval === 'approved') {
-                $query->where('is_approved', true);
-            } elseif ($request->approval === 'pending') {
-                $query->where('is_approved', false);
-            }
-        }
-
-        $questions = $query->orderBy('created_at', 'desc')
-            ->limit(100)
-            ->get();
+        $questions = $this->questionBankRepository->listScoped(
+            $organizationId,
+            $isNational,
+            $request->only(['search', 'topic', 'type', 'difficulty', 'approval'])
+        );
 
         return response()->json([
             'data' => $questions,
@@ -190,7 +112,7 @@ class QuestionBankController extends Controller
         }
 
         // Create question
-        $question = QuestionBank::create([
+        $question = $this->questionBankRepository->create([
             ...$validated,
             'organization_id' => $organizationId,
             'owner_type' => $isNational ? 'national' : 'institution',
@@ -199,21 +121,12 @@ class QuestionBankController extends Controller
         ]);
 
         // Initialize statistics with proper scope
-        $question->statistics()->create([
-            'question_id' => $question->id,
-            'scope' => $scope,
-            'institution_id' => $isNational ? null : $organizationId,
-        ]);
-
-        // Create choices
-        foreach ($validated['choices'] as $index => $choice) {
-            QuestionBankChoice::create([
-                'question_id' => $question->id,
-                'choice_text' => $choice['choice_text'],
-                'is_correct' => $choice['is_correct'],
-                'order' => $index,
-            ]);
-        }
+        $this->questionBankStatisticRepository->initializeForQuestion(
+            $question,
+            $scope,
+            $isNational ? null : $organizationId
+        );
+        $this->questionBankChoiceRepository->createMany($question, $validated['choices']);
 
         // Reload question with choices for logging
         $question->load('choices');
@@ -309,19 +222,10 @@ class QuestionBankController extends Controller
 
         // Temporarily disable automatic logging to prevent duplicates
         $this->withoutActivityLogging(function () use ($question, $validated) {
-            $question->update($validated);
+            $this->questionBankRepository->update($question, $validated);
         });
 
-        // Update choices - delete old ones and create new
-        $question->choices()->delete();
-        foreach ($validated['choices'] as $index => $choice) {
-            QuestionBankChoice::create([
-                'question_id' => $question->id,
-                'choice_text' => $choice['choice_text'],
-                'is_correct' => $choice['is_correct'],
-                'order' => $index,
-            ]);
-        }
+        $this->questionBankChoiceRepository->replaceForQuestion($question, $validated['choices']);
 
         // Build consolidated log entry with all changes using service
         $logData = $this->activityLogService->buildUpdateLogData(
@@ -373,14 +277,14 @@ class QuestionBankController extends Controller
         }
 
         // Check if question is used in any exams
-        if ($question->assessments()->count() > 0) {
+        if ($this->questionBankRepository->assessmentsCount($question) > 0) {
             return back()->with('error', 'Cannot delete question that is used in exams. Remove from exams first.');
         }
 
         // Log deletion before deleting
         $this->activityLogService->logQuestionDeleted($question);
 
-        $question->delete();
+        $this->questionBankRepository->delete($question);
 
         return back()->with('success', 'Question deleted successfully!');
     }
@@ -408,11 +312,7 @@ class QuestionBankController extends Controller
             }
         }
 
-        $question->update([
-            'is_approved' => true,
-            'approved_by' => $user->id,
-            'approved_at' => now(),
-        ]);
+        $this->questionBankRepository->approve($question, $user->id);
 
         // Log question approval
         $this->activityLogService->logQuestionApproved($question);
@@ -433,44 +333,14 @@ class QuestionBankController extends Controller
         // If organization type is 'national' => show national questions, else institution questions
         $isNational = $currentOrganization?->type === 'national';
 
-        $baseQuery = QuestionBank::query();
-        if ($isNational) {
-            $baseQuery->national();
-        } else {
-            $baseQuery->institution()->forOrganization($organizationId);
-        }
-
-        $totalQuestions = (clone $baseQuery)->count();
-        $approvedQuestions = (clone $baseQuery)->approved()->count();
-
-        $byType = (clone $baseQuery)
-            ->selectRaw('question_type, COUNT(*) as count')
-            ->groupBy('question_type')
-            ->get();
-
-        $topPerforming = (clone $baseQuery)
-            ->with(['topic', 'statistics'])
-            ->whereHas('statistics', function ($q) {
-                $q->where('times_answered', '>', 10);
-            })
-            ->get()
-            ->sortByDesc('statistics.success_rate')
-            ->take(10);
-
-        $needsReview = (clone $baseQuery)
-            ->with(['topic', 'statistics'])
-            ->whereHas('statistics', function ($q) {
-                $q->where('times_answered', '>', 10)
-                    ->where('success_rate', '<', 40);
-            })
-            ->get();
+        $statistics = $this->questionBankRepository->getStatisticsData($organizationId, $isNational);
 
         return Inertia::render('question-bank/statistics', [
-            'totalQuestions' => $totalQuestions,
-            'approvedQuestions' => $approvedQuestions,
-            'byType' => $byType,
-            'topPerforming' => $topPerforming,
-            'needsReview' => $needsReview,
+            'totalQuestions' => $statistics['totalQuestions'],
+            'approvedQuestions' => $statistics['approvedQuestions'],
+            'byType' => $statistics['byType'],
+            'topPerforming' => $statistics['topPerforming'],
+            'needsReview' => $statistics['needsReview'],
         ]);
     }
 
@@ -622,8 +492,9 @@ class QuestionBankController extends Controller
                     }
 
                     // Create question in bank
-                    $question = QuestionBank::create([
+                    $question = $this->questionBankRepository->create([
                         'organization_id' => $organizationId,
+                        'owner_type' => $user->currentOrganization?->type === 'national' ? 'national' : 'institution',
                         'created_by' => $user->id,
                         'topic_id' => $topicId,
                         'question_type' => $rowData['type'] ?? 'multiple_choice',
@@ -633,21 +504,21 @@ class QuestionBankController extends Controller
                         'difficulty_level' => 'medium',
                     ]);
 
-                    // Create choices
+                    $choices = [];
                     for ($i = 1; $i <= 6; $i++) {
                         $choiceText = $rowData["choice_{$i}"] ?? '';
                         $isCorrect = isset($rowData["choice_{$i}_correct_answer"]) &&
                             in_array(strtolower($rowData["choice_{$i}_correct_answer"]), ['yes', '1', 'true']);
 
                         if (! empty($choiceText)) {
-                            QuestionBankChoice::create([
-                                'question_id' => $question->id,
+                            $choices[] = [
                                 'choice_text' => $choiceText,
                                 'is_correct' => $isCorrect,
-                                'order' => $i - 1,
-                            ]);
+                            ];
                         }
                     }
+
+                    $this->questionBankChoiceRepository->createMany($question, $choices);
 
                     $successCount++;
                 } catch (\Exception $e) {
