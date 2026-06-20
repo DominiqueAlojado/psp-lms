@@ -22,6 +22,10 @@ interface QuestionBankRepositoryInterface
 
     public function existsForInstitutionCreator(string $questionText, int $organizationId, int $userId): bool;
 
+    public function findByIdsForOwnerType(array $questionIds, string $ownerType): Collection;
+
+    public function existsForNationalCreator(string $questionText, int $userId): bool;
+
     public function assessmentsCount(QuestionBank $question): int;
 
     public function approve(QuestionBank $question, int $approvedBy): bool;

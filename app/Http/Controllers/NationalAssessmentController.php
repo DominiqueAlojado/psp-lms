@@ -6,9 +6,13 @@ use App\Exports\QuestionsTemplateExport;
 use App\Imports\NationalQuestionsImport;
 use App\Models\National\NationalAssessment;
 use App\Models\National\NationalQuestion;
-use App\Models\National\NationalQuestionChoice;
-use App\Models\QuestionBank;
 use App\Models\Topic;
+use App\Repositories\Contracts\NationalAssessmentRepositoryInterface;
+use App\Repositories\Contracts\NationalQuestionChoiceRepositoryInterface;
+use App\Repositories\Contracts\NationalQuestionRepositoryInterface;
+use App\Repositories\Contracts\QuestionBankChoiceRepositoryInterface;
+use App\Repositories\Contracts\QuestionBankRepositoryInterface;
+use App\Repositories\Contracts\QuestionBankStatisticRepositoryInterface;
 use App\Services\ActivityLog\NationalAssessmentActivityLogService;
 use App\Traits\LogsActivity;
 use Illuminate\Http\JsonResponse;
@@ -27,37 +31,21 @@ class NationalAssessmentController extends Controller
     use LogsActivity;
 
     public function __construct(
-        protected NationalAssessmentActivityLogService $activityLogService
+        protected NationalAssessmentActivityLogService $activityLogService,
+        private readonly NationalAssessmentRepositoryInterface $assessmentRepository,
+        private readonly NationalQuestionRepositoryInterface $questionRepository,
+        private readonly NationalQuestionChoiceRepositoryInterface $questionChoiceRepository,
+        private readonly QuestionBankRepositoryInterface $questionBankRepository,
+        private readonly QuestionBankChoiceRepositoryInterface $questionBankChoiceRepository,
+        private readonly QuestionBankStatisticRepositoryInterface $questionBankStatisticRepository,
     ) {}
     /**
      * Display a listing of national in-service exams.
      */
     public function index(Request $request): Response
     {
-        $query = NationalAssessment::query()
-            ->with(['questions', 'creator:id,name'])
-            ->withCount('questions')
-            ->when($request->input('search'), function ($query, $search) {
-                $query->where(function ($q) use ($search) {
-                    $q->where('title', 'like', "%{$search}%")
-                        ->orWhere('description', 'like', "%{$search}%");
-                });
-            })
-            ->when($request->input('year'), function ($query, $year) {
-                $query->where('exam_year', $year);
-            })
-            ->when($request->input('status'), function ($query, $status) {
-                if ($status === 'published') {
-                    $query->where('is_published', true);
-                } elseif ($status === 'draft') {
-                    $query->where('is_published', false);
-                }
-            })
-            ->orderBy($request->input('sort', 'created_at'), $request->input('direction', 'desc'));
-
-        $assessments = $query
-            ->paginate(15)
-            ->withQueryString()
+        $assessments = $this->assessmentRepository
+            ->paginate($request->only(['search', 'year', 'status', 'sort', 'direction']))
             ->through(function (NationalAssessment $assessment) {
                 return [
                     'id' => $assessment->id,
@@ -81,12 +69,7 @@ class NationalAssessmentController extends Controller
                 ];
             });
 
-        $years = NationalAssessment::query()
-            ->select('exam_year')
-            ->distinct()
-            ->orderByDesc('exam_year')
-            ->pluck('exam_year')
-            ->toArray();
+        $years = $this->assessmentRepository->getDistinctYears();
 
         return Inertia::render('inservice-exams/index', [
             'assessments' => $assessments,
@@ -100,21 +83,8 @@ class NationalAssessmentController extends Controller
      */
     public function active(Request $request): Response
     {
-        $query = NationalAssessment::query()
-            ->where('is_published', true) // Only published exams
-            ->with(['questions', 'creator:id,name'])
-            ->withCount('questions')
-            ->when($request->input('search'), function ($query, $search) {
-                $query->where(function ($q) use ($search) {
-                    $q->where('title', 'like', "%{$search}%")
-                        ->orWhere('description', 'like', "%{$search}%");
-                });
-            })
-            ->orderBy($request->input('sort', 'created_at'), $request->input('direction', 'desc'));
-
-        $assessments = $query
-            ->paginate(15)
-            ->withQueryString()
+        $assessments = $this->assessmentRepository
+            ->paginateByPublication(true, $request->only(['search', 'sort', 'direction']))
             ->through(function (NationalAssessment $assessment) {
                 return [
                     'id' => $assessment->id,
@@ -174,7 +144,7 @@ class NationalAssessmentController extends Controller
             'results_release_date' => ['nullable', 'date'],
         ]);
 
-        $assessment = NationalAssessment::create([
+        $assessment = $this->assessmentRepository->create([
             'title' => $validated['title'],
             'description' => $validated['description'] ?? null,
             'exam_year' => $validated['exam_year'],
@@ -222,11 +192,10 @@ class NationalAssessmentController extends Controller
         $totalPointsAdded = 0;
         $questionsData = [];
         DB::transaction(function () use ($validated, $assessment, &$totalPointsAdded, &$questionsData) {
-            $order = ($assessment->questions()->max('order') ?? 0) + 1;
+            $order = $this->questionRepository->getNextOrderForAssessment($assessment);
 
             foreach ($validated['questions'] as $q) {
-                $question = NationalQuestion::create([
-                    'assessment_id' => $assessment->id,
+                $question = $this->questionRepository->createForAssessment($assessment, [
                     'question_type' => $q['question_type'],
                     'question_text' => $q['question_text'],
                     'points' => $q['points'],
@@ -247,35 +216,37 @@ class NationalAssessmentController extends Controller
 
                 // Handle choices for types that require them
                 if (in_array($q['question_type'], ['multiple_choice', 'multiple_select'])) {
-                    $choiceOrder = 1;
-                    foreach ($q['choices'] ?? [] as $choice) {
-                        NationalQuestionChoice::create([
-                            'question_id' => $question->id,
-                            'choice_text' => $choice['choice_text'],
-                            'is_correct' => (bool) ($choice['is_correct'] ?? false),
-                            'order' => $choiceOrder++,
-                        ]);
-                    }
+                    $this->questionChoiceRepository->createMany(
+                        $question,
+                        collect($q['choices'] ?? [])->map(function ($choice, $index) {
+                            return [
+                                'choice_text' => $choice['choice_text'],
+                                'is_correct' => (bool) ($choice['is_correct'] ?? false),
+                                'order' => $index + 1,
+                            ];
+                        })->all()
+                    );
                 } elseif ($q['question_type'] === 'true_false') {
-                    // Normalize true/false to two choices
-                    NationalQuestionChoice::create([
-                        'question_id' => $question->id,
-                        'choice_text' => 'True',
-                        'is_correct' => (bool) ($q['answer'] ?? true) === true,
-                        'order' => 1,
-                    ]);
-                    NationalQuestionChoice::create([
-                        'question_id' => $question->id,
-                        'choice_text' => 'False',
-                        'is_correct' => (bool) ($q['answer'] ?? true) === false,
-                        'order' => 2,
+                    $answer = (bool) ($q['answer'] ?? true);
+                    $this->questionChoiceRepository->createMany($question, [
+                        [
+                            'choice_text' => 'True',
+                            'is_correct' => $answer === true,
+                            'order' => 1,
+                        ],
+                        [
+                            'choice_text' => 'False',
+                            'is_correct' => $answer === false,
+                            'order' => 2,
+                        ],
                     ]);
                 }
             }
 
             // Update total points
-            $assessment->total_points += $totalPointsAdded;
-            $assessment->save();
+            $this->assessmentRepository->update($assessment, [
+                'total_points' => $assessment->total_points + $totalPointsAdded,
+            ]);
         });
 
         // Reload assessment to get updated question count
@@ -285,8 +256,7 @@ class NationalAssessmentController extends Controller
         $this->activityLogService->logQuestionsAdded(
             $assessment,
             count($validated['questions']),
-            $totalPointsAdded,
-            $questionsData
+            $totalPointsAdded
         );
 
         return back()->with('success', 'Questions saved successfully.');
@@ -303,23 +273,22 @@ class NationalAssessmentController extends Controller
         ]);
 
         // Get questions from bank (national questions only)
-        $bankQuestions = QuestionBank::with(['choices', 'topic'])
-            ->whereIn('id', $request->question_ids)
-            ->where('owner_type', 'national')
-            ->get();
+        $bankQuestions = $this->questionBankRepository->findByIdsForOwnerType(
+            $request->question_ids,
+            'national'
+        );
 
         if ($bankQuestions->isEmpty()) {
             return back()->with('error', 'No valid questions found.');
         }
 
         $totalPointsAdded = 0;
-        $order = ($assessment->questions()->max('order') ?? 0) + 1;
+        $order = $this->questionRepository->getNextOrderForAssessment($assessment);
 
         DB::transaction(function () use ($bankQuestions, $assessment, &$totalPointsAdded, &$order) {
             foreach ($bankQuestions as $bankQuestion) {
                 // Create a copy of the question in the assessment
-                $question = NationalQuestion::create([
-                    'assessment_id' => $assessment->id,
+                $question = $this->questionRepository->createForAssessment($assessment, [
                     'question_type' => $bankQuestion->question_type,
                     'question_text' => $bankQuestion->question_text,
                     'points' => $bankQuestion->points,
@@ -331,17 +300,19 @@ class NationalAssessmentController extends Controller
                 $totalPointsAdded += (int) $bankQuestion->points;
 
                 // Copy choices
-                foreach ($bankQuestion->choices as $bankChoice) {
-                    NationalQuestionChoice::create([
-                        'question_id' => $question->id,
-                        'choice_text' => $bankChoice->choice_text,
-                        'is_correct' => $bankChoice->is_correct,
-                        'order' => $bankChoice->order,
-                    ]);
-                }
+                $this->questionChoiceRepository->createMany(
+                    $question,
+                    $bankQuestion->choices->map(function ($bankChoice) {
+                        return [
+                            'choice_text' => $bankChoice->choice_text,
+                            'is_correct' => $bankChoice->is_correct,
+                            'order' => $bankChoice->order,
+                        ];
+                    })->all()
+                );
 
                 // Increment usage counter in question bank
-                $bankQuestion->incrementUsage();
+                $this->questionBankRepository->incrementUsage($bankQuestion);
 
                 // Log each question added from bank
                 $question->load('choices');
@@ -365,8 +336,9 @@ class NationalAssessmentController extends Controller
             }
 
             // Update total points
-            $assessment->total_points += $totalPointsAdded;
-            $assessment->save();
+            $this->assessmentRepository->update($assessment, [
+                'total_points' => $assessment->total_points + $totalPointsAdded,
+            ]);
         });
 
         return back()->with('success', "Successfully added {$bankQuestions->count()} question(s) from question bank!");
@@ -377,7 +349,7 @@ class NationalAssessmentController extends Controller
      */
     public function edit(NationalAssessment $assessment): Response
     {
-        $assessment->load(['questions.choices', 'creator:id,name']);
+        $assessment = $this->assessmentRepository->loadForEdit($assessment);
 
         return Inertia::render('inservice-exams/edit', [
             'assessment' => [
@@ -470,11 +442,7 @@ class NationalAssessmentController extends Controller
 
         if (! $isNewQuestion) {
             // Look for existing question by ID
-            $question = NationalQuestion::query()
-                ->where('assessment_id', $assessment->id)
-                ->where('id', $validated['id'])
-                ->with('choices')
-                ->first();
+            $question = $this->questionRepository->findForAssessment($assessment, (int) $validated['id']);
 
             if ($question) {
                 // Capture old values before updating
@@ -492,7 +460,7 @@ class NationalAssessmentController extends Controller
         }
 
         if (! $question) {
-            $nextOrder = ($assessment->questions()->max('order') ?? 0) + 1;
+            $nextOrder = $this->questionRepository->getNextOrderForAssessment($assessment);
             $question = new NationalQuestion([
                 'assessment_id' => $assessment->id,
                 'order' => $nextOrder,
@@ -524,46 +492,23 @@ class NationalAssessmentController extends Controller
             }
         }
 
-        $question->save();
-
-        // Sync choices and collect choices data for question bank
-        $choicesData = [];
-        if (in_array($question->question_type, ['multiple_choice', 'multiple_select'])) {
-            $choiceOrder = 1;
-            $question->choices()->delete();
-            foreach ($validated['choices'] ?? [] as $choice) {
-                $question->choices()->create([
-                    'choice_text' => $choice['choice_text'],
-                    'is_correct' => (bool) $choice['is_correct'],
-                    'order' => $choiceOrder++,
-                ]);
-                $choicesData[] = [
-                    'choice_text' => $choice['choice_text'],
-                    'is_correct' => (bool) $choice['is_correct'],
-                ];
-            }
-        } elseif ($question->question_type === 'true_false') {
-            $question->choices()->delete();
-            $answer = (bool) ($validated['answer'] ?? true);
-            $question->choices()->createMany([
-                ['choice_text' => 'True', 'is_correct' => $answer === true, 'order' => 1],
-                ['choice_text' => 'False', 'is_correct' => $answer === false, 'order' => 2],
-            ]);
-            $choicesData = [
-                ['choice_text' => 'True', 'is_correct' => $answer === true],
-                ['choice_text' => 'False', 'is_correct' => $answer === false],
-            ];
+        if ($question->exists) {
+            $this->questionRepository->update($question, $question->getAttributes());
+        } else {
+            $question = $this->questionRepository->createForAssessment($assessment, $question->getAttributes());
         }
+
+        $choicesData = $this->buildNationalQuestionChoices($question, $validated);
 
         // Save to question bank if this is a new question OR if it doesn't exist in question bank yet
         $topicId = $validated['topic_id'] ?? null;
         $topicName = $question->topic; // Already converted from topic_id if needed
 
         // Check if this question already exists in question bank (by text and owner)
-        $existsInBank = QuestionBank::where('question_text', $question->question_text)
-            ->where('owner_type', 'national')
-            ->where('created_by', $request->user()->id)
-            ->exists();
+        $existsInBank = $this->questionBankRepository->existsForNationalCreator(
+            $question->question_text,
+            $request->user()->id
+        );
 
         if ($isNewQuestion || !$existsInBank) {
             try {
@@ -590,8 +535,9 @@ class NationalAssessmentController extends Controller
         }
 
         // Recompute total points
-        $total = $assessment->questions()->sum('points');
-        $assessment->update(['total_points' => $total]);
+        $this->assessmentRepository->update($assessment, [
+            'total_points' => $this->assessmentRepository->sumQuestionPoints($assessment),
+        ]);
 
         // Log question activity
         if ($isNewQuestion) {
@@ -637,12 +583,13 @@ class NationalAssessmentController extends Controller
             abort(404);
         }
 
-        $question->choices()->delete();
-        $question->delete();
+        $this->questionChoiceRepository->deleteForQuestion($question);
+        $this->questionRepository->delete($question);
 
         // Recompute total points
-        $total = $assessment->questions()->sum('points');
-        $assessment->update(['total_points' => $total]);
+        $this->assessmentRepository->update($assessment, [
+            'total_points' => $this->assessmentRepository->sumQuestionPoints($assessment),
+        ]);
 
         return back()->with('success', 'Question deleted');
     }
@@ -656,32 +603,58 @@ class NationalAssessmentController extends Controller
             'title' => ['nullable', 'string', 'max:255'],
         ]);
 
-        $duplicate = $assessment->replicate();
-        $duplicate->title = $validated['title'] ?? $assessment->title . ' (Copy)';
-        $duplicate->is_published = false;
-        $duplicate->scheduled_date = null;
-        $duplicate->results_release_date = null;
-        $duplicate->created_by = $request->user()->id;
-        $duplicate->total_points = 0;
-        $duplicate->save();
+        $assessment = $this->assessmentRepository->loadQuestionsWithChoices($assessment);
 
-        // Duplicate questions
-        foreach ($assessment->questions as $question) {
-            $newQuestion = $question->replicate();
-            $newQuestion->assessment_id = $duplicate->id;
-            $newQuestion->save();
+        $duplicate = DB::transaction(function () use ($assessment, $request, $validated) {
+            $duplicate = $this->assessmentRepository->create([
+                'title' => $validated['title'] ?? $assessment->title . ' (Copy)',
+                'description' => $assessment->description,
+                'exam_year' => $assessment->exam_year,
+                'exam_period' => $assessment->exam_period,
+                'category' => $assessment->category,
+                'duration_minutes' => $assessment->duration_minutes,
+                'total_points' => 0,
+                'passing_score' => $assessment->passing_score,
+                'randomize_questions' => $assessment->randomize_questions,
+                'randomize_choices' => $assessment->randomize_choices,
+                'show_results_immediately' => $assessment->show_results_immediately,
+                'allow_review' => $assessment->allow_review,
+                'is_published' => false,
+                'national_ranking_enabled' => $assessment->national_ranking_enabled,
+                'institution_comparison_enabled' => $assessment->institution_comparison_enabled,
+                'scheduled_date' => null,
+                'results_release_date' => null,
+                'created_by' => $request->user()->id,
+            ]);
 
-            // Duplicate choices
-            foreach ($question->choices as $choice) {
-                $newChoice = $choice->replicate();
-                $newChoice->question_id = $newQuestion->id;
-                $newChoice->save();
+            foreach ($assessment->questions as $question) {
+                $newQuestion = $this->questionRepository->createForAssessment($duplicate, [
+                    'question_type' => $question->question_type,
+                    'question_text' => $question->question_text,
+                    'points' => $question->points,
+                    'explanation' => $question->explanation,
+                    'image_path' => $question->image_path,
+                    'difficulty_level' => $question->difficulty_level,
+                    'topic' => $question->topic,
+                    'order' => $question->order,
+                ]);
+
+                $this->questionChoiceRepository->createMany(
+                    $newQuestion,
+                    $question->choices->map(fn($choice) => [
+                        'choice_text' => $choice->choice_text,
+                        'is_correct' => $choice->is_correct,
+                        'order' => $choice->order,
+                    ])->all()
+                );
             }
-        }
 
-        // Recompute total points
-        $totalPoints = $duplicate->questions()->sum('points');
-        $duplicate->update(['total_points' => $totalPoints]);
+            $this->assessmentRepository->update($duplicate, [
+                'total_points' => $this->assessmentRepository->sumQuestionPoints($duplicate),
+            ]);
+
+            return $duplicate;
+        });
 
         // Log assessment duplication
         $this->activityLogService->logAssessmentDuplicated($assessment, $duplicate);
@@ -827,8 +800,9 @@ class NationalAssessmentController extends Controller
             $oldTotalPoints = $assessment->total_points;
 
             // Recompute total points after import
-            $total = $assessment->questions()->sum('points');
-            $assessment->update(['total_points' => $total]);
+            $this->assessmentRepository->update($assessment, [
+                'total_points' => $this->assessmentRepository->sumQuestionPoints($assessment),
+            ]);
 
             // Reload assessment to get updated question count
             $assessment->refresh();
@@ -864,20 +838,8 @@ class NationalAssessmentController extends Controller
      */
     public function drafts(Request $request): Response
     {
-        $query = NationalAssessment::query()
-            ->where('is_published', false)
-            ->with(['creator:id,name'])
-            ->withCount('questions')
-            ->when($request->input('search'), function ($query, $search) {
-                $query->where(function ($q) use ($search) {
-                    $q->where('title', 'like', '%' . $search . '%')
-                        ->orWhere('description', 'like', '%' . $search . '%');
-                });
-            })
-            ->orderBy($request->input('sort', 'created_at'), $request->input('direction', 'desc'));
-
-        $drafts = $query->paginate(15)
-            ->withQueryString()
+        $drafts = $this->assessmentRepository
+            ->paginateByPublication(false, $request->only(['search', 'sort', 'direction']))
             ->through(function (NationalAssessment $assessment) {
                 return [
                     'id' => $assessment->id,
@@ -905,7 +867,7 @@ class NationalAssessmentController extends Controller
      */
     public function show(NationalAssessment $assessment): Response
     {
-        $assessment->load(['questions.choices', 'creator:id,name']);
+        $assessment = $this->assessmentRepository->loadForShow($assessment);
 
         return Inertia::render('assessments/show', [
             'assessment' => [
@@ -981,7 +943,7 @@ class NationalAssessmentController extends Controller
 
         // Temporarily disable automatic logging to prevent duplicates
         $this->withoutActivityLogging(function () use ($assessment, $validated) {
-            $assessment->update($validated);
+            $this->assessmentRepository->update($assessment, $validated);
         });
 
         // Build consolidated log entry with all changes using service
@@ -1021,14 +983,14 @@ class NationalAssessmentController extends Controller
      */
     public function destroy(NationalAssessment $assessment): RedirectResponse
     {
-        if ($assessment->attempts()->exists()) {
+        if ($this->assessmentRepository->attemptsExist($assessment)) {
             return back()->withErrors(['error' => 'Cannot delete an exam that has attempts.']);
         }
 
         // Log deletion before deleting
         $this->activityLogService->logAssessmentDeleted($assessment);
 
-        $assessment->delete();
+        $this->assessmentRepository->delete($assessment);
 
         return redirect()->route('inservice-exams.index')->with('success', 'Assessment deleted successfully');
     }
@@ -1052,7 +1014,7 @@ class NationalAssessmentController extends Controller
             }
 
             // Create question in question bank
-            $bankQuestion = QuestionBank::create([
+            $bankQuestion = $this->questionBankRepository->create([
                 'organization_id' => null, // National questions don't belong to a specific organization
                 'owner_type' => 'national',
                 'topic_id' => $topicId,
@@ -1064,21 +1026,8 @@ class NationalAssessmentController extends Controller
                 'is_approved' => false, // New questions need approval
             ]);
 
-            // Create choices in question bank
-            foreach ($choicesData as $idx => $choice) {
-                $bankQuestion->choices()->create([
-                    'choice_text' => $choice['choice_text'],
-                    'is_correct' => $choice['is_correct'],
-                    'order' => $idx,
-                ]);
-            }
-
-            // Initialize statistics
-            $bankQuestion->statistics()->create([
-                'question_id' => $bankQuestion->id,
-                'scope' => 'national',
-                'institution_id' => null,
-            ]);
+            $this->questionBankChoiceRepository->createMany($bankQuestion, $choicesData);
+            $this->questionBankStatisticRepository->initializeForQuestion($bankQuestion, 'national', null);
         } catch (\Exception $e) {
             // Log error but don't fail the question creation
             Log::error('Failed to save question to question bank', [
@@ -1101,5 +1050,44 @@ class NationalAssessmentController extends Controller
         return response()->json([
             'logs' => $logs,
         ]);
+    }
+
+    private function buildNationalQuestionChoices(NationalQuestion $question, array $validated): array
+    {
+        if (in_array($question->question_type, ['multiple_choice', 'multiple_select'])) {
+            $choicesData = collect($validated['choices'] ?? [])->map(function ($choice, $index) {
+                return [
+                    'choice_text' => $choice['choice_text'],
+                    'is_correct' => (bool) $choice['is_correct'],
+                    'order' => $index + 1,
+                ];
+            })->all();
+
+            $this->questionChoiceRepository->replaceForQuestion($question, $choicesData);
+
+            return collect($choicesData)->map(fn($choice) => [
+                'choice_text' => $choice['choice_text'],
+                'is_correct' => $choice['is_correct'],
+            ])->all();
+        }
+
+        if ($question->question_type === 'true_false') {
+            $answer = (bool) ($validated['answer'] ?? true);
+            $choicesData = [
+                ['choice_text' => 'True', 'is_correct' => $answer === true, 'order' => 1],
+                ['choice_text' => 'False', 'is_correct' => $answer === false, 'order' => 2],
+            ];
+
+            $this->questionChoiceRepository->replaceForQuestion($question, $choicesData);
+
+            return [
+                ['choice_text' => 'True', 'is_correct' => $answer === true],
+                ['choice_text' => 'False', 'is_correct' => $answer === false],
+            ];
+        }
+
+        $this->questionChoiceRepository->deleteForQuestion($question);
+
+        return [];
     }
 }

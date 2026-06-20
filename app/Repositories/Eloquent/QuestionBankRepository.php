@@ -109,6 +109,23 @@ class QuestionBankRepository implements QuestionBankRepositoryInterface
             ->exists();
     }
 
+    public function findByIdsForOwnerType(array $questionIds, string $ownerType): Collection
+    {
+        return QuestionBank::with(['choices', 'topic'])
+            ->whereIn('id', $questionIds)
+            ->where('owner_type', $ownerType)
+            ->get();
+    }
+
+    public function existsForNationalCreator(string $questionText, int $userId): bool
+    {
+        return QuestionBank::query()
+            ->where('question_text', $questionText)
+            ->where('owner_type', 'national')
+            ->where('created_by', $userId)
+            ->exists();
+    }
+
     public function assessmentsCount(QuestionBank $question): int
     {
         return $question->assessments()->count();
