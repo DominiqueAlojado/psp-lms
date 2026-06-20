@@ -5,6 +5,9 @@ namespace App\Http\Controllers;
 use App\Models\Assignment;
 use App\Models\Submission;
 use App\Models\SubmissionFile;
+use App\Repositories\Contracts\AssignmentRepositoryInterface;
+use App\Repositories\Contracts\SubmissionFileRepositoryInterface;
+use App\Repositories\Contracts\SubmissionRepositoryInterface;
 use App\Services\ActivityLog\AssignmentActivityLogService;
 use App\Traits\LogsActivity;
 use Illuminate\Http\JsonResponse;
@@ -20,7 +23,10 @@ class AssignmentController extends Controller
     use LogsActivity;
 
     public function __construct(
-        protected AssignmentActivityLogService $activityLogService
+        protected AssignmentActivityLogService $activityLogService,
+        protected AssignmentRepositoryInterface $assignmentRepository,
+        protected SubmissionRepositoryInterface $submissionRepository,
+        protected SubmissionFileRepositoryInterface $submissionFileRepository
     ) {}
 
     /**
@@ -43,10 +49,8 @@ class AssignmentController extends Controller
             ]);
         }
 
-        $assignments = Assignment::with(['creator', 'submissions'])
-            ->where('organization_id', $organizationId)
-            ->orderBy('created_at', 'desc')
-            ->get()
+        $assignments = $this->assignmentRepository
+            ->getForOrganization($organizationId)
             ->map(fn ($assignment) => [
                 'id' => $assignment->id,
                 'title' => $assignment->title,
@@ -161,7 +165,7 @@ class AssignmentController extends Controller
         $validated['organization_id'] = $organizationId;
         $validated['created_by'] = $user->id;
 
-        $assignment = Assignment::create($validated);
+        $assignment = $this->assignmentRepository->create($validated);
 
         // Log assignment creation
         $this->activityLogService->logAssignmentCreated($assignment);
@@ -182,11 +186,8 @@ class AssignmentController extends Controller
             abort(403, 'You do not have access to this assignment.');
         }
 
-        $submissions = Submission::with(['user', 'files'])
-            ->where('assignment_id', $assignment->id)
-            ->whereIn('status', ['submitted', 'graded', 'returned'])
-            ->orderBy('submitted_at', 'desc')
-            ->get()
+        $submissions = $this->submissionRepository
+            ->getForAssignment($assignment)
             ->map(fn ($submission) => [
                 'id' => $submission->id,
                 'resident_name' => $submission->user->name,
@@ -225,11 +226,8 @@ class AssignmentController extends Controller
             abort(403, 'You do not have access to this assignment.');
         }
 
-        $submissions = Submission::with(['user', 'files'])
-            ->where('assignment_id', $assignment->id)
-            ->whereIn('status', ['submitted', 'graded', 'returned'])
-            ->orderBy('submitted_at', 'desc')
-            ->get()
+        $submissions = $this->submissionRepository
+            ->getForAssignment($assignment)
             ->map(fn ($submission) => [
                 'id' => $submission->id,
                 'resident_name' => $submission->user->name,
@@ -336,7 +334,7 @@ class AssignmentController extends Controller
 
         // Update assignment without logging (to avoid duplicate logs)
         $this->withoutActivityLogging(function () use ($assignment, $validated) {
-            $assignment->update($validated);
+            $this->assignmentRepository->update($assignment, $validated);
         });
 
         // Build log data and log changes
@@ -363,7 +361,7 @@ class AssignmentController extends Controller
         // Log assignment deletion before deleting
         $this->activityLogService->logAssignmentDeleted($assignment);
 
-        $assignment->delete();
+        $this->assignmentRepository->delete($assignment);
 
         return redirect()->route('assignments.index')
             ->with('success', 'Assignment deleted successfully!');
@@ -428,17 +426,7 @@ class AssignmentController extends Controller
         ]);
 
         // Get published assignments for this organization
-        $assignments = Assignment::where('organization_id', $organizationId)
-            ->where('is_published', true)
-            ->where(function ($query) use ($formattedYearLevel) {
-                $query->whereNull('target_year_levels')
-                    ->orWhereJsonContains('target_year_levels', $formattedYearLevel);
-            })
-            ->with(['submissions' => function ($query) use ($user) {
-                $query->where('user_id', $user->id)->with('files');
-            }])
-            ->orderBy('due_date', 'asc')
-            ->get();
+        $assignments = $this->assignmentRepository->getPublishedForResident($organizationId, $formattedYearLevel, $user);
 
         // Debug: Log found assignments
         \Log::info('Assignments found', [
@@ -526,7 +514,7 @@ class AssignmentController extends Controller
         $yearLevel = $resident?->year_level;
 
         // Create submission
-        $submission = Submission::create([
+        $submission = $this->submissionRepository->create([
             'assignment_id' => $assignment->id,
             'user_id' => $user->id,
             'organization_id' => $organizationId,
@@ -547,7 +535,7 @@ class AssignmentController extends Controller
                 $fileName = Str::uuid().'.'.$file->getClientOriginalExtension();
                 $path = $file->storeAs('submissions', $fileName, 'public');
 
-                SubmissionFile::create([
+                $this->submissionFileRepository->create([
                     'submission_id' => $submission->id,
                     'file_name' => $fileName,
                     'original_name' => $file->getClientOriginalName(),
@@ -620,7 +608,7 @@ class AssignmentController extends Controller
             'grader_feedback' => ['nullable', 'string'],
         ]);
 
-        $submission->update([
+        $this->submissionRepository->update($submission, [
             'score' => $validated['score'],
             'grader_feedback' => $validated['grader_feedback'],
             'status' => 'graded',
@@ -644,7 +632,7 @@ class AssignmentController extends Controller
         }
 
         // Increment download count
-        $file->incrementDownloadCount();
+        $this->submissionFileRepository->incrementDownloadCount($file);
 
         return Storage::disk('public')->download($file->file_path, $file->original_name);
     }

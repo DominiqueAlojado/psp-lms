@@ -5,11 +5,15 @@ namespace App\Providers;
 use App\Repositories\Contracts\EventRegistrationRepositoryInterface;
 use App\Repositories\Contracts\EventRepositoryInterface;
 use App\Repositories\Contracts\AnnouncementRepositoryInterface;
+use App\Repositories\Contracts\AssignmentRepositoryInterface;
 use App\Repositories\Contracts\LearningResourceRepositoryInterface;
 use App\Repositories\Contracts\MeetingAttendanceRepositoryInterface;
 use App\Repositories\Contracts\OrganizationRepositoryInterface;
 use App\Repositories\Contracts\ResidentRepositoryInterface;
 use App\Repositories\Contracts\StaffRepositoryInterface;
+use App\Repositories\Contracts\SubmissionFileRepositoryInterface;
+use App\Repositories\Contracts\SubmissionRepositoryInterface;
+use App\Repositories\Eloquent\AssignmentRepository;
 use App\Repositories\Eloquent\EventRegistrationRepository;
 use App\Repositories\Eloquent\EventRepository;
 use App\Repositories\Eloquent\AnnouncementRepository;
@@ -18,6 +22,8 @@ use App\Repositories\Eloquent\MeetingAttendanceRepository;
 use App\Repositories\Eloquent\OrganizationRepository;
 use App\Repositories\Eloquent\ResidentRepository;
 use App\Repositories\Eloquent\StaffRepository;
+use App\Repositories\Eloquent\SubmissionFileRepository;
+use App\Repositories\Eloquent\SubmissionRepository;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 
@@ -29,6 +35,7 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->bind(AnnouncementRepositoryInterface::class, AnnouncementRepository::class);
+        $this->app->bind(AssignmentRepositoryInterface::class, AssignmentRepository::class);
         $this->app->bind(EventRegistrationRepositoryInterface::class, EventRegistrationRepository::class);
         $this->app->bind(EventRepositoryInterface::class, EventRepository::class);
         $this->app->bind(LearningResourceRepositoryInterface::class, LearningResourceRepository::class);
@@ -36,6 +43,8 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(OrganizationRepositoryInterface::class, OrganizationRepository::class);
         $this->app->bind(ResidentRepositoryInterface::class, ResidentRepository::class);
         $this->app->bind(StaffRepositoryInterface::class, StaffRepository::class);
+        $this->app->bind(SubmissionFileRepositoryInterface::class, SubmissionFileRepository::class);
+        $this->app->bind(SubmissionRepositoryInterface::class, SubmissionRepository::class);
     }
 
     /**
