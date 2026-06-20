@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Settings;
 
 use App\Http\Controllers\Controller;
+use App\Repositories\Contracts\RolesPermissionsRepositoryInterface;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -12,13 +13,17 @@ use Spatie\Permission\Models\Role;
 
 class RolesPermissionsController extends Controller
 {
+    public function __construct(
+        private readonly RolesPermissionsRepositoryInterface $rolesPermissionsRepository,
+    ) {}
+
     /**
      * Display roles and permissions management page.
      */
     public function index(): Response
     {
-        $roles = Role::with('permissions')
-            ->get()
+        $roles = $this->rolesPermissionsRepository
+            ->getRolesWithPermissions()
             ->map(fn ($role) => [
                 'id' => $role->id,
                 'name' => $role->name,
@@ -27,9 +32,8 @@ class RolesPermissionsController extends Controller
                 'permissions' => $role->permissions->pluck('name'),
             ]);
 
-        $permissions = Permission::orderBy('category')
-            ->orderBy('display_order')
-            ->get()
+        $permissions = $this->rolesPermissionsRepository
+            ->getPermissionsOrdered()
             ->map(fn ($permission) => [
                 'id' => $permission->id,
                 'name' => $permission->name,
@@ -59,7 +63,7 @@ class RolesPermissionsController extends Controller
             'name' => ['required', 'string', 'max:255', 'unique:roles,name'],
         ]);
 
-        Role::create([
+        $this->rolesPermissionsRepository->createRole([
             'name' => $validated['name'],
             'guard_name' => 'web',
         ]);
@@ -79,7 +83,7 @@ class RolesPermissionsController extends Controller
             'name' => ['required', 'string', 'max:255', 'unique:roles,name,'.$role->id],
         ]);
 
-        $role->update($validated);
+        $this->rolesPermissionsRepository->updateRole($role, $validated);
 
         return back()->with('success', 'Role updated successfully');
     }
@@ -94,7 +98,7 @@ class RolesPermissionsController extends Controller
             return back()->with('error', 'Cannot delete system roles');
         }
 
-        $role->delete();
+        $this->rolesPermissionsRepository->deleteRole($role);
 
         return back()->with('success', 'Role deleted successfully');
     }
@@ -109,7 +113,7 @@ class RolesPermissionsController extends Controller
             'category' => ['required', 'string', 'max:255'],
         ]);
 
-        Permission::create([
+        $this->rolesPermissionsRepository->createPermission([
             'name' => $validated['name'],
             'guard_name' => 'web',
             'category' => $validated['category'],
@@ -129,7 +133,7 @@ class RolesPermissionsController extends Controller
             'category' => ['required', 'string', 'max:255'],
         ]);
 
-        $permission->update($validated);
+        $this->rolesPermissionsRepository->updatePermission($permission, $validated);
 
         return back()->with('success', 'Permission updated successfully');
     }
@@ -139,7 +143,7 @@ class RolesPermissionsController extends Controller
      */
     public function deletePermission(Permission $permission): RedirectResponse
     {
-        $permission->delete();
+        $this->rolesPermissionsRepository->deletePermission($permission);
 
         return back()->with('success', 'Permission deleted successfully');
     }
@@ -154,7 +158,7 @@ class RolesPermissionsController extends Controller
             'permissions.*' => ['exists:permissions,id'],
         ]);
 
-        $role->syncPermissions($validated['permissions']);
+        $this->rolesPermissionsRepository->syncRolePermissions($role, $validated['permissions']);
 
         return back()->with('success', 'Role permissions updated successfully');
     }
