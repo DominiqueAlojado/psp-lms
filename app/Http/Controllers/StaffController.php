@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Exports\StaffExport;
+use App\Http\Requests\StoreStaffRequest;
+use App\Http\Requests\UpdateStaffRequest;
 use App\Models\User;
 use App\Repositories\Contracts\StaffRepositoryInterface;
 use App\Services\StaffManagementService;
@@ -70,25 +72,9 @@ class StaffController extends Controller
     /**
      * Store a newly created staff member.
      */
-    public function store(Request $request): RedirectResponse
+    public function store(StoreStaffRequest $request): RedirectResponse
     {
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
-            'password' => ['required', 'string', 'min:8'],
-            'roles' => ['required', 'array', 'min:1'],
-            'roles.*' => ['exists:roles,id'],
-            'organizations' => ['nullable', 'array'],
-            'organizations.*' => ['exists:organizations,id'],
-            'current_organization_id' => ['nullable', 'exists:organizations,id'],
-        ], [
-            'name.required' => 'Name is required',
-            'email.required' => 'Email is required',
-            'email.unique' => 'This email is already registered',
-            'password.required' => 'Password is required',
-            'password.min' => 'Password must be at least 8 characters',
-            'roles.required' => 'At least one role must be selected',
-        ]);
+        $validated = $request->validated();
 
         $user = $this->staffManagementService->create($validated);
 
@@ -101,7 +87,7 @@ class StaffController extends Controller
     /**
      * Update the specified staff member.
      */
-    public function update(Request $request, User $staff): RedirectResponse
+    public function update(UpdateStaffRequest $request, User $staff): RedirectResponse
     {
         // Prevent duplicate submissions by checking if this is a retry
         $requestId = $request->header('X-Request-ID') ?: uniqid('update_', true);
@@ -112,22 +98,7 @@ class StaffController extends Controller
             return back()->with('success', 'Staff member updated successfully');
         }
 
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email,' . $staff->id],
-            'password' => ['nullable', 'string', 'min:8'],
-            'roles' => ['required', 'array', 'min:1'],
-            'roles.*' => ['exists:roles,id'],
-            'organizations' => ['nullable', 'array'],
-            'organizations.*' => ['exists:organizations,id'],
-            'current_organization_id' => ['nullable', 'exists:organizations,id'],
-        ], [
-            'name.required' => 'Name is required',
-            'email.required' => 'Email is required',
-            'email.unique' => 'This email is already registered',
-            'password.min' => 'Password must be at least 8 characters',
-            'roles.required' => 'At least one role must be selected',
-        ]);
+        $validated = $request->validated();
 
         // Capture old values before updating
         $oldName = $staff->name;

@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Exports\ResidentsExport;
+use App\Http\Requests\StoreResidentRequest;
+use App\Http\Requests\UpdateResidentRequest;
 use App\Models\Resident;
 use App\Repositories\Contracts\ResidentRepositoryInterface;
 use App\Services\ActivityLog\ResidentActivityLogService;
@@ -72,34 +74,10 @@ class ResidentController extends Controller
     /**
      * Store a newly created resident.
      */
-    public function store(Request $request): RedirectResponse
+    public function store(StoreResidentRequest $request): RedirectResponse
     {
         try {
-            $validated = $request->validate([
-                'organization_id' => ['required', 'exists:organizations,id'],
-                'first_name' => ['required', 'string', 'max:255'],
-                'middle_name' => ['nullable', 'string', 'max:255'],
-                'last_name' => ['required', 'string', 'max:255'],
-                'email' => ['required', 'email:rfc', 'max:255', 'unique:residents,email'],
-                'contact_number' => ['required', 'string', 'regex:/^(\+63|0)?9\d{9}$/'],
-                'course' => ['required', 'string', 'max:255'],
-                'year_level' => ['required', 'string', 'in:Pre Resident,First Year,Second Year,Third Year,Fourth Year,Graduate'],
-                'status' => ['required', 'string', 'in:active,inactive'],
-                'password' => ['required', 'string', 'min:8', 'confirmed'],
-            ], [
-                'organization_id.required' => 'Organization is required',
-                'first_name.required' => 'First name is required',
-                'last_name.required' => 'Last name is required',
-                'email.email' => 'Please enter a valid email address.',
-                'email.required' => 'Please enter a valid email address.',
-                'contact_number.required' => 'Contact number is required',
-                'contact_number.regex' => 'Contact number must be a valid Philippine mobile number (e.g., 09123456789 or +639123456789).',
-                'course.required' => 'Course is required',
-                'year_level.required' => 'Year level is required',
-                'password.required' => 'Password is required',
-                'password.min' => 'Password must be at least 8 characters',
-                'password.confirmed' => "Passwords don't match",
-            ]);
+            $validated = $request->validated();
 
             $resident = $this->residentManagementService->create($validated);
 
@@ -158,30 +136,9 @@ class ResidentController extends Controller
     /**
      * Update the specified resident.
      */
-    public function update(Request $request, Resident $resident): RedirectResponse
+    public function update(UpdateResidentRequest $request, Resident $resident): RedirectResponse
     {
-        $validated = $request->validate([
-            'first_name' => ['required', 'string', 'max:255'],
-            'middle_name' => ['nullable', 'string', 'max:255'],
-            'last_name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email:rfc', 'max:255', 'unique:residents,email,' . $resident->id],
-            'contact_number' => ['required', 'string', 'regex:/^(\+63|0)?9\d{9}$/'],
-            'course' => ['required', 'string', 'max:255'],
-            'year_level' => ['required', 'string', 'in:Pre Resident,First Year,Second Year,Third Year,Fourth Year,Graduate'],
-            'status' => ['required', 'string', 'in:active,inactive'],
-            'password' => ['nullable', 'string', 'min:8', 'confirmed'],
-        ], [
-            'first_name.required' => 'First name is required',
-            'last_name.required' => 'Last name is required',
-            'email.email' => 'Please enter a valid email address.',
-            'email.required' => 'Please enter a valid email address.',
-            'contact_number.required' => 'Contact number is required',
-            'contact_number.regex' => 'Contact number must be a valid Philippine mobile number (e.g., 09123456789 or +639123456789).',
-            'course.required' => 'Course is required',
-            'year_level.required' => 'Year level is required',
-            'password.min' => 'Password must be at least 8 characters',
-            'password.confirmed' => "Passwords don't match",
-        ]);
+        $validated = $request->validated();
 
         // Capture old values before updating
         $oldFirstName = $resident->first_name;

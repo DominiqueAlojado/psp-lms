@@ -3,6 +3,9 @@
 namespace App\Http\Controllers\Settings;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Settings\UpdateOrganizationResidentRequest;
+use App\Http\Requests\Settings\UpdateOrganizationSettingsRequest;
+use App\Http\Requests\Settings\UploadOrganizationLogoRequest;
 use App\Repositories\Contracts\OrganizationRepositoryInterface;
 use App\Repositories\Contracts\ResidentRepositoryInterface;
 use App\Repositories\Contracts\UserRepositoryInterface;
@@ -39,7 +42,7 @@ class OrganizationSettingsController extends Controller
         }
 
         // Load residents for this organization
-        $residents = $this->organizationRepository
+        $residents = $this->residentRepository
             ->getForOrganization($organization->id)
             ->map(fn($resident) => [
                 'id' => $resident->id,
@@ -72,7 +75,7 @@ class OrganizationSettingsController extends Controller
     /**
      * Update the organization details.
      */
-    public function update(Request $request): RedirectResponse
+    public function update(UpdateOrganizationSettingsRequest $request): RedirectResponse
     {
         $user = $request->user();
 
@@ -87,11 +90,7 @@ class OrganizationSettingsController extends Controller
             abort(404, 'No current organization selected');
         }
 
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'description' => ['nullable', 'string'],
-            'is_active' => ['required', 'boolean'],
-        ]);
+        $validated = $request->validated();
 
         $this->organizationRepository->update($organization, $validated);
 
@@ -101,7 +100,7 @@ class OrganizationSettingsController extends Controller
     /**
      * Upload organization logo.
      */
-    public function uploadLogo(Request $request): RedirectResponse
+    public function uploadLogo(UploadOrganizationLogoRequest $request): RedirectResponse
     {
         $user = $request->user();
 
@@ -115,10 +114,6 @@ class OrganizationSettingsController extends Controller
         if (! $organization) {
             abort(404, 'No current organization selected');
         }
-
-        $request->validate([
-            'logo' => ['required', 'image', 'max:2048'], // 2MB max
-        ]);
 
         // Delete old logo if exists
         if ($organization->logo) {
@@ -162,7 +157,7 @@ class OrganizationSettingsController extends Controller
     /**
      * Update a resident's information.
      */
-    public function updateResident(Request $request, $residentId): RedirectResponse
+    public function updateResident(UpdateOrganizationResidentRequest $request, $residentId): RedirectResponse
     {
         $user = $request->user();
 
@@ -180,20 +175,7 @@ class OrganizationSettingsController extends Controller
         // Find resident and verify they belong to current organization
         $resident = $this->residentRepository->findForOrganization($organization->id, (int) $residentId);
 
-        $validated = $request->validate([
-            'first_name' => ['required', 'string', 'max:255'],
-            'middle_name' => ['nullable', 'string', 'max:255'],
-            'last_name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email:rfc', 'max:255', 'unique:residents,email,' . $resident->id],
-            'contact_number' => ['required', 'string', 'regex:/^(\+63|0)?9\d{9}$/'],
-            'course' => ['required', 'string', 'max:255'],
-            'year_level' => ['required', 'string', 'in:Pre Resident,First Year,Second Year,Third Year,Fourth Year,Graduate'],
-            'status' => ['required', 'string', 'in:active,inactive'],
-            'password' => ['nullable', 'string', 'min:8', 'confirmed'],
-        ], [
-            'email.email' => 'Please enter a valid email address.',
-            'contact_number.regex' => 'Contact number must be a valid Philippine mobile number (e.g., 09123456789 or +639123456789).',
-        ]);
+        $validated = $request->validated();
 
         $residentData = $validated;
         unset($residentData['password']);

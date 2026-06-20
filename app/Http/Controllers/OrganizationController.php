@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Exports\InstitutionsExport;
+use App\Http\Requests\StoreOrganizationRequest;
+use App\Http\Requests\UpdateOrganizationRequest;
 use App\Models\Organization;
 use App\Repositories\Contracts\OrganizationRepositoryInterface;
 use App\Services\ActivityLog\OrganizationActivityLogService;
@@ -59,21 +61,9 @@ class OrganizationController extends Controller
     /**
      * Store a newly created institution.
      */
-    public function store(Request $request): RedirectResponse
+    public function store(StoreOrganizationRequest $request): RedirectResponse
     {
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255', 'unique:organizations,name'],
-            'description' => ['nullable', 'string'],
-            'type' => ['required', 'string', 'in:chapter,institution,main,national'],
-            'is_active' => ['boolean'],
-            'training_officers' => ['nullable', 'json'],
-        ], [
-            'name.required' => 'Institution name is required',
-            'name.unique' => 'An institution with this name already exists',
-            'type.required' => 'Institution type is required',
-            'type.in' => 'Please select a valid institution type',
-            'training_officers.json' => 'Invalid training officers data',
-        ]);
+        $validated = $request->validated();
 
         // Generate slug from name
         $validated['slug'] = Str::slug($validated['name']);
@@ -95,7 +85,7 @@ class OrganizationController extends Controller
     /**
      * Update the specified institution.
      */
-    public function update(Request $request, Organization $organization): RedirectResponse
+    public function update(UpdateOrganizationRequest $request, Organization $organization): RedirectResponse
     {
         // Prevent duplicate submissions
         $requestId = $request->header('X-Request-ID') ?: uniqid('update_', true);
@@ -106,19 +96,7 @@ class OrganizationController extends Controller
             return back()->with('success', 'Institution updated successfully');
         }
 
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255', 'unique:organizations,name,' . $organization->id],
-            'description' => ['nullable', 'string'],
-            'type' => ['required', 'string', 'in:chapter,institution,main,national'],
-            'is_active' => ['boolean'],
-            'training_officers' => ['nullable', 'json'],
-        ], [
-            'name.required' => 'Institution name is required',
-            'name.unique' => 'An institution with this name already exists',
-            'type.required' => 'Institution type is required',
-            'type.in' => 'Please select a valid institution type',
-            'training_officers.json' => 'Invalid training officers data',
-        ]);
+        $validated = $request->validated();
 
         // Capture old values before updating
         $oldName = $organization->name;
