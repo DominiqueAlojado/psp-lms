@@ -3,8 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Exports\ResidentsExport;
-use App\Models\Organization;
 use App\Models\Resident;
+use App\Repositories\Contracts\ResidentRepositoryInterface;
 use App\Services\ActivityLog\ResidentActivityLogService;
 use App\Traits\LogsActivity;
 use Illuminate\Http\JsonResponse;
@@ -20,7 +20,8 @@ class ResidentController extends Controller
     use LogsActivity;
 
     public function __construct(
-        protected ResidentActivityLogService $activityLogService
+        protected ResidentActivityLogService $activityLogService,
+        protected ResidentRepositoryInterface $residentRepository
     ) {
     }
     /**
@@ -28,28 +29,8 @@ class ResidentController extends Controller
      */
     public function index(Request $request): Response
     {
-        $currentOrg = auth()->user()->currentOrganization;
-
-        $residents = Resident::query()
-            ->with(['organization', 'user.organizations'])
-            ->when($request->input('search'), function ($query, $search) {
-                $query->search($search);
-            })
-            ->when($request->input('organization_id'), function ($query, $orgId) {
-                $query->where('organization_id', $orgId);
-            })
-            ->when($request->input('year_level'), function ($query, $yearLevel) {
-                $query->where('year_level', $yearLevel);
-            })
-            ->when($request->input('status'), function ($query, $status) {
-                $query->where('status', $status);
-            })
-            ->when($request->input('course'), function ($query, $course) {
-                $query->where('course', $course);
-            })
-            ->orderBy($request->input('sort', 'last_name'), $request->input('direction', 'asc'))
-            ->paginate(15)
-            ->withQueryString()
+        $residents = $this->residentRepository
+            ->paginate($request->only(['search', 'organization_id', 'year_level', 'status', 'course', 'sort', 'direction']))
             ->through(fn($resident) => [
                 'id' => $resident->id,
                 'uuid' => $resident->uuid,
@@ -72,17 +53,8 @@ class ResidentController extends Controller
                 ],
             ]);
 
-        $organizations = Organization::query()
-            ->select('id', 'name', 'slug')
-            ->orderBy('name')
-            ->get();
-
-        // Get statistics per year level
-        $yearLevelStats = Resident::query()
-            ->selectRaw('year_level, COUNT(*) as count')
-            ->groupBy('year_level')
-            ->pluck('count', 'year_level')
-            ->toArray();
+        $organizations = $this->residentRepository->getOrganizations();
+        $yearLevelStats = $this->residentRepository->getYearLevelStats();
 
         return Inertia::render('residents/index', [
             'residents' => $residents,
@@ -90,7 +62,7 @@ class ResidentController extends Controller
             'filters' => $request->only(['search', 'organization_id', 'year_level', 'status', 'course']),
             'yearLevels' => ['Pre Resident', 'First Year', 'Second Year', 'Third Year', 'Fourth Year', 'Graduate'],
             'statuses' => ['active', 'inactive'],
-            'courses' => Resident::distinct()->pluck('course')->filter()->values(),
+            'courses' => $this->residentRepository->getDistinctCourses(),
             'yearLevelStats' => $yearLevelStats,
         ]);
     }
@@ -129,7 +101,7 @@ class ResidentController extends Controller
 
             // Create the resident (exclude password fields)
             $residentData = collect($validated)->except(['password', 'password_confirmation'])->toArray();
-            $resident = Resident::create($residentData);
+            $resident = $this->residentRepository->create($residentData);
 
             // Create a user account for the resident
             $user = \App\Models\User::create([
@@ -140,7 +112,7 @@ class ResidentController extends Controller
             ]);
 
             // Link the user to the resident
-            $resident->update(['user_id' => $user->id]);
+            $this->residentRepository->update($resident, ['user_id' => $user->id]);
 
             // Attach user to organization
             $user->organizations()->attach($validated['organization_id'], [
@@ -191,11 +163,8 @@ class ResidentController extends Controller
 
         // Get organizations not yet associated
         $associatedIds = $currentOrganizations->pluck('id')->toArray();
-        $availableOrganizations = Organization::query()
-            ->whereNotIn('id', $associatedIds)
-            ->where('is_active', true)
-            ->orderBy('name')
-            ->get(['id', 'name', 'slug', 'type'])
+        $availableOrganizations = $this->residentRepository
+            ->getActiveOrganizationsExcluding($associatedIds)
             ->map(fn($org) => [
                 'id' => $org->id,
                 'name' => $org->name,
@@ -250,7 +219,7 @@ class ResidentController extends Controller
 
         // Temporarily disable automatic logging to prevent duplicates
         $this->withoutActivityLogging(function () use ($resident, $validated) {
-        $resident->update($validated);
+            $this->residentRepository->update($resident, $validated);
         });
 
         // Update linked user if exists
@@ -303,7 +272,7 @@ class ResidentController extends Controller
         // Log deletion before deleting
         $this->activityLogService->logResidentDeleted($resident);
 
-        $resident->delete();
+        $this->residentRepository->delete($resident);
 
         return back()->with('success', 'Resident deleted successfully');
     }
@@ -329,9 +298,9 @@ class ResidentController extends Controller
             'organization_id' => ['required', 'exists:organizations,id'],
         ]);
 
-        $organization = Organization::find($validated['organization_id']);
+        $organization = $this->residentRepository->findOrganizationById((int) $validated['organization_id']);
 
-        if ($resident->addToOrganization($organization)) {
+        if ($organization && $resident->addToOrganization($organization)) {
             return back()->with('success', "Resident added to {$organization->name}");
         }
 
@@ -347,9 +316,9 @@ class ResidentController extends Controller
             'organization_id' => ['required', 'exists:organizations,id'],
         ]);
 
-        $organization = Organization::find($validated['organization_id']);
+        $organization = $this->residentRepository->findOrganizationById((int) $validated['organization_id']);
 
-        if ($resident->removeFromOrganization($organization)) {
+        if ($organization && $resident->removeFromOrganization($organization)) {
             return back()->with('success', "Resident removed from {$organization->name}");
         }
 
