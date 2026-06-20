@@ -3,19 +3,18 @@
 namespace App\Http\Controllers;
 
 use App\Models\Institution\InstitutionAssessment;
-use App\Models\Institution\InstitutionAttempt;
 use App\Models\National\NationalAssessment;
-use App\Models\National\NationalAttempt;
-use App\Models\Organization;
-use App\Models\QuestionBank;
-use App\Models\QuestionBankStatistic;
-use App\Models\Topic;
+use App\Repositories\Contracts\AnalyticsRepositoryInterface;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class AnalyticsController extends Controller
 {
+    public function __construct(
+        private readonly AnalyticsRepositoryInterface $analyticsRepository,
+    ) {}
+
     /**
      * Display exam analytics for a specific exam.
      */
@@ -33,21 +32,10 @@ class AnalyticsController extends Controller
 
         if ($isNational) {
             // If current org is national, show only national exams
-            $nationalExams = NationalAssessment::query()
-                ->select('id', 'title', 'category', 'total_points', 'passing_score')
-                ->where('is_published', true)
-                ->orderBy('title')
-                ->get();
+            $nationalExams = $this->analyticsRepository->getPublishedNationalExams();
         } else {
             // If current org is institution, show only institution exams
-            $institutionExams = InstitutionAssessment::query()
-                ->select('id', 'title', 'exam_category', 'total_points', 'passing_score')
-                ->when(! $canViewAllOrganizations, function ($q) use ($organizationId) {
-                    $q->where('organization_id', $organizationId);
-                })
-                ->where('is_published', true)
-                ->orderBy('title')
-                ->get();
+            $institutionExams = $this->analyticsRepository->getPublishedInstitutionExams($organizationId, $canViewAllOrganizations);
         }
 
         // Combine exams with prefixes
@@ -72,11 +60,7 @@ class AnalyticsController extends Controller
         // Get organizations for filter (if user has permission)
         $organizations = collect();
         if ($canViewAllOrganizations) {
-            $organizations = Organization::where('type', 'institution')
-                ->where('is_active', true)
-                ->select('id', 'name')
-                ->orderBy('name')
-                ->get();
+            $organizations = $this->analyticsRepository->getActiveInstitutionOrganizations();
         }
 
         // If exam is selected, calculate analytics
@@ -131,29 +115,13 @@ class AnalyticsController extends Controller
         bool $canViewAllOrganizations,
         Request $request
     ): array {
-        $exam = InstitutionAssessment::with(['questions.topic'])
-            ->findOrFail($examId);
-
-        $query = InstitutionAttempt::query()
-            ->where('assessment_id', $examId)
-            ->where('status', 'completed');
-
-        if (! $canViewAllOrganizations) {
-            $query->where('organization_id', $organizationId);
-        }
-
-        if ($request->filled('organization')) {
-            $query->where('organization_id', $request->input('organization'));
-        }
-
-        if ($request->filled('date_from')) {
-            $query->whereDate('submitted_at', '>=', $request->input('date_from'));
-        }
-        if ($request->filled('date_to')) {
-            $query->whereDate('submitted_at', '<=', $request->input('date_to'));
-        }
-
-        $attempts = $query->get();
+        $exam = $this->analyticsRepository->findInstitutionAssessmentForAnalytics($examId);
+        $attempts = $this->analyticsRepository->getCompletedInstitutionAttemptsForExam(
+            $examId,
+            $organizationId,
+            $canViewAllOrganizations,
+            $request->only(['organization', 'date_from', 'date_to'])
+        );
 
         if ($attempts->isEmpty()) {
             return [
@@ -221,21 +189,11 @@ class AnalyticsController extends Controller
         bool $canViewAllOrganizations,
         Request $request
     ): array {
-        $exam = NationalAssessment::with(['questions'])
-            ->findOrFail($examId);
-
-        $query = NationalAttempt::query()
-            ->where('assessment_id', $examId)
-            ->where('status', 'completed');
-
-        if ($request->filled('date_from')) {
-            $query->whereDate('submitted_at', '>=', $request->input('date_from'));
-        }
-        if ($request->filled('date_to')) {
-            $query->whereDate('submitted_at', '<=', $request->input('date_to'));
-        }
-
-        $attempts = $query->get();
+        $exam = $this->analyticsRepository->findNationalAssessmentForAnalytics($examId);
+        $attempts = $this->analyticsRepository->getCompletedNationalAttemptsForExam(
+            $examId,
+            $request->only(['date_from', 'date_to'])
+        );
 
         if ($attempts->isEmpty()) {
             return [
@@ -445,21 +403,10 @@ class AnalyticsController extends Controller
 
         if ($isNational) {
             // If current org is national, show only national exams
-            $nationalExams = NationalAssessment::query()
-                ->select('id', 'title', 'category', 'total_points', 'passing_score')
-                ->where('is_published', true)
-                ->orderBy('title')
-                ->get();
+            $nationalExams = $this->analyticsRepository->getPublishedNationalExams();
         } else {
             // If current org is institution, show only institution exams
-            $institutionExams = InstitutionAssessment::query()
-                ->select('id', 'title', 'exam_category', 'total_points', 'passing_score')
-                ->when(! $canViewAllOrganizations, function ($q) use ($organizationId) {
-                    $q->where('organization_id', $organizationId);
-                })
-                ->where('is_published', true)
-                ->orderBy('title')
-                ->get();
+            $institutionExams = $this->analyticsRepository->getPublishedInstitutionExams($organizationId, $canViewAllOrganizations);
         }
 
         // Combine exams with prefixes
@@ -484,11 +431,7 @@ class AnalyticsController extends Controller
         // Get organizations for filter (if user has permission)
         $organizations = collect();
         if ($canViewAllOrganizations) {
-            $organizations = Organization::where('type', 'institution')
-                ->where('is_active', true)
-                ->select('id', 'name')
-                ->orderBy('name')
-                ->get();
+            $organizations = $this->analyticsRepository->getActiveInstitutionOrganizations();
         }
 
         // If exam is selected, calculate item analysis
@@ -543,30 +486,14 @@ class AnalyticsController extends Controller
         bool $canViewAllOrganizations,
         Request $request
     ): array {
-        $exam = InstitutionAssessment::with(['questions.choices', 'questions.topic'])
-            ->findOrFail($examId);
-
-        $query = InstitutionAttempt::query()
-            ->where('assessment_id', $examId)
-            ->where('status', 'completed')
-            ->with(['answers', 'user']);
-
-        if (! $canViewAllOrganizations) {
-            $query->where('organization_id', $organizationId);
-        }
-
-        if ($request->filled('organization')) {
-            $query->where('organization_id', $request->input('organization'));
-        }
-
-        if ($request->filled('date_from')) {
-            $query->whereDate('submitted_at', '>=', $request->input('date_from'));
-        }
-        if ($request->filled('date_to')) {
-            $query->whereDate('submitted_at', '<=', $request->input('date_to'));
-        }
-
-        $attempts = $query->get();
+        $exam = $this->analyticsRepository->findInstitutionAssessmentForAnalytics($examId, true);
+        $attempts = $this->analyticsRepository->getCompletedInstitutionAttemptsForExam(
+            $examId,
+            $organizationId,
+            $canViewAllOrganizations,
+            $request->only(['organization', 'date_from', 'date_to']),
+            true
+        );
 
         if ($attempts->isEmpty()) {
             return [
@@ -591,22 +518,12 @@ class AnalyticsController extends Controller
         bool $canViewAllOrganizations,
         Request $request
     ): array {
-        $exam = NationalAssessment::with(['questions.choices'])
-            ->findOrFail($examId);
-
-        $query = NationalAttempt::query()
-            ->where('assessment_id', $examId)
-            ->where('status', 'completed')
-            ->with(['answers', 'user']);
-
-        if ($request->filled('date_from')) {
-            $query->whereDate('submitted_at', '>=', $request->input('date_from'));
-        }
-        if ($request->filled('date_to')) {
-            $query->whereDate('submitted_at', '<=', $request->input('date_to'));
-        }
-
-        $attempts = $query->get();
+        $exam = $this->analyticsRepository->findNationalAssessmentForAnalytics($examId, true);
+        $attempts = $this->analyticsRepository->getCompletedNationalAttemptsForExam(
+            $examId,
+            $request->only(['date_from', 'date_to']),
+            true
+        );
 
         if ($attempts->isEmpty()) {
             return [
@@ -865,104 +782,15 @@ class AnalyticsController extends Controller
         $isNational = $currentOrganization?->type === 'national';
 
         // Build query based on organization type
-        $query = QuestionBank::query()
-            ->with([
-                'topic:id,name',
-                'choices',
-                'creator:id,name',
-            ])
-            ->with(['allStatistics' => function ($q) use ($isNational, $organizationId) {
-                $q->where('scope', $isNational ? 'national' : 'institution');
-                if (! $isNational) {
-                    $q->where('institution_id', $organizationId);
-                } else {
-                    $q->whereNull('institution_id');
-                }
-            }])
-            ->withCount('assessments');
-
-        if ($isNational) {
-            $query->national();
-        } else {
-            $query->institution()->forOrganization($organizationId);
-        }
-
-        // Filters
-        if ($request->filled('search')) {
-            $query->where('question_text', 'like', '%' . $request->input('search') . '%');
-        }
-
-        if ($request->filled('topic')) {
-            $query->where('topic_id', $request->input('topic'));
-        }
-
-        if ($request->filled('question_type')) {
-            $query->where('question_type', $request->input('question_type'));
-        }
-
-        if ($request->filled('difficulty')) {
-            if ($request->input('difficulty') === 'computed') {
-                // Filter by computed difficulty from statistics
-                $query->whereHas('statistics', function ($q) use ($isNational, $organizationId) {
-                    $q->where('scope', $isNational ? 'national' : 'institution')
-                        ->whereNotNull('computed_difficulty');
-                    if (! $isNational) {
-                        $q->where('institution_id', $organizationId);
-                    }
-                });
-            } else {
-                $query->where('difficulty_level', $request->input('difficulty'));
-            }
-        }
-
-        if ($request->filled('approval_status')) {
-            if ($request->input('approval_status') === 'approved') {
-                $query->where('is_approved', true);
-            } elseif ($request->input('approval_status') === 'pending') {
-                $query->where('is_approved', false);
-            }
-        }
-
-        if ($request->filled('performance_filter')) {
-            $perfFilter = $request->input('performance_filter');
-            $query->whereHas('statistics', function ($q) use ($perfFilter, $isNational, $organizationId) {
-                $q->where('scope', $isNational ? 'national' : 'institution');
-                if (! $isNational) {
-                    $q->where('institution_id', $organizationId);
-                }
-                if ($perfFilter === 'needs_review') {
-                    // Low discrimination or high skip rate or low success rate
-                    $q->where(function ($subQ) {
-                        $subQ->where('discrimination_index', '<', 0.1)
-                            ->orWhere('skip_count', '>', 10)
-                            ->orWhere('success_rate', '<', 30);
-                    });
-                } elseif ($perfFilter === 'excellent') {
-                    // High discrimination and good success rate
-                    $q->where('discrimination_index', '>=', 0.3)
-                        ->where('success_rate', '>=', 40)
-                        ->where('success_rate', '<=', 70);
-                } elseif ($perfFilter === 'never_used') {
-                    $q->where('times_answered', 0);
-                }
-            });
-        }
-
-        // Sorting
         $sortBy = $request->input('sort_by', 'created_at');
         $sortOrder = $request->input('sort_order', 'desc');
-
-        if (in_array($sortBy, ['success_rate', 'discrimination_index', 'times_answered'])) {
-            $query->leftJoin('question_bank_statistics', function ($join) {
-                $join->on('question_bank.id', '=', 'question_bank_statistics.question_id');
-            })
-                ->select('question_bank.*')
-                ->orderBy("question_bank_statistics.{$sortBy}", $sortOrder);
-        } else {
-            $query->orderBy($sortBy, $sortOrder);
-        }
-
-        $questions = $query->paginate(20);
+        $questions = $this->analyticsRepository->paginateQuestionBankAnalytics(
+            $organizationId,
+            $isNational,
+            $request->only(['search', 'topic', 'question_type', 'difficulty', 'approval_status', 'performance_filter']),
+            $sortBy,
+            $sortOrder
+        );
 
         // Map questions to add the correct statistics for the current scope
         $questions->getCollection()->transform(function ($question) use ($isNational, $organizationId) {
@@ -984,53 +812,12 @@ class AnalyticsController extends Controller
         });
 
         // Calculate summary statistics
-        $summaryQuery = QuestionBank::query();
-        if ($isNational) {
-            $summaryQuery->national();
-        } else {
-            $summaryQuery->institution()->forOrganization($organizationId);
-        }
-
-        $totalQuestions = $summaryQuery->count();
-        $approvedQuestions = (clone $summaryQuery)->where('is_approved', true)->count();
-        $pendingQuestions = $totalQuestions - $approvedQuestions;
-
-        // Average success rate
-        $avgSuccessRate = QuestionBankStatistic::query()
-            ->where('scope', $isNational ? 'national' : 'institution')
-            ->when(! $isNational, function ($q) use ($organizationId) {
-                $q->where('institution_id', $organizationId);
-            })
-            ->whereHas('question', function ($q) use ($isNational, $organizationId) {
-                if ($isNational) {
-                    $q->national();
-                } else {
-                    $q->institution()->forOrganization($organizationId);
-                }
-            })
-            ->where('times_answered', '>', 0)
-            ->avg('success_rate');
-
-        // Get topics for filter - get topics from questions that exist
-        $topicIds = QuestionBank::query()
-            ->when($isNational, fn($q) => $q->national(), fn($q) => $q->institution()->forOrganization($organizationId))
-            ->whereNotNull('topic_id')
-            ->distinct()
-            ->pluck('topic_id');
-
-        $topics = Topic::whereIn('id', $topicIds)
-            ->select('id', 'name')
-            ->orderBy('name')
-            ->get();
+        $summary = $this->analyticsRepository->getQuestionBankSummary($organizationId, $isNational);
+        $topics = $this->analyticsRepository->getQuestionBankTopics($organizationId, $isNational);
 
         return Inertia::render('analytics/question-bank', [
             'questions' => $questions,
-            'summary' => [
-                'total_questions' => $totalQuestions,
-                'approved_questions' => $approvedQuestions,
-                'pending_questions' => $pendingQuestions,
-                'average_success_rate' => round($avgSuccessRate ?? 0, 2),
-            ],
+            'summary' => $summary,
             'topics' => $topics,
             'filters' => [
                 'search' => $request->input('search'),
