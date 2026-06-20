@@ -15,6 +15,7 @@ Route::get('/', function () {
 Route::post('logout', function (Request $request) {
     // Logout the user if authenticated
     if ($request->user()) {
+        $request->user()->releaseActiveExamSessions($request->session()->getId());
         \Illuminate\Support\Facades\Auth::logout();
     }
 

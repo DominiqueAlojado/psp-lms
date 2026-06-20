@@ -1207,12 +1207,7 @@ class ResidentExamController extends Controller
     {
         $currentSessionId = $request->session()->getId();
 
-        if (! $attempt->active_session_id) {
-            $this->residentExamRepository->updateAttempt($attempt, [
-                'active_session_id' => $currentSessionId,
-            ]);
-            $attempt->active_session_id = $currentSessionId;
-
+        if ($this->claimAttemptSessionIfAvailable($attempt, $currentSessionId)) {
             return;
         }
 
@@ -1225,12 +1220,7 @@ class ResidentExamController extends Controller
     {
         $currentSessionId = $request->session()->getId();
 
-        if (! $attempt->active_session_id) {
-            $this->residentExamRepository->updateAttempt($attempt, [
-                'active_session_id' => $currentSessionId,
-            ]);
-            $attempt->active_session_id = $currentSessionId;
-
+        if ($this->claimAttemptSessionIfAvailable($attempt, $currentSessionId)) {
             return;
         }
 
@@ -1243,5 +1233,30 @@ class ResidentExamController extends Controller
 
             abort(409, self::EXAM_SESSION_CONFLICT_MESSAGE);
         }
+    }
+
+    private function claimAttemptSessionIfAvailable(InstitutionAttempt|NationalAttempt $attempt, string $currentSessionId): bool
+    {
+        if (! $attempt->active_session_id || $attempt->active_session_id === $currentSessionId) {
+            if ($attempt->active_session_id !== $currentSessionId) {
+                $this->residentExamRepository->updateAttempt($attempt, [
+                    'active_session_id' => $currentSessionId,
+                ]);
+                $attempt->active_session_id = $currentSessionId;
+            }
+
+            return true;
+        }
+
+        if (! $this->residentExamRepository->examSessionExists($attempt->active_session_id)) {
+            $this->residentExamRepository->updateAttempt($attempt, [
+                'active_session_id' => $currentSessionId,
+            ]);
+            $attempt->active_session_id = $currentSessionId;
+
+            return true;
+        }
+
+        return false;
     }
 }

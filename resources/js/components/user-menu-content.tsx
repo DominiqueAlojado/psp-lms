@@ -6,7 +6,6 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { UserInfo } from '@/components/user-info';
 import { useMobileNavigation } from '@/hooks/use-mobile-navigation';
-import { logout } from '@/routes';
 import { edit } from '@/routes/profile';
 import { type User } from '@/types';
 import { Link, router } from '@inertiajs/react';
@@ -16,12 +15,14 @@ interface UserMenuContentProps {
     user: User;
 }
 
+const LOGOUT_PATH = '/logout';
+
 export function UserMenuContent({ user }: UserMenuContentProps) {
     const cleanup = useMobileNavigation();
 
     const handleLogout = () => {
         cleanup();
-        router.post(logout().url, {}, {
+        router.post(LOGOUT_PATH, {}, {
             onSuccess: () => {
                 // Inertia will handle the redirect via Inertia::location
             },

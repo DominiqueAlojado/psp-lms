@@ -6,7 +6,10 @@ use App\Http\Middleware\SetOrganizationFromUrl;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Request;
 use Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets;
+use Inertia\Inertia;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -52,5 +55,17 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        //
+        $exceptions->render(function (HttpExceptionInterface $exception, Request $request) {
+            if (
+                $exception->getStatusCode() === 409
+                && $exception->getMessage() === 'This exam is already active in another browser or device.'
+                && $request->is('exams/*/*/take')
+            ) {
+                return Inertia::render('errors/exam-session-conflict', [
+                    'message' => $exception->getMessage(),
+                ])->toResponse($request)->setStatusCode(409);
+            }
+
+            return null;
+        });
     })->create();

@@ -9,6 +9,7 @@ use App\Models\Institution\InstitutionQuestionChoice;
 use App\Models\Organization;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class ResidentExamSingleSessionTest extends TestCase
@@ -43,11 +44,49 @@ class ResidentExamSingleSessionTest extends TestCase
         $this->assertNotNull($attempt->fresh()->active_session_id);
     }
 
-    public function test_in_progress_exam_is_blocked_for_a_different_session(): void
+    public function test_in_progress_exam_is_reclaimed_when_the_old_session_no_longer_exists(): void
     {
         [$user, $organization] = $this->makeResidentUser();
         $assessment = $this->makeInstitutionAssessment($organization, $user);
         $question = $this->makeInstitutionQuestion($assessment);
+
+        $attempt = InstitutionAttempt::create([
+            'assessment_id' => $assessment->id,
+            'user_id' => $user->id,
+            'year_level' => 'First Year',
+            'organization_id' => $organization->id,
+            'started_at' => now(),
+            'total_points' => $assessment->total_points,
+            'status' => 'in_progress',
+            'active_session_id' => 'browser-a-session',
+            'last_activity_at' => now(),
+        ]);
+
+        $jsonResponse = $this->actingAs($user)->postJson("/exams/institution/{$attempt->id}/save-answer", [
+            'question_id' => $question->id,
+            'answer_data' => ['choice_id' => 1],
+        ]);
+
+        $jsonResponse->assertOk()
+            ->assertJson(['success' => true]);
+
+        $this->assertNotSame('browser-a-session', $attempt->fresh()->active_session_id);
+    }
+
+    public function test_in_progress_exam_is_blocked_for_a_different_active_session(): void
+    {
+        [$user, $organization] = $this->makeResidentUser();
+        $assessment = $this->makeInstitutionAssessment($organization, $user);
+        $question = $this->makeInstitutionQuestion($assessment);
+
+        DB::table('sessions')->insert([
+            'id' => 'browser-a-session',
+            'user_id' => $user->id,
+            'ip_address' => '127.0.0.1',
+            'user_agent' => 'Browser A',
+            'payload' => base64_encode(serialize([])),
+            'last_activity' => now()->timestamp,
+        ]);
 
         $attempt = InstitutionAttempt::create([
             'assessment_id' => $assessment->id,

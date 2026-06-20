@@ -83,6 +83,8 @@ interface ResidentExamRepositoryInterface
 
     public function incrementAttemptField(InstitutionAttempt|NationalAttempt $attempt, string $field, int|float $amount = 1): void;
 
+    public function examSessionExists(string $sessionId): bool;
+
     public function findInstitutionQuestionBankMatch(string $questionText, int $organizationId, string $questionType, ?int $topicId): ?QuestionBank;
 
     public function findNationalQuestionBankMatch(string $questionText, string $questionType, ?string $topic): ?QuestionBank;

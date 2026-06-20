@@ -12,6 +12,7 @@ use App\Models\National\NationalAssessment;
 use App\Models\National\NationalAttempt;
 use App\Models\QuestionBank;
 use App\Repositories\Contracts\ResidentExamRepositoryInterface;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Collection;
 
 class ResidentExamRepository implements ResidentExamRepositoryInterface
@@ -253,6 +254,19 @@ class ResidentExamRepository implements ResidentExamRepositoryInterface
     public function incrementAttemptField(InstitutionAttempt|NationalAttempt $attempt, string $field, int|float $amount = 1): void
     {
         $attempt->increment($field, $amount);
+    }
+
+    public function examSessionExists(string $sessionId): bool
+    {
+        $table = (string) config('session.table', 'sessions');
+
+        if ($sessionId === '' || ! DB::getSchemaBuilder()->hasTable($table)) {
+            return false;
+        }
+
+        return DB::table($table)
+            ->where('id', $sessionId)
+            ->exists();
     }
 
     public function findInstitutionQuestionBankMatch(string $questionText, int $organizationId, string $questionType, ?int $topicId): ?QuestionBank

@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Models\Institution\InstitutionAttempt;
+use App\Models\National\NationalAttempt;
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -151,6 +153,25 @@ class User extends Authenticatable
     public function resident()
     {
         return $this->hasOne(Resident::class);
+    }
+
+    public function releaseActiveExamSessions(string $sessionId): void
+    {
+        if ($sessionId === '') {
+            return;
+        }
+
+        InstitutionAttempt::query()
+            ->where('user_id', $this->id)
+            ->where('status', 'in_progress')
+            ->where('active_session_id', $sessionId)
+            ->update(['active_session_id' => null]);
+
+        NationalAttempt::query()
+            ->where('user_id', $this->id)
+            ->where('status', 'in_progress')
+            ->where('active_session_id', $sessionId)
+            ->update(['active_session_id' => null]);
     }
 
     public function getActivitylogOptions(): LogOptions

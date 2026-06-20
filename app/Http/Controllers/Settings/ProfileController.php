@@ -50,6 +50,7 @@ class ProfileController extends Controller
 
         $user = $request->user();
 
+        $user->releaseActiveExamSessions($request->session()->getId());
         Auth::logout();
 
         $this->userRepository->delete($user);
