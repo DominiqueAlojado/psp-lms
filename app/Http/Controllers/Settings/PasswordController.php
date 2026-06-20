@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Settings;
 
 use App\Http\Controllers\Controller;
+use App\Repositories\Contracts\UserRepositoryInterface;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rules\Password;
@@ -11,6 +12,10 @@ use Inertia\Response;
 
 class PasswordController extends Controller
 {
+    public function __construct(
+        private readonly UserRepositoryInterface $userRepository
+    ) {}
+
     /**
      * Show the user's password settings page.
      */
@@ -29,9 +34,7 @@ class PasswordController extends Controller
             'password' => ['required', Password::defaults(), 'confirmed'],
         ]);
 
-        $request->user()->update([
-            'password' => $validated['password'],
-        ]);
+        $this->userRepository->updatePassword($request->user(), $validated['password']);
 
         return back();
     }
