@@ -43,6 +43,16 @@ class ResidentRepository implements ResidentRepositoryInterface
             ->get();
     }
 
+    public function getForOrganization(int $organizationId): Collection
+    {
+        return Resident::query()
+            ->with('user')
+            ->where('organization_id', $organizationId)
+            ->orderBy('last_name')
+            ->orderBy('first_name')
+            ->get();
+    }
+
     public function getActiveOrganizationsExcluding(array $excludedIds): Collection
     {
         return Organization::query()
@@ -90,5 +100,12 @@ class ResidentRepository implements ResidentRepositoryInterface
     public function findOrganizationById(int $organizationId): ?Organization
     {
         return Organization::find($organizationId);
+    }
+
+    public function findForOrganization(int $organizationId, int $residentId): Resident
+    {
+        return Resident::query()
+            ->where('organization_id', $organizationId)
+            ->findOrFail($residentId);
     }
 }

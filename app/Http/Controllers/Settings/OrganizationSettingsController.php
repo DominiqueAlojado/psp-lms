@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Settings;
 
 use App\Http\Controllers\Controller;
 use App\Repositories\Contracts\OrganizationRepositoryInterface;
+use App\Repositories\Contracts\ResidentRepositoryInterface;
+use App\Repositories\Contracts\UserRepositoryInterface;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -14,6 +16,8 @@ class OrganizationSettingsController extends Controller
 {
     public function __construct(
         private readonly OrganizationRepositoryInterface $organizationRepository,
+        private readonly ResidentRepositoryInterface $residentRepository,
+        private readonly UserRepositoryInterface $userRepository,
     ) {}
 
     /**
@@ -36,7 +40,7 @@ class OrganizationSettingsController extends Controller
 
         // Load residents for this organization
         $residents = $this->organizationRepository
-            ->getResidents($organization)
+            ->getForOrganization($organization->id)
             ->map(fn($resident) => [
                 'id' => $resident->id,
                 'uuid' => $resident->uuid,
@@ -174,7 +178,7 @@ class OrganizationSettingsController extends Controller
         }
 
         // Find resident and verify they belong to current organization
-        $resident = $this->organizationRepository->findResident($organization, (int) $residentId);
+        $resident = $this->residentRepository->findForOrganization($organization->id, (int) $residentId);
 
         $validated = $request->validate([
             'first_name' => ['required', 'string', 'max:255'],
@@ -194,7 +198,7 @@ class OrganizationSettingsController extends Controller
         $residentData = $validated;
         unset($residentData['password']);
 
-        $this->organizationRepository->updateResident($resident, $residentData);
+        $this->residentRepository->update($resident, $residentData);
 
         // Update user account if linked
         if ($resident->user) {
@@ -208,7 +212,7 @@ class OrganizationSettingsController extends Controller
                 $userUpdate['password'] = $validated['password'];
             }
 
-            $this->organizationRepository->updateResidentUser($resident, $userUpdate);
+            $this->userRepository->update($resident->user, $userUpdate);
         }
 
         return back()->with('success', 'Resident updated successfully');

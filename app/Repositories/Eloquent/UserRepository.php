@@ -7,6 +7,11 @@ use App\Repositories\Contracts\UserRepositoryInterface;
 
 class UserRepository implements UserRepositoryInterface
 {
+    public function update(User $user, array $attributes): bool
+    {
+        return $user->update($attributes);
+    }
+
     public function updateProfile(User $user, array $attributes): bool
     {
         $user->fill($attributes);

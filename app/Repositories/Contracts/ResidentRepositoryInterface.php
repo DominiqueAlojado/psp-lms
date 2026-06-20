@@ -13,6 +13,8 @@ interface ResidentRepositoryInterface
 
     public function getOrganizations(): Collection;
 
+    public function getForOrganization(int $organizationId): Collection;
+
     public function getActiveOrganizationsExcluding(array $excludedIds): Collection;
 
     public function getYearLevelStats(): array;
@@ -26,4 +28,6 @@ interface ResidentRepositoryInterface
     public function delete(Resident $resident): bool;
 
     public function findOrganizationById(int $organizationId): ?Organization;
+
+    public function findForOrganization(int $organizationId, int $residentId): Resident;
 }
