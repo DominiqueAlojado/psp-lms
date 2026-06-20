@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Settings;
 
 use App\Http\Controllers\Controller;
-use App\Models\Organization;
+use App\Repositories\Contracts\OrganizationRepositoryInterface;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -12,6 +12,10 @@ use Inertia\Response;
 
 class OrganizationSettingsController extends Controller
 {
+    public function __construct(
+        private readonly OrganizationRepositoryInterface $organizationRepository,
+    ) {}
+
     /**
      * Display the organization settings page.
      */
@@ -31,11 +35,8 @@ class OrganizationSettingsController extends Controller
         }
 
         // Load residents for this organization
-        $residents = $organization->residents()
-            ->with('user')
-            ->orderBy('last_name')
-            ->orderBy('first_name')
-            ->get()
+        $residents = $this->organizationRepository
+            ->getResidents($organization)
             ->map(fn($resident) => [
                 'id' => $resident->id,
                 'uuid' => $resident->uuid,
@@ -88,7 +89,7 @@ class OrganizationSettingsController extends Controller
             'is_active' => ['required', 'boolean'],
         ]);
 
-        $organization->update($validated);
+        $this->organizationRepository->update($organization, $validated);
 
         return back()->with('success', 'Organization updated successfully');
     }
@@ -123,7 +124,7 @@ class OrganizationSettingsController extends Controller
         // Store new logo
         $path = $request->file('logo')->store('organization-logos', 'public');
 
-        $organization->update(['logo' => $path]);
+        $this->organizationRepository->update($organization, ['logo' => $path]);
 
         return back()->with('success', 'Logo updated successfully');
     }
@@ -148,7 +149,7 @@ class OrganizationSettingsController extends Controller
 
         if ($organization->logo) {
             Storage::disk('public')->delete($organization->logo);
-            $organization->update(['logo' => null]);
+            $this->organizationRepository->update($organization, ['logo' => null]);
         }
 
         return back()->with('success', 'Logo deleted successfully');
@@ -173,7 +174,7 @@ class OrganizationSettingsController extends Controller
         }
 
         // Find resident and verify they belong to current organization
-        $resident = $organization->residents()->findOrFail($residentId);
+        $resident = $this->organizationRepository->findResident($organization, (int) $residentId);
 
         $validated = $request->validate([
             'first_name' => ['required', 'string', 'max:255'],
@@ -190,7 +191,10 @@ class OrganizationSettingsController extends Controller
             'contact_number.regex' => 'Contact number must be a valid Philippine mobile number (e.g., 09123456789 or +639123456789).',
         ]);
 
-        $resident->update($validated);
+        $residentData = $validated;
+        unset($residentData['password']);
+
+        $this->organizationRepository->updateResident($resident, $residentData);
 
         // Update user account if linked
         if ($resident->user) {
@@ -204,7 +208,7 @@ class OrganizationSettingsController extends Controller
                 $userUpdate['password'] = $validated['password'];
             }
 
-            $resident->user->update($userUpdate);
+            $this->organizationRepository->updateResidentUser($resident, $userUpdate);
         }
 
         return back()->with('success', 'Resident updated successfully');

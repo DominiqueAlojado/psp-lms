@@ -3,6 +3,7 @@
 namespace App\Repositories\Eloquent;
 
 use App\Models\Organization;
+use App\Models\Resident;
 use App\Repositories\Contracts\OrganizationRepositoryInterface;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
@@ -68,5 +69,33 @@ class OrganizationRepository implements OrganizationRepositoryInterface
     public function hasResidents(Organization $organization): bool
     {
         return $organization->residents()->exists();
+    }
+
+    public function getResidents(Organization $organization): Collection
+    {
+        return $organization->residents()
+            ->with('user')
+            ->orderBy('last_name')
+            ->orderBy('first_name')
+            ->get();
+    }
+
+    public function findResident(Organization $organization, int $residentId): Resident
+    {
+        return $organization->residents()->findOrFail($residentId);
+    }
+
+    public function updateResident(Resident $resident, array $attributes): bool
+    {
+        return $resident->update($attributes);
+    }
+
+    public function updateResidentUser(Resident $resident, array $attributes): bool
+    {
+        if (! $resident->user) {
+            return false;
+        }
+
+        return $resident->user->update($attributes);
     }
 }
