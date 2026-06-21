@@ -5,27 +5,27 @@ namespace App\Http\Controllers;
 use App\Exports\QuestionsTemplateExport;
 use App\Models\Institution\InstitutionAssessment;
 use App\Models\Institution\InstitutionQuestion;
-use App\Repositories\Contracts\InstitutionAssessmentRepositoryInterface;
-use App\Repositories\Contracts\InstitutionQuestionChoiceRepositoryInterface;
-use App\Repositories\Contracts\InstitutionQuestionRepositoryInterface;
 use App\Services\InstitutionAssessmentDuplicationService;
 use App\Services\InstitutionAssessmentImportService;
+use App\Services\InstitutionAssessmentManagementService;
 use App\Services\InstitutionAssessmentQuestionService;
+use App\Services\InstitutionAssessmentReadService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use Inertia\Response;
+use Maatwebsite\Excel\Facades\Excel;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class InstitutionExamController extends Controller
 {
     public function __construct(
-        private readonly InstitutionAssessmentRepositoryInterface $assessmentRepository,
-        private readonly InstitutionQuestionRepositoryInterface $questionRepository,
-        private readonly InstitutionQuestionChoiceRepositoryInterface $questionChoiceRepository,
         private readonly InstitutionAssessmentDuplicationService $duplicationService,
         private readonly InstitutionAssessmentImportService $importService,
+        private readonly InstitutionAssessmentManagementService $managementService,
         private readonly InstitutionAssessmentQuestionService $questionService,
+        private readonly InstitutionAssessmentReadService $readService,
     ) {}
 
     /**
@@ -34,29 +34,15 @@ class InstitutionExamController extends Controller
     public function index(Request $request): Response
     {
         $user = $request->user();
-        if ($user->currentOrganization?->type === 'national') {
+        if ($this->readService->shouldRedirectToInservice($user)) {
             return redirect()->route('inservice-exams.active');
         }
 
-        $assessments = $this->assessmentRepository
-            ->paginateByPublication($user->current_organization_id, true, $request->only(['search', 'sort', 'direction']))
-            ->through(fn($assessment) => [
-                'id' => $assessment->id,
-                'title' => $assessment->title,
-                'description' => $assessment->description,
-                'exam_category' => $assessment->exam_category,
-                'questions_count' => $assessment->questions_count,
-                'total_points' => $assessment->total_points,
-                'passing_score' => $assessment->passing_score,
-                'duration_minutes' => $assessment->duration_minutes,
-                'is_published' => $assessment->is_published,
-                'is_available' => $assessment->isAvailable(),
-                'available_from' => $assessment->available_from?->format('Y-m-d H:i'),
-                'available_until' => $assessment->available_until?->format('Y-m-d H:i'),
-                'created_by' => $assessment->creator->name,
-                'created_at' => $assessment->created_at->format('Y-m-d'),
-                'updated_at' => $assessment->updated_at->diffForHumans(),
-            ]);
+        $assessments = $this->readService->listForPublication(
+            $user,
+            true,
+            $request->only(['search', 'sort', 'direction']),
+        );
 
         return Inertia::render('institution-exams/active', [
             'exams' => $assessments,
@@ -70,29 +56,15 @@ class InstitutionExamController extends Controller
     public function drafts(Request $request): Response
     {
         $user = $request->user();
-        if ($user->currentOrganization?->type === 'national') {
+        if ($this->readService->shouldRedirectToInservice($user)) {
             return redirect()->route('inservice-exams.drafts');
         }
 
-        $assessments = $this->assessmentRepository
-            ->paginateByPublication($user->current_organization_id, false, $request->only(['search', 'sort', 'direction']))
-            ->through(fn($assessment) => [
-                'id' => $assessment->id,
-                'title' => $assessment->title,
-                'description' => $assessment->description,
-                'exam_category' => $assessment->exam_category,
-                'questions_count' => $assessment->questions_count,
-                'total_points' => $assessment->total_points,
-                'passing_score' => $assessment->passing_score,
-                'duration_minutes' => $assessment->duration_minutes,
-                'is_published' => $assessment->is_published,
-                'is_available' => $assessment->isAvailable(),
-                'available_from' => $assessment->available_from?->format('Y-m-d H:i'),
-                'available_until' => $assessment->available_until?->format('Y-m-d H:i'),
-                'created_by' => $assessment->creator->name,
-                'created_at' => $assessment->created_at->format('Y-m-d'),
-                'updated_at' => $assessment->updated_at->diffForHumans(),
-            ]);
+        $assessments = $this->readService->listForPublication(
+            $user,
+            false,
+            $request->only(['search', 'sort', 'direction']),
+        );
 
         return Inertia::render('institution-exams/drafts', [
             'exams' => $assessments,
@@ -106,9 +78,7 @@ class InstitutionExamController extends Controller
     public function store(Request $request): RedirectResponse
     {
         try {
-            $isNationalContext = $request->user()->currentOrganization?->type === 'national';
-
-            if ($isNationalContext) {
+            if (! $this->managementService->canCreateFromCurrentOrganization($request->user())) {
                 return redirect()
                     ->route('inservice-exams.create')
                     ->with('error', 'Use the In-Service Exams flow for national assessments.');
@@ -129,25 +99,7 @@ class InstitutionExamController extends Controller
                 'is_published' => ['boolean'],
             ]);
 
-            $assessment = $this->assessmentRepository->create([
-                'organization_id' => $request->user()->current_organization_id,
-                'created_by' => $request->user()->id,
-                'total_points' => 0,
-                'title' => $validated['title'],
-                'description' => $validated['description'] ?? null,
-                'exam_category' => $validated['exam_category'] ?? null,
-                'duration_minutes' => $validated['duration_minutes'] ?? null,
-                'passing_score' => $validated['passing_score'],
-                'randomize_questions' => $validated['randomize_questions'] ?? false,
-                'randomize_choices' => $validated['randomize_choices'] ?? false,
-                'show_results_immediately' => $validated['show_results_immediately'] ?? true,
-                'allow_review' => $validated['allow_review'] ?? true,
-                'available_from' => $validated['available_from'] ?? null,
-                'available_until' => $validated['available_until'] ?? null,
-                'is_published' => $validated['is_published'] ?? false,
-            ]);
-
-            Log::info('Exam created successfully', ['id' => $assessment->id]);
+            $assessment = $this->managementService->create($request->user(), $validated);
 
             return redirect()
                 ->route('institution-exams.edit', $assessment)
@@ -171,46 +123,7 @@ class InstitutionExamController extends Controller
             abort(403, 'You do not have access to this assessment.');
         }
 
-        $assessment = $this->assessmentRepository->loadForEdit($assessment);
-
-        return Inertia::render('institution-exams/edit', [
-            'assessment' => [
-                'id' => $assessment->id,
-                'title' => $assessment->title,
-                'description' => $assessment->description,
-                'exam_category' => $assessment->exam_category,
-                'duration_minutes' => $assessment->duration_minutes,
-                'total_points' => $assessment->total_points,
-                'passing_score' => $assessment->passing_score,
-                'randomize_questions' => $assessment->randomize_questions,
-                'randomize_choices' => $assessment->randomize_choices,
-                'show_results_immediately' => $assessment->show_results_immediately,
-                'allow_review' => $assessment->allow_review,
-                'is_published' => $assessment->is_published,
-                'available_from' => $assessment->available_from?->format('Y-m-d\TH:i'),
-                'available_until' => $assessment->available_until?->format('Y-m-d\TH:i'),
-                'questions' => $assessment->questions->map(fn($q) => [
-                    'id' => $q->id,
-                    'topic_id' => $q->topic_id,
-                    'question_type' => $q->question_type,
-                    'question_text' => $q->question_text,
-                    'points' => $q->points,
-                    'explanation' => $q->explanation,
-                    'image_path' => $q->image_path,
-                    'image_url' => $q->image_path ? Storage::disk('public')->url($q->image_path) : null,
-                    'order' => $q->order,
-                    'choices' => $q->choices->map(fn($c) => [
-                        'id' => $c->id,
-                        'choice_text' => $c->choice_text,
-                        'is_correct' => $c->is_correct,
-                        'order' => $c->order,
-                    ]),
-                ]),
-                'created_by' => $assessment->creator->name,
-                'created_at' => $assessment->created_at->format('Y-m-d'),
-            ],
-            'questionBankScope' => $assessment->organization?->type === 'national' ? 'national' : 'institution',
-        ]);
+        return Inertia::render('institution-exams/edit', $this->readService->editPayload($assessment));
     }
 
     /**
@@ -223,35 +136,7 @@ class InstitutionExamController extends Controller
             abort(403, 'You do not have access to this assessment.');
         }
 
-        $assessment = $this->assessmentRepository->loadForShow($assessment);
-
-        return Inertia::render('assessments/show', [
-            'assessment' => [
-                'id' => $assessment->id,
-                'title' => $assessment->title,
-                'description' => $assessment->description,
-                'duration_minutes' => $assessment->duration_minutes,
-                'total_points' => $assessment->total_points,
-                'passing_score' => $assessment->passing_score,
-                'is_published' => $assessment->is_published,
-                'questions' => $assessment->questions->map(fn($q) => [
-                    'id' => $q->id,
-                    'question_type' => $q->question_type,
-                    'question_text' => $q->question_text,
-                    'points' => $q->points,
-                    'explanation' => $q->explanation,
-                    'order' => $q->order,
-                    'choices' => $q->choices->map(fn($c) => [
-                        'id' => $c->id,
-                        'choice_text' => $c->choice_text,
-                        'is_correct' => $c->is_correct,
-                        'order' => $c->order,
-                    ]),
-                ]),
-                'created_by' => $assessment->creator->name,
-                'created_at' => $assessment->created_at->format('Y-m-d'),
-            ],
-        ]);
+        return Inertia::render('assessments/show', $this->readService->showPayload($assessment));
     }
 
     /**
@@ -263,8 +148,6 @@ class InstitutionExamController extends Controller
         if ($assessment->organization_id !== $request->user()->current_organization_id) {
             abort(403, 'You do not have access to this assessment.');
         }
-
-        $isNationalOrgAssessment = $assessment->organization?->type === 'national';
 
         $validated = $request->validate([
             'title' => ['required', 'string', 'max:255'],
@@ -281,11 +164,7 @@ class InstitutionExamController extends Controller
             'available_until' => ['nullable', 'date', 'after:available_from'],
         ]);
 
-        if ($isNationalOrgAssessment) {
-            $validated['exam_category'] = 'In-service';
-        }
-
-        $this->assessmentRepository->update($assessment, $validated);
+        $this->managementService->update($assessment, $validated);
 
         return back()->with('success', 'Assessment updated successfully');
     }
@@ -300,14 +179,13 @@ class InstitutionExamController extends Controller
             abort(403, 'You do not have access to this assessment.');
         }
 
-        // Check if there are any attempts
-        if ($this->assessmentRepository->attemptsCount($assessment) > 0) {
+        if (! $this->managementService->canDelete($assessment)) {
             return back()->withErrors([
                 'error' => 'Cannot delete assessment that has been attempted by residents.',
             ]);
         }
 
-        $this->assessmentRepository->delete($assessment);
+        $this->managementService->delete($assessment);
 
         return back()->with('success', 'Assessment deleted successfully');
     }
@@ -406,7 +284,7 @@ class InstitutionExamController extends Controller
                 'points' => $question->points,
                 'order' => $question->order,
                 'image_path' => $question->image_path,
-                'image_url' => $question->image_path ? Storage::disk('public')->url($question->image_path) : null,
+                'image_url' => $question->image_path ? \Illuminate\Support\Facades\Storage::disk('public')->url($question->image_path) : null,
             ],
         ]);
     }
