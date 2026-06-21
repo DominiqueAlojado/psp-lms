@@ -5,14 +5,14 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreLearningResourceRequest;
 use App\Http\Requests\UpdateLearningResourceRequest;
 use App\Models\LearningResource;
-use App\Repositories\Contracts\LearningResourceRepositoryInterface;
 use App\Services\ActivityLog\ResourceActivityLogService;
+use App\Services\ResourceManagementService;
+use App\Services\ResourceReadService;
 use App\Traits\LogsActivity;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -22,7 +22,8 @@ class ResourceController extends Controller
 
     public function __construct(
         protected ResourceActivityLogService $activityLogService,
-        protected LearningResourceRepositoryInterface $learningResourceRepository
+        protected ResourceManagementService $resourceManagementService,
+        protected ResourceReadService $resourceReadService,
     ) {}
 
     /**
@@ -30,30 +31,14 @@ class ResourceController extends Controller
      */
     public function index(Request $request): Response
     {
-        $user = $request->user();
-        $organizationId = $user->current_organization_id;
-
-        $resources = $this->learningResourceRepository
-            ->paginatePublishedByOrganization($organizationId, $request->only(['search', 'category']))
-            ->through(fn($resource) => [
-                'id' => $resource->id,
-                'title' => $resource->title,
-                'description' => $resource->description,
-                'category' => $resource->category,
-                'file_name' => $resource->file_name,
-                'file_type' => $resource->file_type,
-                'file_size_formatted' => $resource->file_size_formatted,
-                'target_year_levels' => $resource->target_year_levels,
-                'download_count' => $resource->download_count,
-                'uploaded_by' => $resource->uploader->name,
-                'created_at' => $resource->created_at->format('M d, Y'),
-            ]);
-
-        $categories = $this->learningResourceRepository->getPublishedCategoriesByOrganization($organizationId);
+        $payload = $this->resourceReadService->indexPayload(
+            $request->user(),
+            $request->only(['search', 'category'])
+        );
 
         return Inertia::render('resources/index', [
-            'resources' => $resources,
-            'categories' => $categories,
+            'resources' => $payload['resources'],
+            'categories' => $payload['categories'],
             'filters' => $request->only(['search', 'category']),
         ]);
     }
@@ -63,33 +48,14 @@ class ResourceController extends Controller
      */
     public function manage(Request $request): Response
     {
-        $user = $request->user();
-        $organizationId = $user->current_organization_id;
-
-        $resources = $this->learningResourceRepository
-            ->paginateForManagementByOrganization($organizationId, $request->only(['search', 'category', 'is_published']))
-            ->through(fn($resource) => [
-                'id' => $resource->id,
-                'title' => $resource->title,
-                'description' => $resource->description,
-                'category' => $resource->category,
-                'file_name' => $resource->file_name,
-                'file_type' => $resource->file_type,
-                'file_size_formatted' => $resource->file_size_formatted,
-                'file_url' => $resource->file_url,
-                'target_year_levels' => $resource->target_year_levels,
-                'is_published' => $resource->is_published,
-                'download_count' => $resource->download_count,
-                'uploaded_by' => $resource->uploader->name,
-                'created_at' => $resource->created_at->format('M d, Y'),
-                'updated_at' => $resource->updated_at->diffForHumans(),
-            ]);
-
-        $categories = $this->learningResourceRepository->getCategoriesByOrganization($organizationId);
+        $payload = $this->resourceReadService->managePayload(
+            $request->user(),
+            $request->only(['search', 'category', 'is_published'])
+        );
 
         return Inertia::render('resources/manage', [
-            'resources' => $resources,
-            'categories' => $categories,
+            'resources' => $payload['resources'],
+            'categories' => $payload['categories'],
             'filters' => $request->only(['search', 'category', 'is_published']),
         ]);
     }
@@ -125,19 +91,7 @@ class ResourceController extends Controller
                 return back()->withErrors(['file' => 'Failed to store file']);
             }
 
-            $resource = $this->learningResourceRepository->create([
-                'organization_id' => $request->user()->current_organization_id,
-                'uploaded_by' => $request->user()->id,
-                'title' => $validated['title'],
-                'description' => $validated['description'] ?? null,
-                'category' => $validated['category'],
-                'file_path' => $path,
-                'file_name' => $file->getClientOriginalName(),
-                'file_type' => $file->getClientOriginalExtension(),
-                'file_size' => $file->getSize(),
-                'target_year_levels' => $validated['target_year_levels'] ?? null,
-                'is_published' => $validated['is_published'] ?? true,
-            ]);
+            $resource = $this->resourceManagementService->create($request->user(), $validated, $file);
 
             // Log resource creation
             $this->activityLogService->logResourceCreated($resource);
@@ -162,7 +116,7 @@ class ResourceController extends Controller
     public function update(UpdateLearningResourceRequest $request, LearningResource $resource): RedirectResponse
     {
         // Verify user has access
-        if ($resource->organization_id !== $request->user()->current_organization_id) {
+        if (! $this->resourceManagementService->canAccess($request->user(), $resource)) {
             abort(403, 'You do not have access to this resource.');
         }
 
@@ -179,7 +133,7 @@ class ResourceController extends Controller
 
         // Update resource without logging (to avoid duplicate logs)
         $this->withoutActivityLogging(function () use ($resource, $validated) {
-            $this->learningResourceRepository->update($resource, $validated);
+            $this->resourceManagementService->update($resource, $validated);
         });
 
         // Build log data and log changes
@@ -197,19 +151,14 @@ class ResourceController extends Controller
     public function destroy(Request $request, LearningResource $resource): RedirectResponse
     {
         // Verify user has access
-        if ($resource->organization_id !== $request->user()->current_organization_id) {
+        if (! $this->resourceManagementService->canAccess($request->user(), $resource)) {
             abort(403, 'You do not have access to this resource.');
         }
 
         // Log resource deletion before deleting
         $this->activityLogService->logResourceDeleted($resource);
 
-        // Delete the file from storage
-        if (Storage::disk('public')->exists($resource->file_path)) {
-            Storage::disk('public')->delete($resource->file_path);
-        }
-
-        $this->learningResourceRepository->delete($resource);
+        $this->resourceManagementService->delete($resource);
 
         return back()->with('success', 'Resource deleted successfully!');
     }
@@ -220,7 +169,7 @@ class ResourceController extends Controller
     public function logs(Request $request, LearningResource $resource): JsonResponse
     {
         // Verify user has access
-        if ($resource->organization_id !== $request->user()->current_organization_id) {
+        if (! $this->resourceManagementService->canAccess($request->user(), $resource)) {
             abort(403, 'You do not have access to this resource.');
         }
 
@@ -237,13 +186,13 @@ class ResourceController extends Controller
     public function download(Request $request, LearningResource $resource)
     {
         // Verify user has access
-        if ($resource->organization_id !== $request->user()->current_organization_id) {
+        if (! $this->resourceManagementService->canAccess($request->user(), $resource)) {
             abort(403, 'You do not have access to this resource.');
         }
 
         // Increment download count
-        $this->learningResourceRepository->incrementDownloadCount($resource);
+        $this->resourceManagementService->incrementDownloadCount($resource);
 
-        return Storage::disk('public')->download($resource->file_path, $resource->file_name);
+        return \Illuminate\Support\Facades\Storage::disk('public')->download($resource->file_path, $resource->file_name);
     }
 }
