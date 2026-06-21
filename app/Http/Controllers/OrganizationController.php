@@ -6,13 +6,13 @@ use App\Exports\InstitutionsExport;
 use App\Http\Requests\StoreOrganizationRequest;
 use App\Http\Requests\UpdateOrganizationRequest;
 use App\Models\Organization;
-use App\Repositories\Contracts\OrganizationRepositoryInterface;
 use App\Services\ActivityLog\OrganizationActivityLogService;
+use App\Services\OrganizationManagementService;
+use App\Services\OrganizationReadService;
 use App\Traits\LogsActivity;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
 use Maatwebsite\Excel\Facades\Excel;
@@ -24,37 +24,23 @@ class OrganizationController extends Controller
 
     public function __construct(
         protected OrganizationActivityLogService $activityLogService,
-        protected OrganizationRepositoryInterface $organizationRepository
+        protected OrganizationManagementService $organizationManagementService,
+        protected OrganizationReadService $organizationReadService,
     ) {}
     /**
      * Display a listing of institutions.
      */
     public function index(Request $request): Response
     {
-        $institutions = $this->organizationRepository
-            ->paginate($request->only(['search', 'type', 'status', 'sort', 'direction']))
-            ->through(fn($institution) => [
-                'id' => $institution->id,
-                'name' => $institution->name,
-                'slug' => $institution->slug,
-                'description' => $institution->description,
-                'type' => $institution->type,
-                'is_active' => $institution->is_active,
-                'residents_count' => $institution->residents_count,
-                'users_count' => $institution->users_count,
-                'training_officers' => $institution->training_officers ?? [],
-                'training_officers_count' => is_array($institution->training_officers) ? count($institution->training_officers) : 0,
-                'updated_at' => $institution->updated_at->diffForHumans(),
-            ]);
-
-        $typeStats = $this->organizationRepository->getTypeStats();
-        $types = $this->organizationRepository->getDistinctTypes();
+        $payload = $this->organizationReadService->indexPayload(
+            $request->only(['search', 'type', 'status', 'sort', 'direction'])
+        );
 
         return Inertia::render('institutions/index', [
-            'institutions' => $institutions,
+            'institutions' => $payload['institutions'],
             'filters' => $request->only(['search', 'type', 'status']),
-            'types' => $types,
-            'typeStats' => $typeStats,
+            'types' => $payload['types'],
+            'typeStats' => $payload['typeStats'],
         ]);
     }
 
@@ -63,18 +49,7 @@ class OrganizationController extends Controller
      */
     public function store(StoreOrganizationRequest $request): RedirectResponse
     {
-        $validated = $request->validated();
-
-        // Generate slug from name
-        $validated['slug'] = Str::slug($validated['name']);
-        $validated['is_active'] = $validated['is_active'] ?? true;
-
-        // Decode training officers JSON if provided
-        if (isset($validated['training_officers'])) {
-            $validated['training_officers'] = json_decode($validated['training_officers'], true);
-        }
-
-        $institution = $this->organizationRepository->create($validated);
+        $institution = $this->organizationManagementService->create($request->validated());
 
         // Log organization creation
         $this->activityLogService->logOrganizationCreated($institution);
@@ -105,25 +80,16 @@ class OrganizationController extends Controller
         $oldIsActive = $organization->is_active;
         $oldTrainingOfficers = $organization->training_officers ?? [];
 
-        // Update slug if name changed
-        if ($validated['name'] !== $organization->name) {
-            $validated['slug'] = Str::slug($validated['name']);
-        }
-
-        // Decode training officers JSON if provided
-        if (isset($validated['training_officers'])) {
-            $validated['training_officers'] = json_decode($validated['training_officers'], true);
-        }
-
         // Temporarily disable automatic logging to prevent duplicates
-        $this->withoutActivityLogging(function () use ($organization, $validated) {
-            $this->organizationRepository->update($organization, $validated);
+        $normalizedAttributes = [];
+        $this->withoutActivityLogging(function () use ($organization, $validated, &$normalizedAttributes) {
+            $normalizedAttributes = $this->organizationManagementService->update($organization, $validated);
         });
 
         // Build consolidated log entry with all changes using service
         $logData = $this->activityLogService->buildUpdateLogData(
             $organization,
-            $validated,
+            $normalizedAttributes,
             $oldName,
             $oldDescription,
             $oldType,
@@ -152,7 +118,7 @@ class OrganizationController extends Controller
     public function destroy(Organization $organization): RedirectResponse
     {
         // Check if institution has residents
-        if ($this->organizationRepository->hasResidents($organization)) {
+        if ($this->organizationManagementService->hasResidents($organization)) {
             return back()->withErrors([
                 'error' => 'Cannot delete institution with active residents. Please reassign or delete residents first.',
             ]);
@@ -161,7 +127,7 @@ class OrganizationController extends Controller
         // Log deletion before deleting
         $this->activityLogService->logOrganizationDeleted($organization);
 
-        $this->organizationRepository->delete($organization);
+        $this->organizationManagementService->delete($organization);
 
         return back()->with('success', 'Institution deleted successfully');
     }
@@ -191,7 +157,7 @@ class OrganizationController extends Controller
         }
 
         // Switch to the organization
-        $user->switchOrganization($organization);
+        $this->organizationManagementService->switchUserOrganization($user, $organization);
 
         // Get the referer URL
         $referer = $request->header('referer') ?? route('dashboard');
