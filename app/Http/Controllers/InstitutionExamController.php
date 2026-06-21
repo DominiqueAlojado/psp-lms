@@ -103,6 +103,8 @@ class InstitutionExamController extends Controller
     public function store(Request $request): RedirectResponse
     {
         try {
+            $isNationalContext = $request->user()->currentOrganization?->type === 'national';
+
             $validated = $request->validate([
                 'title' => ['required', 'string', 'max:255'],
                 'description' => ['nullable', 'string'],
@@ -124,7 +126,7 @@ class InstitutionExamController extends Controller
                 'total_points' => 0,
                 'title' => $validated['title'],
                 'description' => $validated['description'] ?? null,
-                'exam_category' => $validated['exam_category'] ?? null,
+                'exam_category' => $isNationalContext ? 'In-service' : ($validated['exam_category'] ?? null),
                 'duration_minutes' => $validated['duration_minutes'] ?? null,
                 'passing_score' => $validated['passing_score'],
                 'randomize_questions' => $validated['randomize_questions'] ?? false,

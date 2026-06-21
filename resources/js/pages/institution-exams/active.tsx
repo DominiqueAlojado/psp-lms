@@ -187,7 +187,7 @@ export default function Active() {
                                                     </span>
                                                 )}
                                                 <span>
-                                                    Pass: {exam.passing_score}
+                                                    MPL: {exam.passing_score}
                                                 </span>
                                                 <span>
                                                     By {exam.created_by}

@@ -333,7 +333,7 @@ export default function CreateNationalAssessment() {
                             </select>
                         </div>
                         <div className="space-y-2">
-                            <Label>Passing Score</Label>
+                            <Label>MPL</Label>
                             <Input
                                 type="number"
                                 value={passingScore}
@@ -345,6 +345,9 @@ export default function CreateNationalAssessment() {
                                 min={0}
                                 disabled={!!assessmentId}
                             />
+                            <p className="text-sm text-muted-foreground">
+                                Minimum Passing Level in raw points/items.
+                            </p>
                         </div>
                         <div className="space-y-2">
                             <Label>Duration (minutes)</Label>

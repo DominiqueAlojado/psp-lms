@@ -207,7 +207,7 @@ export default function ResidentExams() {
                                                     </div>
                                                 )}
                                                 <span>
-                                                    Pass: {exam.passing_score}%
+                                                    MPL: {exam.passing_score}
                                                 </span>
                                             </div>
 
@@ -241,7 +241,6 @@ export default function ResidentExams() {
                                                                 {
                                                                     exam.best_score
                                                                 }
-                                                                %
                                                             </span>
                                                         </>
                                                     )}

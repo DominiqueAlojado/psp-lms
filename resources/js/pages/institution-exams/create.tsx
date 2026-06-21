@@ -17,10 +17,13 @@ import { toast } from 'sonner';
 
 interface PageProps {
     assessmentId?: number;
+    organizationSlug?: string | null;
+    isNationalContext?: boolean;
 }
 
 // Define exam categories
 const EXAM_CATEGORIES = [
+    'In-service',
     'Long Quiz',
     'Short Quiz',
     'Practical Exam',
@@ -37,10 +40,17 @@ const EXAM_CATEGORIES = [
 
 export default function CreateAssessment({
     assessmentId: propAssessmentId,
+    organizationSlug,
+    isNationalContext = false,
 }: PageProps) {
+    const defaultExamCategory =
+        isNationalContext || organizationSlug === 'in-service-exams'
+            ? 'In-service'
+            : '';
+
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
-    const [examCategory, setExamCategory] = useState('');
+    const [examCategory, setExamCategory] = useState(defaultExamCategory);
     const [passingScore, setPassingScore] = useState<number | ''>('');
     const [duration, setDuration] = useState<number | ''>('');
     const [randomizeQuestions, setRandomizeQuestions] = useState(false);
@@ -124,23 +134,37 @@ export default function CreateAssessment({
                         <Select
                             value={examCategory}
                             onValueChange={setExamCategory}
-                            disabled={!!assessmentId}
+                            disabled={!!assessmentId || isNationalContext}
                         >
                             <SelectTrigger>
-                                <SelectValue placeholder="Select category (optional)" />
+                                <SelectValue
+                                    placeholder={
+                                        isNationalContext
+                                            ? 'In-service'
+                                            : 'Select category (optional)'
+                                    }
+                                />
                             </SelectTrigger>
                             <SelectContent>
-                                {EXAM_CATEGORIES.map((category) => (
+                                {(isNationalContext
+                                    ? ['In-service']
+                                    : EXAM_CATEGORIES
+                                ).map((category) => (
                                     <SelectItem key={category} value={category}>
                                         {category}
                                     </SelectItem>
                                 ))}
                             </SelectContent>
                         </Select>
+                        {isNationalContext && (
+                            <p className="text-sm text-muted-foreground">
+                                National exams always use the In-service category.
+                            </p>
+                        )}
                     </div>
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                         <div className="space-y-2">
-                            <Label>Passing Score</Label>
+                            <Label>MPL</Label>
                             <Input
                                 type="number"
                                 value={passingScore}
@@ -153,6 +177,9 @@ export default function CreateAssessment({
                                 min={0}
                                 disabled={!!assessmentId}
                             />
+                            <p className="text-sm text-muted-foreground">
+                                Minimum Passing Level in raw points/items.
+                            </p>
                         </div>
                         <div className="space-y-2">
                             <Label>Duration (minutes)</Label>

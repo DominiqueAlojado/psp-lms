@@ -79,7 +79,7 @@ export default function ExamResults() {
 
     const correctCount = exam.questions.filter((q) => q.is_correct).length;
     const incorrectCount = exam.questions.length - correctCount;
-    const passed = attempt.percentage >= exam.passing_score;
+    const passed = attempt.score >= exam.passing_score;
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -215,9 +215,9 @@ export default function ExamResults() {
                             </div>
                             <div>
                                 <span className="font-medium">
-                                    Passing Score:{' '}
+                                    MPL:{' '}
                                 </span>
-                                {exam.passing_score}%
+                                {exam.passing_score}
                             </div>
                             <div>
                                 <span className="font-medium">Incorrect: </span>

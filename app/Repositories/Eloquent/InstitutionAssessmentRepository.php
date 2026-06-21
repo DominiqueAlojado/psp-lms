@@ -48,7 +48,7 @@ class InstitutionAssessmentRepository implements InstitutionAssessmentRepository
     public function loadForEdit(InstitutionAssessment $assessment): InstitutionAssessment
     {
         return $assessment->load([
-            'questions' => fn (Builder $query) => $query->orderBy('order'),
+            'questions' => fn ($query) => $query->orderBy('order'),
             'questions.choices',
             'creator:id,name',
         ]);

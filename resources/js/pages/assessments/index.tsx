@@ -232,7 +232,7 @@ export default function AssessmentsIndex() {
                                                         </span>
                                                     )}
                                                     <span>
-                                                        Pass: {assessment.passing_score}
+                                                        MPL: {assessment.passing_score}
                                                     </span>
                                                 </div>
                                             </div>
@@ -267,4 +267,3 @@ export default function AssessmentsIndex() {
         </AppLayout>
     );
 }
-

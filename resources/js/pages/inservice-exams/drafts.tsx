@@ -108,7 +108,7 @@ export default function Drafts() {
 											</span>
 										</div>
 										<div className="mt-1 text-xs text-muted-foreground">
-											{exam.questions_count} questions · {exam.total_points} points · Pass {exam.passing_score}
+											{exam.questions_count} questions · {exam.total_points} points · MPL {exam.passing_score}
 										</div>
 									</div>
 									<div className="flex items-center gap-2">

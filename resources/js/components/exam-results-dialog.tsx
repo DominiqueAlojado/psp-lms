@@ -161,8 +161,7 @@ export function ExamResultsSheet({
 
     const correctCount =
         data?.exam.questions.filter((q) => q.is_correct).length || 0;
-    const passed =
-        (data?.attempt.percentage || 0) >= (data?.exam.passing_score || 0);
+    const passed = (data?.attempt.score || 0) >= (data?.exam.passing_score || 0);
 
     return (
         <Sheet open={open} onOpenChange={onOpenChange}>

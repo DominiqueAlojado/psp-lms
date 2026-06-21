@@ -316,6 +316,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('institution-exams/create', function (Request $request) {
         return Inertia::render('institution-exams/create', [
             'assessmentId' => $request->query('assessment_id'),
+            'organizationSlug' => $request->query('org'),
+            'isNationalContext' => $request->user()?->currentOrganization?->type === 'national',
         ]);
     })->middleware('permission:create-assessments')->name('institution-exams.create');
     Route::get('institution-exams/{assessment}/edit', [App\Http\Controllers\InstitutionExamController::class, 'edit'])

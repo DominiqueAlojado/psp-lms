@@ -159,7 +159,7 @@ export default function Drafts() {
                                                     </span>
                                                 )}
                                                 <span>
-                                                    Pass: {exam.passing_score}
+                                                    MPL: {exam.passing_score}
                                                 </span>
                                                 <span>
                                                     By {exam.created_by}

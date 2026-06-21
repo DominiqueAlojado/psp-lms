@@ -524,7 +524,7 @@ export default function EditInServiceAssessment() {
                     </div>
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                         <div className="space-y-2">
-                            <Label>Passing Score</Label>
+                            <Label>MPL</Label>
                             <Input
                                 type="number"
                                 value={passingScore}
@@ -535,6 +535,9 @@ export default function EditInServiceAssessment() {
                                 }
                                 min={0}
                             />
+                            <p className="text-sm text-muted-foreground">
+                                Minimum Passing Level in raw points/items.
+                            </p>
                         </div>
                         <div className="space-y-2">
                             <Label>Duration (minutes)</Label>
