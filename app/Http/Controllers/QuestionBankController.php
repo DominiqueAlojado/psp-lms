@@ -3,19 +3,17 @@
 namespace App\Http\Controllers;
 
 use App\Models\QuestionBank;
-use App\Repositories\Contracts\QuestionBankChoiceRepositoryInterface;
 use App\Repositories\Contracts\QuestionBankRepositoryInterface;
-use App\Repositories\Contracts\QuestionBankStatisticRepositoryInterface;
 use App\Services\ActivityLog\QuestionBankActivityLogService;
+use App\Services\QuestionBankImportService;
+use App\Services\QuestionBankManagementService;
+use App\Services\QuestionBankReadService;
 use App\Traits\LogsActivity;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
-use Maatwebsite\Excel\Facades\Excel;
 
 class QuestionBankController extends Controller
 {
@@ -24,30 +22,22 @@ class QuestionBankController extends Controller
     public function __construct(
         protected QuestionBankActivityLogService $activityLogService,
         protected QuestionBankRepositoryInterface $questionBankRepository,
-        protected QuestionBankChoiceRepositoryInterface $questionBankChoiceRepository,
-        protected QuestionBankStatisticRepositoryInterface $questionBankStatisticRepository
+        protected QuestionBankManagementService $questionBankManagementService,
+        protected QuestionBankReadService $questionBankReadService,
+        protected QuestionBankImportService $questionBankImportService,
     ) {}
     /**
      * Display question bank listing.
      */
     public function index(Request $request): Response
     {
-        $user = $request->user();
-        $currentOrganization = $user->currentOrganization;
-        $organizationId = $currentOrganization?->id;
-
-        // Determine scope based on current organization type
-        // If organization type is 'national' => show national questions, else institution questions
-        $isNational = $currentOrganization?->type === 'national';
-
-        $questions = $this->questionBankRepository->paginateScoped(
-            $organizationId,
-            $isNational,
+        $payload = $this->questionBankReadService->indexPayload(
+            $request->user(),
             $request->only(['search', 'topic', 'type', 'difficulty', 'approval'])
         );
 
         return Inertia::render('question-bank/index', [
-            'questions' => $questions,
+            'questions' => $payload['questions'],
             'filters' => $request->only(['search', 'topic', 'type', 'difficulty', 'approval']),
         ]);
     }
@@ -57,29 +47,13 @@ class QuestionBankController extends Controller
      */
     public function list(Request $request): JsonResponse
     {
-        $user = $request->user();
-        $currentOrganization = $user->currentOrganization;
-        $organizationId = $currentOrganization?->id;
-
-        $scope = $request->string('scope')->toString();
-        if ($scope === 'national') {
-            $isNational = true;
-        } elseif ($scope === 'institution') {
-            $isNational = false;
-        } else {
-            // Default to the current organization context when the caller does not specify a scope.
-            $isNational = $currentOrganization?->type === 'national';
-        }
-
-        $questions = $this->questionBankRepository->listScoped(
-            $organizationId,
-            $isNational,
-            $request->only(['search', 'topic', 'type', 'difficulty', 'approval'])
+        return response()->json(
+            $this->questionBankReadService->listPayload(
+                $request->user(),
+                $request->only(['search', 'topic', 'type', 'difficulty', 'approval']),
+                $request->string('scope')->toString()
+            )
         );
-
-        return response()->json([
-            'data' => $questions,
-        ]);
     }
 
     /**
@@ -88,13 +62,6 @@ class QuestionBankController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $user = $request->user();
-        $currentOrganization = $user->currentOrganization;
-        $organizationId = $currentOrganization?->id;
-
-        // Determine scope based on current organization type
-        // If organization type is 'national' => create national questions, else institution questions
-        $isNational = $currentOrganization?->type === 'national';
-        $scope = $isNational ? 'national' : 'institution';
 
         $validated = $request->validate([
             'topic_id' => ['nullable', 'exists:topics,id'],
@@ -109,33 +76,11 @@ class QuestionBankController extends Controller
             'choices.*.is_correct' => ['required', 'boolean'],
         ]);
 
-        // Handle image upload
-        $imagePath = null;
-        if ($request->hasFile('image')) {
-            $file = $request->file('image');
-            $fileName = Str::uuid() . '.' . $file->getClientOriginalExtension();
-            $imagePath = $file->storeAs('question-images', $fileName, 'public');
-        }
-
-        // Create question
-        $question = $this->questionBankRepository->create([
-            ...$validated,
-            'organization_id' => $organizationId,
-            'owner_type' => $isNational ? 'national' : 'institution',
-            'created_by' => $user->id,
-            'image_path' => $imagePath,
-        ]);
-
-        // Initialize statistics with proper scope
-        $this->questionBankStatisticRepository->initializeForQuestion(
-            $question,
-            $scope,
-            $isNational ? null : $organizationId
+        $question = $this->questionBankManagementService->create(
+            $user,
+            $validated,
+            $request->file('image')
         );
-        $this->questionBankChoiceRepository->createMany($question, $validated['choices']);
-
-        // Reload question with choices for logging
-        $question->load('choices');
 
         // Log question creation
         $this->activityLogService->logQuestionCreated($question);
@@ -150,21 +95,8 @@ class QuestionBankController extends Controller
     public function update(Request $request, QuestionBank $question): RedirectResponse
     {
         $user = $request->user();
-        $currentOrganization = $user->currentOrganization;
-        $organizationId = $currentOrganization?->id;
-        $isNational = $currentOrganization?->type === 'national';
-
-        // Check access based on question owner type
-        if ($question->owner_type === 'national') {
-            // National questions can only be edited when in national organization context
-            if (! $isNational) {
-                abort(403, 'You do not have access to this question.');
-            }
-        } else {
-            // Institution questions can only be edited by users from the same organization
-            if ($question->organization_id !== $organizationId) {
-                abort(403, 'You do not have access to this question.');
-            }
+        if (! $this->questionBankManagementService->canAccess($user, $question)) {
+            abort(403, 'You do not have access to this question.');
         }
 
         // Load choices relationship before updating
@@ -214,21 +146,9 @@ class QuestionBankController extends Controller
             ];
         })->toArray();
 
-        // Handle image upload
-        if ($imageChanged) {
-            // Delete old image
-            if ($question->image_path && Storage::disk('public')->exists($question->image_path)) {
-                Storage::disk('public')->delete($question->image_path);
-            }
-
-            $file = $request->file('image');
-            $fileName = Str::uuid() . '.' . $file->getClientOriginalExtension();
-            $validated['image_path'] = $file->storeAs('question-images', $fileName, 'public');
-        }
-
-        // Temporarily disable automatic logging to prevent duplicates
-        $this->withoutActivityLogging(function () use ($question, $validated) {
-            $this->questionBankRepository->update($question, $validated);
+        $updateResult = [];
+        $this->withoutActivityLogging(function () use ($question, $validated, $request, &$updateResult) {
+            $updateResult = $this->questionBankManagementService->update($question, $validated, $request->file('image'));
         });
 
         $this->questionBankChoiceRepository->replaceForQuestion($question, $validated['choices']);
@@ -236,14 +156,14 @@ class QuestionBankController extends Controller
         // Build consolidated log entry with all changes using service
         $logData = $this->activityLogService->buildUpdateLogData(
             $question,
-            $validated,
+            $updateResult['attributes'],
             $oldTopicId,
             $oldQuestionType,
             $oldQuestionText,
             $oldPoints,
             $oldExplanation,
             $oldDifficultyLevel,
-            $imageChanged,
+            $updateResult['imageChanged'],
             $oldChoices
         );
 
@@ -265,32 +185,19 @@ class QuestionBankController extends Controller
     public function destroy(Request $request, QuestionBank $question): RedirectResponse
     {
         $user = $request->user();
-        $currentOrganization = $user->currentOrganization;
-        $organizationId = $currentOrganization?->id;
-        $isNational = $currentOrganization?->type === 'national';
-
-        // Check access based on question owner type
-        if ($question->owner_type === 'national') {
-            // National questions can only be deleted when in national organization context
-            if (! $isNational) {
-                abort(403, 'You do not have access to this question.');
-            }
-        } else {
-            // Institution questions can only be deleted by users from the same organization
-            if ($question->organization_id !== $organizationId) {
-                abort(403, 'You do not have access to this question.');
-            }
+        if (! $this->questionBankManagementService->canAccess($user, $question)) {
+            abort(403, 'You do not have access to this question.');
         }
 
         // Check if question is used in any exams
-        if ($this->questionBankRepository->assessmentsCount($question) > 0) {
+        if ($this->questionBankManagementService->isUsedInAssessments($question)) {
             return back()->with('error', 'Cannot delete question that is used in exams. Remove from exams first.');
         }
 
         // Log deletion before deleting
         $this->activityLogService->logQuestionDeleted($question);
 
-        $this->questionBankRepository->delete($question);
+        $this->questionBankManagementService->delete($question);
 
         return back()->with('success', 'Question deleted successfully!');
     }
@@ -301,24 +208,11 @@ class QuestionBankController extends Controller
     public function approve(Request $request, QuestionBank $question): RedirectResponse
     {
         $user = $request->user();
-        $currentOrganization = $user->currentOrganization;
-        $organizationId = $currentOrganization?->id;
-        $isNational = $currentOrganization?->type === 'national';
-
-        // Check access based on question owner type
-        if ($question->owner_type === 'national') {
-            // National questions can only be approved when in national organization context
-            if (! $isNational) {
-                abort(403, 'You do not have access to this question.');
-            }
-        } else {
-            // Institution questions can only be approved by users from the same organization
-            if ($question->organization_id !== $organizationId) {
-                abort(403, 'You do not have access to this question.');
-            }
+        if (! $this->questionBankManagementService->canAccess($user, $question)) {
+            abort(403, 'You do not have access to this question.');
         }
 
-        $this->questionBankRepository->approve($question, $user->id);
+        $this->questionBankManagementService->approve($question, $user->id);
 
         // Log question approval
         $this->activityLogService->logQuestionApproved($question);
@@ -331,15 +225,7 @@ class QuestionBankController extends Controller
      */
     public function statistics(Request $request): Response
     {
-        $user = $request->user();
-        $currentOrganization = $user->currentOrganization;
-        $organizationId = $currentOrganization?->id;
-
-        // Determine scope based on current organization type
-        // If organization type is 'national' => show national questions, else institution questions
-        $isNational = $currentOrganization?->type === 'national';
-
-        $statistics = $this->questionBankRepository->getStatisticsData($organizationId, $isNational);
+        $statistics = $this->questionBankReadService->statisticsPayload($request->user());
 
         return Inertia::render('question-bank/statistics', [
             'totalQuestions' => $statistics['totalQuestions'],
@@ -360,77 +246,9 @@ class QuestionBankController extends Controller
         ]);
 
         try {
-            $file = $request->file('file');
-            $rows = Excel::toArray([], $file)[0];
-
-            if (empty($rows)) {
-                return response()->json([
-                    'questions' => [],
-                    'errors' => [['row' => 0, 'error' => 'File is empty']],
-                    'total_valid' => 0,
-                    'total_errors' => 1,
-                ]);
-            }
-
-            $headers = array_shift($rows);
-            $questions = [];
-            $errors = [];
-
-            foreach ($rows as $index => $row) {
-                $rowNumber = $index + 2;
-
-                if (empty(array_filter($row))) {
-                    continue;
-                }
-
-                $rowData = array_combine($headers, $row);
-
-                try {
-                    $question = [
-                        'question_text' => $rowData['question_text'] ?? '',
-                        'type' => $rowData['type'] ?? '',
-                        'points' => (int) ($rowData['points'] ?? 1),
-                        'topic' => $rowData['topic'] ?? '',
-                        'explanation' => $rowData['explanation'] ?? '',
-                        'choices' => [],
-                    ];
-
-                    for ($i = 1; $i <= 6; $i++) {
-                        $choiceText = $rowData["choice_{$i}"] ?? '';
-                        $isCorrect = isset($rowData["choice_{$i}_correct_answer"]) &&
-                            in_array(strtolower($rowData["choice_{$i}_correct_answer"]), ['yes', '1', 'true']);
-
-                        if (! empty($choiceText)) {
-                            $question['choices'][] = [
-                                'text' => $choiceText,
-                                'is_correct' => $isCorrect,
-                            ];
-                        }
-                    }
-
-                    if (empty($question['question_text'])) {
-                        throw new \Exception('Question text is required');
-                    }
-
-                    if (empty($question['choices'])) {
-                        throw new \Exception('At least one choice is required');
-                    }
-
-                    $questions[] = $question;
-                } catch (\Exception $e) {
-                    $errors[] = [
-                        'row' => $rowNumber,
-                        'error' => $e->getMessage(),
-                    ];
-                }
-            }
-
-            return response()->json([
-                'questions' => $questions,
-                'errors' => $errors,
-                'total_valid' => count($questions),
-                'total_errors' => count($errors),
-            ]);
+            return response()->json(
+                $this->questionBankImportService->preview($request->file('file'))
+            );
         } catch (\Exception $e) {
             return response()->json([
                 'questions' => [],
@@ -447,90 +265,15 @@ class QuestionBankController extends Controller
     public function import(Request $request): RedirectResponse
     {
         $user = $request->user();
-        $organizationId = $user->currentOrganization?->id;
 
         $request->validate([
             'file' => ['required', 'file', 'mimes:xlsx,xls,csv', 'max:5120'],
         ]);
 
         try {
-            $file = $request->file('file');
-            $rows = Excel::toArray([], $file)[0];
-
-            if (empty($rows)) {
-                return back()->with('error', 'File is empty');
-            }
-
-            $headers = array_shift($rows);
-            $successCount = 0;
-            $errors = [];
-
-            foreach ($rows as $index => $row) {
-                $rowNumber = $index + 2;
-
-                if (empty(array_filter($row))) {
-                    continue;
-                }
-
-                $rowData = array_combine($headers, $row);
-
-                try {
-                    // Find or create topic
-                    $topicId = null;
-                    if (! empty($rowData['topic'])) {
-                        $topicSlug = Str::slug($rowData['topic']);
-                        $topic = \App\Models\Topic::where('slug', $topicSlug)
-                            ->where(function ($query) use ($organizationId) {
-                                $query->where('organization_id', $organizationId)
-                                    ->orWhereNull('organization_id');
-                            })
-                            ->first();
-
-                        if (! $topic) {
-                            $topic = \App\Models\Topic::create([
-                                'name' => $rowData['topic'],
-                                'slug' => $topicSlug . '-' . uniqid(),
-                                'organization_id' => $organizationId,
-                            ]);
-                        }
-
-                        $topicId = $topic->id;
-                    }
-
-                    // Create question in bank
-                    $question = $this->questionBankRepository->create([
-                        'organization_id' => $organizationId,
-                        'owner_type' => $user->currentOrganization?->type === 'national' ? 'national' : 'institution',
-                        'created_by' => $user->id,
-                        'topic_id' => $topicId,
-                        'question_type' => $rowData['type'] ?? 'multiple_choice',
-                        'question_text' => $rowData['question_text'] ?? '',
-                        'points' => (int) ($rowData['points'] ?? 1),
-                        'explanation' => $rowData['explanation'] ?? null,
-                        'difficulty_level' => 'medium',
-                    ]);
-
-                    $choices = [];
-                    for ($i = 1; $i <= 6; $i++) {
-                        $choiceText = $rowData["choice_{$i}"] ?? '';
-                        $isCorrect = isset($rowData["choice_{$i}_correct_answer"]) &&
-                            in_array(strtolower($rowData["choice_{$i}_correct_answer"]), ['yes', '1', 'true']);
-
-                        if (! empty($choiceText)) {
-                            $choices[] = [
-                                'choice_text' => $choiceText,
-                                'is_correct' => $isCorrect,
-                            ];
-                        }
-                    }
-
-                    $this->questionBankChoiceRepository->createMany($question, $choices);
-
-                    $successCount++;
-                } catch (\Exception $e) {
-                    $errors[] = "Row {$rowNumber}: " . $e->getMessage();
-                }
-            }
+            $result = $this->questionBankImportService->import($user, $request->file('file'));
+            $successCount = $result['successCount'];
+            $errors = $result['errors'];
 
             if (! empty($errors)) {
                 $errorMessage = "Imported {$successCount} questions with " . count($errors) . ' errors: ';
