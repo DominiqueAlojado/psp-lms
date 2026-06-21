@@ -3,6 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Exports\QuestionsTemplateExport;
+use App\Http\Requests\InstitutionExams\AddInstitutionQuestionsFromBankRequest;
+use App\Http\Requests\InstitutionExams\BulkDeleteInstitutionQuestionsRequest;
+use App\Http\Requests\InstitutionExams\DuplicateInstitutionAssessmentRequest;
+use App\Http\Requests\InstitutionExams\ImportInstitutionAssessmentQuestionsRequest;
+use App\Http\Requests\InstitutionExams\SaveInstitutionAssessmentQuestionRequest;
+use App\Http\Requests\InstitutionExams\StoreInstitutionAssessmentQuestionsRequest;
+use App\Http\Requests\InstitutionExams\StoreInstitutionAssessmentRequest;
+use App\Http\Requests\InstitutionExams\UpdateInstitutionAssessmentRequest;
 use App\Models\Institution\InstitutionAssessment;
 use App\Models\Institution\InstitutionQuestion;
 use App\Services\InstitutionAssessmentDuplicationService;
@@ -13,6 +21,7 @@ use App\Services\InstitutionAssessmentReadService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
 use Maatwebsite\Excel\Facades\Excel;
@@ -75,7 +84,7 @@ class InstitutionExamController extends Controller
     /**
      * Store a newly created assessment.
      */
-    public function store(Request $request): RedirectResponse
+    public function store(StoreInstitutionAssessmentRequest $request): RedirectResponse
     {
         try {
             if (! $this->managementService->canCreateFromCurrentOrganization($request->user())) {
@@ -84,22 +93,7 @@ class InstitutionExamController extends Controller
                     ->with('error', 'Use the In-Service Exams flow for national assessments.');
             }
 
-            $validated = $request->validate([
-                'title' => ['required', 'string', 'max:255'],
-                'description' => ['nullable', 'string'],
-                'exam_category' => ['nullable', 'string', 'max:255'],
-                'duration_minutes' => ['nullable', 'integer', 'min:1'],
-                'passing_score' => ['required', 'integer', 'min:0'],
-                'randomize_questions' => ['boolean'],
-                'randomize_choices' => ['boolean'],
-                'show_results_immediately' => ['boolean'],
-                'allow_review' => ['boolean'],
-                'available_from' => ['nullable', 'date'],
-                'available_until' => ['nullable', 'date', 'after:available_from'],
-                'is_published' => ['boolean'],
-            ]);
-
-            $assessment = $this->managementService->create($request->user(), $validated);
+            $assessment = $this->managementService->create($request->user(), $request->validated());
 
             return redirect()
                 ->route('institution-exams.edit', $assessment)
@@ -142,29 +136,14 @@ class InstitutionExamController extends Controller
     /**
      * Update the specified assessment.
      */
-    public function update(Request $request, InstitutionAssessment $assessment): RedirectResponse
+    public function update(UpdateInstitutionAssessmentRequest $request, InstitutionAssessment $assessment): RedirectResponse
     {
         // Verify user has access
         if ($assessment->organization_id !== $request->user()->current_organization_id) {
             abort(403, 'You do not have access to this assessment.');
         }
 
-        $validated = $request->validate([
-            'title' => ['required', 'string', 'max:255'],
-            'description' => ['nullable', 'string'],
-            'exam_category' => ['nullable', 'string', 'max:255'],
-            'duration_minutes' => ['nullable', 'integer', 'min:1'],
-            'passing_score' => ['required', 'integer', 'min:0'],
-            'randomize_questions' => ['boolean'],
-            'randomize_choices' => ['boolean'],
-            'show_results_immediately' => ['boolean'],
-            'allow_review' => ['boolean'],
-            'is_published' => ['boolean'],
-            'available_from' => ['nullable', 'date'],
-            'available_until' => ['nullable', 'date', 'after:available_from'],
-        ]);
-
-        $this->managementService->update($assessment, $validated);
+        $this->managementService->update($assessment, $request->validated());
 
         return back()->with('success', 'Assessment updated successfully');
     }
@@ -193,20 +172,16 @@ class InstitutionExamController extends Controller
     /**
      * Duplicate an existing assessment and its questions.
      */
-    public function duplicate(Request $request, InstitutionAssessment $assessment): RedirectResponse
+    public function duplicate(DuplicateInstitutionAssessmentRequest $request, InstitutionAssessment $assessment): RedirectResponse
     {
         if ($assessment->organization_id !== $request->user()->current_organization_id) {
             abort(403, 'You do not have access to this assessment.');
         }
 
-        $validated = $request->validate([
-            'title' => ['nullable', 'string', 'max:255'],
-        ]);
-
         $duplicate = $this->duplicationService->duplicate(
             $assessment,
             $request->user()->id,
-            $validated['title'] ?? null,
+            $request->validated('title'),
         );
 
         return redirect()
@@ -217,29 +192,14 @@ class InstitutionExamController extends Controller
     /**
      * Store questions for an assessment (MCQ, multiple_select, true_false).
      */
-    public function storeQuestions(Request $request, InstitutionAssessment $assessment): RedirectResponse
+    public function storeQuestions(StoreInstitutionAssessmentQuestionsRequest $request, InstitutionAssessment $assessment): RedirectResponse
     {
         // Verify user has access
         if ($assessment->organization_id !== $request->user()->current_organization_id) {
             abort(403, 'You do not have access to this assessment.');
         }
 
-        $validated = $request->validate([
-            'questions' => ['required', 'array', 'min:1'],
-            'questions.*.id' => ['nullable', 'integer', 'exists:institution_questions,id'],
-            'questions.*.topic_id' => ['nullable', 'integer', 'exists:topics,id'],
-            'questions.*.question_type' => ['required', 'in:multiple_choice,multiple_select,true_false'],
-            'questions.*.question_text' => ['required', 'string'],
-            'questions.*.points' => ['required', 'integer', 'min:1'],
-            'questions.*.order' => ['nullable', 'integer', 'min:0'],
-            'questions.*.image' => ['nullable', 'string'], // base64 encoded image
-            'questions.*.choices' => ['nullable', 'array'],
-            'questions.*.choices.*.choice_text' => ['required_with:questions.*.choices', 'string'],
-            'questions.*.choices.*.is_correct' => ['required_with:questions.*.choices', 'boolean'],
-            'questions.*.answer' => ['nullable'], // for true_false
-        ]);
-
-        $this->questionService->storeQuestions($assessment, $validated['questions']);
+        $this->questionService->storeQuestions($assessment, $request->validated('questions'));
 
         return back()->with('success', 'Questions saved successfully');
     }
@@ -247,30 +207,16 @@ class InstitutionExamController extends Controller
     /**
      * Save or update a single question.
      */
-    public function saveOneQuestion(Request $request, InstitutionAssessment $assessment): RedirectResponse
+    public function saveOneQuestion(SaveInstitutionAssessmentQuestionRequest $request, InstitutionAssessment $assessment): RedirectResponse
     {
         // Verify user has access
         if ($assessment->organization_id !== $request->user()->current_organization_id) {
             abort(403, 'You do not have access to this assessment.');
         }
 
-        $validated = $request->validate([
-            'id' => ['nullable', 'integer', 'exists:institution_questions,id'],
-            'topic_id' => ['nullable', 'integer', 'exists:topics,id'],
-            'question_type' => ['required', 'in:multiple_choice,multiple_select,true_false'],
-            'question_text' => ['required', 'string'],
-            'points' => ['required', 'integer', 'min:1'],
-            'order' => ['nullable', 'integer', 'min:0'],
-            'image' => ['nullable', 'string'], // base64 encoded image
-            'choices' => ['nullable', 'array'],
-            'choices.*.choice_text' => ['required_with:choices', 'string'],
-            'choices.*.is_correct' => ['required_with:choices', 'boolean'],
-            'answer' => ['nullable'], // for true_false
-        ]);
-
         $question = $this->questionService->saveQuestion(
             $assessment,
-            $validated,
+            $request->validated(),
             $request->user(),
         );
 
@@ -284,7 +230,7 @@ class InstitutionExamController extends Controller
                 'points' => $question->points,
                 'order' => $question->order,
                 'image_path' => $question->image_path,
-                'image_url' => $question->image_path ? \Illuminate\Support\Facades\Storage::disk('public')->url($question->image_path) : null,
+                'image_url' => $question->image_path ? Storage::disk('public')->url($question->image_path) : null,
             ],
         ]);
     }
@@ -312,18 +258,13 @@ class InstitutionExamController extends Controller
     /**
      * Delete multiple questions from an assessment.
      */
-    public function bulkDeleteQuestions(Request $request, InstitutionAssessment $assessment): RedirectResponse
+    public function bulkDeleteQuestions(BulkDeleteInstitutionQuestionsRequest $request, InstitutionAssessment $assessment): RedirectResponse
     {
         if ($assessment->organization_id !== $request->user()->current_organization_id) {
             abort(403, 'You do not have access to this assessment.');
         }
 
-        $validated = $request->validate([
-            'question_ids' => ['required', 'array', 'min:1'],
-            'question_ids.*' => ['required', 'integer'],
-        ]);
-
-        $questionIds = collect($validated['question_ids'])->map(fn ($id) => (int) $id)->unique()->values();
+        $questionIds = collect($request->validated('question_ids'))->map(fn ($id) => (int) $id)->unique()->values();
 
         $matchingCount = $assessment->questions()
             ->whereIn('id', $questionIds)
@@ -352,16 +293,12 @@ class InstitutionExamController extends Controller
     /**
      * Import questions from Excel file.
      */
-    public function importQuestions(Request $request, InstitutionAssessment $assessment): RedirectResponse
+    public function importQuestions(ImportInstitutionAssessmentQuestionsRequest $request, InstitutionAssessment $assessment): RedirectResponse
     {
         // Verify user has access
         if ($assessment->organization_id !== $request->user()->current_organization_id) {
             abort(403, 'You do not have access to this assessment.');
         }
-
-        $request->validate([
-            'file' => ['required', 'file', 'mimes:xlsx,xls,csv', 'max:5120'], // 5MB max
-        ]);
 
         try {
             $result = $this->importService->importQuestions(
@@ -379,19 +316,14 @@ class InstitutionExamController extends Controller
     /**
      * Add questions from question bank to assessment.
      */
-    public function addFromBank(Request $request, InstitutionAssessment $assessment): RedirectResponse
+    public function addFromBank(AddInstitutionQuestionsFromBankRequest $request, InstitutionAssessment $assessment): RedirectResponse
     {
         // Verify user has access
         if ($assessment->organization_id !== $request->user()->current_organization_id) {
             abort(403, 'You do not have access to this assessment.');
         }
 
-        $request->validate([
-            'question_ids' => ['required', 'array', 'min:1'],
-            'question_ids.*' => ['required', 'integer', 'exists:question_bank,id'],
-        ]);
-
-        $result = $this->questionService->addFromBank($assessment, $request->question_ids);
+        $result = $this->questionService->addFromBank($assessment, $request->validated('question_ids'));
         $addedCount = $result['added_count'];
         $skippedCount = $result['skipped_count'];
 
