@@ -9,9 +9,7 @@ use App\Models\Institution\InstitutionQuestion;
 use App\Repositories\Contracts\InstitutionAssessmentRepositoryInterface;
 use App\Repositories\Contracts\InstitutionQuestionChoiceRepositoryInterface;
 use App\Repositories\Contracts\InstitutionQuestionRepositoryInterface;
-use App\Repositories\Contracts\QuestionBankChoiceRepositoryInterface;
-use App\Repositories\Contracts\QuestionBankRepositoryInterface;
-use App\Repositories\Contracts\QuestionBankStatisticRepositoryInterface;
+use App\Services\InstitutionAssessmentQuestionService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -28,9 +26,7 @@ class InstitutionExamController extends Controller
         private readonly InstitutionAssessmentRepositoryInterface $assessmentRepository,
         private readonly InstitutionQuestionRepositoryInterface $questionRepository,
         private readonly InstitutionQuestionChoiceRepositoryInterface $questionChoiceRepository,
-        private readonly QuestionBankRepositoryInterface $questionBankRepository,
-        private readonly QuestionBankChoiceRepositoryInterface $questionBankChoiceRepository,
-        private readonly QuestionBankStatisticRepositoryInterface $questionBankStatisticRepository,
+        private readonly InstitutionAssessmentQuestionService $questionService,
     ) {}
 
     /**
@@ -412,47 +408,7 @@ class InstitutionExamController extends Controller
             'questions.*.answer' => ['nullable'], // for true_false
         ]);
 
-        DB::transaction(function () use ($validated, $assessment) {
-            $existingQuestionIds = [];
-            $totalPoints = 0;
-
-            foreach ($validated['questions'] as $q) {
-                $imagePath = $this->storeBase64QuestionImage($q['image'] ?? null);
-                $questionData = [
-                    'question_type' => $q['question_type'],
-                    'topic_id' => $q['topic_id'] ?? null,
-                    'question_text' => $q['question_text'],
-                    'points' => $q['points'],
-                    'order' => $q['order'] ?? 0,
-                ];
-
-                if ($imagePath) {
-                    $questionData['image_path'] = $imagePath;
-                }
-
-                $question = null;
-                if (! empty($q['id'])) {
-                    $question = $this->questionRepository->findForAssessment($assessment, (int) $q['id']);
-                    if ($question) {
-                        $this->questionRepository->update($question, $questionData);
-                        $this->questionChoiceRepository->deleteForQuestion($question);
-                    }
-                }
-
-                if (! $question) {
-                    $question = $this->questionRepository->createForAssessment($assessment, $questionData);
-                }
-
-                $existingQuestionIds[] = $question->id;
-
-                $this->syncQuestionChoices($question, $q);
-
-                $totalPoints += $q['points'];
-            }
-
-            $this->questionRepository->deleteMissingForAssessment($assessment, $existingQuestionIds);
-            $this->assessmentRepository->update($assessment, ['total_points' => $totalPoints]);
-        });
+        $this->questionService->storeQuestions($assessment, $validated['questions']);
 
         return back()->with('success', 'Questions saved successfully');
     }
@@ -481,97 +437,11 @@ class InstitutionExamController extends Controller
             'answer' => ['nullable'], // for true_false
         ]);
 
-        $imagePath = $this->storeBase64QuestionImage($validated['image'] ?? null);
-
-        $questionData = [
-            'question_type' => $validated['question_type'],
-            'topic_id' => $validated['topic_id'] ?? null,
-            'question_text' => $validated['question_text'],
-            'points' => $validated['points'],
-            'order' => $validated['order'] ?? 0,
-        ];
-
-        if ($imagePath) {
-            $questionData['image_path'] = $imagePath;
-        }
-
-        // Check if this is a new question (no ID provided or ID is 0/null) or existing (ID provided)
-        // Handle cases where frontend might send id: 0, id: null, id: undefined, or no id field
-        $hasValidId = !empty($validated['id']) && $validated['id'] > 0;
-        $isNewQuestion = !$hasValidId;
-
-        Log::info('Saving institution question', [
-            'is_new' => $isNewQuestion,
-            'has_id' => !empty($validated['id']),
-            'question_id' => $validated['id'] ?? 'none',
-            'question_id_type' => gettype($validated['id'] ?? null),
-            'assessment_id' => $assessment->id,
-            'question_text_preview' => substr($validated['question_text'] ?? '', 0, 50),
-        ]);
-
-        // Update existing question or create new one
-        $question = DB::transaction(function () use ($assessment, $validated, $questionData, $isNewQuestion) {
-            $question = null;
-
-            if (! $isNewQuestion) {
-                $question = $this->questionRepository->findForAssessment($assessment, (int) $validated['id']);
-                if ($question) {
-                    $this->questionRepository->update($question, $questionData);
-                    $this->questionChoiceRepository->deleteForQuestion($question);
-                }
-            }
-
-            if (! $question) {
-                $question = $this->questionRepository->createForAssessment($assessment, $questionData);
-            }
-
-            $this->syncQuestionChoices($question, $validated);
-
-            $this->assessmentRepository->update($assessment, [
-                'total_points' => $this->assessmentRepository->sumQuestionPoints($assessment),
-            ]);
-
-            return $question;
-        });
-
-        $choicesData = $this->buildChoicesData($validated);
-
-        // Save to question bank if this is a new question OR if it doesn't exist in question bank yet
-        // Check if this question already exists in question bank (by text, owner, and organization)
-        $existsInBank = $this->questionBankRepository->existsForInstitutionCreator(
-            $question->question_text,
-            $assessment->organization_id,
-            $request->user()->id
+        $question = $this->questionService->saveQuestion(
+            $assessment,
+            $validated,
+            $request->user(),
         );
-
-        if ($isNewQuestion || !$existsInBank) {
-            try {
-                $this->saveToQuestionBank($question, $assessment, $choicesData, $imagePath, $request->user());
-                Log::info('Institution question saved to question bank', [
-                    'question_id' => $question->id,
-                    'assessment_id' => $assessment->id,
-                    'is_new' => $isNewQuestion,
-                    'exists_in_bank' => $existsInBank,
-                ]);
-            } catch (\Exception $e) {
-                Log::error('Failed to save institution question to question bank', [
-                    'error' => $e->getMessage(),
-                    'trace' => $e->getTraceAsString(),
-                    'question_id' => $question->id,
-                ]);
-            }
-        } else {
-            Log::info('Institution question not saved to question bank - already exists', [
-                'question_id' => $question->id,
-                'has_id' => !empty($validated['id']),
-                'exists_in_bank' => $existsInBank,
-            ]);
-        }
-
-        // Recalculate total points
-        $this->assessmentRepository->update($assessment, [
-            'total_points' => $this->assessmentRepository->sumQuestionPoints($assessment),
-        ]);
 
         return back()->with([
             'success' => 'Question saved successfully',
@@ -603,12 +473,7 @@ class InstitutionExamController extends Controller
             abort(403, 'This question does not belong to this assessment.');
         }
 
-        DB::transaction(function () use ($assessment, $question) {
-            $this->questionRepository->delete($question);
-            $this->assessmentRepository->update($assessment, [
-                'total_points' => $this->assessmentRepository->sumQuestionPoints($assessment),
-            ]);
-        });
+        $this->questionService->deleteQuestion($assessment, $question);
 
         return back()->with('success', 'Question deleted successfully');
     }
@@ -627,10 +492,7 @@ class InstitutionExamController extends Controller
             'question_ids.*' => ['required', 'integer'],
         ]);
 
-        $questionIds = collect($validated['question_ids'])
-            ->map(fn ($id) => (int) $id)
-            ->unique()
-            ->values();
+        $questionIds = collect($validated['question_ids'])->map(fn ($id) => (int) $id)->unique()->values();
 
         $matchingCount = $assessment->questions()
             ->whereIn('id', $questionIds)
@@ -640,14 +502,7 @@ class InstitutionExamController extends Controller
             abort(403, 'One or more selected questions do not belong to this assessment.');
         }
 
-        DB::transaction(function () use ($assessment, $questionIds) {
-            $this->questionRepository->deleteForAssessmentByIds($assessment, $questionIds->all());
-            $this->assessmentRepository->update($assessment, [
-                'total_points' => $this->assessmentRepository->sumQuestionPoints($assessment),
-            ]);
-        });
-
-        $count = $questionIds->count();
+        $count = $this->questionService->deleteQuestions($assessment, $questionIds->all());
 
         return back()->with(
             'success',
@@ -716,71 +571,13 @@ class InstitutionExamController extends Controller
             'question_ids.*' => ['required', 'integer', 'exists:question_bank,id'],
         ]);
 
-        $isNationalOrgAssessment = $assessment->organization?->type === 'national';
+        $result = $this->questionService->addFromBank($assessment, $request->question_ids);
+        $addedCount = $result['added_count'];
+        $skippedCount = $result['skipped_count'];
 
-        $bankQuestions = $isNationalOrgAssessment
-            ? $this->questionBankRepository->findByIdsForOwnerType($request->question_ids, 'national')
-            : $this->questionBankRepository->findByIdsForOrganization(
-                $request->question_ids,
-                $assessment->organization_id
-            );
-
-        if ($bankQuestions->isEmpty()) {
+        if ($addedCount === 0 && $skippedCount === 0) {
             return back()->with('error', 'No valid questions found.');
         }
-
-        $addedCount = 0;
-        $skippedCount = 0;
-
-        DB::transaction(function () use ($assessment, $bankQuestions, &$addedCount, &$skippedCount) {
-            $existingSignatures = $assessment->questions()
-                ->get(['question_text', 'question_type'])
-                ->map(fn ($question) => $this->buildQuestionSignature(
-                    $question->question_text,
-                    $question->question_type
-                ));
-
-            $addedCount = 0;
-
-            foreach ($bankQuestions as $bankQuestion) {
-                $signature = $this->buildQuestionSignature(
-                    $bankQuestion->question_text,
-                    $bankQuestion->question_type
-                );
-
-                if ($existingSignatures->contains($signature)) {
-                    $skippedCount++;
-
-                    continue;
-                }
-
-                $question = $this->questionRepository->createForAssessment($assessment, [
-                    'topic_id' => $bankQuestion->topic_id,
-                    'question_type' => $bankQuestion->question_type,
-                    'question_text' => $bankQuestion->question_text,
-                    'points' => $bankQuestion->points,
-                    'explanation' => $bankQuestion->explanation,
-                    'image_path' => $bankQuestion->image_path,
-                ]);
-
-                $this->questionChoiceRepository->createMany(
-                    $question,
-                    $bankQuestion->choices->map(fn($bankChoice) => [
-                        'choice_text' => $bankChoice->choice_text,
-                        'is_correct' => $bankChoice->is_correct,
-                        'order' => $bankChoice->order,
-                    ])->all()
-                );
-
-                $this->questionBankRepository->incrementUsage($bankQuestion);
-                $existingSignatures->push($signature);
-                $addedCount++;
-            }
-
-            $this->assessmentRepository->update($assessment, [
-                'total_points' => $this->assessmentRepository->sumQuestionPoints($assessment),
-            ]);
-        });
 
         if ($addedCount === 0 && $skippedCount > 0) {
             return back()->with('warning', 'All selected questions are already in this exam.');
@@ -808,138 +605,4 @@ class InstitutionExamController extends Controller
         return $candidate;
     }
 
-    /**
-     * Save a question created in an exam to the question bank.
-     */
-    private function saveToQuestionBank(
-        InstitutionQuestion $question,
-        InstitutionAssessment $assessment,
-        array $choicesData,
-        ?string $imagePath,
-        $user
-    ): void {
-        try {
-            Log::info('Attempting to save institution question to question bank', [
-                'question_text' => substr($question->question_text, 0, 50),
-                'topic_id' => $question->topic_id,
-                'organization_id' => $assessment->organization_id,
-                'user_id' => $user->id,
-                'choices_count' => count($choicesData),
-            ]);
-
-            // Create question in question bank
-            $bankQuestion = $this->questionBankRepository->create([
-                'organization_id' => $assessment->organization_id,
-                'owner_type' => 'institution',
-                'topic_id' => $question->topic_id,
-                'created_by' => $user->id,
-                'question_type' => $question->question_type,
-                'question_text' => $question->question_text,
-                'points' => $question->points,
-                'image_path' => $imagePath,
-                'is_approved' => false, // New questions need approval
-            ]);
-
-            Log::info('Institution question bank entry created', ['bank_question_id' => $bankQuestion->id]);
-
-            $this->questionBankChoiceRepository->createMany($bankQuestion, $choicesData);
-
-            Log::info('Choices created in institution question bank', ['count' => count($choicesData)]);
-
-            $this->questionBankStatisticRepository->initializeForQuestion(
-                $bankQuestion,
-                'institution',
-                $assessment->organization_id
-            );
-
-            Log::info('Statistics initialized for institution question bank entry');
-        } catch (\Exception $e) {
-            // Log error but don't fail the question creation
-            Log::error('Failed to save institution question to question bank', [
-                'error' => $e->getMessage(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
-                'trace' => $e->getTraceAsString(),
-            ]);
-            throw $e; // Re-throw so outer try-catch can log it
-        }
-    }
-
-    private function storeBase64QuestionImage(?string $image): ?string
-    {
-        if (empty($image)) {
-            return null;
-        }
-
-        try {
-            $imageData = $image;
-            if (preg_match('/^data:image\/(\w+);base64,/', $imageData, $type)) {
-                $imageData = substr($imageData, strpos($imageData, ',') + 1);
-                $type = strtolower($type[1]);
-                $imageData = base64_decode($imageData);
-
-                if ($imageData !== false) {
-                    $filename = 'question_' . uniqid() . '.' . $type;
-                    $path = 'question-images/' . $filename;
-                    Storage::disk('public')->put($path, $imageData);
-
-                    return $path;
-                }
-            }
-        } catch (\Exception $e) {
-            Log::error('Error uploading question image: ' . $e->getMessage());
-        }
-
-        return null;
-    }
-
-    private function syncQuestionChoices(InstitutionQuestion $question, array $payload): void
-    {
-        if (in_array($payload['question_type'], ['multiple_choice', 'multiple_select'])) {
-            $this->questionChoiceRepository->createMany(
-                $question,
-                collect($payload['choices'] ?? [])->map(fn($choice, $index) => [
-                    'choice_text' => $choice['choice_text'],
-                    'is_correct' => (bool) ($choice['is_correct'] ?? false),
-                    'order' => $index,
-                ])->all()
-            );
-        }
-
-        if ($payload['question_type'] === 'true_false') {
-            $answer = filter_var($payload['answer'] ?? false, FILTER_VALIDATE_BOOLEAN);
-            $this->questionChoiceRepository->createMany($question, [
-                ['choice_text' => 'True', 'is_correct' => $answer === true, 'order' => 0],
-                ['choice_text' => 'False', 'is_correct' => $answer === false, 'order' => 1],
-            ]);
-        }
-    }
-
-    private function buildChoicesData(array $payload): array
-    {
-        if (in_array($payload['question_type'], ['multiple_choice', 'multiple_select'])) {
-            return collect($payload['choices'] ?? [])->map(fn($choice) => [
-                'choice_text' => $choice['choice_text'],
-                'is_correct' => (bool) ($choice['is_correct'] ?? false),
-            ])->all();
-        }
-
-        if ($payload['question_type'] === 'true_false') {
-            $answer = filter_var($payload['answer'] ?? false, FILTER_VALIDATE_BOOLEAN);
-
-            return [
-                ['choice_text' => 'True', 'is_correct' => $answer === true],
-                ['choice_text' => 'False', 'is_correct' => $answer === false],
-            ];
-        }
-
-        return [];
-    }
-
-    private function buildQuestionSignature(string $questionText, string $questionType): string
-    {
-        $normalizedText = preg_replace('/\s+/u', ' ', trim(strip_tags($questionText))) ?? '';
-
-        return mb_strtolower($questionType . '|' . $normalizedText);
-    }
 }
