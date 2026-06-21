@@ -9,11 +9,10 @@ use App\Models\Institution\InstitutionQuestion;
 use App\Repositories\Contracts\InstitutionAssessmentRepositoryInterface;
 use App\Repositories\Contracts\InstitutionQuestionChoiceRepositoryInterface;
 use App\Repositories\Contracts\InstitutionQuestionRepositoryInterface;
+use App\Services\InstitutionAssessmentDuplicationService;
 use App\Services\InstitutionAssessmentQuestionService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -26,6 +25,7 @@ class InstitutionExamController extends Controller
         private readonly InstitutionAssessmentRepositoryInterface $assessmentRepository,
         private readonly InstitutionQuestionRepositoryInterface $questionRepository,
         private readonly InstitutionQuestionChoiceRepositoryInterface $questionChoiceRepository,
+        private readonly InstitutionAssessmentDuplicationService $duplicationService,
         private readonly InstitutionAssessmentQuestionService $questionService,
     ) {}
 
@@ -326,57 +326,11 @@ class InstitutionExamController extends Controller
             'title' => ['nullable', 'string', 'max:255'],
         ]);
 
-        $assessment = $this->assessmentRepository->loadQuestionsWithChoices($assessment);
-
-        $duplicate = DB::transaction(function () use ($assessment, $request, $validated) {
-            $duplicate = $this->assessmentRepository->create([
-                'organization_id' => $assessment->organization_id,
-                'created_by' => $request->user()->id,
-                'title' => $validated['title'] ?? $this->generateDuplicateTitle($assessment->title, $assessment->organization_id),
-                'description' => $assessment->description,
-                'exam_category' => $assessment->exam_category,
-                'course_id' => $assessment->course_id,
-                'duration_minutes' => $assessment->duration_minutes,
-                'total_points' => 0,
-                'passing_score' => $assessment->passing_score,
-                'randomize_questions' => $assessment->randomize_questions,
-                'randomize_choices' => $assessment->randomize_choices,
-                'show_results_immediately' => $assessment->show_results_immediately,
-                'allow_review' => $assessment->allow_review,
-                'available_from' => null,
-                'available_until' => null,
-                'is_published' => false,
-            ]);
-
-            $totalPoints = 0;
-
-            foreach ($assessment->questions as $question) {
-                $newQuestion = $this->questionRepository->createForAssessment($duplicate, [
-                    'topic_id' => $question->topic_id,
-                    'question_type' => $question->question_type,
-                    'question_text' => $question->question_text,
-                    'points' => $question->points,
-                    'explanation' => $question->explanation,
-                    'image_path' => $question->image_path,
-                    'order' => $question->order,
-                ]);
-
-                $this->questionChoiceRepository->createMany(
-                    $newQuestion,
-                    $question->choices->map(fn($choice) => [
-                        'choice_text' => $choice->choice_text,
-                        'is_correct' => $choice->is_correct,
-                        'order' => $choice->order,
-                    ])->all()
-                );
-
-                $totalPoints += $newQuestion->points;
-            }
-
-            $this->assessmentRepository->update($duplicate, ['total_points' => $totalPoints]);
-
-            return $duplicate;
-        });
+        $duplicate = $this->duplicationService->duplicate(
+            $assessment,
+            $request->user()->id,
+            $validated['title'] ?? null,
+        );
 
         return redirect()
             ->route('institution-exams.edit', $duplicate)
@@ -589,20 +543,6 @@ class InstitutionExamController extends Controller
         }
 
         return back()->with('success', $message);
-    }
-
-    private function generateDuplicateTitle(string $originalTitle, int $organizationId): string
-    {
-        $baseTitle = $originalTitle . ' (Copy)';
-        $candidate = $baseTitle;
-        $suffix = 2;
-
-        while ($this->assessmentRepository->titleExists($organizationId, $candidate)) {
-            $candidate = $originalTitle . ' (Copy ' . $suffix . ')';
-            $suffix++;
-        }
-
-        return $candidate;
     }
 
 }
