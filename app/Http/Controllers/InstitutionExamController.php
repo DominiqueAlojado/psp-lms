@@ -3,20 +3,18 @@
 namespace App\Http\Controllers;
 
 use App\Exports\QuestionsTemplateExport;
-use App\Imports\QuestionsImport;
 use App\Models\Institution\InstitutionAssessment;
 use App\Models\Institution\InstitutionQuestion;
 use App\Repositories\Contracts\InstitutionAssessmentRepositoryInterface;
 use App\Repositories\Contracts\InstitutionQuestionChoiceRepositoryInterface;
 use App\Repositories\Contracts\InstitutionQuestionRepositoryInterface;
 use App\Services\InstitutionAssessmentDuplicationService;
+use App\Services\InstitutionAssessmentImportService;
 use App\Services\InstitutionAssessmentQuestionService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
-use Maatwebsite\Excel\Facades\Excel;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class InstitutionExamController extends Controller
@@ -26,6 +24,7 @@ class InstitutionExamController extends Controller
         private readonly InstitutionQuestionRepositoryInterface $questionRepository,
         private readonly InstitutionQuestionChoiceRepositoryInterface $questionChoiceRepository,
         private readonly InstitutionAssessmentDuplicationService $duplicationService,
+        private readonly InstitutionAssessmentImportService $importService,
         private readonly InstitutionAssessmentQuestionService $questionService,
     ) {}
 
@@ -487,26 +486,15 @@ class InstitutionExamController extends Controller
         ]);
 
         try {
-            $import = new QuestionsImport($assessment->id, $assessment->organization_id, $request->user());
-            Excel::import($import, $request->file('file'));
+            $result = $this->importService->importQuestions(
+                $assessment,
+                $request->file('file'),
+                $request->user(),
+            );
 
-            $successCount = $import->getSuccessCount();
-            $errors = $import->getErrors();
-
-            if (count($errors) > 0) {
-                $errorMessage = "Imported {$successCount} questions with " . count($errors) . ' errors: ' . implode('; ', array_slice($errors, 0, 3));
-                if (count($errors) > 3) {
-                    $errorMessage .= '... and ' . (count($errors) - 3) . ' more errors.';
-                }
-
-                return back()->with('warning', $errorMessage);
-            }
-
-            return back()->with('success', "Successfully imported {$successCount} questions!");
+            return back()->with($result['status'], $result['message']);
         } catch (\Exception $e) {
-            \Log::error('Question import failed', ['error' => $e->getMessage()]);
-
-            return back()->withErrors(['file' => 'Import failed: ' . $e->getMessage()]);
+            return back()->withErrors($this->importService->formatImportFailure($e));
         }
     }
 
