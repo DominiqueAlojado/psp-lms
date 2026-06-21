@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Actions\NationalAssessments\ImportNationalQuestionsAction;
 use App\Imports\NationalQuestionsImport;
 use App\Models\National\NationalAssessment;
 use App\Repositories\Contracts\NationalAssessmentRepositoryInterface;
@@ -15,12 +16,12 @@ class NationalAssessmentImportService
     public function __construct(
         private readonly NationalAssessmentRepositoryInterface $assessmentRepository,
         private readonly NationalAssessmentActivityLogService $activityLogService,
+        private readonly ImportNationalQuestionsAction $importNationalQuestionsAction,
     ) {}
 
     public function importQuestions(NationalAssessment $assessment, UploadedFile $file, mixed $user): array
     {
-        $import = new NationalQuestionsImport($assessment->id, $user);
-        Excel::import($import, $file);
+        $import = $this->importNationalQuestionsAction->execute($assessment, $file, $user);
 
         $successCount = $import->getSuccessCount();
         $errors = $import->getErrors();
