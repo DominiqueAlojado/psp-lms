@@ -5,8 +5,9 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreAnnouncementRequest;
 use App\Http\Requests\UpdateAnnouncementRequest;
 use App\Models\Announcement;
-use App\Repositories\Contracts\AnnouncementRepositoryInterface;
 use App\Services\ActivityLog\AnnouncementActivityLogService;
+use App\Services\AnnouncementManagementService;
+use App\Services\AnnouncementReadService;
 use App\Traits\LogsActivity;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -20,7 +21,8 @@ class AnnouncementController extends Controller
 
     public function __construct(
         protected AnnouncementActivityLogService $activityLogService,
-        protected AnnouncementRepositoryInterface $announcementRepository
+        protected AnnouncementManagementService $announcementManagementService,
+        protected AnnouncementReadService $announcementReadService,
     ) {}
 
     /**
@@ -28,28 +30,13 @@ class AnnouncementController extends Controller
      */
     public function index(Request $request): Response
     {
-        $user = $request->user();
-        $organizationId = $user->current_organization_id;
-
-        $announcements = $this->announcementRepository
-            ->paginateVisibleToOrganization($organizationId, $request->only(['priority']))
-            ->through(fn($announcement) => [
-                'id' => $announcement->id,
-                'title' => $announcement->title,
-                'content' => $announcement->content,
-                'scope' => $announcement->scope,
-                'priority' => $announcement->priority,
-                'is_pinned' => $announcement->is_pinned,
-                'target_year_levels' => $announcement->target_year_levels,
-                'expires_at' => $announcement->expires_at?->format('M d, Y'),
-                'organization_name' => $announcement->organization?->name,
-                'created_by' => $announcement->creator->name,
-                'created_at' => $announcement->created_at->format('M d, Y'),
-                'views_count' => $announcement->views_count,
-            ]);
+        $payload = $this->announcementReadService->indexPayload(
+            $request->user(),
+            $request->only(['priority'])
+        );
 
         return Inertia::render('announcements/index', [
-            'announcements' => $announcements,
+            'announcements' => $payload['announcements'],
             'filters' => $request->only(['priority']),
         ]);
     }
@@ -59,33 +46,15 @@ class AnnouncementController extends Controller
      */
     public function manage(Request $request): Response
     {
-        $user = $request->user();
-        $organizationId = $user->current_organization_id;
-        $canCreateSystem = $user->hasPermissionTo('create-system-announcements');
-
-        $announcements = $this->announcementRepository
-            ->paginateForManagement($organizationId, $canCreateSystem, $request->only(['search', 'scope', 'is_published']))
-            ->through(fn($announcement) => [
-                'id' => $announcement->id,
-                'title' => $announcement->title,
-                'content' => $announcement->content,
-                'scope' => $announcement->scope,
-                'priority' => $announcement->priority,
-                'is_published' => $announcement->is_published,
-                'is_pinned' => $announcement->is_pinned,
-                'target_year_levels' => $announcement->target_year_levels,
-                'expires_at' => $announcement->expires_at?->format('Y-m-d'),
-                'organization_name' => $announcement->organization?->name,
-                'created_by' => $announcement->creator->name,
-                'created_at' => $announcement->created_at->format('M d, Y'),
-                'updated_at' => $announcement->updated_at->diffForHumans(),
-                'views_count' => $announcement->views_count,
-            ]);
+        $payload = $this->announcementReadService->managePayload(
+            $request->user(),
+            $request->only(['search', 'scope', 'is_published'])
+        );
 
         return Inertia::render('announcements/manage', [
-            'announcements' => $announcements,
+            'announcements' => $payload['announcements'],
             'filters' => $request->only(['search', 'scope', 'is_published']),
-            'canCreateSystem' => $canCreateSystem,
+            'canCreateSystem' => $payload['canCreateSystem'],
         ]);
     }
 
@@ -101,7 +70,7 @@ class AnnouncementController extends Controller
             abort(403, 'You do not have permission to create announcements.');
         }
 
-        $canCreateSystem = $user->hasPermissionTo('create-system-announcements');
+        $canCreateSystem = $this->announcementManagementService->canCreateSystem($user);
 
         $validated = $request->validated();
 
@@ -110,18 +79,7 @@ class AnnouncementController extends Controller
             return back()->withErrors(['scope' => 'You do not have permission to create system-wide announcements.']);
         }
 
-        $announcement = $this->announcementRepository->create([
-            'organization_id' => $validated['scope'] === 'organization' ? $user->current_organization_id : null,
-            'created_by' => $user->id,
-            'title' => $validated['title'],
-            'content' => $validated['content'],
-            'scope' => $validated['scope'],
-            'priority' => $validated['priority'],
-            'is_published' => $validated['is_published'] ?? true,
-            'is_pinned' => $validated['is_pinned'] ?? false,
-            'target_year_levels' => $validated['target_year_levels'] ?? null,
-            'expires_at' => $validated['expires_at'] ?? null,
-        ]);
+        $announcement = $this->announcementManagementService->create($user, $validated);
 
         // Log announcement creation
         $this->activityLogService->logAnnouncementCreated($announcement);
@@ -141,19 +99,14 @@ class AnnouncementController extends Controller
             abort(403, 'You do not have permission to edit announcements.');
         }
 
-        $canCreateSystem = $user->hasPermissionTo('create-system-announcements');
-        $isSystemAdmin = $user->hasAnyRole(['System Admin', 'BOP']);
+        $canCreateSystem = $this->announcementManagementService->canCreateSystem($user);
 
-        // System Admins and BOP can edit any announcement
-        if (! $isSystemAdmin) {
-            // Verify user has access (either their org or system admin)
-            if ($announcement->scope === 'organization' && $announcement->organization_id !== $user->current_organization_id) {
-                abort(403, 'You do not have access to this announcement.');
-            }
-
-            if ($announcement->scope === 'system' && ! $canCreateSystem) {
+        if (! $this->announcementManagementService->canManageAnnouncement($user, $announcement)) {
+            if ($announcement->scope === 'system') {
                 abort(403, 'You do not have permission to edit system-wide announcements.');
             }
+
+            abort(403, 'You do not have access to this announcement.');
         }
 
         $validated = $request->validated();
@@ -176,22 +129,13 @@ class AnnouncementController extends Controller
         ];
 
         // Update announcement without logging (to avoid duplicate logs)
-        $this->withoutActivityLogging(function () use ($announcement, $validated, $user) {
-            $this->announcementRepository->update($announcement, [
-                'organization_id' => $validated['scope'] === 'organization' ? $user->current_organization_id : null,
-                'title' => $validated['title'],
-                'content' => $validated['content'],
-                'scope' => $validated['scope'],
-                'priority' => $validated['priority'],
-                'is_published' => $validated['is_published'],
-                'is_pinned' => $validated['is_pinned'],
-                'target_year_levels' => $validated['target_year_levels'] ?? null,
-                'expires_at' => $validated['expires_at'] ?? null,
-            ]);
+        $normalizedAttributes = [];
+        $this->withoutActivityLogging(function () use ($announcement, $validated, $user, &$normalizedAttributes) {
+            $normalizedAttributes = $this->announcementManagementService->update($user, $announcement, $validated);
         });
 
         // Build log data and log changes
-        $logData = $this->activityLogService->buildUpdateLogData($announcement, $validated, $oldValues);
+        $logData = $this->activityLogService->buildUpdateLogData($announcement, $normalizedAttributes, $oldValues);
         if (! empty($logData['attributes']) || ! empty($logData['old'])) {
             $this->activityLogService->logAnnouncementUpdated($announcement, $logData['attributes'], $logData['old']);
         }
@@ -211,21 +155,18 @@ class AnnouncementController extends Controller
             abort(403, 'You do not have permission to delete announcements.');
         }
 
-        $canCreateSystem = $user->hasPermissionTo('create-system-announcements');
+        if (! $this->announcementManagementService->canManageAnnouncement($user, $announcement)) {
+            if ($announcement->scope === 'system') {
+                abort(403, 'You do not have permission to delete system-wide announcements.');
+            }
 
-        // Verify user has access (either their org or system admin)
-        if ($announcement->scope === 'organization' && $announcement->organization_id !== $user->current_organization_id) {
             abort(403, 'You do not have access to this announcement.');
-        }
-
-        if ($announcement->scope === 'system' && ! $canCreateSystem) {
-            abort(403, 'You do not have permission to delete system-wide announcements.');
         }
 
         // Log announcement deletion before deleting
         $this->activityLogService->logAnnouncementDeleted($announcement);
 
-        $this->announcementRepository->delete($announcement);
+        $this->announcementManagementService->delete($announcement);
 
         return back()->with('success', 'Announcement deleted successfully!');
     }
@@ -236,19 +177,12 @@ class AnnouncementController extends Controller
     public function logs(Request $request, Announcement $announcement): JsonResponse
     {
         $user = $request->user();
-        $canCreateSystem = $user->hasPermissionTo('create-system-announcements');
-        $isSystemAdmin = $user->hasAnyRole(['System Admin', 'BOP']);
-
-        // System Admins and BOP can view any announcement logs
-        if (! $isSystemAdmin) {
-            // Check access
-            if ($announcement->scope === 'organization' && $announcement->organization_id !== $user->current_organization_id) {
-                abort(403, 'You do not have access to this announcement.');
-            }
-
-            if ($announcement->scope === 'system' && ! $canCreateSystem) {
+        if (! $this->announcementManagementService->canManageAnnouncement($user, $announcement)) {
+            if ($announcement->scope === 'system') {
                 abort(403, 'You do not have permission to view system-wide announcement logs.');
             }
+
+            abort(403, 'You do not have access to this announcement.');
         }
 
         $logs = $this->activityLogService->getLogs($announcement);
@@ -266,11 +200,11 @@ class AnnouncementController extends Controller
         $user = $request->user();
 
         // Verify user has access to view this announcement
-        if ($announcement->scope === 'organization' && $announcement->organization_id !== $user->current_organization_id) {
+        if (! $this->announcementManagementService->canViewAnnouncement($user, $announcement)) {
             abort(403, 'You do not have access to this announcement.');
         }
 
-        $this->announcementRepository->markAsViewedBy($announcement, $user->id);
+        $this->announcementManagementService->markAsViewed($announcement, $user->id);
 
         return response()->noContent();
     }
