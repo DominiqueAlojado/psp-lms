@@ -105,4 +105,16 @@ class StaffManagementServiceTest extends TestCase
             'newOrganizations' => ['Gamma Chapter'],
         ], $result);
     }
+
+    public function test_it_deletes_staff(): void
+    {
+        $service = app(StaffManagementService::class);
+
+        $staff = User::factory()->create();
+
+        $this->assertTrue($service->delete($staff));
+        $this->assertDatabaseMissing('users', [
+            'id' => $staff->id,
+        ]);
+    }
 }

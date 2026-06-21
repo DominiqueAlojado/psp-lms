@@ -6,9 +6,9 @@ use App\Exports\StaffExport;
 use App\Http\Requests\StoreStaffRequest;
 use App\Http\Requests\UpdateStaffRequest;
 use App\Models\User;
-use App\Repositories\Contracts\StaffRepositoryInterface;
-use App\Services\StaffManagementService;
 use App\Services\ActivityLog\StaffActivityLogService;
+use App\Services\StaffManagementService;
+use App\Services\StaffReadService;
 use App\Traits\LogsActivity;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -24,48 +24,25 @@ class StaffController extends Controller
 
     public function __construct(
         protected StaffActivityLogService $activityLogService,
-        protected StaffRepositoryInterface $staffRepository,
         protected StaffManagementService $staffManagementService,
+        protected StaffReadService $staffReadService,
     ) {}
     /**
      * Display a listing of staff members.
      */
     public function index(Request $request): Response
     {
-        $staffRoleNames = $this->staffRepository->getStaffRoleNames();
-
-        // Get organization IDs that the current user belongs to
-        $userOrgIds = auth()->user()->organizations()->pluck('organizations.id')->toArray();
-        $isSystemAdmin = auth()->user()->hasRole('System Admin');
-
-        $staff = $this->staffRepository
-            ->paginate(
-                $request->only(['search', 'role', 'organization', 'sort', 'direction']),
-                $staffRoleNames,
-                $userOrgIds,
-                $isSystemAdmin
-            )
-            ->through(fn($user) => [
-                'id' => $user->id,
-                'uuid' => $user->uuid,
-                'name' => $user->name,
-                'email' => $user->email,
-                'roles' => $user->roles->pluck('name')->toArray(),
-                'primary_role' => $user->roles->first()?->name ?? 'N/A',
-                'current_organization' => $user->currentOrganization?->name ?? 'N/A',
-                'organizations_count' => $user->organizations()->count(),
-                'created_at' => $user->created_at->format('Y-m-d'),
-                'updated_at' => $user->updated_at->diffForHumans(),
-            ]);
-
-        $roleStats = $this->staffRepository->getRoleStats($userOrgIds, $isSystemAdmin);
+        $payload = $this->staffReadService->indexPayload(
+            $request->user(),
+            $request->only(['search', 'role', 'organization', 'sort', 'direction'])
+        );
 
         return Inertia::render('staff/index', [
-            'staff' => $staff,
+            'staff' => $payload['staff'],
             'filters' => $request->only(['search', 'role', 'organization', 'sort', 'direction']),
-            'roleStats' => $roleStats,
-            'roles' => $this->staffRepository->getSelectableRoles(),
-            'organizations' => $this->staffRepository->getSelectableOrganizations(auth()->user(), $isSystemAdmin),
+            'roleStats' => $payload['roleStats'],
+            'roles' => $payload['roles'],
+            'organizations' => $payload['organizations'],
         ]);
     }
 
@@ -156,7 +133,7 @@ class StaffController extends Controller
         // Log deletion before deleting
         $this->activityLogService->logUserDeleted($staff);
 
-        $this->staffRepository->delete($staff);
+        $this->staffManagementService->delete($staff);
 
         return back()->with('success', 'Staff member deleted successfully');
     }
@@ -179,23 +156,7 @@ class StaffController extends Controller
      */
     public function show(User $staff): JsonResponse
     {
-        $staff->load(['roles', 'currentOrganization', 'organizations']);
-
-        return response()->json([
-            'staff' => [
-                'id' => $staff->id,
-                'uuid' => $staff->uuid,
-                'name' => $staff->name,
-                'email' => $staff->email,
-                'roles' => $staff->roles->pluck('id')->toArray(),
-                'role_names' => $staff->roles->pluck('name')->toArray(),
-                'current_organization_id' => $staff->current_organization_id,
-                'organizations' => $staff->organizations->map(fn($org) => [
-                    'id' => $org->id,
-                    'name' => $org->name,
-                ])->toArray(),
-            ],
-        ]);
+        return response()->json($this->staffReadService->showPayload($staff));
     }
 
     /**
