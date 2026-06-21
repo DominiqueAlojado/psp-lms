@@ -13,6 +13,8 @@ interface InstitutionQuestionRepositoryInterface
 
     public function delete(InstitutionQuestion $question): bool;
 
+    public function deleteForAssessmentByIds(InstitutionAssessment $assessment, array $questionIds): void;
+
     public function findForAssessment(InstitutionAssessment $assessment, int $questionId): ?InstitutionQuestion;
 
     public function deleteMissingForAssessment(InstitutionAssessment $assessment, array $questionIds): void;

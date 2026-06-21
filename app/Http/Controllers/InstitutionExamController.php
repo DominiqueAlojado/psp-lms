@@ -614,6 +614,48 @@ class InstitutionExamController extends Controller
     }
 
     /**
+     * Delete multiple questions from an assessment.
+     */
+    public function bulkDeleteQuestions(Request $request, InstitutionAssessment $assessment): RedirectResponse
+    {
+        if ($assessment->organization_id !== $request->user()->current_organization_id) {
+            abort(403, 'You do not have access to this assessment.');
+        }
+
+        $validated = $request->validate([
+            'question_ids' => ['required', 'array', 'min:1'],
+            'question_ids.*' => ['required', 'integer'],
+        ]);
+
+        $questionIds = collect($validated['question_ids'])
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values();
+
+        $matchingCount = $assessment->questions()
+            ->whereIn('id', $questionIds)
+            ->count();
+
+        if ($matchingCount !== $questionIds->count()) {
+            abort(403, 'One or more selected questions do not belong to this assessment.');
+        }
+
+        DB::transaction(function () use ($assessment, $questionIds) {
+            $this->questionRepository->deleteForAssessmentByIds($assessment, $questionIds->all());
+            $this->assessmentRepository->update($assessment, [
+                'total_points' => $this->assessmentRepository->sumQuestionPoints($assessment),
+            ]);
+        });
+
+        $count = $questionIds->count();
+
+        return back()->with(
+            'success',
+            $count === 1 ? 'Question deleted successfully' : "Deleted {$count} questions successfully"
+        );
+    }
+
+    /**
      * Download Excel template for bulk question import.
      */
     public function downloadTemplate(): BinaryFileResponse

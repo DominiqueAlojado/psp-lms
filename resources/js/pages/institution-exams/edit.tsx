@@ -153,6 +153,13 @@ export default function EditAssessment() {
     const [deletingQuestionIndex, setDeletingQuestionIndex] = useState<
         number | null
     >(null);
+    const [selectedQuestionIndexes, setSelectedQuestionIndexes] = useState<
+        number[]
+    >([]);
+    const [deletingQuestionIndexes, setDeletingQuestionIndexes] = useState<
+        number[]
+    >([]);
+    const [bulkDeleting, setBulkDeleting] = useState(false);
     const [duplicating, setDuplicating] = useState(false);
 
     // Import preview state
@@ -176,11 +183,59 @@ export default function EditAssessment() {
         setQuestions(assessment.questions || []);
     }, [assessment.questions]);
 
+    useEffect(() => {
+        setSelectedQuestionIndexes([]);
+    }, [assessment.questions]);
+
     const toggleQuestion = (index: number) => {
         setOpenQuestions((prev) => ({
             ...prev,
             [index]: !prev[index],
         }));
+    };
+
+    const toggleQuestionSelection = (index: number, checked: boolean) => {
+        setSelectedQuestionIndexes((prev) =>
+            checked
+                ? [...new Set([...prev, index])].sort((a, b) => a - b)
+                : prev.filter((selectedIndex) => selectedIndex !== index),
+        );
+    };
+
+    const removeQuestionsByIndexes = (indexesToRemove: number[]) => {
+        const uniqueIndexes = [...new Set(indexesToRemove)].sort((a, b) => a - b);
+
+        setQuestions((prev) =>
+            prev.filter((_, index) => !uniqueIndexes.includes(index)),
+        );
+
+        setOpenQuestions((prev) => {
+            const next: Record<number, boolean> = {};
+            let removedBeforeIndex = 0;
+
+            questions.forEach((_, index) => {
+                if (uniqueIndexes.includes(index)) {
+                    removedBeforeIndex++;
+                    return;
+                }
+
+                next[index - removedBeforeIndex] = prev[index] ?? false;
+            });
+
+            return next;
+        });
+
+        setSelectedQuestionIndexes((prev) =>
+            prev
+                .filter((index) => !uniqueIndexes.includes(index))
+                .map(
+                    (index) =>
+                        index -
+                        uniqueIndexes.filter(
+                            (removedIndex) => removedIndex < index,
+                        ).length,
+                ),
+        );
     };
 
     const addQuestion = (type: DraftQuestion['question_type']) => {
@@ -514,7 +569,7 @@ export default function EditAssessment() {
                     preserveState: true,
                     preserveScroll: true,
                     onSuccess: () => {
-                        setQuestions((prev) => prev.filter((_, i) => i !== qi));
+                        removeQuestionsByIndexes([qi]);
                         toast.success('Question deleted successfully!');
                     },
                     onError: (errors) => {
@@ -526,10 +581,56 @@ export default function EditAssessment() {
             );
         } else {
             // Just remove from local state (not saved yet)
-            setQuestions((prev) => prev.filter((_, i) => i !== qi));
+            removeQuestionsByIndexes([qi]);
             toast.success('Question removed');
             setDeletingQuestionIndex(null);
         }
+    };
+
+    const confirmDeleteSelectedQuestions = () => {
+        if (deletingQuestionIndexes.length === 0 || bulkDeleting) {
+            return;
+        }
+
+        const indexesToDelete = [...deletingQuestionIndexes].sort((a, b) => a - b);
+        const savedQuestionIds = indexesToDelete
+            .map((index) => questions[index]?.id)
+            .filter((id): id is number => typeof id === 'number');
+
+        if (savedQuestionIds.length === 0) {
+            removeQuestionsByIndexes(indexesToDelete);
+            setDeletingQuestionIndexes([]);
+            toast.success(
+                indexesToDelete.length === 1
+                    ? 'Question removed'
+                    : `${indexesToDelete.length} questions removed`,
+            );
+            return;
+        }
+
+        setBulkDeleting(true);
+
+        router.delete(`/assessments/${assessment.id}/questions`, {
+            data: { question_ids: savedQuestionIds },
+            preserveState: true,
+            preserveScroll: true,
+            onSuccess: () => {
+                removeQuestionsByIndexes(indexesToDelete);
+                toast.success(
+                    indexesToDelete.length === 1
+                        ? 'Question deleted successfully!'
+                        : `${indexesToDelete.length} questions deleted successfully!`,
+                );
+            },
+            onError: (errors) => {
+                console.error('Error deleting selected questions:', errors);
+                toast.error('Failed to delete selected questions');
+            },
+            onFinish: () => {
+                setBulkDeleting(false);
+                setDeletingQuestionIndexes([]);
+            },
+        });
     };
 
     // Filter questions based on search query
@@ -551,6 +652,12 @@ export default function EditAssessment() {
             questionNumber.includes(query)
         );
     });
+
+    const allFilteredSelected =
+        filteredQuestions.length > 0 &&
+        filteredQuestions.every((question) =>
+            selectedQuestionIndexes.includes(questions.indexOf(question)),
+        );
 
     return (
         <AppLayout
@@ -747,9 +854,9 @@ export default function EditAssessment() {
 
                 {/* Questions */}
                 <div className="space-y-4 rounded-lg border p-6">
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
                         <h3 className="text-lg font-semibold">Questions</h3>
-                        <div className="flex gap-2">
+                        <div className="flex flex-wrap gap-2">
                             <Button
                                 variant="outline"
                                 size="sm"
@@ -861,6 +968,72 @@ export default function EditAssessment() {
                         </div>
                     )}
 
+                    {questions.length > 0 && (
+                        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-muted/30 px-4 py-3">
+                            <div className="flex flex-wrap items-center gap-3">
+                                <label className="flex items-center gap-2 text-sm">
+                                    <Checkbox
+                                        checked={allFilteredSelected}
+                                        onCheckedChange={(checked) => {
+                                            if (checked) {
+                                                setSelectedQuestionIndexes((prev) => [
+                                                    ...new Set([
+                                                        ...prev,
+                                                        ...filteredQuestions.map((question) =>
+                                                            questions.indexOf(question),
+                                                        ),
+                                                    ]),
+                                                ].sort((a, b) => a - b));
+                                                return;
+                                            }
+
+                                            const filteredIndexes = filteredQuestions.map(
+                                                (question) => questions.indexOf(question),
+                                            );
+                                            setSelectedQuestionIndexes((prev) =>
+                                                prev.filter(
+                                                    (index) =>
+                                                        !filteredIndexes.includes(index),
+                                                ),
+                                            );
+                                        }}
+                                    />
+                                    <span>Select all visible</span>
+                                </label>
+                                <span className="text-sm text-muted-foreground">
+                                    {selectedQuestionIndexes.length} question(s) selected
+                                </span>
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => setSelectedQuestionIndexes([])}
+                                    disabled={selectedQuestionIndexes.length === 0}
+                                >
+                                    Clear selection
+                                </Button>
+                                <Button
+                                    type="button"
+                                    variant="destructive"
+                                    size="sm"
+                                    onClick={() =>
+                                        setDeletingQuestionIndexes(
+                                            [...selectedQuestionIndexes].sort(
+                                                (a, b) => a - b,
+                                            ),
+                                        )
+                                    }
+                                    disabled={selectedQuestionIndexes.length === 0}
+                                >
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    Delete Selected
+                                </Button>
+                            </div>
+                        </div>
+                    )}
+
                     <div className="space-y-6">
                         {filteredQuestions.length === 0 &&
                         questionSearchQuery ? (
@@ -892,6 +1065,25 @@ export default function EditAssessment() {
                                         className="rounded border"
                                     >
                                         <div className="flex items-center justify-between border-b bg-muted/50 p-3">
+                                            <div
+                                                className="mr-3 flex items-center"
+                                                onClick={(event) =>
+                                                    event.stopPropagation()
+                                                }
+                                            >
+                                                <Checkbox
+                                                    checked={selectedQuestionIndexes.includes(
+                                                        qi,
+                                                    )}
+                                                    onCheckedChange={(checked) =>
+                                                        toggleQuestionSelection(
+                                                            qi,
+                                                            checked === true,
+                                                        )
+                                                    }
+                                                    aria-label={`Select Question #${qi + 1}`}
+                                                />
+                                            </div>
                                             <CollapsibleTrigger className="flex flex-1 items-center gap-2 text-left">
                                                 {openQuestions[qi] ? (
                                                     <ChevronDown className="h-4 w-4" />
@@ -1325,6 +1517,24 @@ export default function EditAssessment() {
                 confirmText="Delete Question"
                 onConfirm={confirmDeleteQuestion}
                 onCancel={() => setDeletingQuestionIndex(null)}
+            />
+
+            <DeleteConfirmationDialog
+                open={deletingQuestionIndexes.length > 0}
+                title="Delete Selected Questions?"
+                itemIdentifier={`${deletingQuestionIndexes.length} question(s) selected`}
+                warningMessage="This action cannot be undone. This will permanently delete the selected questions and their associated choices."
+                confirmText={
+                    bulkDeleting
+                        ? 'Deleting...'
+                        : `Delete ${deletingQuestionIndexes.length} Question${deletingQuestionIndexes.length === 1 ? '' : 's'}`
+                }
+                onConfirm={confirmDeleteSelectedQuestions}
+                onCancel={() => {
+                    if (!bulkDeleting) {
+                        setDeletingQuestionIndexes([]);
+                    }
+                }}
             />
 
             {previewData && (

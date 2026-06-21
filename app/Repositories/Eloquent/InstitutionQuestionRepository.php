@@ -23,6 +23,11 @@ class InstitutionQuestionRepository implements InstitutionQuestionRepositoryInte
         return (bool) $question->delete();
     }
 
+    public function deleteForAssessmentByIds(InstitutionAssessment $assessment, array $questionIds): void
+    {
+        $assessment->questions()->whereIn('id', $questionIds)->delete();
+    }
+
     public function findForAssessment(InstitutionAssessment $assessment, int $questionId): ?InstitutionQuestion
     {
         return $assessment->questions()->find($questionId);

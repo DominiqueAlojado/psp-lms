@@ -348,6 +348,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('assessments/{assessment}/questions/save-one', [App\Http\Controllers\InstitutionExamController::class, 'saveOneQuestion'])
         ->middleware('permission:edit-assessments')
         ->name('assessments.questions.save-one');
+    Route::delete('assessments/{assessment}/questions', [App\Http\Controllers\InstitutionExamController::class, 'bulkDeleteQuestions'])
+        ->middleware('permission:edit-assessments')
+        ->name('assessments.questions.bulk-delete');
     Route::delete('assessments/{assessment}/questions/{question}', [App\Http\Controllers\InstitutionExamController::class, 'deleteQuestion'])
         ->middleware('permission:edit-assessments')
         ->name('assessments.questions.delete');
