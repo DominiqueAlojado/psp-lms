@@ -87,6 +87,7 @@ interface Assessment {
 
 interface PageProps {
     assessment: Assessment;
+    questionBankScope?: 'institution' | 'national';
 }
 
 // Define exam categories
@@ -106,7 +107,10 @@ const EXAM_CATEGORIES = [
 ] as const;
 
 export default function EditAssessment() {
-    const { assessment } = usePage<PageProps>().props;
+    const {
+        assessment,
+        questionBankScope = 'institution',
+    } = usePage<PageProps>().props;
 
     const [title, setTitle] = useState(assessment.title);
     const [description, setDescription] = useState(
@@ -1331,6 +1335,8 @@ export default function EditAssessment() {
                 onOpenChange={setShowQuestionSelector}
                 assessmentId={assessment.id}
                 onQuestionsAdded={() => router.reload({ only: ['assessment'] })}
+                routePrefix="assessments"
+                scope={questionBankScope}
             />
         </AppLayout>
     );

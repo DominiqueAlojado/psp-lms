@@ -1262,6 +1262,7 @@ export default function EditInServiceAssessment() {
                 assessmentId={assessment.id}
                 onQuestionsAdded={() => router.reload({ only: ['assessment'] })}
                 routePrefix="inservice-exams"
+                scope="national"
             />
 
             {/* Assessment Logs Sheet */}

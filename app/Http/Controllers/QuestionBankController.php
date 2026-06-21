@@ -61,9 +61,15 @@ class QuestionBankController extends Controller
         $currentOrganization = $user->currentOrganization;
         $organizationId = $currentOrganization?->id;
 
-        // Determine scope based on current organization type
-        // If organization type is 'national' => show national questions, else institution questions
-        $isNational = $currentOrganization?->type === 'national';
+        $scope = $request->string('scope')->toString();
+        if ($scope === 'national') {
+            $isNational = true;
+        } elseif ($scope === 'institution') {
+            $isNational = false;
+        } else {
+            // Default to the current organization context when the caller does not specify a scope.
+            $isNational = $currentOrganization?->type === 'national';
+        }
 
         $questions = $this->questionBankRepository->listScoped(
             $organizationId,

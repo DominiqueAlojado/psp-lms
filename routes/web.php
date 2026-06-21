@@ -314,6 +314,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->middleware('permission:view-assessments')
         ->name('assessments.index');
     Route::get('institution-exams/create', function (Request $request) {
+        if ($request->user()?->currentOrganization?->type === 'national') {
+            return redirect()->route('inservice-exams.create');
+        }
+
         return Inertia::render('institution-exams/create', [
             'assessmentId' => $request->query('assessment_id'),
             'organizationSlug' => $request->query('org'),

@@ -39,6 +39,10 @@ class InstitutionExamController extends Controller
     public function index(Request $request): Response
     {
         $user = $request->user();
+        if ($user->currentOrganization?->type === 'national') {
+            return redirect()->route('inservice-exams.active');
+        }
+
         $assessments = $this->assessmentRepository
             ->paginateByPublication($user->current_organization_id, true, $request->only(['search', 'sort', 'direction']))
             ->through(fn($assessment) => [
@@ -71,6 +75,10 @@ class InstitutionExamController extends Controller
     public function drafts(Request $request): Response
     {
         $user = $request->user();
+        if ($user->currentOrganization?->type === 'national') {
+            return redirect()->route('inservice-exams.drafts');
+        }
+
         $assessments = $this->assessmentRepository
             ->paginateByPublication($user->current_organization_id, false, $request->only(['search', 'sort', 'direction']))
             ->through(fn($assessment) => [
@@ -105,6 +113,12 @@ class InstitutionExamController extends Controller
         try {
             $isNationalContext = $request->user()->currentOrganization?->type === 'national';
 
+            if ($isNationalContext) {
+                return redirect()
+                    ->route('inservice-exams.create')
+                    ->with('error', 'Use the In-Service Exams flow for national assessments.');
+            }
+
             $validated = $request->validate([
                 'title' => ['required', 'string', 'max:255'],
                 'description' => ['nullable', 'string'],
@@ -126,7 +140,7 @@ class InstitutionExamController extends Controller
                 'total_points' => 0,
                 'title' => $validated['title'],
                 'description' => $validated['description'] ?? null,
-                'exam_category' => $isNationalContext ? 'In-service' : ($validated['exam_category'] ?? null),
+                'exam_category' => $validated['exam_category'] ?? null,
                 'duration_minutes' => $validated['duration_minutes'] ?? null,
                 'passing_score' => $validated['passing_score'],
                 'randomize_questions' => $validated['randomize_questions'] ?? false,
@@ -200,6 +214,7 @@ class InstitutionExamController extends Controller
                 'created_by' => $assessment->creator->name,
                 'created_at' => $assessment->created_at->format('Y-m-d'),
             ],
+            'questionBankScope' => $assessment->organization?->type === 'national' ? 'national' : 'institution',
         ]);
     }
 
@@ -653,10 +668,14 @@ class InstitutionExamController extends Controller
             'question_ids.*' => ['required', 'integer', 'exists:question_bank,id'],
         ]);
 
-        $bankQuestions = $this->questionBankRepository->findByIdsForOrganization(
-            $request->question_ids,
-            $assessment->organization_id
-        );
+        $isNationalOrgAssessment = $assessment->organization?->type === 'national';
+
+        $bankQuestions = $isNationalOrgAssessment
+            ? $this->questionBankRepository->findByIdsForOwnerType($request->question_ids, 'national')
+            : $this->questionBankRepository->findByIdsForOrganization(
+                $request->question_ids,
+                $assessment->organization_id
+            );
 
         if ($bankQuestions->isEmpty()) {
             return back()->with('error', 'No valid questions found.');
