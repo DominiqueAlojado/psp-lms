@@ -269,6 +269,8 @@ class InstitutionExamController extends Controller
             abort(403, 'You do not have access to this assessment.');
         }
 
+        $isNationalOrgAssessment = $assessment->organization?->type === 'national';
+
         $validated = $request->validate([
             'title' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
@@ -283,6 +285,10 @@ class InstitutionExamController extends Controller
             'available_from' => ['nullable', 'date'],
             'available_until' => ['nullable', 'date', 'after:available_from'],
         ]);
+
+        if ($isNationalOrgAssessment) {
+            $validated['exam_category'] = 'In-service';
+        }
 
         $this->assessmentRepository->update($assessment, $validated);
 
@@ -681,10 +687,31 @@ class InstitutionExamController extends Controller
             return back()->with('error', 'No valid questions found.');
         }
 
-        $addedCount = DB::transaction(function () use ($assessment, $bankQuestions) {
+        $addedCount = 0;
+        $skippedCount = 0;
+
+        DB::transaction(function () use ($assessment, $bankQuestions, &$addedCount, &$skippedCount) {
+            $existingSignatures = $assessment->questions()
+                ->get(['question_text', 'question_type'])
+                ->map(fn ($question) => $this->buildQuestionSignature(
+                    $question->question_text,
+                    $question->question_type
+                ));
+
             $addedCount = 0;
 
             foreach ($bankQuestions as $bankQuestion) {
+                $signature = $this->buildQuestionSignature(
+                    $bankQuestion->question_text,
+                    $bankQuestion->question_type
+                );
+
+                if ($existingSignatures->contains($signature)) {
+                    $skippedCount++;
+
+                    continue;
+                }
+
                 $question = $this->questionRepository->createForAssessment($assessment, [
                     'topic_id' => $bankQuestion->topic_id,
                     'question_type' => $bankQuestion->question_type,
@@ -704,17 +731,25 @@ class InstitutionExamController extends Controller
                 );
 
                 $this->questionBankRepository->incrementUsage($bankQuestion);
+                $existingSignatures->push($signature);
                 $addedCount++;
             }
 
             $this->assessmentRepository->update($assessment, [
                 'total_points' => $this->assessmentRepository->sumQuestionPoints($assessment),
             ]);
-
-            return $addedCount;
         });
 
-        return back()->with('success', "Successfully added {$addedCount} questions from question bank!");
+        if ($addedCount === 0 && $skippedCount > 0) {
+            return back()->with('warning', 'All selected questions are already in this exam.');
+        }
+
+        $message = "Successfully added {$addedCount} question(s) from question bank!";
+        if ($skippedCount > 0) {
+            $message .= " Skipped {$skippedCount} duplicate question(s).";
+        }
+
+        return back()->with('success', $message);
     }
 
     private function generateDuplicateTitle(string $originalTitle, int $organizationId): string
@@ -857,5 +892,12 @@ class InstitutionExamController extends Controller
         }
 
         return [];
+    }
+
+    private function buildQuestionSignature(string $questionText, string $questionType): string
+    {
+        $normalizedText = preg_replace('/\s+/u', ' ', trim(strip_tags($questionText))) ?? '';
+
+        return mb_strtolower($questionType . '|' . $normalizedText);
     }
 }

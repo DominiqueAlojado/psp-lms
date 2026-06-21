@@ -284,9 +284,29 @@ class NationalAssessmentController extends Controller
 
         $totalPointsAdded = 0;
         $order = $this->questionRepository->getNextOrderForAssessment($assessment);
+        $addedCount = 0;
+        $skippedCount = 0;
 
-        DB::transaction(function () use ($bankQuestions, $assessment, &$totalPointsAdded, &$order) {
+        DB::transaction(function () use ($bankQuestions, $assessment, &$totalPointsAdded, &$order, &$addedCount, &$skippedCount) {
+            $existingSignatures = $assessment->questions()
+                ->get(['question_text', 'question_type'])
+                ->map(fn ($question) => $this->buildQuestionSignature(
+                    $question->question_text,
+                    $question->question_type
+                ));
+
             foreach ($bankQuestions as $bankQuestion) {
+                $signature = $this->buildQuestionSignature(
+                    $bankQuestion->question_text,
+                    $bankQuestion->question_type
+                );
+
+                if ($existingSignatures->contains($signature)) {
+                    $skippedCount++;
+
+                    continue;
+                }
+
                 // Create a copy of the question in the assessment
                 $question = $this->questionRepository->createForAssessment($assessment, [
                     'question_type' => $bankQuestion->question_type,
@@ -313,6 +333,8 @@ class NationalAssessmentController extends Controller
 
                 // Increment usage counter in question bank
                 $this->questionBankRepository->incrementUsage($bankQuestion);
+                $existingSignatures->push($signature);
+                $addedCount++;
 
                 // Log each question added from bank
                 $question->load('choices');
@@ -341,7 +363,16 @@ class NationalAssessmentController extends Controller
             ]);
         });
 
-        return back()->with('success', "Successfully added {$bankQuestions->count()} question(s) from question bank!");
+        if ($addedCount === 0 && $skippedCount > 0) {
+            return back()->with('warning', 'All selected questions are already in this exam.');
+        }
+
+        $message = "Successfully added {$addedCount} question(s) from question bank!";
+        if ($skippedCount > 0) {
+            $message .= " Skipped {$skippedCount} duplicate question(s).";
+        }
+
+        return back()->with('success', $message);
     }
 
     /**
@@ -1089,5 +1120,12 @@ class NationalAssessmentController extends Controller
         $this->questionChoiceRepository->deleteForQuestion($question);
 
         return [];
+    }
+
+    private function buildQuestionSignature(string $questionText, string $questionType): string
+    {
+        $normalizedText = preg_replace('/\s+/u', ' ', trim(strip_tags($questionText))) ?? '';
+
+        return mb_strtolower($questionType . '|' . $normalizedText);
     }
 }

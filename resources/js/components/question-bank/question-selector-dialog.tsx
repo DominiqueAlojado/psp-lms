@@ -43,6 +43,10 @@ interface Props {
     onQuestionsAdded: () => void;
     routePrefix?: string; // Optional route prefix (e.g., 'inservice-exams' or 'assessments')
     scope?: 'institution' | 'national';
+    existingQuestions?: Array<{
+        question_text: string;
+        question_type: string;
+    }>;
 }
 
 interface TopicOption {
@@ -69,11 +73,13 @@ export function QuestionSelectorDialog({
     onQuestionsAdded,
     routePrefix,
     scope = 'institution',
+    existingQuestions = [],
 }: Props) {
     const [questions, setQuestions] = useState<Question[]>([]);
     const [topics, setTopics] = useState<TopicOption[]>([]);
     const [selectedIds, setSelectedIds] = useState<number[]>([]);
     const [loading, setLoading] = useState(false);
+    const [submitting, setSubmitting] = useState(false);
     const [filters, setFilters] = useState({
         search: '',
         topic: '',
@@ -149,7 +155,51 @@ export function QuestionSelectorDialog({
         );
     };
 
+    const buildQuestionSignature = (questionText: string, questionType: string) =>
+        `${questionType}|${questionText
+            .replace(/<[^>]*>/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim()
+            .toLowerCase()}`;
+
+    const existingQuestionSignatures = new Set(
+        existingQuestions.map((question) =>
+            buildQuestionSignature(
+                question.question_text,
+                question.question_type,
+            ),
+        ),
+    );
+
+    const selectableQuestionIds = new Set(
+        questions
+            .filter(
+                (question) =>
+                    !existingQuestionSignatures.has(
+                        buildQuestionSignature(
+                            question.question_text,
+                            question.question_type,
+                        ),
+                    ),
+            )
+            .map((question) => question.id),
+    );
+
+    const effectiveSelectedIds = selectedIds.filter((id) =>
+        selectableQuestionIds.has(id),
+    );
+
+    useEffect(() => {
+        if (effectiveSelectedIds.length !== selectedIds.length) {
+            setSelectedIds(effectiveSelectedIds);
+        }
+    }, [effectiveSelectedIds, selectedIds]);
+
     const handleAddQuestions = () => {
+        if (effectiveSelectedIds.length === 0 || submitting) {
+            return;
+        }
+
         const prefix =
             routePrefix ||
             (window.location.pathname.includes('/inservice-exams/')
@@ -157,15 +207,20 @@ export function QuestionSelectorDialog({
                 : 'assessments');
         const route = `/${prefix}/${assessmentId}/questions/from-bank`;
 
+        setSubmitting(true);
+
         router.post(
             route,
-            { question_ids: selectedIds },
+            { question_ids: effectiveSelectedIds },
             {
                 preserveScroll: true,
                 onSuccess: () => {
                     setSelectedIds([]);
                     onQuestionsAdded();
                     onOpenChange(false);
+                },
+                onFinish: () => {
+                    setSubmitting(false);
                 },
             },
         );
@@ -298,28 +353,49 @@ export function QuestionSelectorDialog({
                             questions.map((question) => {
                                 const difficulty = getDifficulty(question);
                                 const stats = question.statistics;
-                                const isSelected = selectedIds.includes(
-                                    question.id,
-                                );
+                                const alreadyInExam =
+                                    existingQuestionSignatures.has(
+                                        buildQuestionSignature(
+                                            question.question_text,
+                                            question.question_type,
+                                        ),
+                                    );
+                                const isSelected =
+                                    !alreadyInExam &&
+                                    effectiveSelectedIds.includes(question.id);
 
                                 return (
                                     <div
                                         key={question.id}
-                                        className={`flex cursor-pointer items-start gap-3 rounded-lg border p-4 transition-colors hover:bg-accent ${
+                                        className={`flex items-start gap-3 rounded-lg border p-4 transition-colors ${
+                                            alreadyInExam
+                                                ? 'cursor-not-allowed opacity-60'
+                                                : 'cursor-pointer hover:bg-accent'
+                                        } ${
                                             isSelected
                                                 ? 'border-primary bg-accent'
                                                 : ''
                                         }`}
-                                        onClick={() =>
-                                            toggleQuestion(question.id)
-                                        }
+                                        onClick={() => {
+                                            if (alreadyInExam) {
+                                                return;
+                                            }
+
+                                            toggleQuestion(question.id);
+                                        }}
                                     >
                                         <Checkbox
                                             checked={isSelected}
                                             className="mt-1"
+                                            disabled={alreadyInExam}
                                         />
                                         <div className="flex-1 space-y-2">
                                             <div className="flex flex-wrap items-center gap-2">
+                                                {alreadyInExam && (
+                                                    <Badge variant="secondary">
+                                                        Already in exam
+                                                    </Badge>
+                                                )}
                                                 {question.is_approved && (
                                                     <Badge
                                                         variant="default"
@@ -420,23 +496,26 @@ export function QuestionSelectorDialog({
                     {/* Actions */}
                     <div className="flex items-center justify-between border-t pt-4">
                         <p className="text-sm text-muted-foreground">
-                            {selectedIds.length} question(s) selected
+                            {effectiveSelectedIds.length} question(s) selected
                         </p>
                         <div className="flex gap-3">
                             <Button
                                 variant="outline"
                                 onClick={() => onOpenChange(false)}
+                                disabled={submitting}
                             >
                                 Cancel
                             </Button>
                             <Button
                                 onClick={handleAddQuestions}
-                                disabled={selectedIds.length === 0}
+                                disabled={
+                                    effectiveSelectedIds.length === 0 ||
+                                    submitting
+                                }
                             >
-                                Add{' '}
-                                {selectedIds.length > 0 &&
-                                    `${selectedIds.length} `}
-                                Questions
+                                {submitting
+                                    ? 'Adding...'
+                                    : `Add ${effectiveSelectedIds.length > 0 ? `${effectiveSelectedIds.length} ` : ''}Questions`}
                             </Button>
                         </div>
                     </div>

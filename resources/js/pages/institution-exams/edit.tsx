@@ -111,13 +111,14 @@ export default function EditAssessment() {
         assessment,
         questionBankScope = 'institution',
     } = usePage<PageProps>().props;
+    const isNationalContext = questionBankScope === 'national';
 
     const [title, setTitle] = useState(assessment.title);
     const [description, setDescription] = useState(
         assessment.description || '',
     );
     const [examCategory, setExamCategory] = useState(
-        assessment.exam_category || '',
+        isNationalContext ? 'In-service' : assessment.exam_category || '',
     );
     const [passingScore, setPassingScore] = useState(assessment.passing_score);
     const [duration, setDuration] = useState<number | ''>(
@@ -600,18 +601,27 @@ export default function EditAssessment() {
                         <Select
                             value={examCategory}
                             onValueChange={setExamCategory}
+                            disabled={isNationalContext}
                         >
                             <SelectTrigger>
                                 <SelectValue placeholder="Select category (optional)" />
                             </SelectTrigger>
                             <SelectContent>
-                                {EXAM_CATEGORIES.map((category) => (
+                                {(isNationalContext
+                                    ? ['In-service']
+                                    : EXAM_CATEGORIES
+                                ).map((category) => (
                                     <SelectItem key={category} value={category}>
                                         {category}
                                     </SelectItem>
                                 ))}
                             </SelectContent>
                         </Select>
+                        {isNationalContext && (
+                            <p className="text-sm text-muted-foreground">
+                                National-org exams use the In-service category.
+                            </p>
+                        )}
                     </div>
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                         <div className="space-y-2">
@@ -1337,6 +1347,10 @@ export default function EditAssessment() {
                 onQuestionsAdded={() => router.reload({ only: ['assessment'] })}
                 routePrefix="assessments"
                 scope={questionBankScope}
+                existingQuestions={questions.map((question) => ({
+                    question_text: question.question_text,
+                    question_type: question.question_type,
+                }))}
             />
         </AppLayout>
     );

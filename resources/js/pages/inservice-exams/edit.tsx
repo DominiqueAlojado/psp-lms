@@ -1263,6 +1263,10 @@ export default function EditInServiceAssessment() {
                 onQuestionsAdded={() => router.reload({ only: ['assessment'] })}
                 routePrefix="inservice-exams"
                 scope="national"
+                existingQuestions={questions.map((question) => ({
+                    question_text: question.question_text,
+                    question_type: question.question_type,
+                }))}
             />
 
             {/* Assessment Logs Sheet */}
