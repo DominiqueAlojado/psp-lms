@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Repositories\Contracts\AssessmentReportRepositoryInterface;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -224,8 +225,14 @@ class AssessmentReportController extends Controller
         $canViewAllOrganizations = $user->hasPermissionTo('view-all-assessment-reports');
 
         $activeSessions = $this->assessmentReportRepository
-            ->getLiveInstitutionAttempts($request->only(['exam', 'organization', 'activity_status']), $organizationId, $canViewAllOrganizations)
-            ->map(function ($attempt) {
+            ->getLiveInstitutionAttempts($request->only(['exam', 'organization', 'activity_status']), $organizationId, $canViewAllOrganizations);
+
+        $webSessionsByUser = $this->assessmentReportRepository
+            ->getActiveWebSessionsForUsers($activeSessions->pluck('user_id')->all());
+
+        $activeSessions = $activeSessions
+            ->map(function ($attempt) use ($webSessionsByUser) {
+                $webSessions = collect($webSessionsByUser->get($attempt->user_id, collect()));
                 $sessionChanges = $this->assessmentReportRepository->getSessionChangesForInstitutionAttempt($attempt->id);
 
                 // Get browser change details (deduplicated)
@@ -272,6 +279,26 @@ class AssessmentReportController extends Controller
                         'duration_minutes' => round($period->duration_seconds / 60, 1),
                     ]);
 
+                $activeAccountSessions = $webSessions->map(function ($session) {
+                    $browser = 'Unknown';
+
+                    if (is_string($session->user_agent)) {
+                        $browser = $this->extractBrowserName($session->user_agent);
+                    }
+
+                    return [
+                        'id' => $session->id,
+                        'short_id' => substr($session->id, 0, 8),
+                        'ip_address' => $session->ip_address,
+                        'browser' => $browser,
+                        'last_activity' => Carbon::createFromTimestamp((int) $session->last_activity)->diffForHumans(),
+                    ];
+                })->values();
+
+                $lockSessionIsActive = $attempt->active_session_id
+                    ? $activeAccountSessions->contains(fn ($session) => $session['id'] === $attempt->active_session_id)
+                    : false;
+
                 return [
                     'id' => $attempt->id,
                     'resident_name' => $attempt->user->name,
@@ -297,7 +324,13 @@ class AssessmentReportController extends Controller
                     'idle_time' => gmdate('H:i:s', $attempt->total_idle_time),
                     'idle_periods' => $attempt->idle_periods_count,
                     'idle_period_details' => $idlePeriods,
-                    'is_suspicious' => $ipChanges->count() > 0 || $browserChanges->count() > 0,
+                    'locked_session_id' => $attempt->active_session_id,
+                    'locked_session_short_id' => $attempt->active_session_id ? substr($attempt->active_session_id, 0, 8) : null,
+                    'lock_session_is_active' => $lockSessionIsActive,
+                    'active_account_sessions_count' => $activeAccountSessions->count(),
+                    'active_account_sessions' => $activeAccountSessions,
+                    'has_multiple_account_sessions' => $activeAccountSessions->count() > 1,
+                    'is_suspicious' => $ipChanges->count() > 0 || $browserChanges->count() > 0 || $activeAccountSessions->count() > 1,
                 ];
             });
 

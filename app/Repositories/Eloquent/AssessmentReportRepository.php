@@ -10,7 +10,9 @@ use App\Models\National\NationalAssessment;
 use App\Models\National\NationalAttempt;
 use App\Models\Organization;
 use App\Repositories\Contracts\AssessmentReportRepositoryInterface;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Collection;
 
 class AssessmentReportRepository implements AssessmentReportRepositoryInterface
@@ -152,6 +154,25 @@ class AssessmentReportRepository implements AssessmentReportRepositoryInterface
             ->where('attempt_id', $attemptId)
             ->orderBy('started_at', 'asc')
             ->get();
+    }
+
+    public function getActiveWebSessionsForUsers(array $userIds): Collection
+    {
+        $userIds = array_values(array_filter(array_unique(array_map('intval', $userIds))));
+        $table = (string) config('session.table', 'sessions');
+
+        if ($userIds === [] || ! Schema::hasTable($table)) {
+            return collect();
+        }
+
+        return DB::table($table)
+            ->select(['id', 'user_id', 'ip_address', 'user_agent', 'last_activity'])
+            ->whereNotNull('user_id')
+            ->whereIn('user_id', $userIds)
+            ->orderByDesc('last_activity')
+            ->get()
+            ->groupBy('user_id')
+            ->map(fn (Collection $sessions) => $sessions->values());
     }
 
     private function applyCommonAttemptFilters(Builder $query, array $filters, string $assessmentTable): void

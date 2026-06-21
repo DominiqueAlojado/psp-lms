@@ -25,4 +25,6 @@ interface AssessmentReportRepositoryInterface
     public function getSessionChangesForInstitutionAttempt(int $attemptId): Collection;
 
     public function getIdlePeriodsForInstitutionAttempt(int $attemptId): Collection;
+
+    public function getActiveWebSessionsForUsers(array $userIds): Collection;
 }

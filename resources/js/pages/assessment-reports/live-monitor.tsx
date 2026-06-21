@@ -37,7 +37,10 @@ import {
     Clock,
     Eye,
     Globe,
+    KeyRound,
+    MonitorSmartphone,
     RefreshCw,
+    ShieldAlert,
     Wifi,
     X,
 } from 'lucide-react';
@@ -69,6 +72,14 @@ interface IpChangeDetail {
     time: string;
 }
 
+interface ActiveAccountSession {
+    id: string;
+    short_id: string;
+    ip_address: string | null;
+    browser: string;
+    last_activity: string;
+}
+
 interface ActiveSession {
     id: number;
     resident_name: string;
@@ -92,6 +103,12 @@ interface ActiveSession {
     idle_time: string;
     idle_periods: number;
     idle_period_details: IdlePeriodDetail[];
+    locked_session_id: string | null;
+    locked_session_short_id: string | null;
+    lock_session_is_active: boolean;
+    active_account_sessions_count: number;
+    active_account_sessions: ActiveAccountSession[];
+    has_multiple_account_sessions: boolean;
     is_suspicious: boolean;
 }
 
@@ -447,6 +464,9 @@ export default function LiveExamMonitor() {
                                                 <TableHead>
                                                     Connection
                                                 </TableHead>
+                                                <TableHead>
+                                                    Sessions
+                                                </TableHead>
                                                 <TableHead className="text-center">
                                                     Changes
                                                 </TableHead>
@@ -576,10 +596,58 @@ export default function LiveExamMonitor() {
                                                             </div>
                                                         </div>
                                                     </TableCell>
+                                                    <TableCell className="text-sm">
+                                                        <div className="space-y-1.5">
+                                                            <div className="flex items-center gap-1.5">
+                                                                <MonitorSmartphone className="h-3.5 w-3.5 text-muted-foreground" />
+                                                                <span className="text-xs font-medium">
+                                                                    {session.active_account_sessions_count}{' '}
+                                                                    active
+                                                                </span>
+                                                            </div>
+                                                            {session.locked_session_short_id ? (
+                                                                <div className="flex items-center gap-1.5">
+                                                                    <KeyRound className="h-3.5 w-3.5 text-muted-foreground" />
+                                                                    <span className="font-mono text-xs text-muted-foreground">
+                                                                        Lock:{' '}
+                                                                        {session.locked_session_short_id}
+                                                                    </span>
+                                                                </div>
+                                                            ) : (
+                                                                <div className="text-xs text-muted-foreground">
+                                                                    Lock not assigned
+                                                                </div>
+                                                            )}
+                                                            <div className="flex flex-wrap gap-1.5">
+                                                                {session.has_multiple_account_sessions && (
+                                                                    <Badge
+                                                                        variant="destructive"
+                                                                        className="text-xs"
+                                                                    >
+                                                                        Multi-browser
+                                                                    </Badge>
+                                                                )}
+                                                                {session.locked_session_id && (
+                                                                    <Badge
+                                                                        variant={
+                                                                            session.lock_session_is_active
+                                                                                ? 'secondary'
+                                                                                : 'outline'
+                                                                        }
+                                                                        className="text-xs"
+                                                                    >
+                                                                        {session.lock_session_is_active
+                                                                            ? 'Lock active'
+                                                                            : 'Stale lock'}
+                                                                    </Badge>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    </TableCell>
                                                     <TableCell className="text-center">
-                                                        {(session.ip_changes >
-                                                            0 ||
-                                                            session.browser_changes >
+                                                        {(session.ip_changes > 0 ||
+                                                            session.browser_changes > 0 ||
+                                                            session.active_account_sessions_count >
                                                                 0) && (
                                                             <div className="flex flex-col items-center gap-1.5">
                                                                 {session.ip_changes >
@@ -606,11 +674,24 @@ export default function LiveExamMonitor() {
                                                                         }
                                                                     </Badge>
                                                                 )}
+                                                                {session.has_multiple_account_sessions && (
+                                                                    <Badge
+                                                                        variant="destructive"
+                                                                        className="text-xs"
+                                                                    >
+                                                                        Sessions:{' '}
+                                                                        {
+                                                                            session.active_account_sessions_count
+                                                                        }
+                                                                    </Badge>
+                                                                )}
                                                                 {(session
                                                                     .browser_change_details
                                                                     .length >
                                                                     0 ||
                                                                     session.ip_changes >
+                                                                        0 ||
+                                                                    session.active_account_sessions_count >
                                                                         0) && (
                                                                     <Button
                                                                         variant="ghost"
@@ -631,6 +712,8 @@ export default function LiveExamMonitor() {
                                                         )}
                                                         {session.ip_changes ===
                                                             0 &&
+                                                            session.active_account_sessions_count ===
+                                                                0 &&
                                                             session.browser_changes ===
                                                                 0 && (
                                                                 <span className="text-xs text-muted-foreground">
@@ -740,10 +823,10 @@ export default function LiveExamMonitor() {
             >
                 <DialogContent className="max-h-[80vh] max-w-2xl overflow-y-auto">
                     <DialogHeader>
-                        <DialogTitle>Session Change Details</DialogTitle>
+                        <DialogTitle>Session Monitoring Details</DialogTitle>
                         <DialogDescription>
-                            Detailed information about browser and IP changes
-                            during the exam session
+                            Detailed exam lock, account session, browser, and
+                            IP monitoring data for this attempt
                         </DialogDescription>
                     </DialogHeader>
 
@@ -777,6 +860,135 @@ export default function LiveExamMonitor() {
                                         </span>
                                     </div>
                                 </div>
+                            </div>
+
+                            <div className="space-y-3">
+                                <h3 className="font-semibold">
+                                    Account Session Visibility
+                                </h3>
+                                <div className="grid gap-4 sm:grid-cols-2">
+                                    <Card>
+                                        <CardContent className="space-y-3 p-4">
+                                            <div className="flex items-center gap-2">
+                                                <MonitorSmartphone className="h-4 w-4 text-muted-foreground" />
+                                                <span className="text-sm font-medium">
+                                                    Active web sessions
+                                                </span>
+                                            </div>
+                                            <div className="text-3xl font-bold">
+                                                {
+                                                    selectedSession.active_account_sessions_count
+                                                }
+                                            </div>
+                                            <div className="text-xs text-muted-foreground">
+                                                Active Laravel sessions currently
+                                                tied to this resident account
+                                            </div>
+                                            {selectedSession.has_multiple_account_sessions && (
+                                                <Badge
+                                                    variant="destructive"
+                                                    className="w-fit"
+                                                >
+                                                    Multiple browsers/devices detected
+                                                </Badge>
+                                            )}
+                                        </CardContent>
+                                    </Card>
+
+                                    <Card>
+                                        <CardContent className="space-y-3 p-4">
+                                            <div className="flex items-center gap-2">
+                                                <KeyRound className="h-4 w-4 text-muted-foreground" />
+                                                <span className="text-sm font-medium">
+                                                    Exam lock owner
+                                                </span>
+                                            </div>
+                                            <div className="font-mono text-2xl font-bold">
+                                                {selectedSession.locked_session_short_id ??
+                                                    'None'}
+                                            </div>
+                                            <div className="text-xs text-muted-foreground">
+                                                Session currently holding the
+                                                in-progress exam lock
+                                            </div>
+                                            {selectedSession.locked_session_id ? (
+                                                <Badge
+                                                    variant={
+                                                        selectedSession.lock_session_is_active
+                                                            ? 'secondary'
+                                                            : 'outline'
+                                                    }
+                                                    className="w-fit"
+                                                >
+                                                    {selectedSession.lock_session_is_active
+                                                        ? 'Lock points to an active session'
+                                                        : 'Lock points to a stale session'}
+                                                </Badge>
+                                            ) : (
+                                                <Badge
+                                                    variant="outline"
+                                                    className="w-fit"
+                                                >
+                                                    No exam lock stored
+                                                </Badge>
+                                            )}
+                                        </CardContent>
+                                    </Card>
+                                </div>
+
+                                {selectedSession.active_account_sessions.length >
+                                0 ? (
+                                    <div className="rounded-lg border">
+                                        <div className="divide-y">
+                                            {selectedSession.active_account_sessions.map(
+                                                (accountSession) => (
+                                                    <div
+                                                        key={accountSession.id}
+                                                        className="flex flex-col gap-3 p-3 sm:flex-row sm:items-center sm:justify-between"
+                                                    >
+                                                        <div className="space-y-1">
+                                                            <div className="flex flex-wrap items-center gap-2">
+                                                                <Badge
+                                                                    variant="outline"
+                                                                    className="font-mono text-xs"
+                                                                >
+                                                                    {accountSession.short_id}
+                                                                </Badge>
+                                                                {selectedSession.locked_session_id ===
+                                                                    accountSession.id && (
+                                                                    <Badge className="text-xs">
+                                                                        Lock owner
+                                                                    </Badge>
+                                                                )}
+                                                            </div>
+                                                            <div className="text-sm">
+                                                                {accountSession.browser}
+                                                            </div>
+                                                            <div className="font-mono text-xs text-muted-foreground">
+                                                                {accountSession.ip_address ??
+                                                                    'IP not captured'}
+                                                            </div>
+                                                        </div>
+                                                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                                            <Clock className="h-3.5 w-3.5" />
+                                                            <span>
+                                                                Last active{' '}
+                                                                {
+                                                                    accountSession.last_activity
+                                                                }
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                ),
+                                            )}
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+                                        No active Laravel web sessions were found
+                                        for this resident right now.
+                                    </div>
+                                )}
                             </div>
 
                             {/* Summary Cards */}
@@ -1083,6 +1295,18 @@ export default function LiveExamMonitor() {
                                             {selectedSession.device})
                                         </span>
                                     </div>
+                                    {selectedSession.has_multiple_account_sessions && (
+                                        <div className="flex items-center gap-2">
+                                            <ShieldAlert className="h-4 w-4 text-amber-600" />
+                                            <span className="text-sm font-medium">
+                                                Admin signal:
+                                            </span>
+                                            <span className="text-sm text-amber-700 dark:text-amber-400">
+                                                Multiple active account sessions
+                                                were detected for this resident.
+                                            </span>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </div>
