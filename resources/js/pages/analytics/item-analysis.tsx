@@ -459,7 +459,7 @@ export default function ItemAnalysis() {
                                                                         }
                                                                         className="bg-muted/50"
                                                                     >
-                                                                        <div className="space-y-4 p-4">
+                                                                        <div className="max-w-4xl space-y-4 p-4">
                                                                             <div>
                                                                                 <h4 className="mb-2 font-semibold">
                                                                                     Full
@@ -485,7 +485,7 @@ export default function ItemAnalysis() {
                                                                                                 key={
                                                                                                     distractor.choice_id
                                                                                                 }
-                                                                                                className="flex items-center justify-between rounded border p-2"
+                                                                                                className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 rounded border bg-background px-3 py-2"
                                                                                             >
                                                                                                 <div className="flex items-center gap-2">
                                                                                                     {distractor.is_correct ? (
@@ -496,8 +496,8 @@ export default function ItemAnalysis() {
                                                                                                     <span
                                                                                                         className={
                                                                                                             distractor.is_correct
-                                                                                                                ? 'font-semibold'
-                                                                                                                : ''
+                                                                                                                ? 'min-w-0 font-semibold'
+                                                                                                                : 'min-w-0'
                                                                                                         }
                                                                                                     >
                                                                                                         {
@@ -505,8 +505,8 @@ export default function ItemAnalysis() {
                                                                                                         }
                                                                                                     </span>
                                                                                                 </div>
-                                                                                                <div className="flex items-center gap-2">
-                                                                                                    <span className="text-sm text-muted-foreground">
+                                                                                                <div className="shrink-0 text-right">
+                                                                                                    <span className="tabular-nums text-sm text-muted-foreground">
                                                                                                         {
                                                                                                             distractor.count
                                                                                                         }{' '}
