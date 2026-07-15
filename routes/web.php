@@ -36,6 +36,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         return Inertia::render('dashboard');
     })->name('dashboard');
 
+    Route::get('activities', [App\Http\Controllers\ActivityController::class, 'index'])
+        ->middleware('permission:view-activity-logs')
+        ->name('activities.index');
+
     // Resident Exams (for residents to view and take exams)
     Route::get('resident-exams', [App\Http\Controllers\ResidentExamController::class, 'index'])
         ->name('resident-exams.index');

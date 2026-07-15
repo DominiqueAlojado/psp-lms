@@ -17,6 +17,7 @@ import { dashboard } from '@/routes';
 import { type NavItem, type SharedData } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
 import {
+    Activity,
     Award,
     BarChart3,
     Building2,
@@ -97,6 +98,13 @@ const mainNavItems: NavItem[] = [
         href: '/analytics',
         icon: LineChart,
         permission: 'view-analytics',
+    },
+    {
+        title: 'Activity',
+        href: '/activities',
+        icon: Activity,
+        permission: 'view-activity-logs',
+        excludeRoles: ['Resident'],
     },
     {
         title: 'In-Service Exams',

@@ -6,6 +6,7 @@ use App\Repositories\Contracts\EventRegistrationRepositoryInterface;
 use App\Repositories\Contracts\EventRepositoryInterface;
 use App\Repositories\Contracts\AnnouncementRepositoryInterface;
 use App\Repositories\Contracts\AnalyticsRepositoryInterface;
+use App\Repositories\Contracts\ActivityRepositoryInterface;
 use App\Repositories\Contracts\AssessmentReportRepositoryInterface;
 use App\Repositories\Contracts\AssignmentRepositoryInterface;
 use App\Repositories\Contracts\GradebookRepositoryInterface;
@@ -31,6 +32,7 @@ use App\Repositories\Contracts\TopicRepositoryInterface;
 use App\Repositories\Contracts\UserRepositoryInterface;
 use App\Repositories\Eloquent\AssignmentRepository;
 use App\Repositories\Eloquent\AnalyticsRepository;
+use App\Repositories\Eloquent\ActivityRepository;
 use App\Repositories\Eloquent\AssessmentReportRepository;
 use App\Repositories\Eloquent\EventRegistrationRepository;
 use App\Repositories\Eloquent\EventRepository;
@@ -66,6 +68,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        $this->app->bind(ActivityRepositoryInterface::class, ActivityRepository::class);
         $this->app->bind(AnnouncementRepositoryInterface::class, AnnouncementRepository::class);
         $this->app->bind(AnalyticsRepositoryInterface::class, AnalyticsRepository::class);
         $this->app->bind(AssessmentReportRepositoryInterface::class, AssessmentReportRepository::class);
