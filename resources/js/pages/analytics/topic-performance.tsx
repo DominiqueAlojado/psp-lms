@@ -1,4 +1,5 @@
 import HeadingSmall from '@/components/heading-small';
+import { StatCard } from '@/components/stat-card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -145,14 +146,19 @@ export default function TopicPerformance() {
                         />
                     </div>
 
-                    <Card>
-                        <CardHeader>
+                    <Card className="overflow-hidden border-border/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,255,255,0.94))]">
+                        <CardHeader className="pb-3">
                             <CardTitle>Filters</CardTitle>
                         </CardHeader>
-                        <CardContent>
+                        <CardContent className="space-y-5">
                             <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                                 <div className="space-y-2">
-                                    <Label htmlFor="exam">Select Exam</Label>
+                                    <Label
+                                        htmlFor="exam"
+                                        className="text-xs font-semibold tracking-[0.12em] text-muted-foreground uppercase"
+                                    >
+                                        Select Exam
+                                    </Label>
                                     <Select
                                         value={examFilter}
                                         onValueChange={setExamFilter}
@@ -174,7 +180,12 @@ export default function TopicPerformance() {
                                 </div>
 
                                 <div className="space-y-2">
-                                    <Label htmlFor="date_from">Date From</Label>
+                                    <Label
+                                        htmlFor="date_from"
+                                        className="text-xs font-semibold tracking-[0.12em] text-muted-foreground uppercase"
+                                    >
+                                        Date From
+                                    </Label>
                                     <Input
                                         id="date_from"
                                         type="date"
@@ -184,7 +195,12 @@ export default function TopicPerformance() {
                                 </div>
 
                                 <div className="space-y-2">
-                                    <Label htmlFor="date_to">Date To</Label>
+                                    <Label
+                                        htmlFor="date_to"
+                                        className="text-xs font-semibold tracking-[0.12em] text-muted-foreground uppercase"
+                                    >
+                                        Date To
+                                    </Label>
                                     <Input
                                         id="date_to"
                                         type="date"
@@ -194,7 +210,7 @@ export default function TopicPerformance() {
                                 </div>
                             </div>
 
-                            <div className="mt-4 flex items-center gap-2">
+                            <div className="flex flex-wrap items-center gap-3 border-t border-border/70 pt-5">
                                 <Button onClick={handleSearch}>
                                     <BarChart3 className="mr-2 h-4 w-4" />
                                     Analyze
@@ -210,80 +226,65 @@ export default function TopicPerformance() {
                     </Card>
 
                     <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-                        <Card>
-                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-sm font-medium">
-                                    Topics Tracked
-                                </CardTitle>
-                                <BookOpenText className="h-4 w-4 text-muted-foreground" />
-                            </CardHeader>
-                            <CardContent>
-                                <div className="text-2xl font-bold">
-                                    {topicPerformance.summary.topics_count}
-                                </div>
-                                <p className="text-xs text-muted-foreground">
-                                    {selectedExamLabel}
-                                </p>
-                            </CardContent>
-                        </Card>
-
-                        <Card>
-                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-sm font-medium">
-                                    Exams Covered
-                                </CardTitle>
-                                <FolderKanban className="h-4 w-4 text-muted-foreground" />
-                            </CardHeader>
-                            <CardContent>
-                                <div className="text-2xl font-bold">
-                                    {topicPerformance.summary.exams_covered}
-                                </div>
-                                <p className="text-xs text-muted-foreground">
-                                    Exams included in this view
-                                </p>
-                            </CardContent>
-                        </Card>
-
-                        <Card>
-                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-sm font-medium">
-                                    Total Responses
-                                </CardTitle>
-                                <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
-                            </CardHeader>
-                            <CardContent>
-                                <div className="text-2xl font-bold">
-                                    {topicPerformance.summary.total_responses}
-                                </div>
-                                <p className="text-xs text-muted-foreground">
-                                    Answered topic-level items
-                                </p>
-                            </CardContent>
-                        </Card>
-
-                        <Card>
-                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-sm font-medium">
-                                    Average Success Rate
-                                </CardTitle>
-                                <BarChart3 className="h-4 w-4 text-muted-foreground" />
-                            </CardHeader>
-                            <CardContent>
-                                <div className="text-2xl font-bold">
-                                    {topicPerformance.summary.average_success_rate}%
-                                </div>
-                                <p className="text-xs text-muted-foreground">
-                                    Across all displayed topics
-                                </p>
-                            </CardContent>
-                        </Card>
+                        <StatCard
+                            title="Topics Tracked"
+                            value={topicPerformance.summary.topics_count}
+                            description={selectedExamLabel}
+                            icon={BookOpenText}
+                            iconColor="text-primary"
+                        />
+                        <StatCard
+                            title="Exams Covered"
+                            value={topicPerformance.summary.exams_covered}
+                            description="Exams included in this view"
+                            icon={FolderKanban}
+                            iconColor="text-primary"
+                        />
+                        <StatCard
+                            title="Total Responses"
+                            value={topicPerformance.summary.total_responses}
+                            description="Answered topic-level items"
+                            icon={CheckCircle2}
+                            iconColor="text-primary"
+                        />
+                        <StatCard
+                            title="Average Success Rate"
+                            value={`${topicPerformance.summary.average_success_rate}%`}
+                            description="Across all displayed topics"
+                            icon={BarChart3}
+                            iconColor="text-primary"
+                        />
                     </div>
 
                     {topicPerformance.topics.length > 0 ? (
                         <div className="space-y-6">
+                            <Card className="overflow-hidden border-primary/10 bg-[linear-gradient(135deg,rgba(248,244,255,0.98),rgba(255,255,255,0.94))]">
+                                <CardContent className="flex flex-col gap-4 p-6 lg:flex-row lg:items-center lg:justify-between">
+                                    <div className="space-y-1">
+                                        <p className="text-[0.7rem] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
+                                            Topic focus
+                                        </p>
+                                        <h3 className="text-2xl font-semibold tracking-[-0.04em] text-foreground">
+                                            {selectedExamLabel}
+                                        </h3>
+                                        <p className="text-sm leading-6 text-muted-foreground">
+                                            {topicPerformance.summary.total_questions} questions grouped into {topicPerformance.summary.topics_count} tracked topics.
+                                        </p>
+                                    </div>
+                                    <div className="flex flex-wrap gap-2">
+                                        <Badge variant="secondary">
+                                            {topicPerformance.top_topics.length} strongest topics
+                                        </Badge>
+                                        <Badge variant="outline">
+                                            {topicPerformance.needs_attention_topics.length} attention areas
+                                        </Badge>
+                                    </div>
+                                </CardContent>
+                            </Card>
+
                             <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-                                <Card>
-                                    <CardHeader>
+                                <Card className="overflow-hidden border-border/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,255,255,0.94))]">
+                                    <CardHeader className="pb-3">
                                         <CardTitle>Strongest Topics</CardTitle>
                                     </CardHeader>
                                     <CardContent className="space-y-3">
@@ -291,7 +292,7 @@ export default function TopicPerformance() {
                                             topicPerformance.top_topics.map((topic) => (
                                                 <div
                                                     key={`top-${topic.topic}`}
-                                                    className="flex items-center justify-between gap-3 rounded-md border px-4 py-3"
+                                                    className="flex items-center justify-between gap-3 rounded-2xl border border-border/70 bg-background/80 px-4 py-3"
                                                 >
                                                     <div className="min-w-0">
                                                         <p className="truncate font-medium">
@@ -319,8 +320,8 @@ export default function TopicPerformance() {
                                     </CardContent>
                                 </Card>
 
-                                <Card>
-                                    <CardHeader>
+                                <Card className="overflow-hidden border-border/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,255,255,0.94))]">
+                                    <CardHeader className="pb-3">
                                         <CardTitle>Needs Attention</CardTitle>
                                     </CardHeader>
                                     <CardContent className="space-y-3">
@@ -328,7 +329,7 @@ export default function TopicPerformance() {
                                             topicPerformance.needs_attention_topics.map((topic) => (
                                                 <div
                                                     key={`attention-${topic.topic}`}
-                                                    className="flex items-center justify-between gap-3 rounded-md border px-4 py-3"
+                                                    className="flex items-center justify-between gap-3 rounded-2xl border border-border/70 bg-background/80 px-4 py-3"
                                                 >
                                                     <div className="min-w-0">
                                                         <p className="truncate font-medium">
@@ -358,8 +359,8 @@ export default function TopicPerformance() {
                                 </Card>
                             </div>
 
-                            <Card>
-                                <CardHeader>
+                            <Card className="overflow-hidden border-border/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,255,255,0.94))]">
+                                <CardHeader className="pb-3">
                                     <CardTitle>Topic Results</CardTitle>
                                 </CardHeader>
                                 <CardContent>
@@ -415,7 +416,7 @@ export default function TopicPerformance() {
                             </Card>
                         </div>
                     ) : (
-                        <Card>
+                        <Card className="overflow-hidden border-border/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,255,255,0.94))]">
                             <CardContent className="flex min-h-56 flex-col items-center justify-center gap-3 py-8 text-center">
                                 <CircleAlert className="h-8 w-8 text-muted-foreground" />
                                 <div className="space-y-1">

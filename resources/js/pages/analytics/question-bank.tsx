@@ -1,4 +1,5 @@
 import HeadingSmall from '@/components/heading-small';
+import { StatCard } from '@/components/stat-card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -234,67 +235,50 @@ export default function QuestionBank() {
 
                     {/* Summary Cards */}
                     <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-                        <Card>
-                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-sm font-medium">
-                                    Total Questions
-                                </CardTitle>
-                                <FileQuestion className="h-4 w-4 text-muted-foreground" />
-                            </CardHeader>
-                            <CardContent>
-                                <div className="text-2xl font-bold">
-                                    {summary.total_questions}
-                                </div>
-                            </CardContent>
-                        </Card>
-
-                        <Card>
-                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-sm font-medium">
-                                    Avg Success Rate
-                                </CardTitle>
-                                <TrendingUp className="h-4 w-4 text-muted-foreground" />
-                            </CardHeader>
-                            <CardContent>
-                                <div className="text-2xl font-bold">
-                                    {summary.average_success_rate}%
-                                </div>
-                            </CardContent>
-                        </Card>
-
-                        <Card>
-                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-sm font-medium">
-                                    Questions Analyzed
-                                </CardTitle>
-                                <BarChart3 className="h-4 w-4 text-muted-foreground" />
-                            </CardHeader>
-                            <CardContent>
-                                <div className="text-2xl font-bold">
-                                    {
-                                        questions.data.filter(
-                                            (q) =>
-                                                (q.statistics?.times_answered ??
-                                                    0) > 0,
-                                        ).length
-                                    }
-                                </div>
-                                <p className="text-xs text-muted-foreground">
-                                    with performance data
-                                </p>
-                            </CardContent>
-                        </Card>
+                        <StatCard
+                            title="Total Questions"
+                            value={summary.total_questions}
+                            description="All question bank items in scope"
+                            icon={FileQuestion}
+                            iconColor="text-primary"
+                        />
+                        <StatCard
+                            title="Approved"
+                            value={summary.approved_questions}
+                            description="Questions ready for assessment use"
+                            icon={TrendingUp}
+                            iconColor="text-primary"
+                        />
+                        <StatCard
+                            title="Pending Review"
+                            value={summary.pending_questions}
+                            description="Questions waiting for approval"
+                            icon={TrendingDown}
+                            iconColor="text-primary"
+                        />
+                        <StatCard
+                            title="Avg Success Rate"
+                            value={`${summary.average_success_rate}%`}
+                            description={`${questions.data.filter((q) => (q.statistics?.times_answered ?? 0) > 0).length} visible questions with performance data`}
+                            icon={BarChart3}
+                            iconColor="text-primary"
+                        />
                     </div>
 
                     {/* Filters */}
-                    <Card>
-                        <CardHeader>
+                    <Card className="overflow-hidden border-border/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,255,255,0.94))]">
+                        <CardHeader className="pb-3">
                             <CardTitle>Filters</CardTitle>
                         </CardHeader>
-                        <CardContent>
+                        <CardContent className="space-y-5">
                             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                                 <div className="space-y-2 sm:col-span-2">
-                                    <Label htmlFor="search">Search</Label>
+                                    <Label
+                                        htmlFor="search"
+                                        className="text-xs font-semibold tracking-[0.12em] text-muted-foreground uppercase"
+                                    >
+                                        Search
+                                    </Label>
                                     <div className="relative">
                                         <Search className="absolute top-2.5 left-2 h-4 w-4 text-muted-foreground" />
                                         <Input
@@ -310,7 +294,12 @@ export default function QuestionBank() {
                                 </div>
 
                                 <div className="space-y-2">
-                                    <Label htmlFor="topic">Topic</Label>
+                                    <Label
+                                        htmlFor="topic"
+                                        className="text-xs font-semibold tracking-[0.12em] text-muted-foreground uppercase"
+                                    >
+                                        Topic
+                                    </Label>
                                     <Select
                                         value={topicFilter}
                                         onValueChange={setTopicFilter}
@@ -335,7 +324,10 @@ export default function QuestionBank() {
                                 </div>
 
                                 <div className="space-y-2">
-                                    <Label htmlFor="question_type">
+                                    <Label
+                                        htmlFor="question_type"
+                                        className="text-xs font-semibold tracking-[0.12em] text-muted-foreground uppercase"
+                                    >
                                         Question Type
                                     </Label>
                                     <Select
@@ -363,7 +355,10 @@ export default function QuestionBank() {
                                 </div>
 
                                 <div className="space-y-2">
-                                    <Label htmlFor="difficulty">
+                                    <Label
+                                        htmlFor="difficulty"
+                                        className="text-xs font-semibold tracking-[0.12em] text-muted-foreground uppercase"
+                                    >
                                         Difficulty
                                     </Label>
                                     <Select
@@ -394,7 +389,10 @@ export default function QuestionBank() {
                                 </div>
 
                                 <div className="space-y-2">
-                                    <Label htmlFor="performance_filter">
+                                    <Label
+                                        htmlFor="performance_filter"
+                                        className="text-xs font-semibold tracking-[0.12em] text-muted-foreground uppercase"
+                                    >
                                         Performance
                                     </Label>
                                     <Select
@@ -422,7 +420,7 @@ export default function QuestionBank() {
                                 </div>
                             </div>
 
-                            <div className="mt-4 flex items-center gap-2">
+                            <div className="flex flex-wrap items-center gap-3 border-t border-border/70 pt-5">
                                 <Button onClick={handleSearch}>
                                     <Search className="mr-2 h-4 w-4" />
                                     Apply Filters
@@ -441,8 +439,8 @@ export default function QuestionBank() {
                     </Card>
 
                     {/* Questions Table */}
-                    <Card>
-                        <CardHeader>
+                    <Card className="overflow-hidden border-border/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,255,255,0.94))]">
+                        <CardHeader className="pb-3">
                             <CardTitle>Question Performance</CardTitle>
                         </CardHeader>
                         <CardContent className="p-0">

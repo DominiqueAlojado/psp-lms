@@ -1,4 +1,5 @@
 import HeadingSmall from '@/components/heading-small';
+import { StatCard } from '@/components/stat-card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -31,7 +32,7 @@ import {
     HelpCircle,
     X,
 } from 'lucide-react';
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -187,14 +188,19 @@ export default function ItemAnalysis() {
                     </div>
 
                     {/* Filters */}
-                    <Card>
-                        <CardHeader>
+                    <Card className="overflow-hidden border-border/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,255,255,0.94))]">
+                        <CardHeader className="pb-3">
                             <CardTitle>Filters</CardTitle>
                         </CardHeader>
-                        <CardContent>
+                        <CardContent className="space-y-5">
                             <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                                 <div className="space-y-2">
-                                    <Label htmlFor="exam">Select Exam</Label>
+                                    <Label
+                                        htmlFor="exam"
+                                        className="text-xs font-semibold tracking-[0.12em] text-muted-foreground uppercase"
+                                    >
+                                        Select Exam
+                                    </Label>
                                     <Select
                                         value={examFilter}
                                         onValueChange={setExamFilter}
@@ -225,7 +231,12 @@ export default function ItemAnalysis() {
                                 </div>
 
                                 <div className="space-y-2">
-                                    <Label htmlFor="date_from">Date From</Label>
+                                    <Label
+                                        htmlFor="date_from"
+                                        className="text-xs font-semibold tracking-[0.12em] text-muted-foreground uppercase"
+                                    >
+                                        Date From
+                                    </Label>
                                     <Input
                                         id="date_from"
                                         type="date"
@@ -237,7 +248,12 @@ export default function ItemAnalysis() {
                                 </div>
 
                                 <div className="space-y-2">
-                                    <Label htmlFor="date_to">Date To</Label>
+                                    <Label
+                                        htmlFor="date_to"
+                                        className="text-xs font-semibold tracking-[0.12em] text-muted-foreground uppercase"
+                                    >
+                                        Date To
+                                    </Label>
                                     <Input
                                         id="date_to"
                                         type="date"
@@ -249,7 +265,7 @@ export default function ItemAnalysis() {
                                 </div>
                             </div>
 
-                            <div className="mt-4 flex items-center gap-2">
+                            <div className="flex flex-wrap items-center gap-3 border-t border-border/70 pt-5">
                                 <Button onClick={handleSearch}>
                                     <BarChart3 className="mr-2 h-4 w-4" />
                                     Analyze
@@ -270,52 +286,59 @@ export default function ItemAnalysis() {
                     {/* Item Analysis Results */}
                     {itemAnalysis && (
                         <div className="space-y-6">
-                            {/* Summary Card */}
-                            <Card>
-                                <CardHeader>
-                                    <CardTitle>
-                                        {itemAnalysis.exam.title}
-                                    </CardTitle>
-                                </CardHeader>
-                                <CardContent>
-                                    <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                                        <div>
-                                            <p className="text-sm text-muted-foreground">
-                                                Total Attempts
-                                            </p>
-                                            <p className="text-2xl font-bold">
-                                                {itemAnalysis.total_attempts}
-                                            </p>
-                                        </div>
-                                        <div>
-                                            <p className="text-sm text-muted-foreground">
-                                                Total Items
-                                            </p>
-                                            <p className="text-2xl font-bold">
-                                                {itemAnalysis.items.length}
-                                            </p>
-                                        </div>
-                                        <div>
-                                            <p className="text-sm text-muted-foreground">
-                                                Items Needing Review
-                                            </p>
-                                            <p className="text-2xl font-bold text-destructive">
-                                                {
-                                                    itemAnalysis.items.filter(
-                                                        (item) =>
-                                                            item.quality ===
-                                                            'Needs Review',
-                                                    ).length
-                                                }
-                                            </p>
-                                        </div>
+                            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                                <StatCard
+                                    title="Total Attempts"
+                                    value={itemAnalysis.total_attempts}
+                                    description="Completed attempts included in item analytics"
+                                    icon={BarChart3}
+                                    iconColor="text-primary"
+                                />
+                                <StatCard
+                                    title="Total Items"
+                                    value={itemAnalysis.items.length}
+                                    description="Questions included in this analysis"
+                                    icon={HelpCircle}
+                                    iconColor="text-primary"
+                                />
+                                <StatCard
+                                    title="Items Needing Review"
+                                    value={itemAnalysis.items.filter((item) => item.quality === 'Needs Review').length}
+                                    description="Questions flagged for review based on quality"
+                                    icon={CheckCircle2}
+                                    iconColor="text-primary"
+                                />
+                            </div>
+
+                            <Card className="overflow-hidden border-primary/10 bg-[linear-gradient(135deg,rgba(248,244,255,0.98),rgba(255,255,255,0.94))]">
+                                <CardContent className="flex flex-col gap-4 p-6 lg:flex-row lg:items-center lg:justify-between">
+                                    <div className="space-y-1">
+                                        <p className="text-[0.7rem] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
+                                            Exam focus
+                                        </p>
+                                        <h3 className="text-2xl font-semibold tracking-[-0.04em] text-foreground">
+                                            {itemAnalysis.exam.title}
+                                        </h3>
+                                        <p className="text-sm leading-6 text-muted-foreground">
+                                            Review distractor effectiveness, difficulty balance, and discrimination quality across the selected exam.
+                                        </p>
+                                    </div>
+                                    <div className="flex flex-wrap gap-2">
+                                        {itemAnalysis.exam.category ? (
+                                            <Badge variant="secondary">
+                                                {itemAnalysis.exam.category}
+                                            </Badge>
+                                        ) : null}
+                                        <Badge variant="outline">
+                                            {itemAnalysis.items.length} analyzed items
+                                        </Badge>
                                     </div>
                                 </CardContent>
                             </Card>
 
                             {/* Items Table */}
-                            <Card>
-                                <CardHeader>
+                            <Card className="overflow-hidden border-border/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,255,255,0.94))]">
+                                <CardHeader className="pb-3">
                                     <CardTitle>Item Analysis Results</CardTitle>
                                 </CardHeader>
                                 <CardContent>
@@ -351,11 +374,8 @@ export default function ItemAnalysis() {
                                             <TableBody>
                                                 {itemAnalysis.items.map(
                                                     (item) => (
-                                                        <>
+                                                        <Fragment key={item.question_id}>
                                                             <TableRow
-                                                                key={
-                                                                    item.question_id
-                                                                }
                                                             >
                                                                 <TableCell>
                                                                     <Button
@@ -526,7 +546,7 @@ export default function ItemAnalysis() {
                                                                     </TableCell>
                                                                 </TableRow>
                                                             )}
-                                                        </>
+                                                        </Fragment>
                                                     ),
                                                 )}
                                             </TableBody>
@@ -539,7 +559,7 @@ export default function ItemAnalysis() {
 
                     {/* No Results Message */}
                     {!itemAnalysis && examFilter && (
-                        <Card>
+                        <Card className="overflow-hidden border-border/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,255,255,0.94))]">
                             <CardContent className="py-8 text-center">
                                 <p className="text-muted-foreground">
                                     Select an exam and click "Analyze" to view

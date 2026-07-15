@@ -1,4 +1,5 @@
 import HeadingSmall from '@/components/heading-small';
+import { StatCard } from '@/components/stat-card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -111,18 +112,6 @@ function getRateBadgeVariant(rate: number) {
     return 'destructive';
 }
 
-function DirectionIcon({ direction }: { direction: TrendsData['summary']['direction'] }) {
-    if (direction === 'improving') {
-        return <TrendingUp className="h-4 w-4 text-green-600" />;
-    }
-
-    if (direction === 'declining') {
-        return <TrendingDown className="h-4 w-4 text-destructive" />;
-    }
-
-    return <Minus className="h-4 w-4 text-muted-foreground" />;
-}
-
 export default function Trends() {
     const { exams, trends, filters } = usePage<PageProps>().props;
 
@@ -185,14 +174,19 @@ export default function Trends() {
                         />
                     </div>
 
-                    <Card>
-                        <CardHeader>
+                    <Card className="overflow-hidden border-border/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,255,255,0.94))]">
+                        <CardHeader className="pb-3">
                             <CardTitle>Filters</CardTitle>
                         </CardHeader>
-                        <CardContent>
+                        <CardContent className="space-y-5">
                             <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                                 <div className="space-y-2">
-                                    <Label htmlFor="exam">Select Exam</Label>
+                                    <Label
+                                        htmlFor="exam"
+                                        className="text-xs font-semibold tracking-[0.12em] text-muted-foreground uppercase"
+                                    >
+                                        Select Exam
+                                    </Label>
                                     <Select
                                         value={examFilter}
                                         onValueChange={setExamFilter}
@@ -214,7 +208,12 @@ export default function Trends() {
                                 </div>
 
                                 <div className="space-y-2">
-                                    <Label htmlFor="date_from">Date From</Label>
+                                    <Label
+                                        htmlFor="date_from"
+                                        className="text-xs font-semibold tracking-[0.12em] text-muted-foreground uppercase"
+                                    >
+                                        Date From
+                                    </Label>
                                     <Input
                                         id="date_from"
                                         type="date"
@@ -224,7 +223,12 @@ export default function Trends() {
                                 </div>
 
                                 <div className="space-y-2">
-                                    <Label htmlFor="date_to">Date To</Label>
+                                    <Label
+                                        htmlFor="date_to"
+                                        className="text-xs font-semibold tracking-[0.12em] text-muted-foreground uppercase"
+                                    >
+                                        Date To
+                                    </Label>
                                     <Input
                                         id="date_to"
                                         type="date"
@@ -234,7 +238,7 @@ export default function Trends() {
                                 </div>
                             </div>
 
-                            <div className="mt-4 flex items-center gap-2">
+                            <div className="flex flex-wrap items-center gap-3 border-t border-border/70 pt-5">
                                 <Button onClick={handleSearch}>
                                     <BarChart3 className="mr-2 h-4 w-4" />
                                     Analyze
@@ -250,80 +254,66 @@ export default function Trends() {
                     </Card>
 
                     <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-                        <Card>
-                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-sm font-medium">
-                                    Time Periods
-                                </CardTitle>
-                                <CalendarRange className="h-4 w-4 text-muted-foreground" />
-                            </CardHeader>
-                            <CardContent>
-                                <div className="text-2xl font-bold">
-                                    {trends.summary.periods_count}
-                                </div>
-                                <p className="text-xs text-muted-foreground">
-                                    Monthly buckets with activity
-                                </p>
-                            </CardContent>
-                        </Card>
-
-                        <Card>
-                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-sm font-medium">
-                                    Exams Covered
-                                </CardTitle>
-                                <BarChart3 className="h-4 w-4 text-muted-foreground" />
-                            </CardHeader>
-                            <CardContent>
-                                <div className="text-2xl font-bold">
-                                    {trends.summary.exams_covered}
-                                </div>
-                                <p className="text-xs text-muted-foreground">
-                                    Exams included in this view
-                                </p>
-                            </CardContent>
-                        </Card>
-
-                        <Card>
-                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-sm font-medium">
-                                    Total Attempts
-                                </CardTitle>
-                                <TrendingUp className="h-4 w-4 text-muted-foreground" />
-                            </CardHeader>
-                            <CardContent>
-                                <div className="text-2xl font-bold">
-                                    {trends.summary.total_attempts}
-                                </div>
-                                <p className="text-xs text-muted-foreground">
-                                    Completed attempts in trend view
-                                </p>
-                            </CardContent>
-                        </Card>
-
-                        <Card>
-                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-sm font-medium">
-                                    Overall Direction
-                                </CardTitle>
-                                <DirectionIcon direction={trends.summary.direction} />
-                            </CardHeader>
-                            <CardContent>
-                                <div className="text-2xl font-bold capitalize">
-                                    {trends.summary.direction}
-                                </div>
-                                <p className="text-xs text-muted-foreground">
-                                    Pass rate change {trends.summary.pass_rate_change} pts
-                                </p>
-                            </CardContent>
-                        </Card>
+                        <StatCard
+                            title="Time Periods"
+                            value={trends.summary.periods_count}
+                            description="Monthly buckets with measurable activity"
+                            icon={CalendarRange}
+                            iconColor="text-primary"
+                        />
+                        <StatCard
+                            title="Exams Covered"
+                            value={trends.summary.exams_covered}
+                            description="Assessments included in this view"
+                            icon={BarChart3}
+                            iconColor="text-primary"
+                        />
+                        <StatCard
+                            title="Total Attempts"
+                            value={trends.summary.total_attempts}
+                            description="Completed attempts included in trend analysis"
+                            icon={TrendingUp}
+                            iconColor="text-primary"
+                        />
+                        <StatCard
+                            title="Overall Direction"
+                            value={trends.summary.direction}
+                            description={`Pass rate change ${trends.summary.pass_rate_change} pts`}
+                            icon={trends.summary.direction === 'declining' ? TrendingDown : trends.summary.direction === 'stable' ? Minus : TrendingUp}
+                            iconColor="text-primary"
+                            className="capitalize"
+                        />
                     </div>
 
                     {trends.periods.length > 0 ? (
                         <div className="space-y-6">
+                            <Card className="overflow-hidden border-primary/10 bg-[linear-gradient(135deg,rgba(248,244,255,0.98),rgba(255,255,255,0.94))]">
+                                <CardContent className="flex flex-col gap-4 p-6 lg:flex-row lg:items-center lg:justify-between">
+                                    <div className="space-y-1">
+                                        <p className="text-[0.7rem] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
+                                            Trend focus
+                                        </p>
+                                        <h3 className="text-2xl font-semibold tracking-[-0.04em] text-foreground">
+                                            {trends.summary.latest_period || 'Latest completed period'}
+                                        </h3>
+                                        <p className="text-sm leading-6 text-muted-foreground">
+                                            {trends.summary.average_pass_rate}% average pass rate across {trends.summary.exams_covered} exams in scope.
+                                        </p>
+                                    </div>
+                                    <div className="flex flex-wrap gap-2">
+                                        <Badge variant="secondary">
+                                            {trends.summary.average_percentage_change} pts score change
+                                        </Badge>
+                                        <Badge variant="outline">
+                                            {trends.summary.periods_count} active periods
+                                        </Badge>
+                                    </div>
+                                </CardContent>
+                            </Card>
+
                             <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-                                <Card>
-                                    <CardHeader>
+                                <Card className="overflow-hidden border-border/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,255,255,0.94))]">
+                                    <CardHeader className="pb-3">
                                         <CardTitle>Performance Trend</CardTitle>
                                     </CardHeader>
                                     <CardContent>
@@ -375,8 +365,8 @@ export default function Trends() {
                                     </CardContent>
                                 </Card>
 
-                                <Card>
-                                    <CardHeader>
+                                <Card className="overflow-hidden border-border/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,255,255,0.94))]">
+                                    <CardHeader className="pb-3">
                                         <CardTitle>Attempt Volume</CardTitle>
                                     </CardHeader>
                                     <CardContent>
@@ -414,13 +404,13 @@ export default function Trends() {
                             </div>
 
                             <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-                                <Card>
-                                    <CardHeader>
+                                <Card className="overflow-hidden border-border/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,255,255,0.94))]">
+                                    <CardHeader className="pb-3">
                                         <CardTitle>Best Period</CardTitle>
                                     </CardHeader>
                                     <CardContent>
                                         {trends.best_period ? (
-                                            <div className="space-y-2 rounded-md border px-4 py-3">
+                                            <div className="space-y-2 rounded-2xl border border-border/70 bg-background/80 px-4 py-4">
                                                 <div className="flex items-center justify-between gap-3">
                                                     <p className="font-medium">
                                                         {trends.best_period.period_label}
@@ -442,13 +432,13 @@ export default function Trends() {
                                     </CardContent>
                                 </Card>
 
-                                <Card>
-                                    <CardHeader>
+                                <Card className="overflow-hidden border-border/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,255,255,0.94))]">
+                                    <CardHeader className="pb-3">
                                         <CardTitle>Lowest Period</CardTitle>
                                     </CardHeader>
                                     <CardContent>
                                         {trends.lowest_period ? (
-                                            <div className="space-y-2 rounded-md border px-4 py-3">
+                                            <div className="space-y-2 rounded-2xl border border-border/70 bg-background/80 px-4 py-4">
                                                 <div className="flex items-center justify-between gap-3">
                                                     <p className="font-medium">
                                                         {trends.lowest_period.period_label}
@@ -471,8 +461,8 @@ export default function Trends() {
                                 </Card>
                             </div>
 
-                            <Card>
-                                <CardHeader>
+                            <Card className="overflow-hidden border-border/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,255,255,0.94))]">
+                                <CardHeader className="pb-3">
                                     <CardTitle>Trend by Period</CardTitle>
                                 </CardHeader>
                                 <CardContent>
@@ -516,7 +506,7 @@ export default function Trends() {
                             </Card>
                         </div>
                     ) : (
-                        <Card>
+                        <Card className="overflow-hidden border-border/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,255,255,0.94))]">
                             <CardContent className="flex min-h-56 flex-col items-center justify-center gap-3 py-8 text-center">
                                 <CircleAlert className="h-8 w-8 text-muted-foreground" />
                                 <div className="space-y-1">
