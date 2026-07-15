@@ -137,9 +137,12 @@ class ResidentExamManagementService
             'browser_info' => ['nullable', 'array'],
         ]);
 
+        $monitoringType = $this->normalizeMonitoringAttemptType($type);
+
         $this->residentExamRepository->createSessionChange([
-            'attempt_type' => $type,
+            'attempt_type' => $monitoringType,
             'attempt_id' => $attemptId,
+            ...$this->monitoringAttemptAttributes($monitoringType, $attemptId),
             'user_id' => $user->id,
             'change_type' => $validated['change_type'],
             'previous_ip_address' => $validated['previous_ip'] ?? null,
@@ -179,9 +182,12 @@ class ResidentExamManagementService
         $endedAt = now();
         $startedAt = $endedAt->copy()->subSeconds($idleDuration);
 
+        $monitoringType = $this->normalizeMonitoringAttemptType($type);
+
         $this->residentExamRepository->createIdlePeriod([
-            'attempt_type' => $type,
+            'attempt_type' => $monitoringType,
             'attempt_id' => $attemptId,
+            ...$this->monitoringAttemptAttributes($monitoringType, $attemptId),
             'user_id' => $user->id,
             'started_at' => $startedAt,
             'ended_at' => $endedAt,
@@ -315,5 +321,23 @@ class ResidentExamManagementService
             'question_id' => $questionId,
             'change_count' => $changeCount + 1,
         ]);
+    }
+
+    private function monitoringAttemptAttributes(string $type, int $attemptId): array
+    {
+        return $type === 'institution'
+            ? [
+                'institution_attempt_id' => $attemptId,
+                'national_attempt_id' => null,
+            ]
+            : [
+                'institution_attempt_id' => null,
+                'national_attempt_id' => $attemptId,
+            ];
+    }
+
+    private function normalizeMonitoringAttemptType(string $type): string
+    {
+        return $type === 'institution' ? 'institution' : 'national';
     }
 }

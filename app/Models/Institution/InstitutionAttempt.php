@@ -81,14 +81,12 @@ class InstitutionAttempt extends Model
 
     public function sessionChanges(): HasMany
     {
-        return $this->hasMany(ExamSessionChange::class, 'attempt_id')
-            ->where('attempt_type', 'institution');
+        return $this->hasMany(ExamSessionChange::class, 'institution_attempt_id');
     }
 
     public function idlePeriods(): HasMany
     {
-        return $this->hasMany(\App\Models\ExamIdlePeriod::class, 'attempt_id')
-            ->where('attempt_type', 'institution');
+        return $this->hasMany(\App\Models\ExamIdlePeriod::class, 'institution_attempt_id');
     }
 
     protected static function boot(): void

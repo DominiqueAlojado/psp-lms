@@ -5,6 +5,8 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Models\Institution\InstitutionAttempt;
+use App\Models\National\NationalAttempt;
 
 class ExamSessionChange extends Model
 {
@@ -13,6 +15,8 @@ class ExamSessionChange extends Model
     protected $fillable = [
         'attempt_type',
         'attempt_id',
+        'institution_attempt_id',
+        'national_attempt_id',
         'user_id',
         'change_type',
         'previous_ip_address',
@@ -34,5 +38,15 @@ class ExamSessionChange extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function institutionAttempt(): BelongsTo
+    {
+        return $this->belongsTo(InstitutionAttempt::class, 'institution_attempt_id');
+    }
+
+    public function nationalAttempt(): BelongsTo
+    {
+        return $this->belongsTo(NationalAttempt::class, 'national_attempt_id');
     }
 }

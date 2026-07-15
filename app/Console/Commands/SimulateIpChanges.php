@@ -27,7 +27,7 @@ class SimulateIpChanges extends Command
             label: 'Select exam type',
             options: [
                 'institution' => 'Institution Exam',
-                'inservice' => 'In-Service Exam',
+                'national' => 'In-Service Exam',
             ],
         );
 
@@ -79,6 +79,8 @@ class SimulateIpChanges extends Command
             ExamSessionChange::create([
                 'attempt_type' => $type,
                 'attempt_id' => $attemptId,
+                'institution_attempt_id' => $type === 'institution' ? (int) $attemptId : null,
+                'national_attempt_id' => $type === 'national' ? (int) $attemptId : null,
                 'user_id' => $attempt->user_id,
                 'change_type' => 'ip_address',
                 'previous_ip_address' => $ipChange['from'],

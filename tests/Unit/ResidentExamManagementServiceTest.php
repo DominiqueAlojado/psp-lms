@@ -2,11 +2,15 @@
 
 namespace Tests\Unit;
 
+use App\Models\ExamIdlePeriod;
+use App\Models\ExamSessionChange;
 use App\Models\Institution\InstitutionAssessment;
 use App\Models\Institution\InstitutionAnswer;
 use App\Models\Institution\InstitutionAttempt;
 use App\Models\Institution\InstitutionQuestion;
 use App\Models\Institution\InstitutionQuestionChoice;
+use App\Models\National\NationalAssessment;
+use App\Models\National\NationalAttempt;
 use App\Models\Organization;
 use App\Models\User;
 use App\Services\ResidentExamManagementService;
@@ -248,6 +252,57 @@ class ResidentExamManagementServiceTest extends TestCase
         $this->assertSame(0.0, (float) $invalidAnswer->fresh()->points_earned);
     }
 
+    public function test_it_normalizes_national_monitoring_rows_and_sets_attempt_foreign_keys(): void
+    {
+        $service = app(ResidentExamManagementService::class);
+
+        [$user, $attempt] = $this->createNationalAttemptFixture();
+
+        $request = Request::create('/exams/inservice/' . $attempt->id . '/log-session-change', 'POST', [
+            'change_type' => 'ip_address',
+            'previous_ip' => '10.0.0.1',
+            'new_ip' => '10.0.0.2',
+        ]);
+        $request->setLaravelSession(app('session')->driver());
+        $request->session()->start();
+        $request->session()->setId('resident-national-session');
+        $request->setUserResolver(fn () => $user);
+
+        $attempt->update(['active_session_id' => 'resident-national-session']);
+
+        $service->logSessionChange($request, 'inservice', $attempt->id);
+
+        $this->assertDatabaseHas('exam_session_changes', [
+            'attempt_type' => 'national',
+            'attempt_id' => $attempt->id,
+            'national_attempt_id' => $attempt->id,
+            'institution_attempt_id' => null,
+            'user_id' => $user->id,
+        ]);
+
+        $activityRequest = Request::create('/exams/inservice/' . $attempt->id . '/log-activity', 'POST', [
+            'idle_duration' => 120,
+        ]);
+        $activityRequest->setLaravelSession(app('session')->driver());
+        $activityRequest->session()->start();
+        $activityRequest->session()->setId('resident-national-session');
+        $activityRequest->setUserResolver(fn () => $user);
+
+        $service->logActivity($activityRequest, 'inservice', $attempt->id);
+
+        $this->assertDatabaseHas('exam_idle_periods', [
+            'attempt_type' => 'national',
+            'attempt_id' => $attempt->id,
+            'national_attempt_id' => $attempt->id,
+            'institution_attempt_id' => null,
+            'user_id' => $user->id,
+            'duration_seconds' => 120,
+        ]);
+
+        $this->assertSame(1, ExamSessionChange::query()->where('national_attempt_id', $attempt->id)->count());
+        $this->assertSame(1, ExamIdlePeriod::query()->where('national_attempt_id', $attempt->id)->count());
+    }
+
     /**
      * @return array{0: User, 1: InstitutionAttempt, 2: InstitutionQuestion}
      */
@@ -304,5 +359,55 @@ class ResidentExamManagementServiceTest extends TestCase
         ]);
 
         return [$user, $attempt, $question];
+    }
+
+    /**
+     * @return array{0: User, 1: NationalAttempt}
+     */
+    private function createNationalAttemptFixture(): array
+    {
+        $organization = Organization::create([
+            'name' => 'National Board',
+            'slug' => 'national-board',
+            'type' => 'national',
+            'is_active' => true,
+        ]);
+
+        $user = User::factory()->create([
+            'current_organization_id' => $organization->id,
+        ]);
+        $user->organizations()->attach($organization->id, ['joined_at' => now(), 'is_active' => true]);
+
+        $assessment = NationalAssessment::create([
+            'title' => 'National Exam',
+            'description' => 'Desc',
+            'exam_year' => 2026,
+            'exam_period' => 'Q3',
+            'category' => 'anatomic-pathology-theoretical',
+            'duration_minutes' => 60,
+            'total_points' => 10,
+            'passing_score' => 6,
+            'randomize_questions' => false,
+            'randomize_choices' => false,
+            'show_results_immediately' => true,
+            'allow_review' => true,
+            'is_published' => true,
+            'national_ranking_enabled' => true,
+            'institution_comparison_enabled' => true,
+            'scheduled_date' => now()->subHour(),
+            'results_release_date' => now()->addHour(),
+            'created_by' => $user->id,
+        ]);
+
+        $attempt = NationalAttempt::create([
+            'assessment_id' => $assessment->id,
+            'user_id' => $user->id,
+            'organization_id' => $organization->id,
+            'status' => 'in_progress',
+            'started_at' => now(),
+            'total_points' => 10,
+        ]);
+
+        return [$user, $attempt];
     }
 }

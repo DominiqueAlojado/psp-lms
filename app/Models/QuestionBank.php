@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Institution\InstitutionAssessment;
+use Illuminate\Database\QueryException;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -109,6 +110,36 @@ class QuestionBank extends Model
             ->first();
     }
 
+    public function ensureStatisticsForScope(string $scope, ?int $institutionId = null, array $defaults = []): QuestionBankStatistic
+    {
+        $query = $this->allStatistics()
+            ->where('scope', $scope)
+            ->when($institutionId !== null, fn ($q) => $q->where('institution_id', $institutionId))
+            ->when($institutionId === null, fn ($q) => $q->whereNull('institution_id'));
+
+        $existing = $query->first();
+
+        if ($existing) {
+            return $existing;
+        }
+
+        $attributes = array_merge([
+            'question_id' => $this->id,
+            'scope' => $scope,
+            'institution_id' => $institutionId,
+        ], $defaults);
+
+        try {
+            return QuestionBankStatistic::query()->create($attributes);
+        } catch (QueryException $exception) {
+            if (! $this->isUniqueConstraintViolation($exception)) {
+                throw $exception;
+            }
+
+            return $query->firstOrFail();
+        }
+    }
+
     public function assessments(): BelongsToMany
     {
         return $this->belongsToMany(
@@ -131,12 +162,8 @@ class QuestionBank extends Model
         if ($stats) {
             $stats->update(['last_used_at' => now()]);
         } else {
-            // Create statistics if they don't exist
             $scope = $this->owner_type === 'national' ? 'national' : 'institution';
-            $this->allStatistics()->create([
-                'question_id' => $this->id,
-                'scope' => $scope,
-                'institution_id' => $scope === 'institution' ? $this->organization_id : null,
+            $this->ensureStatisticsForScope($scope, $scope === 'institution' ? $this->organization_id : null, [
                 'times_used_in_exams' => 0,
                 'times_answered' => 0,
                 'times_correct' => 0,
@@ -160,37 +187,20 @@ class QuestionBank extends Model
             $institutionId = $this->organization_id;
         }
 
-        // Get or create statistics for the specific scope
-        $stats = $this->allStatistics()
-            ->where('scope', $scope)
-            ->when($institutionId !== null, function ($q) use ($institutionId) {
-                $q->where('institution_id', $institutionId);
-            })
-            ->when($institutionId === null, function ($q) {
-                $q->whereNull('institution_id');
-            })
-            ->first();
+        $stats = $this->ensureStatisticsForScope($scope, $institutionId, [
+            'times_used_in_exams' => 0,
+            'times_answered' => 0,
+            'times_correct' => 0,
+            'times_incorrect' => 0,
+            'success_rate' => 0,
+        ]);
 
-        // Create statistics if they don't exist
-        if (! $stats) {
-            $stats = $this->allStatistics()->create([
-                'question_id' => $this->id,
-                'scope' => $scope,
-                'institution_id' => $institutionId,
-                'times_used_in_exams' => 0,
-                'times_answered' => 0,
-                'times_correct' => 0,
-                'times_incorrect' => 0,
-                'success_rate' => 0,
-            ]);
-        }
-
-        $stats->increment('times_answered');
+        $stats->times_answered = (int) $stats->times_answered + 1;
 
         if ($wasCorrect) {
-            $stats->increment('times_correct');
+            $stats->times_correct = (int) $stats->times_correct + 1;
         } else {
-            $stats->increment('times_incorrect');
+            $stats->times_incorrect = (int) $stats->times_incorrect + 1;
         }
 
         // Calculate success rate
@@ -380,5 +390,14 @@ class QuestionBank extends Model
     public function scopeInstitution($query)
     {
         return $query->where('owner_type', 'institution');
+    }
+
+    private function isUniqueConstraintViolation(QueryException $exception): bool
+    {
+        $sqlState = $exception->errorInfo[0] ?? null;
+        $driverCode = (string) ($exception->errorInfo[1] ?? '');
+
+        return in_array($sqlState, ['23000', '23505'], true)
+            || $driverCode === '19';
     }
 }

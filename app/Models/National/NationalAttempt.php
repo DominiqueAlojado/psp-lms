@@ -87,14 +87,12 @@ class NationalAttempt extends Model
 
     public function sessionChanges(): HasMany
     {
-        return $this->hasMany(ExamSessionChange::class, 'attempt_id')
-            ->where('attempt_type', 'inservice');
+        return $this->hasMany(ExamSessionChange::class, 'national_attempt_id');
     }
 
     public function idlePeriods(): HasMany
     {
-        return $this->hasMany(\App\Models\ExamIdlePeriod::class, 'attempt_id')
-            ->where('attempt_type', 'inservice');
+        return $this->hasMany(\App\Models\ExamIdlePeriod::class, 'national_attempt_id');
     }
 
     protected static function boot(): void

@@ -27,7 +27,7 @@ class SimulateIdlePeriods extends Command
             label: 'Select exam type',
             options: [
                 'institution' => 'Institution Exam',
-                'inservice' => 'In-Service Exam',
+                'national' => 'In-Service Exam',
             ],
         );
 
@@ -81,6 +81,8 @@ class SimulateIdlePeriods extends Command
             ExamIdlePeriod::create([
                 'attempt_type' => $type,
                 'attempt_id' => $attemptId,
+                'institution_attempt_id' => $type === 'institution' ? (int) $attemptId : null,
+                'national_attempt_id' => $type === 'national' ? (int) $attemptId : null,
                 'user_id' => $attempt->user_id,
                 'started_at' => $startedAt,
                 'ended_at' => $endedAt,

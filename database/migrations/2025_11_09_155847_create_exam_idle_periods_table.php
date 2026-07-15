@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('exam_idle_periods', function (Blueprint $table) {
             $table->id();
-            $table->string('attempt_type'); // 'institution' or 'inservice'
+            $table->string('attempt_type'); // 'institution' or 'national'
             $table->unsignedBigInteger('attempt_id');
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
             $table->timestamp('started_at'); // When idle period started

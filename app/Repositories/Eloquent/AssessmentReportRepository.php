@@ -141,8 +141,7 @@ class AssessmentReportRepository implements AssessmentReportRepositoryInterface
     public function getSessionChangesForInstitutionAttempt(int $attemptId): Collection
     {
         return ExamSessionChange::query()
-            ->where('attempt_type', 'institution')
-            ->where('attempt_id', $attemptId)
+            ->where('institution_attempt_id', $attemptId)
             ->orderBy('detected_at', 'asc')
             ->get();
     }
@@ -150,8 +149,7 @@ class AssessmentReportRepository implements AssessmentReportRepositoryInterface
     public function getIdlePeriodsForInstitutionAttempt(int $attemptId): Collection
     {
         return ExamIdlePeriod::query()
-            ->where('attempt_type', 'institution')
-            ->where('attempt_id', $attemptId)
+            ->where('institution_attempt_id', $attemptId)
             ->orderBy('started_at', 'asc')
             ->get();
     }

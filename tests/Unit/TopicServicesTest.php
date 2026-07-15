@@ -77,4 +77,32 @@ class TopicServicesTest extends TestCase
             'name' => 'Pharmacology',
         ]);
     }
+
+    public function test_same_topic_slug_can_exist_in_different_organizations(): void
+    {
+        $service = app(TopicManagementService::class);
+
+        $firstOrganization = Organization::create([
+            'name' => 'Alpha Hospital',
+            'slug' => 'alpha-hospital',
+            'type' => 'institution',
+            'is_active' => true,
+        ]);
+        $secondOrganization = Organization::create([
+            'name' => 'Beta Hospital',
+            'slug' => 'beta-hospital',
+            'type' => 'institution',
+            'is_active' => true,
+        ]);
+
+        $firstTopic = $service->createForOrganization($firstOrganization->id, [
+            'name' => 'Pharmacology',
+        ]);
+        $secondTopic = $service->createForOrganization($secondOrganization->id, [
+            'name' => 'Pharmacology',
+        ]);
+
+        $this->assertSame('pharmacology', $firstTopic->slug);
+        $this->assertSame('pharmacology', $secondTopic->slug);
+    }
 }
