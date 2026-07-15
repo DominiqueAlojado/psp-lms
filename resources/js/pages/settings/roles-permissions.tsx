@@ -211,23 +211,25 @@ export default function RolesPermissions() {
                     </div>
 
                     <Tabs defaultValue="roles" className="w-full">
-                        <TabsList className="grid w-full grid-cols-3 lg:w-fit lg:min-w-[34rem]">
-                            <TabsTrigger value="roles">
-                                Roles ({roles.length})
-                            </TabsTrigger>
-                            <TabsTrigger value="permissions">
-                                Permissions ({permissions.length})
-                            </TabsTrigger>
-                            <TabsTrigger value="assign">
-                                Assign Permissions
-                            </TabsTrigger>
-                        </TabsList>
+                        <div className="overflow-x-auto pb-1">
+                            <TabsList className="grid min-w-[32rem] grid-cols-3 lg:w-fit lg:min-w-[34rem]">
+                                <TabsTrigger value="roles">
+                                    Roles ({roles.length})
+                                </TabsTrigger>
+                                <TabsTrigger value="permissions">
+                                    Permissions ({permissions.length})
+                                </TabsTrigger>
+                                <TabsTrigger value="assign">
+                                    Assign Permissions
+                                </TabsTrigger>
+                            </TabsList>
+                        </div>
 
                         {/* Tab 1: Roles */}
                         <TabsContent value="roles" className="space-y-4 pt-4">
                             <Card className="overflow-hidden border-border/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,255,255,0.94))]">
                                 <CardHeader className="pb-3">
-                                    <div className="flex items-center justify-between">
+                                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                                         <div>
                                             <CardTitle>Roles</CardTitle>
                                             <CardDescription>
@@ -243,68 +245,70 @@ export default function RolesPermissions() {
                                     </div>
                                 </CardHeader>
                                 <CardContent>
-                                    <Table>
-                                        <TableHeader>
-                                            <TableRow>
-                                                <TableHead>Role Name</TableHead>
-                                                <TableHead>
-                                                    Permissions
-                                                </TableHead>
-                                                <TableHead className="w-[150px]">
-                                                    Actions
-                                                </TableHead>
-                                            </TableRow>
-                                        </TableHeader>
-                                        <TableBody>
-                                            {roles.map((role) => (
-                                                <TableRow key={role.id}>
-                                                    <TableCell className="font-medium">
-                                                        <div className="flex items-center gap-2">
-                                                            <Shield className="h-4 w-4 text-muted-foreground" />
-                                                            {role.name}
-                                                        </div>
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        <Badge variant="secondary">
-                                                            {
-                                                                role.permissions_count
-                                                            }{' '}
-                                                            permissions
-                                                        </Badge>
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        <div className="flex gap-2">
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="sm"
-                                                                onClick={() =>
-                                                                    setEditingRole(
-                                                                        role,
-                                                                    )
-                                                                }
-                                                            >
-                                                                <Edit className="h-4 w-4" />
-                                                            </Button>
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="sm"
-                                                                onClick={() =>
-                                                                    setDeletingRole(
-                                                                        {
-                                                                            id: role.id,
-                                                                            name: role.name,
-                                                                        },
-                                                                    )
-                                                                }
-                                                            >
-                                                                <Trash2 className="h-4 w-4 text-destructive" />
-                                                            </Button>
-                                                        </div>
-                                                    </TableCell>
+                                    <div className="overflow-x-auto">
+                                        <Table>
+                                            <TableHeader>
+                                                <TableRow>
+                                                    <TableHead>Role Name</TableHead>
+                                                    <TableHead>
+                                                        Permissions
+                                                    </TableHead>
+                                                    <TableHead className="w-[150px]">
+                                                        Actions
+                                                    </TableHead>
                                                 </TableRow>
-                                            ))}
-                                        </TableBody>
-                                    </Table>
+                                            </TableHeader>
+                                            <TableBody>
+                                                {roles.map((role) => (
+                                                    <TableRow key={role.id}>
+                                                        <TableCell className="font-medium">
+                                                            <div className="flex items-center gap-2">
+                                                                <Shield className="h-4 w-4 text-muted-foreground" />
+                                                                {role.name}
+                                                            </div>
+                                                        </TableCell>
+                                                        <TableCell>
+                                                            <Badge variant="secondary">
+                                                                {
+                                                                    role.permissions_count
+                                                                }{' '}
+                                                                permissions
+                                                            </Badge>
+                                                        </TableCell>
+                                                        <TableCell>
+                                                            <div className="flex gap-2">
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    onClick={() =>
+                                                                        setEditingRole(
+                                                                            role,
+                                                                        )
+                                                                    }
+                                                                >
+                                                                    <Edit className="h-4 w-4" />
+                                                                </Button>
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    onClick={() =>
+                                                                        setDeletingRole(
+                                                                            {
+                                                                                id: role.id,
+                                                                                name: role.name,
+                                                                            },
+                                                                        )
+                                                                    }
+                                                                >
+                                                                    <Trash2 className="h-4 w-4 text-destructive" />
+                                                                </Button>
+                                                            </div>
+                                                        </TableCell>
+                                                    </TableRow>
+                                                ))}
+                                            </TableBody>
+                                        </Table>
+                                    </div>
                                 </CardContent>
                             </Card>
                         </TabsContent>
@@ -316,15 +320,15 @@ export default function RolesPermissions() {
                         >
                             <Card className="overflow-hidden border-border/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,255,255,0.94))]">
                                 <CardHeader className="pb-3">
-                                    <div className="flex items-center justify-between gap-4">
+                                    <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
                                         <div>
                                             <CardTitle>Permissions</CardTitle>
                                             <CardDescription>
                                                 Manage system permissions
                                             </CardDescription>
                                         </div>
-                                        <div className="flex items-center gap-2">
-                                            <div className="relative">
+                                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                                            <div className="relative w-full sm:w-64">
                                                 <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                                                 <Input
                                                     placeholder="Search permissions..."
@@ -334,7 +338,7 @@ export default function RolesPermissions() {
                                                             e.target.value,
                                                         )
                                                     }
-                                                    className="w-64 pl-9"
+                                                    className="w-full pl-9"
                                                 />
                                             </div>
                                             <Button
@@ -349,60 +353,62 @@ export default function RolesPermissions() {
                                     </div>
                                 </CardHeader>
                                 <CardContent>
-                                    <Table>
-                                        <TableHeader>
-                                            <TableRow>
-                                                <TableHead>
-                                                    Permission Name
-                                                </TableHead>
-                                                <TableHead className="w-[150px]">
-                                                    Actions
-                                                </TableHead>
-                                            </TableRow>
-                                        </TableHeader>
-                                        <TableBody>
-                                            {filteredPermissions.map(
-                                                (permission) => (
-                                                    <TableRow
-                                                        key={permission.id}
-                                                    >
-                                                        <TableCell className="font-medium">
-                                                            {permission.name}
-                                                        </TableCell>
-                                                        <TableCell>
-                                                            <div className="flex gap-2">
-                                                                <Button
-                                                                    variant="ghost"
-                                                                    size="sm"
-                                                                    onClick={() =>
-                                                                        setEditingPermission(
-                                                                            permission,
-                                                                        )
-                                                                    }
-                                                                >
-                                                                    <Edit className="h-4 w-4" />
-                                                                </Button>
-                                                                <Button
-                                                                    variant="ghost"
-                                                                    size="sm"
-                                                                    onClick={() =>
-                                                                        setDeletingPermission(
-                                                                            {
-                                                                                id: permission.id,
-                                                                                name: permission.name,
-                                                                            },
-                                                                        )
-                                                                    }
-                                                                >
-                                                                    <Trash2 className="h-4 w-4 text-destructive" />
-                                                                </Button>
-                                                            </div>
-                                                        </TableCell>
-                                                    </TableRow>
-                                                ),
-                                            )}
-                                        </TableBody>
-                                    </Table>
+                                    <div className="overflow-x-auto">
+                                        <Table>
+                                            <TableHeader>
+                                                <TableRow>
+                                                    <TableHead>
+                                                        Permission Name
+                                                    </TableHead>
+                                                    <TableHead className="w-[150px]">
+                                                        Actions
+                                                    </TableHead>
+                                                </TableRow>
+                                            </TableHeader>
+                                            <TableBody>
+                                                {filteredPermissions.map(
+                                                    (permission) => (
+                                                        <TableRow
+                                                            key={permission.id}
+                                                        >
+                                                            <TableCell className="font-medium">
+                                                                {permission.name}
+                                                            </TableCell>
+                                                            <TableCell>
+                                                                <div className="flex gap-2">
+                                                                    <Button
+                                                                        variant="ghost"
+                                                                        size="sm"
+                                                                        onClick={() =>
+                                                                            setEditingPermission(
+                                                                                permission,
+                                                                            )
+                                                                        }
+                                                                    >
+                                                                        <Edit className="h-4 w-4" />
+                                                                    </Button>
+                                                                    <Button
+                                                                        variant="ghost"
+                                                                        size="sm"
+                                                                        onClick={() =>
+                                                                            setDeletingPermission(
+                                                                                {
+                                                                                    id: permission.id,
+                                                                                    name: permission.name,
+                                                                                },
+                                                                            )
+                                                                        }
+                                                                    >
+                                                                        <Trash2 className="h-4 w-4 text-destructive" />
+                                                                    </Button>
+                                                                </div>
+                                                            </TableCell>
+                                                        </TableRow>
+                                                    ),
+                                                )}
+                                            </TableBody>
+                                        </Table>
+                                    </div>
                                 </CardContent>
                             </Card>
                         </TabsContent>

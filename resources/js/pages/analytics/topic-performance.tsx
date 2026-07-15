@@ -139,16 +139,19 @@ export default function TopicPerformance() {
 
             <AnalyticsLayout>
                 <div className="space-y-6">
-                    <div className="flex items-start justify-between gap-4">
-                        <HeadingSmall
-                            title="Topic Performance"
-                            description="See which topics are strongest, weakest, and most answered across your exam results."
-                        />
-                    </div>
+                    <HeadingSmall
+                        title="Topic Performance"
+                        description="See which topics are strongest, weakest, and most answered across your exam results."
+                    />
 
                     <Card className="overflow-hidden border-border/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,255,255,0.94))]">
                         <CardHeader className="pb-3">
-                            <CardTitle>Filters</CardTitle>
+                            <div className="space-y-1">
+                                <p className="text-[0.7rem] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
+                                    Filters
+                                </p>
+                                <CardTitle>Focus the topic report</CardTitle>
+                            </div>
                         </CardHeader>
                         <CardContent className="space-y-5">
                             <div className="grid grid-cols-1 gap-4 md:grid-cols-3">

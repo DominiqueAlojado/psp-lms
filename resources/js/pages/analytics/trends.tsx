@@ -167,16 +167,19 @@ export default function Trends() {
 
             <AnalyticsLayout>
                 <div className="space-y-6">
-                    <div className="flex items-start justify-between gap-4">
-                        <HeadingSmall
-                            title="Trends"
-                            description="Track attempts, pass rate, and average score movement over time."
-                        />
-                    </div>
+                    <HeadingSmall
+                        title="Trends"
+                        description="Track attempts, pass rate, and average score movement over time."
+                    />
 
                     <Card className="overflow-hidden border-border/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,255,255,0.94))]">
                         <CardHeader className="pb-3">
-                            <CardTitle>Filters</CardTitle>
+                            <div className="space-y-1">
+                                <p className="text-[0.7rem] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
+                                    Filters
+                                </p>
+                                <CardTitle>Refine the trend window</CardTitle>
+                            </div>
                         </CardHeader>
                         <CardContent className="space-y-5">
                             <div className="grid grid-cols-1 gap-4 md:grid-cols-3">

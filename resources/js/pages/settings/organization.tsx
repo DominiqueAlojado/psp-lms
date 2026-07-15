@@ -174,50 +174,50 @@ export default function OrganizationSettings() {
                                 </Label>
                                 <div className="rounded-[1.5rem] border border-border/70 bg-background/80 p-5">
                                     <div className="flex flex-col gap-5 lg:flex-row lg:items-start">
-                                    <div className="flex h-28 w-28 items-center justify-center overflow-hidden rounded-[1.5rem] border border-dashed border-border/80 bg-accent/35">
-                                        {org.logo ? (
-                                            <img
-                                                src={`/storage/${org.logo}`}
-                                                alt={org.name}
-                                                className="h-full w-full object-cover"
-                                            />
-                                        ) : (
-                                            <Building2 className="h-10 w-10 text-muted-foreground" />
-                                        )}
-                                    </div>
-                                    <div className="flex-1 space-y-3">
-                                        <form
-                                            onSubmit={handleLogoUpload}
-                                            className="flex flex-col gap-3 sm:flex-row"
-                                        >
-                                            <Input
-                                                ref={logoInputRef}
-                                                type="file"
-                                                name="logo"
-                                                accept="image/*"
-                                                className="flex-1"
-                                            />
-                                            <Button type="submit" size="sm" className="sm:min-w-32">
-                                                <Upload className="mr-2 h-4 w-4" />
-                                                Upload
-                                            </Button>
-                                        </form>
-                                        {org.logo && (
-                                            <Button
-                                                type="button"
-                                                variant="destructive"
-                                                size="sm"
-                                                onClick={handleLogoDelete}
+                                        <div className="flex h-28 w-28 items-center justify-center overflow-hidden rounded-[1.5rem] border border-dashed border-border/80 bg-accent/35">
+                                            {org.logo ? (
+                                                <img
+                                                    src={`/storage/${org.logo}`}
+                                                    alt={org.name}
+                                                    className="h-full w-full object-cover"
+                                                />
+                                            ) : (
+                                                <Building2 className="h-10 w-10 text-muted-foreground" />
+                                            )}
+                                        </div>
+                                        <div className="flex-1 space-y-3">
+                                            <form
+                                                onSubmit={handleLogoUpload}
+                                                className="flex flex-col gap-3 sm:flex-row"
                                             >
-                                                <Trash2 className="mr-2 h-4 w-4" />
-                                                Delete Logo
-                                            </Button>
-                                        )}
-                                        <p className="text-sm text-muted-foreground">
-                                            Recommended: Square image, max 2MB
-                                        </p>
+                                                <Input
+                                                    ref={logoInputRef}
+                                                    type="file"
+                                                    name="logo"
+                                                    accept="image/*"
+                                                    className="flex-1"
+                                                />
+                                                <Button type="submit" size="sm" className="sm:min-w-32">
+                                                    <Upload className="mr-2 h-4 w-4" />
+                                                    Upload
+                                                </Button>
+                                            </form>
+                                            {org.logo && (
+                                                <Button
+                                                    type="button"
+                                                    variant="destructive"
+                                                    size="sm"
+                                                    onClick={handleLogoDelete}
+                                                >
+                                                    <Trash2 className="mr-2 h-4 w-4" />
+                                                    Delete Logo
+                                                </Button>
+                                            )}
+                                            <p className="text-sm text-muted-foreground">
+                                                Recommended: Square image, max 2MB
+                                            </p>
+                                        </div>
                                     </div>
-                                </div>
                                 </div>
                             </div>
 
@@ -345,60 +345,62 @@ export default function OrganizationSettings() {
                                     No residents found in this organization
                                 </div>
                             ) : (
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead>Name</TableHead>
-                                            <TableHead>Email</TableHead>
-                                            <TableHead>Contact</TableHead>
-                                            <TableHead>Year</TableHead>
-                                            <TableHead>Course</TableHead>
-                                            <TableHead>Status</TableHead>
-                                            <TableHead className="w-[100px]">
-                                                Actions
-                                            </TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {residents.map((resident) => (
-                                            <TableRow key={resident.id}>
-                                                <TableCell className="font-medium">
-                                                    {resident.name}
-                                                </TableCell>
-                                                <TableCell>
-                                                    {resident.email}
-                                                </TableCell>
-                                                <TableCell>
-                                                    {resident.contact_number}
-                                                </TableCell>
-                                                <TableCell>
-                                                    {resident.year_level}
-                                                </TableCell>
-                                                <TableCell className="max-w-[200px] truncate">
-                                                    {resident.course}
-                                                </TableCell>
-                                                <TableCell>
-                                                    {getStatusBadge(
-                                                        resident.status,
-                                                    )}
-                                                </TableCell>
-                                                <TableCell>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="sm"
-                                                        onClick={() =>
-                                                            setEditingResident(
-                                                                resident,
-                                                            )
-                                                        }
-                                                    >
-                                                        <Edit className="h-4 w-4" />
-                                                    </Button>
-                                                </TableCell>
+                                <div className="overflow-x-auto">
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead>Name</TableHead>
+                                                <TableHead>Email</TableHead>
+                                                <TableHead>Contact</TableHead>
+                                                <TableHead>Year</TableHead>
+                                                <TableHead>Course</TableHead>
+                                                <TableHead>Status</TableHead>
+                                                <TableHead className="w-[100px]">
+                                                    Actions
+                                                </TableHead>
                                             </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {residents.map((resident) => (
+                                                <TableRow key={resident.id}>
+                                                    <TableCell className="font-medium">
+                                                        {resident.name}
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        {resident.email}
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        {resident.contact_number}
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        {resident.year_level}
+                                                    </TableCell>
+                                                    <TableCell className="max-w-[200px] truncate">
+                                                        {resident.course}
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        {getStatusBadge(
+                                                            resident.status,
+                                                        )}
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            onClick={() =>
+                                                                setEditingResident(
+                                                                    resident,
+                                                                )
+                                                            }
+                                                        >
+                                                            <Edit className="h-4 w-4" />
+                                                        </Button>
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
+                                </div>
                             )}
                         </CardContent>
                     </Card>
@@ -486,14 +488,16 @@ export default function OrganizationSettings() {
                                             defaultValue="personal"
                                             className="w-full"
                                         >
-                                            <TabsList className="mb-6 grid w-full grid-cols-2">
-                                                <TabsTrigger value="personal">
-                                                    Personal Data
-                                                </TabsTrigger>
-                                                <TabsTrigger value="account">
-                                                    Account
-                                                </TabsTrigger>
-                                            </TabsList>
+                                            <div className="overflow-x-auto pb-1">
+                                                <TabsList className="mb-6 grid min-w-[20rem] grid-cols-2">
+                                                    <TabsTrigger value="personal">
+                                                        Personal Data
+                                                    </TabsTrigger>
+                                                    <TabsTrigger value="account">
+                                                        Account
+                                                    </TabsTrigger>
+                                                </TabsList>
+                                            </div>
 
                                             {/* Tab 1: Personal Data */}
                                             <TabsContent
