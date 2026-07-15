@@ -21,7 +21,7 @@ class StaffReadService
         return [
             'staff' => $this->list($filters, $staffRoleNames, $userOrganizationIds, $isSystemAdmin),
             'roleStats' => $this->staffRepository->getRoleStats($userOrganizationIds, $isSystemAdmin),
-            'roles' => $this->staffRepository->getSelectableRoles(),
+            'roles' => $this->staffRepository->getSelectableRoles($user, $isSystemAdmin),
             'organizations' => $this->staffRepository->getSelectableOrganizations($user, $isSystemAdmin),
         ];
     }

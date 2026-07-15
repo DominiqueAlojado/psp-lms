@@ -12,6 +12,7 @@ use App\Traits\LogsActivity;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -64,7 +65,7 @@ class QuestionBankController extends Controller
         $user = $request->user();
 
         $validated = $request->validate([
-            'topic_id' => ['nullable', 'exists:topics,id'],
+            'topic_id' => $this->topicRule($request),
             'question_type' => ['required', 'in:multiple_choice,multiple_select,true_false'],
             'question_text' => ['required', 'string'],
             'points' => ['required', 'integer', 'min:1'],
@@ -103,7 +104,7 @@ class QuestionBankController extends Controller
         $question->load('choices');
 
         $validated = $request->validate([
-            'topic_id' => ['nullable', 'exists:topics,id'],
+            'topic_id' => $this->topicRule($request),
             'question_type' => ['required', 'in:multiple_choice,multiple_select,true_false'],
             'question_text' => ['required', 'string'],
             'points' => ['required', 'integer', 'min:1'],
@@ -304,5 +305,21 @@ class QuestionBankController extends Controller
         return response()->json([
             'logs' => $logs,
         ]);
+    }
+
+    private function topicRule(Request $request): array
+    {
+        $context = $this->questionBankReadService->resolveScopeContext($request->user());
+
+        return [
+            'nullable',
+            Rule::exists('topics', 'id')->where(function ($query) use ($context) {
+                $query->where('is_global', true);
+
+                if ($context['organizationId'] !== null) {
+                    $query->orWhere('organization_id', $context['organizationId']);
+                }
+            }),
+        ];
     }
 }

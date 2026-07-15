@@ -15,7 +15,7 @@ interface StaffRepositoryInterface
 
     public function getRoleStats(array $userOrganizationIds, bool $isSystemAdmin): Collection;
 
-    public function getSelectableRoles(): Collection;
+    public function getSelectableRoles(User $user, bool $isSystemAdmin): Collection;
 
     public function getSelectableOrganizations(User $user, bool $isSystemAdmin): Collection;
 

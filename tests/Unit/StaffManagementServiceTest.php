@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Services\StaffManagementService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
@@ -19,7 +20,7 @@ class StaffManagementServiceTest extends TestCase
         $service = app(StaffManagementService::class);
 
         $role = Role::create([
-            'name' => 'Admin',
+            'name' => 'Training Officer',
             'guard_name' => 'web',
         ]);
 
@@ -30,7 +31,15 @@ class StaffManagementServiceTest extends TestCase
             'is_active' => true,
         ]);
 
-        $user = $service->create([
+        $actor = User::factory()->create([
+            'current_organization_id' => $organization->id,
+        ]);
+        $actor->organizations()->attach($organization->id, [
+            'joined_at' => now(),
+            'is_active' => true,
+        ]);
+
+        $user = $service->create($actor, [
             'name' => 'Staff User',
             'email' => 'staff@example.com',
             'password' => 'secret123',
@@ -82,7 +91,19 @@ class StaffManagementServiceTest extends TestCase
             'is_active' => true,
         ]);
 
-        $result = $service->update($staff, [
+        $actor = User::factory()->create([
+            'current_organization_id' => $oldOrganization->id,
+        ]);
+        $actor->organizations()->attach($oldOrganization->id, [
+            'joined_at' => now(),
+            'is_active' => true,
+        ]);
+        $actor->organizations()->attach($newOrganization->id, [
+            'joined_at' => now(),
+            'is_active' => true,
+        ]);
+
+        $result = $service->update($actor, $staff, [
             'name' => 'Updated Staff',
             'email' => 'updated-staff@example.com',
             'password' => 'new-secret123',
@@ -115,6 +136,50 @@ class StaffManagementServiceTest extends TestCase
         $this->assertTrue($service->delete($staff));
         $this->assertDatabaseMissing('users', [
             'id' => $staff->id,
+        ]);
+    }
+
+    public function test_it_rejects_assigning_organizations_outside_the_actor_scope(): void
+    {
+        $service = app(StaffManagementService::class);
+
+        $role = Role::create([
+            'name' => 'Training Officer',
+            'guard_name' => 'web',
+        ]);
+
+        $allowedOrganization = Organization::create([
+            'name' => 'Allowed Chapter',
+            'slug' => 'allowed-chapter',
+            'type' => 'chapter',
+            'is_active' => true,
+        ]);
+
+        $forbiddenOrganization = Organization::create([
+            'name' => 'Forbidden Chapter',
+            'slug' => 'forbidden-chapter',
+            'type' => 'chapter',
+            'is_active' => true,
+        ]);
+
+        $actor = User::factory()->create([
+            'current_organization_id' => $allowedOrganization->id,
+        ]);
+        $actor->organizations()->attach($allowedOrganization->id, [
+            'joined_at' => now(),
+            'is_active' => true,
+        ]);
+
+        $this->expectException(HttpException::class);
+        $this->expectExceptionMessage('You are not allowed to assign one or more selected organizations.');
+
+        $service->create($actor, [
+            'name' => 'Scoped Staff',
+            'email' => 'scoped-staff@example.com',
+            'password' => 'secret123',
+            'roles' => [$role->id],
+            'organizations' => [$forbiddenOrganization->id],
+            'current_organization_id' => $forbiddenOrganization->id,
         ]);
     }
 }

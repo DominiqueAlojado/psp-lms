@@ -79,4 +79,36 @@ CSV;
         $this->assertSame(1, $result['total_errors']);
         $this->assertSame('Row 2: Missing required fields', $result['errors'][0]);
     }
+
+    public function test_preview_rejects_invalid_true_false_values_the_same_way_as_import(): void
+    {
+        $service = app(InstitutionAssessmentQuestionPreviewService::class);
+
+        $organization = Organization::create([
+            'name' => 'Alpha Hospital',
+            'slug' => 'alpha-hospital',
+            'type' => 'institution',
+            'is_active' => true,
+        ]);
+
+        $assessment = new \App\Models\Institution\InstitutionAssessment([
+            'organization_id' => $organization->id,
+        ]);
+
+        $csv = <<<CSV
+question_text,type,points,topic_optional,explanation_optional,choice_1_correct_answer,choice_2,choice_3,choice_4
+True false sample,true_false,1,Anatomy,Why,maybe,False,,
+CSV;
+
+        $file = UploadedFile::fake()->createWithContent('questions.csv', $csv);
+
+        $result = $service->preview($assessment, $file);
+
+        $this->assertSame(0, $result['total_valid']);
+        $this->assertSame(1, $result['total_errors']);
+        $this->assertSame(
+            "Row 2: True/False questions must use 'true' or 'false' in choice_1_correct_answer",
+            $result['errors'][0]
+        );
+    }
 }

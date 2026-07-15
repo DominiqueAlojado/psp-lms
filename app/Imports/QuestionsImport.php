@@ -6,9 +6,11 @@ use App\Models\Institution\InstitutionQuestion;
 use App\Models\Institution\InstitutionQuestionChoice;
 use App\Models\QuestionBank;
 use App\Models\Topic;
+use App\Support\InstitutionQuestionImportRowParser;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Maatwebsite\Excel\Concerns\ToCollection;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 
@@ -24,11 +26,14 @@ class QuestionsImport implements ToCollection, WithHeadingRow
 
     protected int $successCount = 0;
 
+    private readonly InstitutionQuestionImportRowParser $rowParser;
+
     public function __construct(int $assessmentId, int $organizationId, $user = null)
     {
         $this->assessmentId = $assessmentId;
         $this->organizationId = $organizationId;
         $this->user = $user;
+        $this->rowParser = app(InstitutionQuestionImportRowParser::class);
     }
 
     public function collection(Collection $rows): void
@@ -44,44 +49,14 @@ class QuestionsImport implements ToCollection, WithHeadingRow
                 $rowNumber = $index + 2; // +2 because: +1 for 0-index, +1 for header row
 
                 try {
-                    // Validate required fields
-                    if (empty($row['question_text']) || empty($row['type']) || empty($row['points'])) {
-                        $this->errors[] = "Row {$rowNumber}: Missing required fields (Question Text, Type, or Points)";
-
-                        continue;
-                    }
-
-                    // Validate question type
-                    $type = strtolower(trim($row['type']));
-                    if (! in_array($type, ['multiple_choice', 'multiple_select', 'true_false'])) {
-                        $this->errors[] = "Row {$rowNumber}: Invalid type '{$row['type']}'. Must be: multiple_choice, multiple_select, or true_false";
-
-                        continue;
-                    }
-
-                    // Validate choices based on type
-                    $choice1 = trim($row['choice_1_correct_answer'] ?? '');
-                    $choice2 = trim($row['choice_2'] ?? '');
-
-                    if ($type === 'true_false') {
-                        if (! in_array(strtolower($choice1), ['true', 'false'])) {
-                            $this->errors[] = "Row {$rowNumber}: True/False questions must have 'True' as Choice 1";
-
-                            continue;
-                        }
-                    } else {
-                        if (empty($choice1) || empty($choice2)) {
-                            $this->errors[] = "Row {$rowNumber}: At least 2 choices required";
-
-                            continue;
-                        }
-                    }
+                    $parsedRow = $this->rowParser->parse($row->toArray(), $rowNumber);
+                    $type = $parsedRow['type'];
 
                     // Find or create topic if provided
                     $topicId = null;
                     if (! empty($row['topic_optional'])) {
                         $topicName = trim($row['topic_optional']);
-                        $slug = \Str::slug($topicName);
+                        $slug = Str::slug($topicName);
 
                         // Try to find existing topic (global or organization-specific)
                         $topic = Topic::where('slug', $slug)
@@ -110,40 +85,22 @@ class QuestionsImport implements ToCollection, WithHeadingRow
                         'assessment_id' => $this->assessmentId,
                         'topic_id' => $topicId,
                         'question_type' => $type,
-                        'question_text' => trim($row['question_text']),
-                        'points' => (int) $row['points'],
-                        'explanation' => ! empty($row['explanation_optional']) ? trim($row['explanation_optional']) : null,
+                        'question_text' => $parsedRow['question_text'],
+                        'points' => $parsedRow['points'],
+                        'explanation' => $parsedRow['explanation'],
                         'order' => $maxOrder,
                     ]);
 
-                    // Create choices
-                    $choices = [
-                        ['text' => $choice1, 'is_correct' => true, 'order' => 1],
-                        ['text' => $choice2, 'is_correct' => false, 'order' => 2],
-                    ];
-
-                    if ($type !== 'true_false') {
-                        $choice3 = trim($row['choice_3'] ?? '');
-                        $choice4 = trim($row['choice_4'] ?? '');
-
-                        if (! empty($choice3)) {
-                            $choices[] = ['text' => $choice3, 'is_correct' => false, 'order' => 3];
-                        }
-                        if (! empty($choice4)) {
-                            $choices[] = ['text' => $choice4, 'is_correct' => false, 'order' => 4];
-                        }
-                    }
+                    $choices = $parsedRow['choices'];
 
                     // Insert choices
                     foreach ($choices as $choice) {
-                        if (! empty($choice['text'])) {
-                            InstitutionQuestionChoice::create([
-                                'question_id' => $question->id,
-                                'choice_text' => $choice['text'],
-                                'is_correct' => $choice['is_correct'],
-                                'order' => $choice['order'],
-                            ]);
-                        }
+                        InstitutionQuestionChoice::create([
+                            'question_id' => $question->id,
+                            'choice_text' => $choice['text'],
+                            'is_correct' => $choice['is_correct'],
+                            'order' => $choice['order'],
+                        ]);
                     }
 
                     // Save to question bank if user is provided
@@ -157,7 +114,9 @@ class QuestionsImport implements ToCollection, WithHeadingRow
                         'error' => $e->getMessage(),
                         'row' => $row->toArray(),
                     ]);
-                    $this->errors[] = "Row {$rowNumber}: {$e->getMessage()}";
+                    $this->errors[] = str_starts_with($e->getMessage(), "Row {$rowNumber}:")
+                        ? $e->getMessage()
+                        : "Row {$rowNumber}: {$e->getMessage()}";
                 }
             }
 

@@ -53,7 +53,7 @@ class StaffController extends Controller
     {
         $validated = $request->validated();
 
-        $user = $this->staffManagementService->create($validated);
+        $user = $this->staffManagementService->create($request->user(), $validated);
 
         // Log user creation
         $this->activityLogService->logUserCreated($user);
@@ -87,8 +87,8 @@ class StaffController extends Controller
         // Temporarily disable automatic logging to prevent duplicates
         // We'll manually log all changes in one consolidated entry below
         $updateResult = [];
-        $this->withoutActivityLogging(function () use ($staff, $validated, &$updateResult) {
-            $updateResult = $this->staffManagementService->update($staff, $validated);
+        $this->withoutActivityLogging(function () use ($request, $staff, $validated, &$updateResult) {
+            $updateResult = $this->staffManagementService->update($request->user(), $staff, $validated);
         });
 
         // Build consolidated log entry with all changes using service

@@ -38,6 +38,10 @@ class ResidentExamManagementService
         $questionId = $validated['question_id'];
 
         if ($type === 'institution') {
+            if (! $this->residentExamRepository->institutionQuestionBelongsToAssessment($questionId, $attempt->assessment_id)) {
+                return ['error' => 'The selected question does not belong to this exam attempt.', 'status' => 422];
+            }
+
             $existingAnswer = $this->residentExamRepository->findInstitutionAnswer($attempt->id, $questionId);
 
             if ($existingAnswer) {
@@ -58,6 +62,10 @@ class ResidentExamManagementService
             }
 
             return ['success' => true, 'status' => 200];
+        }
+
+        if (! $this->residentExamRepository->nationalQuestionBelongsToAssessment($questionId, $attempt->assessment_id)) {
+            return ['error' => 'The selected question does not belong to this exam attempt.', 'status' => 422];
         }
 
         $existingAnswer = $this->residentExamRepository->findNationalAnswer($attempt->id, $questionId);
@@ -92,14 +100,27 @@ class ResidentExamManagementService
             return ['error' => 'This exam has already been submitted.', 'status' => 422];
         }
 
-        foreach ($attempt->answers as $answer) {
+        $attempt->load(['answers.question.choices']);
+        [$validAnswers, $invalidAnswers] = $attempt->answers->partition(function ($answer) use ($attempt, $type) {
+            return $answer->question !== null
+                && $answer->question->assessment_id === $attempt->assessment_id;
+        });
+
+        foreach ($invalidAnswers as $answer) {
+            $answer->update([
+                'is_correct' => false,
+                'points_earned' => 0,
+            ]);
+        }
+
+        foreach ($validAnswers as $answer) {
             $answer->autoGrade();
         }
 
         if ($type === 'institution') {
-            $this->updateInstitutionQuestionBankStatistics($attempt);
+            $this->updateInstitutionQuestionBankStatistics($attempt, $validAnswers);
         } else {
-            $this->updateNationalQuestionBankStatistics($attempt);
+            $this->updateNationalQuestionBankStatistics($attempt, $validAnswers);
         }
 
         $attempt->calculateScore();
@@ -223,11 +244,11 @@ class ResidentExamManagementService
         return ['success' => true];
     }
 
-    private function updateInstitutionQuestionBankStatistics(InstitutionAttempt $attempt): void
+    private function updateInstitutionQuestionBankStatistics(InstitutionAttempt $attempt, iterable $answers): void
     {
         $organizationId = $attempt->organization_id;
 
-        foreach ($attempt->answers as $answer) {
+        foreach ($answers as $answer) {
             $question = $answer->question;
 
             if (! $question) {
@@ -261,9 +282,9 @@ class ResidentExamManagementService
         }
     }
 
-    private function updateNationalQuestionBankStatistics(NationalAttempt $attempt): void
+    private function updateNationalQuestionBankStatistics(NationalAttempt $attempt, iterable $answers): void
     {
-        foreach ($attempt->answers as $answer) {
+        foreach ($answers as $answer) {
             $question = $answer->question;
 
             if (! $question) {

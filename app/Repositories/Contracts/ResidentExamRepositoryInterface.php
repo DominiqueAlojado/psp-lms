@@ -53,6 +53,10 @@ interface ResidentExamRepositoryInterface
 
     public function updateNationalAnswer(NationalAnswer $answer, array $attributes): bool;
 
+    public function institutionQuestionBelongsToAssessment(int $questionId, int $assessmentId): bool;
+
+    public function nationalQuestionBelongsToAssessment(int $questionId, int $assessmentId): bool;
+
     public function latestCompletedInstitutionAttempt(InstitutionAssessment $assessment, int $userId): ?InstitutionAttempt;
 
     public function bestCompletedNationalAttempt(NationalAssessment $assessment, int $userId): ?NationalAttempt;

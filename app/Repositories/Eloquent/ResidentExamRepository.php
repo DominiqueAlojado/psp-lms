@@ -7,9 +7,11 @@ use App\Models\ExamSessionChange;
 use App\Models\Institution\InstitutionAnswer;
 use App\Models\Institution\InstitutionAssessment;
 use App\Models\Institution\InstitutionAttempt;
+use App\Models\Institution\InstitutionQuestion;
 use App\Models\National\NationalAnswer;
 use App\Models\National\NationalAssessment;
 use App\Models\National\NationalAttempt;
+use App\Models\National\NationalQuestion;
 use App\Models\QuestionBank;
 use App\Repositories\Contracts\ResidentExamRepositoryInterface;
 use Illuminate\Support\Facades\DB;
@@ -138,6 +140,22 @@ class ResidentExamRepository implements ResidentExamRepositoryInterface
     public function updateNationalAnswer(NationalAnswer $answer, array $attributes): bool
     {
         return $answer->update($attributes);
+    }
+
+    public function institutionQuestionBelongsToAssessment(int $questionId, int $assessmentId): bool
+    {
+        return InstitutionQuestion::query()
+            ->whereKey($questionId)
+            ->where('assessment_id', $assessmentId)
+            ->exists();
+    }
+
+    public function nationalQuestionBelongsToAssessment(int $questionId, int $assessmentId): bool
+    {
+        return NationalQuestion::query()
+            ->whereKey($questionId)
+            ->where('assessment_id', $assessmentId)
+            ->exists();
     }
 
     public function latestCompletedInstitutionAttempt(InstitutionAssessment $assessment, int $userId): ?InstitutionAttempt

@@ -25,6 +25,7 @@ class ResourceManagementFlowTest extends TestCase
         ]);
 
         Storage::fake('public');
+        Permission::create(['name' => 'upload-materials', 'guard_name' => 'web']);
 
         $organization = Organization::create([
             'name' => 'Alpha Chapter',
@@ -40,6 +41,7 @@ class ResourceManagementFlowTest extends TestCase
             'joined_at' => now(),
             'is_active' => true,
         ]);
+        $user->givePermissionTo('upload-materials');
 
         $file = UploadedFile::fake()->create('guide.pdf', 100, 'application/pdf');
 
@@ -66,6 +68,49 @@ class ResourceManagementFlowTest extends TestCase
         $this->assertSame(['First Year'], $resource->target_year_levels);
         $this->assertTrue($resource->is_published);
         Storage::disk('public')->assertExists($resource->file_path);
+    }
+
+    public function test_authenticated_user_without_upload_permission_cannot_create_learning_resource(): void
+    {
+        $this->withoutMiddleware([
+            ValidateCsrfToken::class,
+            SetOrganizationFromUrl::class,
+        ]);
+
+        Storage::fake('public');
+
+        $organization = Organization::create([
+            'name' => 'Locked Chapter',
+            'slug' => 'locked-chapter',
+            'type' => 'chapter',
+            'is_active' => true,
+        ]);
+
+        $user = User::factory()->create([
+            'current_organization_id' => $organization->id,
+        ]);
+        $user->organizations()->attach($organization->id, [
+            'joined_at' => now(),
+            'is_active' => true,
+        ]);
+
+        $file = UploadedFile::fake()->create('guide.pdf', 100, 'application/pdf');
+
+        $response = $this->actingAs($user)
+            ->from(route('resources.manage'))
+            ->post(route('resources.store'), [
+                'title' => 'Blocked Guide',
+                'description' => 'Resource description',
+                'category' => 'Guides',
+                'target_year_levels' => ['First Year'],
+                'is_published' => true,
+                'file' => $file,
+            ]);
+
+        $response->assertForbidden();
+        $this->assertDatabaseMissing('learning_resources', [
+            'title' => 'Blocked Guide',
+        ]);
     }
 
     public function test_authorized_user_can_update_learning_resource(): void

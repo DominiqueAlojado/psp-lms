@@ -107,4 +107,43 @@ class StaffReadServiceTest extends TestCase
         $this->assertSame(['Manager'], $payload['staff']['role_names']);
         $this->assertCount(2, $payload['staff']['organizations']);
     }
+
+    public function test_non_system_admin_payload_excludes_protected_roles(): void
+    {
+        $service = app(StaffReadService::class);
+
+        $organization = Organization::create([
+            'name' => 'Delta Chapter',
+            'slug' => 'delta-chapter',
+            'type' => 'chapter',
+            'is_active' => true,
+        ]);
+
+        Role::create([
+            'name' => 'System Admin',
+            'guard_name' => 'web',
+        ]);
+        Role::create([
+            'name' => 'Admin',
+            'guard_name' => 'web',
+        ]);
+        Role::create([
+            'name' => 'Training Officer',
+            'guard_name' => 'web',
+        ]);
+
+        $user = User::factory()->create([
+            'current_organization_id' => $organization->id,
+        ]);
+        $user->organizations()->attach($organization->id, [
+            'joined_at' => now(),
+            'is_active' => true,
+        ]);
+
+        $payload = $service->indexPayload($user, []);
+
+        $this->assertFalse($payload['roles']->contains('name', 'System Admin'));
+        $this->assertFalse($payload['roles']->contains('name', 'Admin'));
+        $this->assertTrue($payload['roles']->contains('name', 'Training Officer'));
+    }
 }

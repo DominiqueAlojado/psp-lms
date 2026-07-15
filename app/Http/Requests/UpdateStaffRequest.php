@@ -9,7 +9,7 @@ class UpdateStaffRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return true;
+        return (bool) $this->user()?->can('edit-staff');
     }
 
     public function rules(): array

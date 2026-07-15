@@ -8,7 +8,7 @@ class StoreStaffRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return true;
+        return (bool) $this->user()?->can('create-staff');
     }
 
     public function rules(): array

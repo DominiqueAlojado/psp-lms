@@ -110,7 +110,12 @@ class NationalAttempt extends Model
 
     public function calculateScore(): void
     {
-        $totalEarned = $this->answers()->sum('points_earned');
+        $totalEarned = $this->answers()
+            ->whereHas('question', function ($query) {
+                $query->where('assessment_id', $this->assessment_id);
+            })
+            ->sum('points_earned');
+
         $this->update([
             'score' => $totalEarned,
             'status' => 'completed',

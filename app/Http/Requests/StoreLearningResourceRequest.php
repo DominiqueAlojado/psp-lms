@@ -3,12 +3,17 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Spatie\Permission\Exceptions\PermissionDoesNotExist;
 
 class StoreLearningResourceRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return true;
+        try {
+            return $this->user()?->hasPermissionTo('upload-materials') ?? false;
+        } catch (PermissionDoesNotExist) {
+            return false;
+        }
     }
 
     public function rules(): array

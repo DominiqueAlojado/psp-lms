@@ -74,10 +74,13 @@ class StaffRepository implements StaffRepositoryInterface
             });
     }
 
-    public function getSelectableRoles(): Collection
+    public function getSelectableRoles(User $user, bool $isSystemAdmin): Collection
     {
         return Role::query()
             ->where('name', '!=', 'Resident')
+            ->when(! $isSystemAdmin, function (Builder $query) {
+                $query->whereNotIn('name', ['System Admin', 'Admin']);
+            })
             ->get(['id', 'name']);
     }
 

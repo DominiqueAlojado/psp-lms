@@ -24,7 +24,7 @@ class StaffManagementFlowTest extends TestCase
         ]);
 
         Permission::create(['name' => 'create-staff', 'guard_name' => 'web']);
-        $role = Role::create(['name' => 'Admin', 'guard_name' => 'web']);
+        $role = Role::create(['name' => 'Training Officer', 'guard_name' => 'web']);
 
         $organization = Organization::create([
             'name' => 'Alpha Chapter',
@@ -93,10 +93,16 @@ class StaffManagementFlowTest extends TestCase
         $admin = User::factory()->create([
             'current_organization_id' => $oldOrganization->id,
         ]);
-        $admin->organizations()->attach([$oldOrganization->id => [
-            'joined_at' => now(),
-            'is_active' => true,
-        ]]);
+        $admin->organizations()->attach([
+            $oldOrganization->id => [
+                'joined_at' => now(),
+                'is_active' => true,
+            ],
+            $newOrganization->id => [
+                'joined_at' => now(),
+                'is_active' => true,
+            ],
+        ]);
         $admin->givePermissionTo('edit-staff');
 
         $staff = User::factory()->create([
@@ -132,5 +138,97 @@ class StaffManagementFlowTest extends TestCase
         $this->assertTrue(Hash::check('new-secret123', $staff->password));
         $this->assertTrue($staff->roles->contains('id', $newRole->id));
         $this->assertTrue($staff->organizations->contains('id', $newOrganization->id));
+    }
+
+    public function test_user_cannot_update_staff_member_from_another_organization(): void
+    {
+        $this->withoutMiddleware([
+            ValidateCsrfToken::class,
+            SetOrganizationFromUrl::class,
+        ]);
+
+        Permission::create(['name' => 'edit-staff', 'guard_name' => 'web']);
+        $role = Role::create(['name' => 'Coordinator', 'guard_name' => 'web']);
+
+        $actorOrganization = Organization::create([
+            'name' => 'Actor Chapter',
+            'slug' => 'actor-chapter',
+            'type' => 'chapter',
+            'is_active' => true,
+        ]);
+        $staffOrganization = Organization::create([
+            'name' => 'Other Chapter',
+            'slug' => 'other-chapter',
+            'type' => 'chapter',
+            'is_active' => true,
+        ]);
+
+        $admin = User::factory()->create([
+            'current_organization_id' => $actorOrganization->id,
+        ]);
+        $admin->organizations()->attach($actorOrganization->id, [
+            'joined_at' => now(),
+            'is_active' => true,
+        ]);
+        $admin->givePermissionTo('edit-staff');
+
+        $staff = User::factory()->create([
+            'current_organization_id' => $staffOrganization->id,
+        ]);
+        $staff->syncRoles([$role->id]);
+        $staff->organizations()->attach($staffOrganization->id, [
+            'joined_at' => now(),
+            'is_active' => true,
+        ]);
+
+        $response = $this->actingAs($admin)
+            ->patch(route('staff.update', $staff), [
+                'name' => 'Blocked Update',
+                'email' => 'blocked-update@example.com',
+                'roles' => [$role->id],
+                'organizations' => [$staffOrganization->id],
+                'current_organization_id' => $staffOrganization->id,
+            ]);
+
+        $response->assertForbidden();
+    }
+
+    public function test_non_system_admin_cannot_assign_protected_roles(): void
+    {
+        $this->withoutMiddleware([
+            ValidateCsrfToken::class,
+            SetOrganizationFromUrl::class,
+        ]);
+
+        Permission::create(['name' => 'create-staff', 'guard_name' => 'web']);
+        $protectedRole = Role::create(['name' => 'System Admin', 'guard_name' => 'web']);
+
+        $organization = Organization::create([
+            'name' => 'Alpha Chapter',
+            'slug' => 'alpha-chapter',
+            'type' => 'chapter',
+            'is_active' => true,
+        ]);
+
+        $admin = User::factory()->create([
+            'current_organization_id' => $organization->id,
+        ]);
+        $admin->organizations()->attach($organization->id, [
+            'joined_at' => now(),
+            'is_active' => true,
+        ]);
+        $admin->givePermissionTo('create-staff');
+
+        $response = $this->actingAs($admin)
+            ->post(route('staff.store'), [
+                'name' => 'Blocked Staff',
+                'email' => 'blocked-staff@example.com',
+                'password' => 'secret123',
+                'roles' => [$protectedRole->id],
+                'organizations' => [$organization->id],
+                'current_organization_id' => $organization->id,
+            ]);
+
+        $response->assertForbidden();
     }
 }
