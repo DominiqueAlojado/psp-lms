@@ -36,6 +36,7 @@ class ResourceManagementServiceTest extends TestCase
             'title' => 'Study Guide',
             'description' => 'Guide',
             'category' => 'Guides',
+            'scope' => 'organization',
             'target_year_levels' => ['First Year'],
             'is_published' => true,
         ], $file);
@@ -74,10 +75,11 @@ class ResourceManagementServiceTest extends TestCase
             'download_count' => 0,
         ]);
 
-        $this->assertTrue($service->update($resource, [
+        $this->assertTrue($service->update($user, $resource, [
             'title' => 'New Title',
             'description' => 'New description',
             'category' => 'Videos',
+            'scope' => 'organization',
             'target_year_levels' => ['Second Year'],
             'is_published' => false,
         ]));

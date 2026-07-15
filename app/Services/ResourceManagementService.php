@@ -10,6 +10,7 @@ use App\Models\LearningResource;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Spatie\Permission\Exceptions\PermissionDoesNotExist;
 
 class ResourceManagementService
 {
@@ -25,11 +26,12 @@ class ResourceManagementService
         $path = $file->store('resources', 'public');
 
         return $this->createLearningResourceAction->execute([
-            'organization_id' => $user->current_organization_id,
+            'organization_id' => $validated['scope'] === 'organization' ? $user->current_organization_id : null,
             'uploaded_by' => $user->id,
             'title' => $validated['title'],
             'description' => $validated['description'] ?? null,
             'category' => $validated['category'],
+            'scope' => $validated['scope'],
             'file_path' => $path,
             'file_name' => $file->getClientOriginalName(),
             'file_type' => $file->getClientOriginalExtension(),
@@ -39,8 +41,12 @@ class ResourceManagementService
         ]);
     }
 
-    public function update(LearningResource $resource, array $validated): bool
+    public function update(User $user, LearningResource $resource, array $validated): bool
     {
+        $validated['organization_id'] = ($validated['scope'] ?? $resource->scope) === 'organization'
+            ? $user->current_organization_id
+            : null;
+
         return $this->updateLearningResourceAction->execute($resource, $validated);
     }
 
@@ -60,6 +66,29 @@ class ResourceManagementService
 
     public function canAccess(User $user, LearningResource $resource): bool
     {
+        if ($resource->scope === 'system') {
+            return true;
+        }
+
+        return $resource->organization_id === $user->current_organization_id;
+    }
+
+    public function canCreateSystem(User $user): bool
+    {
+        try {
+            return $user->hasPermissionTo('create-system-announcements')
+                || $user->hasAnyRole(['System Admin', 'BOP']);
+        } catch (PermissionDoesNotExist) {
+            return $user->hasAnyRole(['System Admin', 'BOP']);
+        }
+    }
+
+    public function canManageResource(User $user, LearningResource $resource): bool
+    {
+        if ($resource->scope === 'system') {
+            return $this->canCreateSystem($user);
+        }
+
         return $resource->organization_id === $user->current_organization_id;
     }
 }

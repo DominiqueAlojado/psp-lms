@@ -6,6 +6,7 @@ import { EditResidentSheet } from '@/components/residents/edit-resident-sheet';
 import { ResidentFilters } from '@/components/residents/resident-filters';
 import { ResidentLogsSheet } from '@/components/residents/resident-logs-sheet';
 import { ResidentTable } from '@/components/residents/resident-table';
+import { TransferResidentDialog } from '@/components/residents/transfer-resident-dialog';
 import { ViewResidentSheet } from '@/components/residents/view-resident-sheet';
 import { StatCard } from '@/components/stat-card';
 import { Button } from '@/components/ui/button';
@@ -104,8 +105,12 @@ export default function ResidentsIndex({
     const [viewOrganizations, setViewOrganizations] = useState<{
         current: any[];
         available: any[];
-    }>({ current: [], available: [] });
+        history: any[];
+    }>({ current: [], available: [], history: [] });
     const [editingResident, setEditingResident] = useState<Resident | null>(
+        null,
+    );
+    const [transferringResident, setTransferringResident] = useState<Resident | null>(
         null,
     );
     const [addingResident, setAddingResident] = useState(false);
@@ -162,6 +167,7 @@ export default function ResidentsIndex({
             setViewOrganizations({
                 current: data.currentOrganizations || [],
                 available: data.availableOrganizations || [],
+                history: data.organizationHistory || [],
             });
         } catch (error) {
             console.error('Error fetching organizations:', error);
@@ -300,6 +306,7 @@ export default function ResidentsIndex({
                     filters={filters}
                     onView={handleViewResident}
                     onEdit={setEditingResident}
+                    onTransfer={setTransferringResident}
                     onDelete={setDeletingResident}
                     onViewLogs={setViewingLogsResident}
                 />
@@ -311,9 +318,10 @@ export default function ResidentsIndex({
                 resident={viewingResident}
                 currentOrganizations={viewOrganizations.current}
                 availableOrganizations={viewOrganizations.available}
+                organizationHistory={viewOrganizations.history}
                 onClose={() => {
                     setViewingResident(null);
-                    setViewOrganizations({ current: [], available: [] });
+                    setViewOrganizations({ current: [], available: [], history: [] });
                 }}
                 onRefresh={handleRefreshOrganizations}
             />
@@ -326,6 +334,13 @@ export default function ResidentsIndex({
                 yearLevels={yearLevels}
                 statuses={statuses}
                 onClose={() => setEditingResident(null)}
+            />
+
+            <TransferResidentDialog
+                open={!!transferringResident}
+                resident={transferringResident}
+                organizations={organizations}
+                onClose={() => setTransferringResident(null)}
             />
 
             {/* Create Sheet */}

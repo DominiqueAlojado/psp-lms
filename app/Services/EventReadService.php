@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Repositories\Contracts\EventRegistrationRepositoryInterface;
 use App\Repositories\Contracts\EventRepositoryInterface;
 use App\Repositories\Contracts\MeetingAttendanceRepositoryInterface;
+use Spatie\Permission\Exceptions\PermissionDoesNotExist;
 
 class EventReadService
 {
@@ -18,7 +19,7 @@ class EventReadService
 
     public function indexPayload(User $user, array $filters): array
     {
-        $events = $this->eventRepository->paginatePublished($filters);
+        $events = $this->eventRepository->paginatePublished($user->current_organization_id, $filters);
         $events = $this->eventRepository->attachUserRegistrations($events, $user);
 
         return [
@@ -42,13 +43,21 @@ class EventReadService
 
     public function managePayload(User $user, array $filters): array
     {
+        try {
+            $canCreateSystem = $user->hasPermissionTo('create-system-announcements')
+                || $user->hasAnyRole(['System Admin', 'BOP']);
+        } catch (PermissionDoesNotExist) {
+            $canCreateSystem = $user->hasAnyRole(['System Admin', 'BOP']);
+        }
+
         return [
             'events' => $this->eventRepository->paginateForManagement(
                 $user->currentOrganization?->id,
-                $user->hasAnyRole(['System Admin', 'BOP']),
+                $user->hasAnyRole(['System Admin', 'BOP']) || $canCreateSystem,
                 $filters
             ),
             'filters' => $filters,
+            'canCreateSystem' => $canCreateSystem,
         ];
     }
 
@@ -81,8 +90,26 @@ class EventReadService
 
     public function canManageEvent(User $user, Event $event): bool
     {
+        if ($event->scope === 'system') {
+            try {
+                return $user->hasPermissionTo('create-system-announcements')
+                    || $user->hasAnyRole(['System Admin', 'BOP']);
+            } catch (PermissionDoesNotExist) {
+                return $user->hasAnyRole(['System Admin', 'BOP']);
+            }
+        }
+
         return $user->hasAnyRole(['System Admin', 'BOP'])
             || $event->organization_id === $user->currentOrganization?->id;
+    }
+
+    public function canViewEvent(User $user, Event $event): bool
+    {
+        if ($event->scope === 'system') {
+            return true;
+        }
+
+        return $event->organization_id === $user->currentOrganization?->id;
     }
 
     public function canManageRegistration(User $user, Event $event, \App\Models\EventRegistration $registration): bool

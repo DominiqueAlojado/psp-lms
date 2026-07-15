@@ -12,6 +12,7 @@ import {
 
 interface EventFormData {
     title: string;
+    scope: 'organization' | 'system';
     description: string;
     event_category: string;
     event_type: string;
@@ -35,9 +36,15 @@ interface Props {
     data: EventFormData;
     setData: (data: EventFormData) => void;
     errors?: Record<string, string>;
+    canCreateSystem?: boolean;
 }
 
-export function EventFormFields({ data, setData, errors = {} }: Props) {
+export function EventFormFields({
+    data,
+    setData,
+    errors = {},
+    canCreateSystem = false,
+}: Props) {
     const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0] || null;
         setData({ ...data, image: file });
@@ -96,6 +103,43 @@ export function EventFormFields({ data, setData, errors = {} }: Props) {
                             {errors.title}
                         </p>
                     )}
+                </div>
+
+                <div className="space-y-2">
+                    <Label>Visibility Scope *</Label>
+                    <Select
+                        value={data.scope}
+                        onValueChange={(value) =>
+                            setData({
+                                ...data,
+                                scope: value as 'organization' | 'system',
+                            })
+                        }
+                        disabled={!canCreateSystem}
+                    >
+                        <SelectTrigger>
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="organization">
+                                My Organization Only
+                            </SelectItem>
+                            {canCreateSystem && (
+                                <SelectItem value="system">
+                                    All Organizations
+                                </SelectItem>
+                            )}
+                        </SelectContent>
+                    </Select>
+                    {errors.scope && (
+                        <p className="text-sm text-destructive">
+                            {errors.scope}
+                        </p>
+                    )}
+                    <p className="text-xs text-muted-foreground">
+                        Choose whether this event is visible only inside the
+                        current organization or across all organizations.
+                    </p>
                 </div>
 
                 <div className="space-y-2">

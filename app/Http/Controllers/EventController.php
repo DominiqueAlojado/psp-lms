@@ -44,6 +44,10 @@ class EventController extends Controller
      */
     public function show(Request $request, Event $event): Response
     {
+        if (! $this->eventReadService->canViewEvent($request->user(), $event)) {
+            abort(403, 'You do not have access to this event.');
+        }
+
         return Inertia::render('events/show', $this->eventReadService->showPayload($request->user(), $event));
     }
 
@@ -54,7 +58,7 @@ class EventController extends Controller
     {
         return Inertia::render('events/manage', $this->eventReadService->managePayload(
             $request->user(),
-            $request->only(['status', 'search'])
+            $request->only(['status', 'search', 'scope'])
         ));
     }
 
@@ -63,9 +67,16 @@ class EventController extends Controller
      */
     public function store(StoreEventRequest $request): \Illuminate\Http\RedirectResponse
     {
+        $user = $request->user();
+        $validated = $request->validated();
+
+        if (($validated['scope'] ?? 'organization') === 'system' && ! $this->eventManagementService->canCreateSystem($user)) {
+            return back()->withErrors(['scope' => 'You do not have permission to publish events across all organizations.']);
+        }
+
         $event = $this->eventManagementService->create(
-            $request->user(),
-            $request->validated(),
+            $user,
+            $validated,
             $request->file('image')
         );
 
@@ -89,9 +100,14 @@ class EventController extends Controller
 
         $validated = $request->validated();
 
+        if (($validated['scope'] ?? 'organization') === 'system' && ! $this->eventManagementService->canCreateSystem($user)) {
+            return back()->withErrors(['scope' => 'You do not have permission to publish events across all organizations.']);
+        }
+
         // Capture old values before update
         $oldValues = [
             'title' => $event->title,
+            'scope' => $event->scope,
             'description' => $event->description,
             'event_category' => $event->event_category,
             'event_type' => $event->event_type,
@@ -110,8 +126,8 @@ class EventController extends Controller
 
         // Update event without logging (to avoid duplicate logs)
         $updatedAttributes = [];
-        $this->withoutActivityLogging(function () use ($event, $validated, $request, &$updatedAttributes) {
-            $updatedAttributes = $this->eventManagementService->update($event, $validated, $request->file('image'));
+        $this->withoutActivityLogging(function () use ($user, $event, $validated, $request, &$updatedAttributes) {
+            $updatedAttributes = $this->eventManagementService->update($user, $event, $validated, $request->file('image'));
         });
 
         // Build log data and log changes
@@ -154,6 +170,11 @@ class EventController extends Controller
     public function register(Request $request, Event $event): \Illuminate\Http\RedirectResponse
     {
         $user = $request->user();
+
+        if (! $this->eventReadService->canViewEvent($user, $event)) {
+            abort(403, 'You do not have access to this event.');
+        }
+
         $result = $this->eventAttendanceService->register($user, $event);
 
         return back()->with($result['type'], $result['message']);
@@ -164,6 +185,10 @@ class EventController extends Controller
      */
     public function cancelRegistration(CancelEventRegistrationRequest $request, Event $event): \Illuminate\Http\RedirectResponse
     {
+        if (! $this->eventReadService->canViewEvent($request->user(), $event)) {
+            abort(403, 'You do not have access to this event.');
+        }
+
         $result = $this->eventAttendanceService->cancelRegistration(
             $request->user(),
             $event,
@@ -254,6 +279,10 @@ class EventController extends Controller
      */
     public function joinMeeting(Request $request, Event $event): \Illuminate\Http\JsonResponse
     {
+        if (! $this->eventReadService->canViewEvent($request->user(), $event)) {
+            abort(403, 'You do not have access to this event.');
+        }
+
         $result = $this->eventAttendanceService->joinMeeting($request, $event);
 
         return response()->json($result['payload'], $result['status']);
@@ -264,6 +293,10 @@ class EventController extends Controller
      */
     public function meetingHeartbeat(Request $request, Event $event): \Illuminate\Http\JsonResponse
     {
+        if (! $this->eventReadService->canViewEvent($request->user(), $event)) {
+            abort(403, 'You do not have access to this event.');
+        }
+
         $result = $this->eventAttendanceService->meetingHeartbeat($request->user(), $event);
 
         return response()->json($result['payload'], $result['status']);
@@ -274,6 +307,10 @@ class EventController extends Controller
      */
     public function leaveMeeting(Request $request, Event $event): \Illuminate\Http\JsonResponse
     {
+        if (! $this->eventReadService->canViewEvent($request->user(), $event)) {
+            abort(403, 'You do not have access to this event.');
+        }
+
         $result = $this->eventAttendanceService->leaveMeeting($request->user(), $event);
 
         return response()->json($result['payload'], $result['status']);

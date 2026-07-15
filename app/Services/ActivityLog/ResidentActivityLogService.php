@@ -2,6 +2,7 @@
 
 namespace App\Services\ActivityLog;
 
+use App\Models\Organization;
 use App\Models\Resident;
 use Spatie\Activitylog\Models\Activity as ActivityLog;
 
@@ -34,7 +35,8 @@ class ResidentActivityLogService
     public function logResidentUpdated(
         Resident $resident,
         array $attributes = [],
-        array $oldValues = []
+        array $oldValues = [],
+        string $description = 'Resident updated'
     ): void {
         if (empty($attributes) && empty($oldValues)) {
             return;
@@ -48,7 +50,7 @@ class ResidentActivityLogService
                 'attributes' => $attributes,
                 'old' => $oldValues,
             ])
-            ->log('Resident updated');
+            ->log($description);
     }
 
     /**
@@ -204,6 +206,10 @@ class ResidentActivityLogService
         ) {
             $attributes['organization_id'] = (int) $validated['organization_id'];
             $oldValues['organization_id'] = $oldOrganizationId;
+            $attributes['organization_name'] = Organization::find((int) $validated['organization_id'])?->name;
+            $oldValues['organization_name'] = $oldOrganizationId
+                ? Organization::find($oldOrganizationId)?->name
+                : null;
             $hasChanges = true;
         }
 

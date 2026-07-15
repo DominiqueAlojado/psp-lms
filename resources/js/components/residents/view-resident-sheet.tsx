@@ -8,7 +8,7 @@ import {
     SheetHeader,
     SheetTitle,
 } from '@/components/ui/sheet';
-import { Building2, Mail, Phone, User } from 'lucide-react';
+import { Building2, Clock3, Mail, Phone, User } from 'lucide-react';
 
 interface Organization {
     id: number;
@@ -19,6 +19,17 @@ interface Organization {
         joined_at: string;
         is_active: boolean;
     };
+}
+
+interface OrganizationHistoryItem {
+    id: number;
+    organization: Organization;
+    started_at: string | null;
+    ended_at: string | null;
+    is_primary: boolean;
+    is_active: boolean;
+    year_level: string | null;
+    status: string | null;
 }
 
 interface Resident {
@@ -42,6 +53,7 @@ interface Props {
     resident: Resident | null;
     currentOrganizations: Organization[];
     availableOrganizations: Organization[];
+    organizationHistory: OrganizationHistoryItem[];
     onClose: () => void;
     onRefresh: () => void;
 }
@@ -51,6 +63,7 @@ export function ViewResidentSheet({
     resident,
     currentOrganizations,
     availableOrganizations,
+    organizationHistory,
     onClose,
     onRefresh,
 }: Props) {
@@ -130,7 +143,7 @@ export function ViewResidentSheet({
                                     <Building2 className="mt-1 h-4 w-4 text-muted-foreground" />
                                     <div className="flex-1">
                                         <p className="text-sm font-medium">
-                                            Home Institution
+                                            Current Home Organization
                                         </p>
                                         <p className="text-sm text-muted-foreground">
                                             {resident.organization.name}
@@ -176,10 +189,64 @@ export function ViewResidentSheet({
                             availableOrganizations={availableOrganizations}
                             onUpdate={onRefresh}
                         />
+
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Organization History</CardTitle>
+                                <CardDescription>
+                                    Transfer history and previous home organization assignments
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-3">
+                                {organizationHistory.length === 0 ? (
+                                    <p className="text-sm text-muted-foreground">
+                                        No organization history available.
+                                    </p>
+                                ) : (
+                                    organizationHistory.map((membership) => (
+                                        <div
+                                            key={membership.id}
+                                            className="flex items-start justify-between gap-4 rounded-lg border p-4"
+                                        >
+                                            <div className="min-w-0 space-y-1">
+                                                <div className="flex flex-wrap items-center gap-2">
+                                                    <span className="font-medium">
+                                                        {membership.organization.name}
+                                                    </span>
+                                                    {membership.is_active && (
+                                                        <Badge variant="default">Active</Badge>
+                                                    )}
+                                                    {membership.is_primary && (
+                                                        <Badge variant="outline">Primary</Badge>
+                                                    )}
+                                                </div>
+                                                <div className="text-sm text-muted-foreground">
+                                                    {membership.organization.type}
+                                                </div>
+                                                <div className="text-sm text-muted-foreground">
+                                                    {membership.started_at
+                                                        ? new Date(membership.started_at).toLocaleDateString()
+                                                        : 'Unknown start'}
+                                                    {' - '}
+                                                    {membership.ended_at
+                                                        ? new Date(membership.ended_at).toLocaleDateString()
+                                                        : 'Present'}
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                                <Clock3 className="h-3.5 w-3.5" />
+                                                <span>
+                                                    {membership.year_level || resident.year_level}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
+                            </CardContent>
+                        </Card>
                     </div>
                 </div>
             </SheetContent>
         </Sheet>
     );
 }
-

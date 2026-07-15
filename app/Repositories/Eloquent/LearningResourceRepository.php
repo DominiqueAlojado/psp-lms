@@ -12,7 +12,7 @@ class LearningResourceRepository implements LearningResourceRepositoryInterface
 {
     public function paginatePublishedByOrganization(int $organizationId, array $filters, int $perPage = 20): LengthAwarePaginator
     {
-        return $this->baseOrganizationQuery($organizationId)
+        return $this->baseVisibleQuery($organizationId)
             ->where('is_published', true)
             ->with('uploader:id,name')
             ->when($filters['search'] ?? null, function (Builder $query, string $search) {
@@ -26,15 +26,21 @@ class LearningResourceRepository implements LearningResourceRepositoryInterface
             ->withQueryString();
     }
 
-    public function paginateForManagementByOrganization(int $organizationId, array $filters, int $perPage = 20): LengthAwarePaginator
+    public function paginateForManagementByOrganization(int $organizationId, bool $canManageSystem, array $filters, int $perPage = 20): LengthAwarePaginator
     {
-        return $this->baseOrganizationQuery($organizationId)
-            ->with('uploader:id,name')
+        return LearningResource::query()
+            ->with('uploader:id,name', 'organization:id,name')
+            ->when(! $canManageSystem, function (Builder $query) use ($organizationId) {
+                $this->applyOrganizationScope($query, $organizationId);
+            })
             ->when($filters['search'] ?? null, function (Builder $query, string $search) {
                 $this->applySearchFilter($query, $search);
             })
             ->when($filters['category'] ?? null, function (Builder $query, string $category) {
                 $query->where('category', $category);
+            })
+            ->when($filters['scope'] ?? null, function (Builder $query, string $scope) {
+                $query->where('scope', $scope);
             })
             ->when(array_key_exists('is_published', $filters), function (Builder $query) use ($filters) {
                 $query->where('is_published', $filters['is_published']);
@@ -46,7 +52,7 @@ class LearningResourceRepository implements LearningResourceRepositoryInterface
 
     public function getPublishedCategoriesByOrganization(int $organizationId): Collection
     {
-        return $this->baseOrganizationQuery($organizationId)
+        return $this->baseVisibleQuery($organizationId)
             ->where('is_published', true)
             ->distinct()
             ->pluck('category')
@@ -57,7 +63,7 @@ class LearningResourceRepository implements LearningResourceRepositoryInterface
 
     public function getCategoriesByOrganization(int $organizationId): Collection
     {
-        return $this->baseOrganizationQuery($organizationId)
+        return $this->baseVisibleQuery($organizationId)
             ->distinct()
             ->pluck('category')
             ->filter()
@@ -85,9 +91,23 @@ class LearningResourceRepository implements LearningResourceRepositoryInterface
         $resource->incrementDownloadCount();
     }
 
-    private function baseOrganizationQuery(int $organizationId): Builder
+    private function baseVisibleQuery(int $organizationId): Builder
     {
-        return LearningResource::query()->where('organization_id', $organizationId);
+        return LearningResource::query()
+            ->with('organization:id,name')
+            ->where(function (Builder $query) use ($organizationId) {
+                $this->applyOrganizationScope($query, $organizationId);
+            });
+    }
+
+    private function applyOrganizationScope(Builder $query, int $organizationId): void
+    {
+        $query->where(function (Builder $nestedQuery) use ($organizationId) {
+            $nestedQuery->where(function (Builder $organizationQuery) use ($organizationId) {
+                $organizationQuery->where('scope', 'organization')
+                    ->where('organization_id', $organizationId);
+            })->orWhere('scope', 'system');
+        });
     }
 
     private function applySearchFilter(Builder $query, string $search): void

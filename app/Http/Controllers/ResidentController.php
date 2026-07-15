@@ -128,7 +128,8 @@ class ResidentController extends Controller
             $this->activityLogService->logResidentUpdated(
                 $resident,
                 $logData['attributes'],
-                $logData['oldValues']
+                $logData['oldValues'],
+                ! empty($updateResult['organizationChanged']) ? 'Resident transferred' : 'Resident updated'
             );
         }
 

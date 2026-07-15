@@ -29,6 +29,9 @@ class AnnouncementRepository implements AnnouncementRepositoryInterface
     {
         return Announcement::query()
             ->with('creator:id,name', 'organization:id,name')
+            ->when($canCreateSystem, function (Builder $query) use ($organizationId) {
+                $query->visibleTo($organizationId);
+            })
             ->when(! $canCreateSystem, function (Builder $query) use ($organizationId) {
                 $query->where('organization_id', $organizationId);
             })

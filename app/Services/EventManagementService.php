@@ -11,6 +11,7 @@ use App\Repositories\Contracts\EventRepositoryInterface;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Spatie\Permission\Exceptions\PermissionDoesNotExist;
 
 class EventManagementService
 {
@@ -26,13 +27,17 @@ class EventManagementService
         return $this->createEventAction->execute([
             ...$validated,
             'image_path' => $this->storeImage($image),
-            'organization_id' => $user->currentOrganization?->id,
+            'organization_id' => $validated['scope'] === 'organization' ? $user->currentOrganization?->id : null,
             'created_by' => $user->id,
         ]);
     }
 
-    public function update(Event $event, array $validated, ?UploadedFile $image = null): array
+    public function update(User $user, Event $event, array $validated, ?UploadedFile $image = null): array
     {
+        $validated['organization_id'] = ($validated['scope'] ?? $event->scope) === 'organization'
+            ? $user->currentOrganization?->id
+            : null;
+
         if ($image) {
             if ($event->image_path && Storage::disk('public')->exists($event->image_path)) {
                 Storage::disk('public')->delete($event->image_path);
@@ -53,6 +58,16 @@ class EventManagementService
     public function hasConfirmedRegistrations(Event $event): bool
     {
         return $this->eventRepository->hasConfirmedRegistrations($event);
+    }
+
+    public function canCreateSystem(User $user): bool
+    {
+        try {
+            return $user->hasPermissionTo('create-system-announcements')
+                || $user->hasAnyRole(['System Admin', 'BOP']);
+        } catch (PermissionDoesNotExist) {
+            return $user->hasAnyRole(['System Admin', 'BOP']);
+        }
     }
 
     private function storeImage(?UploadedFile $image): ?string

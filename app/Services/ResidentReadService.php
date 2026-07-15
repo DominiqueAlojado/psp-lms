@@ -24,7 +24,7 @@ class ResidentReadService
 
     public function showOrganizationsPayload(Resident $resident): array
     {
-        $resident->load(['organization', 'activeMemberships.organization', 'user.organizations']);
+        $resident->load(['organization', 'memberships.organization', 'activeMemberships.organization', 'user.organizations']);
 
         $currentOrganizations = $resident->activeMemberships
             ->map(fn ($membership) => [
@@ -74,9 +74,29 @@ class ResidentReadService
                 'type' => $organization->type,
             ]);
 
+        $organizationHistory = $resident->memberships
+            ->sortByDesc(fn ($membership) => $membership->started_at?->timestamp ?? 0)
+            ->values()
+            ->map(fn ($membership) => [
+                'id' => $membership->id,
+                'organization' => [
+                    'id' => $membership->organization->id,
+                    'name' => $membership->organization->name,
+                    'slug' => $membership->organization->slug,
+                    'type' => $membership->organization->type,
+                ],
+                'started_at' => optional($membership->started_at)?->toISOString(),
+                'ended_at' => optional($membership->ended_at)?->toISOString(),
+                'is_primary' => $membership->is_primary,
+                'is_active' => $membership->ended_at === null,
+                'year_level' => $membership->year_level,
+                'status' => $membership->status,
+            ]);
+
         return [
             'currentOrganizations' => $currentOrganizations,
             'availableOrganizations' => $availableOrganizations,
+            'organizationHistory' => $organizationHistory,
         ];
     }
 

@@ -40,6 +40,7 @@ const breadcrumbs: BreadcrumbItem[] = [
 interface Event {
     id: number;
     title: string;
+    scope: 'organization' | 'system';
     description: string | null;
     event_category: string;
     event_type: string;
@@ -64,10 +65,16 @@ interface PageProps {
     filters: {
         status?: string;
         search?: string;
+        scope?: string;
     };
+    canCreateSystem?: boolean;
 }
 
-export default function ManageEvents({ events, filters }: PageProps) {
+export default function ManageEvents({
+    events,
+    filters,
+    canCreateSystem = false,
+}: PageProps) {
     const [searchQuery, setSearchQuery] = useState(filters.search || '');
     const [createSheetOpen, setCreateSheetOpen] = useState(false);
     const [editSheetOpen, setEditSheetOpen] = useState(false);
@@ -88,10 +95,18 @@ export default function ManageEvents({ events, filters }: PageProps) {
         );
     };
 
-    const handleFilterChange = (value: string) => {
+    const handleStatusChange = (value: string) => {
         router.get(
             '/events/manage',
             { ...filters, status: value },
+            { preserveState: true, preserveScroll: true },
+        );
+    };
+
+    const handleScopeChange = (value: string) => {
+        router.get(
+            '/events/manage',
+            { ...filters, scope: value },
             { preserveState: true, preserveScroll: true },
         );
     };
@@ -173,7 +188,7 @@ export default function ManageEvents({ events, filters }: PageProps) {
                             </div>
                             <Select
                                 value={filters.status}
-                                onValueChange={handleFilterChange}
+                                onValueChange={handleStatusChange}
                             >
                                 <SelectTrigger className="w-full md:w-[180px]">
                                     <SelectValue placeholder="All Status" />
@@ -185,6 +200,24 @@ export default function ManageEvents({ events, filters }: PageProps) {
                                     <SelectItem value="draft">Draft</SelectItem>
                                 </SelectContent>
                             </Select>
+                            {canCreateSystem && (
+                                <Select
+                                    value={filters.scope}
+                                    onValueChange={handleScopeChange}
+                                >
+                                    <SelectTrigger className="w-full md:w-[220px]">
+                                        <SelectValue placeholder="All Scopes" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="organization">
+                                            Organization Only
+                                        </SelectItem>
+                                        <SelectItem value="system">
+                                            All Organizations
+                                        </SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            )}
                             <Button type="submit">Search</Button>
                         </form>
                     </CardContent>
@@ -234,6 +267,11 @@ export default function ManageEvents({ events, filters }: PageProps) {
                                                     {event.is_published
                                                         ? 'Published'
                                                         : 'Draft'}
+                                                </Badge>
+                                                <Badge variant="outline">
+                                                    {event.scope === 'system'
+                                                        ? 'All Organizations'
+                                                        : 'Organization Only'}
                                                 </Badge>
                                             </div>
                                             <h3 className="font-semibold">

@@ -12,6 +12,7 @@ use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 use Illuminate\Support\Facades\Hash;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
+use Spatie\Activitylog\Models\Activity;
 use Tests\TestCase;
 
 class ResidentManagementFlowTest extends TestCase
@@ -242,5 +243,17 @@ class ResidentManagementFlowTest extends TestCase
             'is_primary' => true,
             'ended_at' => null,
         ]);
+
+        $activity = Activity::query()
+            ->where('log_name', 'residents')
+            ->where('subject_type', Resident::class)
+            ->where('subject_id', $resident->id)
+            ->latest()
+            ->first();
+
+        $this->assertNotNull($activity);
+        $this->assertSame('Resident transferred', $activity->description);
+        $this->assertSame('Alpha Chapter', $activity->properties['old']['organization_name']);
+        $this->assertSame('Gamma Chapter', $activity->properties['attributes']['organization_name']);
     }
 }

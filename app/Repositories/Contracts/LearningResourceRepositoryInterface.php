@@ -10,7 +10,7 @@ interface LearningResourceRepositoryInterface
 {
     public function paginatePublishedByOrganization(int $organizationId, array $filters, int $perPage = 20): LengthAwarePaginator;
 
-    public function paginateForManagementByOrganization(int $organizationId, array $filters, int $perPage = 20): LengthAwarePaginator;
+    public function paginateForManagementByOrganization(int $organizationId, bool $canManageSystem, array $filters, int $perPage = 20): LengthAwarePaginator;
 
     public function getPublishedCategoriesByOrganization(int $organizationId): Collection;
 

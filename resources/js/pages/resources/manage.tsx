@@ -71,6 +71,7 @@ interface Resource {
     title: string;
     description: string | null;
     category: string;
+    scope: 'organization' | 'system';
     file_name: string;
     file_type: string;
     file_size_formatted: string;
@@ -78,6 +79,7 @@ interface Resource {
     target_year_levels: string[] | null;
     is_published: boolean;
     download_count: number;
+    organization_name?: string | null;
     uploaded_by: string;
     created_at: string;
     updated_at: string;
@@ -98,11 +100,17 @@ interface PageProps {
         category?: string;
         is_published?: boolean;
     };
+    canCreateSystem?: boolean;
     [key: string]: unknown;
 }
 
 export default function ManageResources() {
-    const { resources, categories, filters } = usePage<PageProps>().props;
+    const {
+        resources,
+        categories,
+        filters,
+        canCreateSystem = false,
+    } = usePage<PageProps>().props;
     const [search, setSearch] = useState(filters.search || '');
     const [category, setCategory] = useState(filters.category || '');
     const [showUploadDialog, setShowUploadDialog] = useState(false);
@@ -121,6 +129,9 @@ export default function ManageResources() {
     const [uploadTitle, setUploadTitle] = useState('');
     const [uploadDescription, setUploadDescription] = useState('');
     const [uploadCategory, setUploadCategory] = useState('');
+    const [uploadScope, setUploadScope] = useState<'organization' | 'system'>(
+        'organization',
+    );
     const [uploadYearLevels, setUploadYearLevels] = useState<string[]>([]);
     const [uploadFile, setUploadFile] = useState<File | null>(null);
     const [uploading, setUploading] = useState(false);
@@ -129,6 +140,9 @@ export default function ManageResources() {
     const [editTitle, setEditTitle] = useState('');
     const [editDescription, setEditDescription] = useState('');
     const [editCategory, setEditCategory] = useState('');
+    const [editScope, setEditScope] = useState<'organization' | 'system'>(
+        'organization',
+    );
     const [editYearLevels, setEditYearLevels] = useState<string[]>([]);
     const [editIsPublished, setEditIsPublished] = useState(true);
     const [updating, setUpdating] = useState(false);
@@ -151,6 +165,7 @@ export default function ManageResources() {
         setUploadTitle('');
         setUploadDescription('');
         setUploadCategory('');
+        setUploadScope('organization');
         setUploadYearLevels([]);
         setUploadFile(null);
         setShowUploadDialog(true);
@@ -186,6 +201,7 @@ export default function ManageResources() {
         formData.append('title', uploadTitle);
         formData.append('description', uploadDescription);
         formData.append('category', uploadCategory);
+        formData.append('scope', uploadScope);
         formData.append('file', uploadFile);
         formData.append('is_published', '1');
 
@@ -228,6 +244,7 @@ export default function ManageResources() {
                 setUploadTitle('');
                 setUploadDescription('');
                 setUploadCategory('');
+                setUploadScope('organization');
                 setUploadYearLevels([]);
                 setUploadFile(null);
             },
@@ -254,6 +271,7 @@ export default function ManageResources() {
         setEditTitle(resource.title);
         setEditDescription(resource.description || '');
         setEditCategory(resource.category);
+        setEditScope(resource.scope);
         setEditYearLevels(resource.target_year_levels || []);
         setEditIsPublished(resource.is_published);
         setShowEditDialog(true);
@@ -275,6 +293,7 @@ export default function ManageResources() {
                 title: editTitle,
                 description: editDescription,
                 category: editCategory,
+                scope: editScope,
                 target_year_levels:
                     editYearLevels.length > 0 ? editYearLevels : null,
                 is_published: editIsPublished,
@@ -423,6 +442,12 @@ export default function ManageResources() {
                                                 </h3>
                                                 <Badge variant="secondary">
                                                     {resource.category}
+                                                </Badge>
+                                                <Badge variant="outline">
+                                                    {resource.scope ===
+                                                    'system'
+                                                        ? 'All Organizations'
+                                                        : 'Organization Only'}
                                                 </Badge>
                                                 {!resource.is_published && (
                                                     <Badge variant="outline">
@@ -590,6 +615,40 @@ export default function ManageResources() {
                                 </div>
 
                                 <div className="space-y-2">
+                                    <Label htmlFor="upload-scope">
+                                        Visibility Scope{' '}
+                                        <span className="text-destructive">
+                                            *
+                                        </span>
+                                    </Label>
+                                    <Select
+                                        value={uploadScope}
+                                        onValueChange={(value) =>
+                                            setUploadScope(
+                                                value as
+                                                    | 'organization'
+                                                    | 'system',
+                                            )
+                                        }
+                                        disabled={!canCreateSystem}
+                                    >
+                                        <SelectTrigger id="upload-scope">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="organization">
+                                                My Organization Only
+                                            </SelectItem>
+                                            {canCreateSystem && (
+                                                <SelectItem value="system">
+                                                    All Organizations
+                                                </SelectItem>
+                                            )}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
+                                <div className="space-y-2">
                                     <Label htmlFor="file">
                                         File{' '}
                                         <span className="text-destructive">
@@ -745,6 +804,40 @@ export default function ManageResources() {
                                                             {cat}
                                                         </SelectItem>
                                                     ),
+                                                )}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <Label htmlFor="edit-scope">
+                                            Visibility Scope{' '}
+                                            <span className="text-destructive">
+                                                *
+                                            </span>
+                                        </Label>
+                                        <Select
+                                            value={editScope}
+                                            onValueChange={(value) =>
+                                                setEditScope(
+                                                    value as
+                                                        | 'organization'
+                                                        | 'system',
+                                                )
+                                            }
+                                            disabled={!canCreateSystem}
+                                        >
+                                            <SelectTrigger id="edit-scope">
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="organization">
+                                                    My Organization Only
+                                                </SelectItem>
+                                                {canCreateSystem && (
+                                                    <SelectItem value="system">
+                                                        All Organizations
+                                                    </SelectItem>
                                                 )}
                                             </SelectContent>
                                         </Select>

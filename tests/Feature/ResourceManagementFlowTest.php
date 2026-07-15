@@ -51,6 +51,7 @@ class ResourceManagementFlowTest extends TestCase
                 'title' => 'Study Guide',
                 'description' => 'Resource description',
                 'category' => 'Guides',
+                'scope' => 'organization',
                 'target_year_levels' => ['First Year'],
                 'is_published' => true,
                 'file' => $file,
@@ -102,6 +103,7 @@ class ResourceManagementFlowTest extends TestCase
                 'title' => 'Blocked Guide',
                 'description' => 'Resource description',
                 'category' => 'Guides',
+                'scope' => 'organization',
                 'target_year_levels' => ['First Year'],
                 'is_published' => true,
                 'file' => $file,
@@ -159,6 +161,7 @@ class ResourceManagementFlowTest extends TestCase
                 'title' => 'Updated Title',
                 'description' => 'Updated description',
                 'category' => 'Videos',
+                'scope' => 'organization',
                 'target_year_levels' => ['Second Year'],
                 'is_published' => false,
             ]);
@@ -173,5 +176,53 @@ class ResourceManagementFlowTest extends TestCase
         $this->assertSame('Videos', $resource->category);
         $this->assertSame(['Second Year'], $resource->target_year_levels);
         $this->assertFalse($resource->is_published);
+    }
+
+    public function test_non_system_user_cannot_create_system_resource(): void
+    {
+        $this->withoutMiddleware([
+            ValidateCsrfToken::class,
+            SetOrganizationFromUrl::class,
+        ]);
+
+        Storage::fake('public');
+        Permission::create(['name' => 'upload-materials', 'guard_name' => 'web']);
+        Permission::create(['name' => 'create-system-announcements', 'guard_name' => 'web']);
+
+        $organization = Organization::create([
+            'name' => 'Gamma Chapter',
+            'slug' => 'gamma-chapter',
+            'type' => 'chapter',
+            'is_active' => true,
+        ]);
+
+        $user = User::factory()->create([
+            'current_organization_id' => $organization->id,
+        ]);
+        $user->organizations()->attach($organization->id, [
+            'joined_at' => now(),
+            'is_active' => true,
+        ]);
+        $user->givePermissionTo('upload-materials');
+
+        $file = UploadedFile::fake()->create('global-guide.pdf', 100, 'application/pdf');
+
+        $response = $this->actingAs($user)
+            ->from(route('resources.manage'))
+            ->post(route('resources.store'), [
+                'title' => 'Global Study Guide',
+                'description' => 'Resource description',
+                'category' => 'Guides',
+                'scope' => 'system',
+                'is_published' => true,
+                'file' => $file,
+            ]);
+
+        $response->assertSessionHasErrors('scope')
+            ->assertRedirect(route('resources.manage'));
+
+        $this->assertDatabaseMissing('learning_resources', [
+            'title' => 'Global Study Guide',
+        ]);
     }
 }

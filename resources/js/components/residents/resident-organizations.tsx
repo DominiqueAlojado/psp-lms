@@ -32,6 +32,11 @@ interface Organization {
         joined_at: string;
         is_active: boolean;
     };
+    membership?: {
+        started_at: string | null;
+        ended_at: string | null;
+        is_primary: boolean;
+    };
 }
 
 interface Props {
@@ -129,17 +134,16 @@ export function ResidentOrganizations({
     return (
         <Card>
             <CardHeader>
-                <CardTitle>Associated Institutions</CardTitle>
+                <CardTitle>Current Organization Access</CardTitle>
                 <CardDescription>
-                    Manage the institutions this resident is associated with for
-                    training and rotations
+                    Manage the active organizations this resident can currently access
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
                 {/* Current Organizations */}
                 <div className="space-y-3">
                     <Label>
-                        Current Institutions ({currentOrganizations.length})
+                        Active Organizations ({currentOrganizations.length})
                     </Label>
                     {currentOrganizations.length === 0 ? (
                         <p className="text-sm text-muted-foreground">
@@ -159,7 +163,7 @@ export function ResidentOrganizations({
                                         <span>{org.name}</span>
                                         {isHome && (
                                             <span className="ml-1 text-xs opacity-70">
-                                                (Home)
+                                                (Current home)
                                             </span>
                                         )}
                                         {!isHome && (
@@ -185,7 +189,7 @@ export function ResidentOrganizations({
                 {/* Add New Organization */}
                 {availableOrganizations.length > 0 && (
                     <div className="space-y-3 border-t pt-4">
-                        <Label>Add Institution</Label>
+                        <Label>Add Active Organization</Label>
                         <div className="flex gap-2">
                             <select
                                 value={selectedOrganizationId || ''}

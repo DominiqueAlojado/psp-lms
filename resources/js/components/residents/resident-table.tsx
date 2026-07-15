@@ -17,7 +17,7 @@ import {
 } from '@/components/ui/tooltip';
 import { usePermissions } from '@/hooks/use-permissions';
 import { router } from '@inertiajs/react';
-import { Building2, Edit, Eye, FileText, Trash2 } from 'lucide-react';
+import { ArrowRightLeft, Building2, Edit, Eye, FileText, Trash2 } from 'lucide-react';
 
 interface Organization {
     id: number;
@@ -63,6 +63,7 @@ interface Props {
     filters: Record<string, any>;
     onView: (resident: Resident) => void;
     onEdit: (resident: Resident) => void;
+    onTransfer: (resident: Resident) => void;
     onDelete: (resident: Resident) => void;
     onViewLogs: (resident: Resident) => void;
 }
@@ -72,6 +73,7 @@ export function ResidentTable({
     filters,
     onView,
     onEdit,
+    onTransfer,
     onDelete,
     onViewLogs,
 }: Props) {
@@ -169,6 +171,33 @@ export function ResidentTable({
                                         </TableCell>
                                         <TableCell className="py-4">
                                             <div className="flex gap-2">
+                                                <TooltipProvider>
+                                                    <Tooltip>
+                                                        <TooltipTrigger asChild>
+                                                            <span className="inline-block">
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    onClick={() =>
+                                                                        onTransfer(
+                                                                            resident,
+                                                                        )
+                                                                    }
+                                                                    disabled={
+                                                                        !hasPermission(
+                                                                            'edit-residents',
+                                                                        )
+                                                                    }
+                                                                >
+                                                                    <ArrowRightLeft className="h-4 w-4" />
+                                                                </Button>
+                                                            </span>
+                                                        </TooltipTrigger>
+                                                        <TooltipContent>
+                                                            <p>Transfer resident</p>
+                                                        </TooltipContent>
+                                                    </Tooltip>
+                                                </TooltipProvider>
                                                 <TooltipProvider>
                                                     <Tooltip>
                                                         <TooltipTrigger asChild>

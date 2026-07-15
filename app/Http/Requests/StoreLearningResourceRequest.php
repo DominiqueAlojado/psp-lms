@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 use Spatie\Permission\Exceptions\PermissionDoesNotExist;
 
 class StoreLearningResourceRequest extends FormRequest
@@ -22,6 +23,7 @@ class StoreLearningResourceRequest extends FormRequest
             'title' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
             'category' => ['required', 'string', 'max:255'],
+            'scope' => ['required', Rule::in(['organization', 'system'])],
             'target_year_levels' => ['nullable', 'array'],
             'target_year_levels.*' => ['string'],
             'is_published' => ['nullable', 'boolean'],

@@ -21,6 +21,7 @@ class ResourceActivityLogService
                     'title' => $resource->title,
                     'description' => substr(strip_tags($resource->description ?? ''), 0, 100),
                     'category' => $resource->category,
+                    'scope' => $resource->scope,
                     'file_name' => $resource->file_name,
                     'file_type' => $resource->file_type,
                     'file_size' => $resource->file_size,
@@ -99,6 +100,12 @@ class ResourceActivityLogService
         if (isset($validated['category']) && $validated['category'] !== $oldCategory) {
             $attributes['category'] = $validated['category'];
             $old['category'] = $oldCategory;
+        }
+
+        $oldScope = $oldValues['scope'] ?? $resource->scope;
+        if (isset($validated['scope']) && $validated['scope'] !== $oldScope) {
+            $attributes['scope'] = $validated['scope'];
+            $old['scope'] = $oldScope;
         }
 
         // Target Year Levels

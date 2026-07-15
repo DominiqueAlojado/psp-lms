@@ -19,6 +19,7 @@ class LearningResource extends Model
         'title',
         'description',
         'category',
+        'scope',
         'file_path',
         'file_name',
         'file_type',
@@ -65,5 +66,10 @@ class LearningResource extends Model
     public function incrementDownloadCount(): void
     {
         $this->increment('download_count');
+    }
+
+    public function isSystemWide(): bool
+    {
+        return $this->scope === 'system';
     }
 }

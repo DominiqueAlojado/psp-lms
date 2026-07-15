@@ -16,6 +16,7 @@ class Event extends Model
 
     protected $fillable = [
         'organization_id',
+        'scope',
         'title',
         'slug',
         'description',
@@ -156,8 +157,15 @@ class Event extends Model
     public function scopeForOrganization($query, int $organizationId)
     {
         return $query->where(function ($q) use ($organizationId) {
-            $q->where('organization_id', $organizationId)
-                ->orWhereNull('organization_id'); // System-wide events
+            $q->where(function ($subQuery) use ($organizationId) {
+                $subQuery->where('scope', 'organization')
+                    ->where('organization_id', $organizationId);
+            })->orWhere('scope', 'system');
         });
+    }
+
+    public function isSystemWide(): bool
+    {
+        return $this->scope === 'system';
     }
 }

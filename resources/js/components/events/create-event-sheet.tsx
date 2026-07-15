@@ -17,8 +17,13 @@ interface Props {
 }
 
 export function CreateEventSheet({ open, onClose }: Props) {
+    const { errors: serverErrors, canCreateSystem } = usePage<{
+        errors: Record<string, string>;
+        canCreateSystem?: boolean;
+    }>().props;
     const [data, setData] = useState<{
         title: string;
+        scope: 'organization' | 'system';
         description: string;
         event_category: string;
         event_type: string;
@@ -37,6 +42,7 @@ export function CreateEventSheet({ open, onClose }: Props) {
         image?: File | null;
     }>({
         title: '',
+        scope: 'organization',
         description: '',
         event_category: 'other',
         event_type: 'in-person',
@@ -56,13 +62,11 @@ export function CreateEventSheet({ open, onClose }: Props) {
     });
 
     const [processing, setProcessing] = useState(false);
-    const { errors: serverErrors } = usePage<{
-        errors: Record<string, string>;
-    }>().props;
 
     const handleClose = () => {
         setData({
             title: '',
+            scope: 'organization',
             description: '',
             event_category: 'other',
             event_type: 'in-person',
@@ -137,6 +141,7 @@ export function CreateEventSheet({ open, onClose }: Props) {
                         data={data}
                         setData={setData}
                         errors={serverErrors}
+                        canCreateSystem={canCreateSystem}
                     />
 
                     <div className="flex justify-end gap-3 pt-4">

@@ -10,6 +10,7 @@ use App\Services\ResidentManagementService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Spatie\Permission\Models\Role;
+use Spatie\Activitylog\Models\Activity;
 use Tests\TestCase;
 
 class ResidentManagementServiceTest extends TestCase
@@ -204,5 +205,53 @@ class ResidentManagementServiceTest extends TestCase
         $this->assertNull($newMembership->ended_at);
         $this->assertTrue($newMembership->is_primary);
         $this->assertTrue($user->organizations()->where('organizations.id', $newOrganization->id)->exists());
+    }
+
+    public function test_transfer_log_data_contains_organization_names(): void
+    {
+        $organizationA = Organization::create([
+            'name' => 'Alpha Chapter',
+            'slug' => 'alpha-chapter',
+            'type' => 'chapter',
+            'is_active' => true,
+        ]);
+        $organizationB = Organization::create([
+            'name' => 'Beta Chapter',
+            'slug' => 'beta-chapter',
+            'type' => 'chapter',
+            'is_active' => true,
+        ]);
+
+        $resident = Resident::factory()->create([
+            'organization_id' => $organizationA->id,
+        ]);
+
+        $logData = app(\App\Services\ActivityLog\ResidentActivityLogService::class)->buildUpdateLogData(
+            $resident,
+            [
+                'organization_id' => $organizationB->id,
+                'first_name' => $resident->first_name,
+                'middle_name' => $resident->middle_name,
+                'last_name' => $resident->last_name,
+                'email' => $resident->email,
+                'contact_number' => $resident->contact_number,
+                'course' => $resident->course,
+                'year_level' => $resident->year_level,
+                'status' => $resident->status,
+            ],
+            $resident->first_name,
+            $resident->middle_name,
+            $resident->last_name,
+            $resident->email,
+            $resident->contact_number,
+            $resident->course,
+            $resident->year_level,
+            $resident->status,
+            $organizationA->id,
+            false,
+        );
+
+        $this->assertSame('Beta Chapter', $logData['attributes']['organization_name']);
+        $this->assertSame('Alpha Chapter', $logData['oldValues']['organization_name']);
     }
 }

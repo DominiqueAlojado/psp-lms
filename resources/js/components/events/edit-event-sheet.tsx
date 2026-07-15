@@ -14,6 +14,7 @@ import { EventFormFields } from './event-form-fields';
 interface Event {
     id: number;
     title: string;
+    scope: 'organization' | 'system';
     description: string | null;
     event_category: string;
     event_type: string;
@@ -39,8 +40,13 @@ interface Props {
 }
 
 export function EditEventSheet({ open, onClose, event }: Props) {
+    const { errors: serverErrors, canCreateSystem } = usePage<{
+        errors: Record<string, string>;
+        canCreateSystem?: boolean;
+    }>().props;
     const [data, setData] = useState<{
         title: string;
+        scope: 'organization' | 'system';
         description: string;
         event_category: string;
         event_type: string;
@@ -60,6 +66,7 @@ export function EditEventSheet({ open, onClose, event }: Props) {
         existing_image?: string | null;
     }>({
         title: '',
+        scope: 'organization',
         description: '',
         event_category: 'other',
         event_type: 'in-person',
@@ -80,14 +87,12 @@ export function EditEventSheet({ open, onClose, event }: Props) {
     });
 
     const [processing, setProcessing] = useState(false);
-    const { errors: serverErrors } = usePage<{
-        errors: Record<string, string>;
-    }>().props;
 
     useEffect(() => {
         if (event) {
             setData({
                 title: event.title || '',
+                scope: event.scope || 'organization',
                 description: event.description || '',
                 event_category: event.event_category || 'other',
                 event_type: event.event_type || 'in-person',
@@ -182,6 +187,7 @@ export function EditEventSheet({ open, onClose, event }: Props) {
                         data={data}
                         setData={setData}
                         errors={serverErrors}
+                        canCreateSystem={canCreateSystem}
                     />
 
                     <div className="flex justify-end gap-3 pt-4">

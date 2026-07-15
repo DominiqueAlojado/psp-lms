@@ -19,6 +19,7 @@ class EventActivityLogService
             ->withProperties([
                 'attributes' => $attributes ?: [
                     'title' => $event->title,
+                    'scope' => $event->scope,
                     'description' => $event->description ? substr(strip_tags($event->description), 0, 100) : null,
                     'event_category' => $event->event_category,
                     'event_type' => $event->event_type,
@@ -103,6 +104,11 @@ class EventActivityLogService
             $newDesc = $validated['description'] ?? '';
             $attributes['description'] = substr(strip_tags($newDesc), 0, 100);
             $old['description'] = substr(strip_tags($oldDesc), 0, 100);
+        }
+
+        if (isset($validated['scope']) && $validated['scope'] !== ($oldValues['scope'] ?? $event->scope)) {
+            $attributes['scope'] = $validated['scope'];
+            $old['scope'] = $oldValues['scope'] ?? $event->scope;
         }
 
         // Event Category

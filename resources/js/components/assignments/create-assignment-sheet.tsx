@@ -160,7 +160,7 @@ export function CreateAssignmentSheet({ open, onClose }: Props) {
             <SheetContent className="overflow-y-auto p-0 sm:max-w-[700px]">
                 <div className="p-4">
                     <SheetHeader className="pb-6 text-left">
-                        <SheetTitle>Create Assignment1</SheetTitle>
+                        <SheetTitle>Create Assignment</SheetTitle>
                         <SheetDescription>
                             Create a new assignment for residents
                         </SheetDescription>

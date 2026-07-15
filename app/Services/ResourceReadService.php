@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\User;
 use App\Repositories\Contracts\LearningResourceRepositoryInterface;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Spatie\Permission\Exceptions\PermissionDoesNotExist;
 
 class ResourceReadService
 {
@@ -22,9 +23,17 @@ class ResourceReadService
 
     public function managePayload(User $user, array $filters): array
     {
+        try {
+            $canCreateSystem = $user->hasPermissionTo('create-system-announcements')
+                || $user->hasAnyRole(['System Admin', 'BOP']);
+        } catch (PermissionDoesNotExist) {
+            $canCreateSystem = $user->hasAnyRole(['System Admin', 'BOP']);
+        }
+
         return [
-            'resources' => $this->manageableResources($user->current_organization_id, $filters),
+            'resources' => $this->manageableResources($user->current_organization_id, $canCreateSystem, $filters),
             'categories' => $this->learningResourceRepository->getCategoriesByOrganization($user->current_organization_id),
+            'canCreateSystem' => $canCreateSystem,
         ];
     }
 
@@ -37,6 +46,7 @@ class ResourceReadService
                 'title' => $resource->title,
                 'description' => $resource->description,
                 'category' => $resource->category,
+                'scope' => $resource->scope,
                 'file_name' => $resource->file_name,
                 'file_type' => $resource->file_type,
                 'file_size_formatted' => $resource->file_size_formatted,
@@ -47,15 +57,16 @@ class ResourceReadService
             ]);
     }
 
-    private function manageableResources(int $organizationId, array $filters): LengthAwarePaginator
+    private function manageableResources(int $organizationId, bool $canCreateSystem, array $filters): LengthAwarePaginator
     {
         return $this->learningResourceRepository
-            ->paginateForManagementByOrganization($organizationId, $filters)
+            ->paginateForManagementByOrganization($organizationId, $canCreateSystem, $filters)
             ->through(fn ($resource) => [
                 'id' => $resource->id,
                 'title' => $resource->title,
                 'description' => $resource->description,
                 'category' => $resource->category,
+                'scope' => $resource->scope,
                 'file_name' => $resource->file_name,
                 'file_type' => $resource->file_type,
                 'file_size_formatted' => $resource->file_size_formatted,
@@ -63,6 +74,7 @@ class ResourceReadService
                 'target_year_levels' => $resource->target_year_levels,
                 'is_published' => $resource->is_published,
                 'download_count' => $resource->download_count,
+                'organization_name' => $resource->organization?->name,
                 'uploaded_by' => $resource->uploader->name,
                 'created_at' => $resource->created_at->format('M d, Y'),
                 'updated_at' => $resource->updated_at->diffForHumans(),

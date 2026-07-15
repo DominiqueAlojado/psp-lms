@@ -8,7 +8,7 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
 interface EventRepositoryInterface
 {
-    public function paginatePublished(array $filters, int $perPage = 12): LengthAwarePaginator;
+    public function paginatePublished(int $organizationId, array $filters, int $perPage = 12): LengthAwarePaginator;
 
     public function attachUserRegistrations(LengthAwarePaginator $events, User $user): LengthAwarePaginator;
 

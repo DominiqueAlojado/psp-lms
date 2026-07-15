@@ -10,11 +10,12 @@ use Illuminate\Database\Eloquent\Builder;
 
 class EventRepository implements EventRepositoryInterface
 {
-    public function paginatePublished(array $filters, int $perPage = 12): LengthAwarePaginator
+    public function paginatePublished(int $organizationId, array $filters, int $perPage = 12): LengthAwarePaginator
     {
         return Event::query()
             ->with(['creator:id,name', 'organization:id,name'])
             ->published()
+            ->forOrganization($organizationId)
             ->when($filters['category'] ?? null, function (Builder $query, string $category) {
                 $query->where('event_category', $category);
             })
@@ -74,7 +75,15 @@ class EventRepository implements EventRepositoryInterface
             ->with(['creator:id,name', 'organization:id,name'])
             ->withCount('registrations')
             ->when(! $canManageAll, function (Builder $query) use ($organizationId) {
-                $query->where('organization_id', $organizationId);
+                $query->where(function (Builder $nestedQuery) use ($organizationId) {
+                    $nestedQuery->where(function (Builder $organizationQuery) use ($organizationId) {
+                        $organizationQuery->where('scope', 'organization')
+                            ->where('organization_id', $organizationId);
+                    })->orWhere('scope', 'system');
+                });
+            })
+            ->when($filters['scope'] ?? null, function (Builder $query, string $scope) {
+                $query->where('scope', $scope);
             })
             ->when(($filters['status'] ?? null) === 'published', function (Builder $query) {
                 $query->where('is_published', true);

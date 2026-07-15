@@ -33,6 +33,7 @@ class EventManagementServiceTest extends TestCase
 
         $event = $service->create($user, [
             'title' => 'Workshop',
+            'scope' => 'organization',
             'description' => 'Desc',
             'event_category' => 'workshop',
             'event_type' => 'virtual',
@@ -48,8 +49,9 @@ class EventManagementServiceTest extends TestCase
         $this->assertSame($organization->id, $event->organization_id);
         Storage::disk('public')->assertExists($event->image_path);
 
-        $service->update($event, [
+        $service->update($user, $event, [
             'title' => 'Updated Workshop',
+            'scope' => 'organization',
             'description' => 'Updated',
             'event_category' => 'seminar',
             'event_type' => 'hybrid',

@@ -57,6 +57,7 @@ class ResourceController extends Controller
             'resources' => $payload['resources'],
             'categories' => $payload['categories'],
             'filters' => $request->only(['search', 'category', 'is_published']),
+            'canCreateSystem' => $payload['canCreateSystem'],
         ]);
     }
 
@@ -65,8 +66,10 @@ class ResourceController extends Controller
      */
     public function store(StoreLearningResourceRequest $request): RedirectResponse
     {
+        $user = $request->user();
+
         Log::info('Resource upload attempt', [
-            'user' => $request->user()->email,
+            'user' => $user->email,
             'has_file' => $request->hasFile('file'),
             'all_data' => $request->except(['file']),
         ]);
@@ -79,19 +82,17 @@ class ResourceController extends Controller
             }
 
             $file = $request->file('file');
+            $canCreateSystem = $this->resourceManagementService->canCreateSystem($user);
+
+            if (($validated['scope'] ?? 'organization') === 'system' && ! $canCreateSystem) {
+                return back()->withErrors(['scope' => 'You do not have permission to publish resources across all organizations.']);
+            }
 
             if (! $file->isValid()) {
                 return back()->withErrors(['file' => 'File upload failed - invalid file']);
             }
 
-            // Store file in public disk under resources folder
-            $path = $file->store('resources', 'public');
-
-            if (! $path) {
-                return back()->withErrors(['file' => 'Failed to store file']);
-            }
-
-            $resource = $this->resourceManagementService->create($request->user(), $validated, $file);
+            $resource = $this->resourceManagementService->create($user, $validated, $file);
 
             // Log resource creation
             $this->activityLogService->logResourceCreated($resource);
@@ -116,24 +117,32 @@ class ResourceController extends Controller
     public function update(UpdateLearningResourceRequest $request, LearningResource $resource): RedirectResponse
     {
         // Verify user has access
-        if (! $this->resourceManagementService->canAccess($request->user(), $resource)) {
+        $user = $request->user();
+
+        if (! $this->resourceManagementService->canManageResource($user, $resource)) {
             abort(403, 'You do not have access to this resource.');
         }
 
         $validated = $request->validated();
+        $canCreateSystem = $this->resourceManagementService->canCreateSystem($user);
+
+        if (($validated['scope'] ?? 'organization') === 'system' && ! $canCreateSystem) {
+            return back()->withErrors(['scope' => 'You do not have permission to publish resources across all organizations.']);
+        }
 
         // Capture old values before update
         $oldValues = [
             'title' => $resource->title,
             'description' => $resource->description,
             'category' => $resource->category,
+            'scope' => $resource->scope,
             'target_year_levels' => $resource->target_year_levels,
             'is_published' => $resource->is_published,
         ];
 
         // Update resource without logging (to avoid duplicate logs)
-        $this->withoutActivityLogging(function () use ($resource, $validated) {
-            $this->resourceManagementService->update($resource, $validated);
+        $this->withoutActivityLogging(function () use ($user, $resource, $validated) {
+            $this->resourceManagementService->update($user, $resource, $validated);
         });
 
         // Build log data and log changes
@@ -151,7 +160,7 @@ class ResourceController extends Controller
     public function destroy(Request $request, LearningResource $resource): RedirectResponse
     {
         // Verify user has access
-        if (! $this->resourceManagementService->canAccess($request->user(), $resource)) {
+        if (! $this->resourceManagementService->canManageResource($request->user(), $resource)) {
             abort(403, 'You do not have access to this resource.');
         }
 
@@ -169,7 +178,7 @@ class ResourceController extends Controller
     public function logs(Request $request, LearningResource $resource): JsonResponse
     {
         // Verify user has access
-        if (! $this->resourceManagementService->canAccess($request->user(), $resource)) {
+        if (! $this->resourceManagementService->canManageResource($request->user(), $resource)) {
             abort(403, 'You do not have access to this resource.');
         }
 

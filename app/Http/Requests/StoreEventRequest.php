@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StoreEventRequest extends FormRequest
 {
@@ -15,6 +16,7 @@ class StoreEventRequest extends FormRequest
     {
         return [
             'title' => ['required', 'string', 'max:255'],
+            'scope' => ['required', Rule::in(['organization', 'system'])],
             'description' => ['nullable', 'string'],
             'event_category' => ['required', 'in:convention,workshop,seminar,cme,conference,symposium,training,other'],
             'event_type' => ['required', 'in:in-person,virtual,hybrid'],
