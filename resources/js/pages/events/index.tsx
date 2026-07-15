@@ -1,4 +1,5 @@
 import HeadingSmall from '@/components/heading-small';
+import { StatCard } from '@/components/stat-card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -125,6 +126,13 @@ export default function EventsIndex({ events, filters }: PageProps) {
     const { hasPermission } = usePermissions();
     const canManage = hasPermission('view-events');
     const [searchQuery, setSearchQuery] = useState(filters.search || '');
+    const freeEventsCount = events.data.filter((event) => event.is_free).length;
+    const registeredCount = events.data.filter(
+        (event) => !!event.user_registration,
+    ).length;
+    const categoryCount = new Set(
+        events.data.map((event) => event.event_category),
+    ).size;
 
     const handleSearch = (e: React.FormEvent) => {
         e.preventDefault();
@@ -161,12 +169,12 @@ export default function EventsIndex({ events, filters }: PageProps) {
             <Head title="Events" />
 
             <div className="flex h-full flex-1 flex-col gap-6 overflow-x-auto rounded-xl p-6">
-                <div className="flex items-start justify-between gap-4">
+                <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
                     <HeadingSmall
                         title="Events & Conventions"
                         description="Browse and register for upcoming events, conventions, and conferences"
                     />
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap gap-2">
                         <Button asChild variant="outline">
                             <Link href="/events/my-registrations">
                                 My Registrations
@@ -183,8 +191,71 @@ export default function EventsIndex({ events, filters }: PageProps) {
                     </div>
                 </div>
 
-                <Card>
-                    <CardContent className="pt-6">
+                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                    <StatCard
+                        title="All Events"
+                        value={events.total}
+                        description="Events matching the current feed"
+                        icon={Calendar}
+                        iconColor="text-primary"
+                    />
+                    <StatCard
+                        title="Registered"
+                        value={registeredCount}
+                        description="Visible events you already joined"
+                        icon={Users}
+                        iconColor="text-primary"
+                    />
+                    <StatCard
+                        title="Free Events"
+                        value={freeEventsCount}
+                        description="No-cost events on this page"
+                        icon={Clock}
+                        iconColor="text-primary"
+                    />
+                    <StatCard
+                        title="Categories"
+                        value={categoryCount}
+                        description="Event types currently represented"
+                        icon={Settings}
+                        iconColor="text-primary"
+                    />
+                </div>
+
+                <Card className="overflow-hidden border-primary/10 bg-[linear-gradient(135deg,rgba(248,244,255,0.98),rgba(255,255,255,0.94))]">
+                    <CardContent className="flex flex-col gap-4 p-6 lg:flex-row lg:items-center lg:justify-between">
+                        <div className="space-y-1">
+                            <p className="text-[0.7rem] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
+                                Event hub
+                            </p>
+                            <h3 className="text-2xl font-semibold tracking-[-0.04em] text-foreground">
+                                Browse upcoming sessions and conventions
+                            </h3>
+                            <p className="text-sm leading-6 text-muted-foreground">
+                                Explore resident events, track registrations, and quickly jump into the sessions that match your schedule.
+                            </p>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                            <Badge variant="secondary">
+                                {events.total} total events
+                            </Badge>
+                            <Badge variant="outline">
+                                {filters.search || filters.category || filters.type || filters.filter ? 'Filtered feed' : 'All events'}
+                            </Badge>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <Card className="border-primary/10 shadow-sm">
+                    <CardContent className="space-y-5 p-5">
+                        <div className="space-y-1">
+                            <p className="text-[0.7rem] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
+                                Filters
+                            </p>
+                            <h3 className="text-lg font-semibold tracking-[-0.02em] text-foreground">
+                                Narrow the event feed
+                            </h3>
+                        </div>
                         <form onSubmit={handleSearch} className="flex flex-col gap-4 md:flex-row">
                             <div className="relative flex-1">
                                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -229,7 +300,10 @@ export default function EventsIndex({ events, filters }: PageProps) {
                                     <SelectItem value="past">Past</SelectItem>
                                 </SelectContent>
                             </Select>
-                            <Button type="submit">
+                            <Button
+                                type="submit"
+                                className="bg-[linear-gradient(135deg,hsl(var(--primary)),hsl(var(--primary))/0.82)] shadow-sm"
+                            >
                                 Search
                             </Button>
                             {(filters.search || filters.category || filters.type || filters.filter) && (
@@ -242,7 +316,7 @@ export default function EventsIndex({ events, filters }: PageProps) {
                 </Card>
 
                 {events.data.length === 0 ? (
-                    <Card>
+                    <Card className="border-primary/10 shadow-sm">
                         <CardContent className="flex flex-col items-center justify-center py-12">
                             <Calendar className="mb-4 h-12 w-12 text-muted-foreground" />
                             <p className="text-lg font-medium">No events found</p>

@@ -1,4 +1,5 @@
 import HeadingSmall from '@/components/heading-small';
+import { StatCard } from '@/components/stat-card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -80,13 +81,21 @@ export default function AnnouncementsIndex() {
             ? text.substring(0, maxLength) + '...'
             : text;
     };
+    const pinnedCount = announcements.data.filter((item) => item.is_pinned).length;
+    const urgentCount = announcements.data.filter(
+        (item) => item.priority === 'urgent',
+    ).length;
+    const totalViews = announcements.data.reduce(
+        (sum, item) => sum + item.views_count,
+        0,
+    );
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Announcements" />
 
             <div className="flex h-full flex-1 flex-col gap-6 overflow-x-auto rounded-xl p-6">
-                <div className="flex items-start justify-between gap-4">
+                <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
                     <HeadingSmall
                         title="Announcements"
                         description="Stay updated with the latest news and updates"
@@ -101,9 +110,64 @@ export default function AnnouncementsIndex() {
                     )}
                 </div>
 
+                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                    <StatCard
+                        title="Announcements"
+                        value={announcements.total}
+                        description="Published updates in this feed"
+                        icon={Megaphone}
+                        iconColor="text-primary"
+                    />
+                    <StatCard
+                        title="Pinned"
+                        value={pinnedCount}
+                        description="Items highlighted for visibility"
+                        icon={Pin}
+                        iconColor="text-primary"
+                    />
+                    <StatCard
+                        title="Urgent"
+                        value={urgentCount}
+                        description="High-priority updates on this page"
+                        icon={AlertCircle}
+                        iconColor="text-primary"
+                    />
+                    <StatCard
+                        title="Views"
+                        value={totalViews}
+                        description="Combined views for visible items"
+                        icon={Eye}
+                        iconColor="text-primary"
+                    />
+                </div>
+
+                <Card className="overflow-hidden border-primary/10 bg-[linear-gradient(135deg,rgba(248,244,255,0.98),rgba(255,255,255,0.94))]">
+                    <CardContent className="flex flex-col gap-4 p-6 lg:flex-row lg:items-center lg:justify-between">
+                        <div className="space-y-1">
+                            <p className="text-[0.7rem] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
+                                Announcement center
+                            </p>
+                            <h3 className="text-2xl font-semibold tracking-[-0.04em] text-foreground">
+                                Track important updates in one place
+                            </h3>
+                            <p className="text-sm leading-6 text-muted-foreground">
+                                Review pinned notices, urgent alerts, and organization-wide communications without leaving the feed.
+                            </p>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                            <Badge variant="secondary">
+                                {announcements.total} total notices
+                            </Badge>
+                            <Badge variant="outline">
+                                {pinnedCount} pinned
+                            </Badge>
+                        </div>
+                    </CardContent>
+                </Card>
+
                 {/* Announcements List */}
                 {announcements.data.length === 0 ? (
-                    <Card>
+                    <Card className="border-primary/10 shadow-sm">
                         <CardContent className="p-12 text-center">
                             <Megaphone className="mx-auto h-12 w-12 text-muted-foreground" />
                             <p className="mt-4 text-sm text-muted-foreground">
@@ -128,7 +192,7 @@ export default function AnnouncementsIndex() {
                                         announcement.priority === 'urgent'
                                             ? 'border-2 border-red-200 dark:border-red-900/50'
                                             : ''
-                                    }`}
+                                    } overflow-hidden bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,255,255,0.94))]`}
                                 >
                                     <CardContent className="p-6">
                                         <div className="flex items-start gap-4">
@@ -222,7 +286,7 @@ export default function AnnouncementsIndex() {
                                                             announcement.created_by
                                                         }
                                                     </span>
-                                                    <span>•</span>
+                                                    <span>-</span>
                                                     <span>
                                                         {
                                                             announcement.created_at
@@ -230,7 +294,7 @@ export default function AnnouncementsIndex() {
                                                     </span>
                                                     {announcement.expires_at && (
                                                         <>
-                                                            <span>•</span>
+                                                            <span>-</span>
                                                             <span>
                                                                 Expires on{' '}
                                                                 {
@@ -338,13 +402,13 @@ export default function AnnouncementsIndex() {
                                         Posted by{' '}
                                         {selectedAnnouncement.created_by}
                                     </span>
-                                    <span>•</span>
+                                    <span>-</span>
                                     <span>
                                         {selectedAnnouncement.created_at}
                                     </span>
                                     {selectedAnnouncement.expires_at && (
                                         <>
-                                            <span>•</span>
+                                            <span>-</span>
                                             <span>
                                                 Expires on{' '}
                                                 {

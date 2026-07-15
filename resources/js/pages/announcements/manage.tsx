@@ -2,6 +2,7 @@ import { DeleteConfirmationDialog } from '@/components/delete-confirmation-dialo
 import { AnnouncementLogsSheet } from '@/components/announcements/announcement-logs-sheet';
 import HeadingSmall from '@/components/heading-small';
 import { RichTextEditor } from '@/components/rich-text-editor';
+import { StatCard } from '@/components/stat-card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -27,7 +28,6 @@ import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, router, usePage } from '@inertiajs/react';
 import {
-    AlertCircle,
     Edit,
     Eye,
     FileText,
@@ -53,6 +53,9 @@ const breadcrumbs: BreadcrumbItem[] = [
 ];
 
 const YEAR_LEVELS = ['Pre-Resident', 'First Year', 'Second Year', 'Third Year', 'Fourth Year', 'Graduate'];
+const MIN_EXPIRY_DATE = new Date(Date.now() + 86400000)
+    .toISOString()
+    .split('T')[0];
 
 interface Announcement {
     id: number;
@@ -288,13 +291,21 @@ export default function ManageAnnouncements() {
     };
 
     const hasActiveFilters = filters.search || filters.scope;
+    const publishedCount = announcements.data.filter(
+        (item) => item.is_published,
+    ).length;
+    const pinnedCount = announcements.data.filter((item) => item.is_pinned).length;
+    const totalViews = announcements.data.reduce(
+        (sum, item) => sum + item.views_count,
+        0,
+    );
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Manage Announcements" />
 
             <div className="flex h-full flex-1 flex-col gap-6 overflow-x-auto rounded-xl p-6">
-                <div className="flex items-start justify-between gap-4">
+                <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
                     <HeadingSmall
                         title="Manage Announcements"
                         description="Create and manage announcements for residents"
@@ -305,9 +316,72 @@ export default function ManageAnnouncements() {
                     </Button>
                 </div>
 
+                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                    <StatCard
+                        title="Announcements"
+                        value={announcements.total}
+                        description="Items in the current admin view"
+                        icon={Megaphone}
+                        iconColor="text-primary"
+                    />
+                    <StatCard
+                        title="Published"
+                        value={publishedCount}
+                        description="Visible announcements on this page"
+                        icon={FileText}
+                        iconColor="text-primary"
+                    />
+                    <StatCard
+                        title="Pinned"
+                        value={pinnedCount}
+                        description="Highlighted announcements"
+                        icon={Pin}
+                        iconColor="text-primary"
+                    />
+                    <StatCard
+                        title="Views"
+                        value={totalViews}
+                        description="Combined views for visible items"
+                        icon={Eye}
+                        iconColor="text-primary"
+                    />
+                </div>
+
+                <Card className="overflow-hidden border-primary/10 bg-[linear-gradient(135deg,rgba(248,244,255,0.98),rgba(255,255,255,0.94))]">
+                    <CardContent className="flex flex-col gap-4 p-6 lg:flex-row lg:items-center lg:justify-between">
+                        <div className="space-y-1">
+                            <p className="text-[0.7rem] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
+                                Admin workspace
+                            </p>
+                            <h3 className="text-2xl font-semibold tracking-[-0.04em] text-foreground">
+                                Manage message priority and visibility
+                            </h3>
+                            <p className="text-sm leading-6 text-muted-foreground">
+                                Keep the announcement feed organized while making urgent and pinned messages easier to control.
+                            </p>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                            <Badge variant="secondary">
+                                {announcements.total} total items
+                            </Badge>
+                            <Badge variant="outline">
+                                {hasActiveFilters ? 'Filtered results' : 'Full feed'}
+                            </Badge>
+                        </div>
+                    </CardContent>
+                </Card>
+
                 {/* Filters */}
-                <Card>
-                    <CardContent className="p-4">
+                <Card className="border-primary/10 shadow-sm">
+                    <CardContent className="space-y-5 p-5">
+                        <div className="space-y-1">
+                            <p className="text-[0.7rem] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
+                                Filters
+                            </p>
+                            <h3 className="text-lg font-semibold tracking-[-0.02em] text-foreground">
+                                Narrow the announcement list
+                            </h3>
+                        </div>
                         <div className="flex flex-col gap-3 sm:flex-row">
                             <div className="relative flex-1">
                                 <Search className="absolute top-3 left-3 h-4 w-4 text-muted-foreground" />
@@ -342,7 +416,12 @@ export default function ManageAnnouncements() {
                                 </SelectContent>
                             </Select>
                             <div className="flex gap-2">
-                                <Button onClick={handleSearch}>Search</Button>
+                                <Button
+                                    className="bg-[linear-gradient(135deg,hsl(var(--primary)),hsl(var(--primary))/0.82)] shadow-sm"
+                                    onClick={handleSearch}
+                                >
+                                    Search
+                                </Button>
                                 {hasActiveFilters && (
                                     <Button
                                         variant="outline"
@@ -359,7 +438,7 @@ export default function ManageAnnouncements() {
 
                 {/* Announcements List */}
                 {announcements.data.length === 0 ? (
-                    <Card>
+                    <Card className="border-primary/10 shadow-sm">
                         <CardContent className="p-12 text-center">
                             <Megaphone className="mx-auto h-12 w-12 text-muted-foreground" />
                             <p className="mt-4 text-sm text-muted-foreground">
@@ -376,7 +455,10 @@ export default function ManageAnnouncements() {
                 ) : (
                     <div className="space-y-3">
                         {announcements.data.map((announcement) => (
-                            <Card key={announcement.id}>
+                            <Card
+                                key={announcement.id}
+                                className="overflow-hidden border-border/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,255,255,0.94))]"
+                            >
                                 <CardContent className="p-4">
                                     <div className="flex items-start justify-between gap-4">
                                         <div className="flex-1">
@@ -629,13 +711,7 @@ export default function ManageAnnouncements() {
                                         onChange={(e) =>
                                             setCreateExpiresAt(e.target.value)
                                         }
-                                        min={
-                                            new Date(
-                                                Date.now() + 86400000,
-                                            )
-                                                .toISOString()
-                                                .split('T')[0]
-                                        }
+                                        min={MIN_EXPIRY_DATE}
                                     />
                                 </div>
 
@@ -846,13 +922,7 @@ export default function ManageAnnouncements() {
                                             onChange={(e) =>
                                                 setEditExpiresAt(e.target.value)
                                             }
-                                            min={
-                                                new Date(
-                                                    Date.now() + 86400000,
-                                                )
-                                                    .toISOString()
-                                                    .split('T')[0]
-                                            }
+                                            min={MIN_EXPIRY_DATE}
                                         />
                                     </div>
 
@@ -987,4 +1057,3 @@ export default function ManageAnnouncements() {
         </AppLayout>
     );
 }
-

@@ -30,6 +30,7 @@ import {
     Trash2,
     Users,
 } from 'lucide-react';
+import { StatCard } from '@/components/stat-card';
 import { useState } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -142,6 +143,12 @@ export default function ManageEvents({
         setViewingLogsEvent(event);
         setShowLogsSheet(true);
     };
+    const publishedCount = events.data.filter((event) => event.is_published).length;
+    const totalRegistrations = events.data.reduce(
+        (sum, event) => sum + event.registrations_count,
+        0,
+    );
+    const scopeCount = new Set(events.data.map((event) => event.scope)).size;
 
     const formatDate = (dateString: string) => {
         try {
@@ -156,7 +163,7 @@ export default function ManageEvents({
             <Head title="Manage Events" />
 
             <div className="flex h-full flex-1 flex-col gap-6 overflow-x-auto rounded-xl p-6">
-                <div className="flex items-start justify-between gap-4">
+                <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
                     <HeadingSmall
                         title="Manage Events"
                         description="Create and manage your organization's events"
@@ -167,9 +174,72 @@ export default function ManageEvents({
                     </Button>
                 </div>
 
+                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                    <StatCard
+                        title="Events"
+                        value={events.total}
+                        description="Items in the current admin view"
+                        icon={Calendar}
+                        iconColor="text-primary"
+                    />
+                    <StatCard
+                        title="Published"
+                        value={publishedCount}
+                        description="Visible events on this page"
+                        icon={Eye}
+                        iconColor="text-primary"
+                    />
+                    <StatCard
+                        title="Registrations"
+                        value={totalRegistrations}
+                        description="Combined registrations for visible events"
+                        icon={Users}
+                        iconColor="text-primary"
+                    />
+                    <StatCard
+                        title="Scopes"
+                        value={scopeCount}
+                        description="Visibility scopes currently represented"
+                        icon={FileText}
+                        iconColor="text-primary"
+                    />
+                </div>
+
+                <Card className="overflow-hidden border-primary/10 bg-[linear-gradient(135deg,rgba(248,244,255,0.98),rgba(255,255,255,0.94))]">
+                    <CardContent className="flex flex-col gap-4 p-6 lg:flex-row lg:items-center lg:justify-between">
+                        <div className="space-y-1">
+                            <p className="text-[0.7rem] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
+                                Admin workspace
+                            </p>
+                            <h3 className="text-2xl font-semibold tracking-[-0.04em] text-foreground">
+                                Coordinate publishing, edits, and registrations
+                            </h3>
+                            <p className="text-sm leading-6 text-muted-foreground">
+                                Review event status, registration traction, and management actions from one streamlined surface.
+                            </p>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                            <Badge variant="secondary">
+                                {events.total} total events
+                            </Badge>
+                            <Badge variant="outline">
+                                {filters.search || filters.status || filters.scope ? 'Filtered results' : 'Full list'}
+                            </Badge>
+                        </div>
+                    </CardContent>
+                </Card>
+
                 {/* Filters */}
-                <Card>
-                    <CardContent className="pt-6">
+                <Card className="border-primary/10 shadow-sm">
+                    <CardContent className="space-y-5 p-5">
+                        <div className="space-y-1">
+                            <p className="text-[0.7rem] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
+                                Filters
+                            </p>
+                            <h3 className="text-lg font-semibold tracking-[-0.02em] text-foreground">
+                                Narrow the event inventory
+                            </h3>
+                        </div>
                         <form
                             onSubmit={handleSearch}
                             className="flex flex-col gap-4 md:flex-row"
@@ -218,14 +288,19 @@ export default function ManageEvents({
                                     </SelectContent>
                                 </Select>
                             )}
-                            <Button type="submit">Search</Button>
+                            <Button
+                                type="submit"
+                                className="bg-[linear-gradient(135deg,hsl(var(--primary)),hsl(var(--primary))/0.82)] shadow-sm"
+                            >
+                                Search
+                            </Button>
                         </form>
                     </CardContent>
                 </Card>
 
                 {/* Events List */}
                 {events.data.length === 0 ? (
-                    <Card>
+                    <Card className="border-primary/10 shadow-sm">
                         <CardContent className="flex flex-col items-center justify-center py-12">
                             <Calendar className="mb-4 h-12 w-12 text-muted-foreground" />
                             <p className="text-lg font-medium">
@@ -244,7 +319,10 @@ export default function ManageEvents({
                     <>
                         <div className="space-y-4">
                             {events.data.map((event) => (
-                                <Card key={event.id}>
+                                <Card
+                                    key={event.id}
+                                    className="overflow-hidden border-border/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,255,255,0.94))]"
+                                >
                                     <CardContent className="flex flex-col gap-4 pt-6 sm:flex-row sm:items-center sm:justify-between">
                                         <div className="flex-1 space-y-2">
                                             <div className="flex flex-wrap items-center gap-2">

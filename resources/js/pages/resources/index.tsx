@@ -1,4 +1,5 @@
 import HeadingSmall from '@/components/heading-small';
+import { StatCard } from '@/components/stat-card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -83,13 +84,17 @@ export default function ResourcesIndex() {
     };
 
     const hasActiveFilters = filters.search || filters.category;
+    const totalDownloads = resources.data.reduce(
+        (sum, resource) => sum + resource.download_count,
+        0,
+    );
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Learning Resources" />
 
             <div className="flex h-full flex-1 flex-col gap-6 overflow-x-auto rounded-xl p-6">
-                <div className="flex items-start justify-between gap-4">
+                <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
                     <HeadingSmall
                         title="Learning Resources"
                         description="Study materials, notes, and references for your training"
@@ -104,8 +109,71 @@ export default function ResourcesIndex() {
                     )}
                 </div>
 
-                <Card>
-                    <CardContent className="p-4">
+                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                    <StatCard
+                        title="All Resources"
+                        value={resources.total}
+                        description="Learning materials in the library"
+                        icon={BookOpen}
+                        iconColor="text-primary"
+                    />
+                    <StatCard
+                        title="Visible Now"
+                        value={resources.data.length}
+                        description="Resources on this page"
+                        icon={FileText}
+                        iconColor="text-primary"
+                    />
+                    <StatCard
+                        title="Categories"
+                        value={categories.length}
+                        description="Available study groupings"
+                        icon={Settings}
+                        iconColor="text-primary"
+                    />
+                    <StatCard
+                        title="Downloads"
+                        value={totalDownloads}
+                        description="Downloads across visible resources"
+                        icon={Download}
+                        iconColor="text-primary"
+                    />
+                </div>
+
+                <Card className="overflow-hidden border-primary/10 bg-[linear-gradient(135deg,rgba(248,244,255,0.98),rgba(255,255,255,0.94))]">
+                    <CardContent className="flex flex-col gap-4 p-6 lg:flex-row lg:items-center lg:justify-between">
+                        <div className="space-y-1">
+                            <p className="text-[0.7rem] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
+                                Resource library
+                            </p>
+                            <h3 className="text-2xl font-semibold tracking-[-0.04em] text-foreground">
+                                Find the right material faster
+                            </h3>
+                            <p className="text-sm leading-6 text-muted-foreground">
+                                Browse guides, references, and uploaded training assets organized for residents.
+                            </p>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                            <Badge variant="secondary">
+                                {resources.total} total resources
+                            </Badge>
+                            <Badge variant="outline">
+                                {hasActiveFilters ? 'Filtered view' : 'Full library'}
+                            </Badge>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <Card className="border-primary/10 shadow-sm">
+                    <CardContent className="space-y-5 p-5">
+                        <div className="space-y-1">
+                            <p className="text-[0.7rem] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
+                                Filters
+                            </p>
+                            <h3 className="text-lg font-semibold tracking-[-0.02em] text-foreground">
+                                Narrow the resource list
+                            </h3>
+                        </div>
                         <div className="flex flex-col gap-3 sm:flex-row">
                             <div className="relative flex-1">
                                 <Search className="absolute top-3 left-3 h-4 w-4 text-muted-foreground" />
@@ -137,7 +205,12 @@ export default function ResourcesIndex() {
                                 </SelectContent>
                             </Select>
                             <div className="flex gap-2">
-                                <Button onClick={handleSearch}>Search</Button>
+                                <Button
+                                    className="bg-[linear-gradient(135deg,hsl(var(--primary)),hsl(var(--primary))/0.82)] shadow-sm"
+                                    onClick={handleSearch}
+                                >
+                                    Search
+                                </Button>
                                 {hasActiveFilters && (
                                     <Button
                                         variant="outline"
@@ -153,7 +226,7 @@ export default function ResourcesIndex() {
                 </Card>
 
                 {resources.data.length === 0 ? (
-                    <Card>
+                    <Card className="border-primary/10 shadow-sm">
                         <CardContent className="p-12 text-center">
                             <BookOpen className="mx-auto h-12 w-12 text-muted-foreground" />
                             <p className="mt-4 text-sm text-muted-foreground">
@@ -168,7 +241,7 @@ export default function ResourcesIndex() {
                         {resources.data.map((resource) => (
                             <Card
                                 key={resource.id}
-                                className="transition-shadow hover:shadow-md"
+                                className="overflow-hidden border-border/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,255,255,0.94))] transition-shadow hover:shadow-md"
                             >
                                 <CardContent className="p-6">
                                     <div className="space-y-3">
