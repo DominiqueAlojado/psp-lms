@@ -43,11 +43,15 @@ interface ResidentExamRepositoryInterface
 
     public function findInstitutionAnswer(int $attemptId, int $questionId): ?InstitutionAnswer;
 
+    public function saveInstitutionAnswer(int $attemptId, int $questionId, array $attributes): InstitutionAnswer;
+
     public function createInstitutionAnswer(array $attributes): InstitutionAnswer;
 
     public function updateInstitutionAnswer(InstitutionAnswer $answer, array $attributes): bool;
 
     public function findNationalAnswer(int $attemptId, int $questionId): ?NationalAnswer;
+
+    public function saveNationalAnswer(int $attemptId, int $questionId, array $attributes): NationalAnswer;
 
     public function createNationalAnswer(array $attributes): NationalAnswer;
 

@@ -47,19 +47,12 @@ class ResidentExamManagementService
             if ($existingAnswer) {
                 $changeCount = $existingAnswer->answer_change_count ?? 0;
                 $this->logSuspiciousAnswerChanges($user, $attempt, $questionId, $changeCount);
-
-                $this->residentExamRepository->updateInstitutionAnswer($existingAnswer, [
-                    'answer_data' => $answerData,
-                    'answer_change_count' => $changeCount + 1,
-                ]);
-            } else {
-                $this->residentExamRepository->createInstitutionAnswer([
-                    'attempt_id' => $attempt->id,
-                    'question_id' => $questionId,
-                    'answer_data' => $answerData,
-                    'answer_change_count' => 1,
-                ]);
             }
+
+            $this->residentExamRepository->saveInstitutionAnswer($attempt->id, $questionId, [
+                'answer_data' => $answerData,
+                'answer_change_count' => ($existingAnswer->answer_change_count ?? 0) + 1,
+            ]);
 
             return ['success' => true, 'status' => 200];
         }
@@ -73,19 +66,12 @@ class ResidentExamManagementService
         if ($existingAnswer) {
             $changeCount = $existingAnswer->answer_change_count ?? 0;
             $this->logSuspiciousAnswerChanges($user, $attempt, $questionId, $changeCount);
-
-            $this->residentExamRepository->updateNationalAnswer($existingAnswer, [
-                'answer_data' => $answerData,
-                'answer_change_count' => $changeCount + 1,
-            ]);
-        } else {
-            $this->residentExamRepository->createNationalAnswer([
-                'attempt_id' => $attempt->id,
-                'question_id' => $questionId,
-                'answer_data' => $answerData,
-                'answer_change_count' => 1,
-            ]);
         }
+
+        $this->residentExamRepository->saveNationalAnswer($attempt->id, $questionId, [
+            'answer_data' => $answerData,
+            'answer_change_count' => ($existingAnswer->answer_change_count ?? 0) + 1,
+        ]);
 
         return ['success' => true, 'status' => 200];
     }

@@ -44,6 +44,62 @@ class ResidentExamManagementServiceTest extends TestCase
         ]);
     }
 
+    public function test_it_updates_the_existing_institution_answer_instead_of_creating_a_duplicate(): void
+    {
+        $service = app(ResidentExamManagementService::class);
+
+        [$user, $attempt, $question] = $this->createInstitutionAttemptFixture();
+        $choices = $question->choices()->orderBy('order')->get();
+
+        InstitutionQuestionChoice::create([
+            'question_id' => $question->id,
+            'choice_text' => '5',
+            'is_correct' => false,
+            'order' => 2,
+        ]);
+
+        $request = Request::create('/exams/institution/' . $attempt->id . '/save-answer', 'POST', [
+            'question_id' => $question->id,
+            'answer_data' => ['choice_id' => $choices->first()->id],
+        ]);
+        $request->setLaravelSession(app('session')->driver());
+        $request->session()->start();
+        $request->session()->setId('resident-test-session');
+        $request->setUserResolver(fn () => $user);
+
+        $attempt->update(['active_session_id' => 'resident-test-session']);
+
+        $firstResponse = $service->saveAnswer($request, 'institution', $attempt->id);
+        $this->assertSame(200, $firstResponse['status']);
+
+        $secondChoiceId = $question->choices()->orderByDesc('id')->value('id');
+
+        $secondRequest = Request::create('/exams/institution/' . $attempt->id . '/save-answer', 'POST', [
+            'question_id' => $question->id,
+            'answer_data' => ['choice_id' => $secondChoiceId],
+        ]);
+        $secondRequest->setLaravelSession(app('session')->driver());
+        $secondRequest->session()->start();
+        $secondRequest->session()->setId('resident-test-session');
+        $secondRequest->setUserResolver(fn () => $user);
+
+        $secondResponse = $service->saveAnswer($secondRequest, 'institution', $attempt->id);
+
+        $this->assertSame(200, $secondResponse['status']);
+        $this->assertSame(1, InstitutionAnswer::query()
+            ->where('attempt_id', $attempt->id)
+            ->where('question_id', $question->id)
+            ->count());
+
+        $savedAnswer = InstitutionAnswer::query()
+            ->where('attempt_id', $attempt->id)
+            ->where('question_id', $question->id)
+            ->firstOrFail();
+
+        $this->assertSame($secondChoiceId, $savedAnswer->answer_data['choice_id']);
+        $this->assertSame(2, $savedAnswer->answer_change_count);
+    }
+
     public function test_it_submits_an_institution_attempt(): void
     {
         $service = app(ResidentExamManagementService::class);

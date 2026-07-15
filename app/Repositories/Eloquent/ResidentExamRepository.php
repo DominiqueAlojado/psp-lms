@@ -14,6 +14,7 @@ use App\Models\National\NationalAttempt;
 use App\Models\National\NationalQuestion;
 use App\Models\QuestionBank;
 use App\Repositories\Contracts\ResidentExamRepositoryInterface;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Collection;
 
@@ -114,6 +115,30 @@ class ResidentExamRepository implements ResidentExamRepositoryInterface
             ->first();
     }
 
+    public function saveInstitutionAnswer(int $attemptId, int $questionId, array $attributes): InstitutionAnswer
+    {
+        $lookup = [
+            'attempt_id' => $attemptId,
+            'question_id' => $questionId,
+        ];
+
+        try {
+            return InstitutionAnswer::updateOrCreate($lookup, $attributes);
+        } catch (QueryException $exception) {
+            if (! $this->isUniqueConstraintViolation($exception)) {
+                throw $exception;
+            }
+
+            $answer = InstitutionAnswer::query()
+                ->where($lookup)
+                ->firstOrFail();
+
+            $answer->update($attributes);
+
+            return $answer->fresh();
+        }
+    }
+
     public function createInstitutionAnswer(array $attributes): InstitutionAnswer
     {
         return InstitutionAnswer::create($attributes);
@@ -130,6 +155,30 @@ class ResidentExamRepository implements ResidentExamRepositoryInterface
             ->where('attempt_id', $attemptId)
             ->where('question_id', $questionId)
             ->first();
+    }
+
+    public function saveNationalAnswer(int $attemptId, int $questionId, array $attributes): NationalAnswer
+    {
+        $lookup = [
+            'attempt_id' => $attemptId,
+            'question_id' => $questionId,
+        ];
+
+        try {
+            return NationalAnswer::updateOrCreate($lookup, $attributes);
+        } catch (QueryException $exception) {
+            if (! $this->isUniqueConstraintViolation($exception)) {
+                throw $exception;
+            }
+
+            $answer = NationalAnswer::query()
+                ->where($lookup)
+                ->firstOrFail();
+
+            $answer->update($attributes);
+
+            return $answer->fresh();
+        }
     }
 
     public function createNationalAnswer(array $attributes): NationalAnswer
@@ -344,5 +393,14 @@ class ResidentExamRepository implements ResidentExamRepositoryInterface
         }
 
         return $bankQuestion;
+    }
+
+    private function isUniqueConstraintViolation(QueryException $exception): bool
+    {
+        $sqlState = $exception->errorInfo[0] ?? null;
+        $driverCode = (string) ($exception->errorInfo[1] ?? '');
+
+        return in_array($sqlState, ['23000', '23505'], true)
+            || $driverCode === '19';
     }
 }
