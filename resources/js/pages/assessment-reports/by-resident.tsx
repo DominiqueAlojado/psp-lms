@@ -1,4 +1,5 @@
 import HeadingSmall from '@/components/heading-small';
+import { StatCard } from '@/components/stat-card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -23,7 +24,7 @@ import AppLayout from '@/layouts/app-layout';
 import AssessmentReportsLayout from '@/layouts/assessment-reports/assessment-reports-layout';
 import { type BreadcrumbItem, type SharedData } from '@/types';
 import { Head, router, usePage } from '@inertiajs/react';
-import { FileBarChart, Search, X } from 'lucide-react';
+import { FileBarChart, Search, TrendingUp, Users, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -113,7 +114,6 @@ export default function ByResidentReport() {
     const [dateFrom, setDateFrom] = useState(filters.date_from || '');
     const [dateTo, setDateTo] = useState(filters.date_to || '');
 
-    // Filter exams based on current organization type
     const filteredExams = useMemo(() => {
         if (!currentOrganization) {
             return exams;
@@ -121,19 +121,23 @@ export default function ByResidentReport() {
 
         const orgType = currentOrganization.type?.toLowerCase();
 
-        // If organization is national or inservice, show only inservice exams
         if (orgType === 'national' || orgType === 'inservice') {
             return exams.filter((exam) => exam.type === 'inservice');
         }
 
-        // If organization is institution, show only institution exams
         if (orgType === 'institution') {
             return exams.filter((exam) => exam.type === 'institution');
         }
 
-        // Default: show all exams
         return exams;
     }, [exams, currentOrganization]);
+
+    const passedCount = attempts.data.filter((attempt) => attempt.status === 'Passed').length;
+    const failedCount = attempts.data.filter((attempt) => attempt.status === 'Failed').length;
+    const averageScore = attempts.data.length
+        ? attempts.data.reduce((sum, attempt) => sum + attempt.percentage, 0) /
+          attempts.data.length
+        : 0;
 
     const handleSearch = () => {
         router.get(
@@ -186,21 +190,74 @@ export default function ByResidentReport() {
                         description="View and filter resident exam performance"
                     />
 
-                    {/* Filters */}
-                    <Card>
-                        <CardContent className="p-4">
+                    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                        <StatCard
+                            title="Visible Attempts"
+                            value={attempts.total}
+                            description="Resident exam attempts in this report"
+                            icon={FileBarChart}
+                            iconColor="text-primary"
+                        />
+                        <StatCard
+                            title="Passed"
+                            value={passedCount}
+                            description="Passing results on this page"
+                            icon={TrendingUp}
+                            iconColor="text-primary"
+                        />
+                        <StatCard
+                            title="Failed"
+                            value={failedCount}
+                            description="Attempts below passing threshold"
+                            icon={Users}
+                            iconColor="text-primary"
+                        />
+                        <StatCard
+                            title="Average Score"
+                            value={`${averageScore.toFixed(1)}%`}
+                            description="Average percentage on this page"
+                            icon={TrendingUp}
+                            iconColor="text-primary"
+                        />
+                    </div>
+
+                    <Card className="overflow-hidden border-primary/10 bg-[linear-gradient(135deg,rgba(248,244,255,0.98),rgba(255,255,255,0.94))]">
+                        <CardContent className="flex flex-col gap-4 p-6 lg:flex-row lg:items-center lg:justify-between">
+                            <div className="space-y-1">
+                                <p className="text-[0.7rem] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
+                                    Report filters
+                                </p>
+                                <h3 className="text-2xl font-semibold tracking-[-0.04em] text-foreground">
+                                    Search resident results with cleaner controls
+                                </h3>
+                                <p className="text-sm leading-6 text-muted-foreground">
+                                    Narrow by resident, exam, year level, status, and dates to review the exact cohort you need.
+                                </p>
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                                <Badge variant="secondary">
+                                    {attempts.data.length} attempts on page
+                                </Badge>
+                                <Badge variant="outline">
+                                    {hasActiveFilters ? 'Filtered view' : 'All results'}
+                                </Badge>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    <Card className="overflow-hidden border-border/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,255,255,0.94))]">
+                        <CardContent className="space-y-5 p-4">
                             <div className="space-y-4">
-                                {/* Search */}
                                 <div className="space-y-2">
-                                    <Label>Search Resident</Label>
+                                    <Label className="text-xs font-semibold tracking-[0.12em] text-muted-foreground uppercase">
+                                        Search Resident
+                                    </Label>
                                     <div className="relative">
                                         <Search className="absolute top-3 left-3 h-4 w-4 text-muted-foreground" />
                                         <Input
                                             placeholder="Search by name or email..."
                                             value={search}
-                                            onChange={(e) =>
-                                                setSearch(e.target.value)
-                                            }
+                                            onChange={(e) => setSearch(e.target.value)}
                                             onKeyDown={(e) => {
                                                 if (e.key === 'Enter') {
                                                     handleSearch();
@@ -211,9 +268,10 @@ export default function ByResidentReport() {
                                     </div>
                                 </div>
 
-                                {/* Exam */}
                                 <div className="space-y-2">
-                                    <Label>Exam</Label>
+                                    <Label className="text-xs font-semibold tracking-[0.12em] text-muted-foreground uppercase">
+                                        Exam
+                                    </Label>
                                     <Select
                                         value={examFilter}
                                         onValueChange={(value) => {
@@ -239,10 +297,11 @@ export default function ByResidentReport() {
                                     </Select>
                                 </div>
 
-                                {/* Year Level & Status */}
                                 <div className="grid gap-4 sm:grid-cols-2">
                                     <div className="space-y-2">
-                                        <Label>Year Level</Label>
+                                        <Label className="text-xs font-semibold tracking-[0.12em] text-muted-foreground uppercase">
+                                            Year Level
+                                        </Label>
                                         <Select
                                             value={yearLevelFilter}
                                             onValueChange={setYearLevelFilter}
@@ -264,7 +323,9 @@ export default function ByResidentReport() {
                                     </div>
 
                                     <div className="space-y-2">
-                                        <Label>Status</Label>
+                                        <Label className="text-xs font-semibold tracking-[0.12em] text-muted-foreground uppercase">
+                                            Status
+                                        </Label>
                                         <Select
                                             value={statusFilter}
                                             onValueChange={setStatusFilter}
@@ -284,10 +345,11 @@ export default function ByResidentReport() {
                                     </div>
                                 </div>
 
-                                {/* Date Range */}
                                 <div className="grid gap-4 sm:grid-cols-2">
                                     <div className="space-y-2">
-                                        <Label>Date From</Label>
+                                        <Label className="text-xs font-semibold tracking-[0.12em] text-muted-foreground uppercase">
+                                            Date From
+                                        </Label>
                                         <Input
                                             type="date"
                                             value={dateFrom}
@@ -297,7 +359,9 @@ export default function ByResidentReport() {
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label>Date To</Label>
+                                        <Label className="text-xs font-semibold tracking-[0.12em] text-muted-foreground uppercase">
+                                            Date To
+                                        </Label>
                                         <Input
                                             type="date"
                                             value={dateTo}
@@ -308,8 +372,7 @@ export default function ByResidentReport() {
                                     </div>
                                 </div>
 
-                                {/* Action Buttons */}
-                                <div className="flex gap-2">
+                                <div className="flex gap-2 border-t border-border/70 pt-5">
                                     <Button onClick={handleSearch}>
                                         <Search className="mr-2 h-4 w-4" />
                                         Search
@@ -328,9 +391,8 @@ export default function ByResidentReport() {
                         </CardContent>
                     </Card>
 
-                    {/* Results */}
                     {attempts.data.length === 0 ? (
-                        <Card>
+                        <Card className="overflow-hidden border-border/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,255,255,0.94))]">
                             <CardContent className="p-12 text-center">
                                 <FileBarChart className="mx-auto h-12 w-12 text-muted-foreground" />
                                 <p className="mt-4 text-sm text-muted-foreground">
@@ -341,7 +403,7 @@ export default function ByResidentReport() {
                             </CardContent>
                         </Card>
                     ) : (
-                        <Card>
+                        <Card className="overflow-hidden border-border/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,255,255,0.94))]">
                             <CardContent className="p-0">
                                 <div className="overflow-x-auto">
                                     <Table>
@@ -378,10 +440,10 @@ export default function ByResidentReport() {
                                                                         attempt.resident_email
                                                                     }
                                                                 </span>
-                                                                {attempt.year_level && (
+                                                                {attempt.year_level ? (
                                                                     <>
                                                                         <span>
-                                                                            •
+                                                                            -
                                                                         </span>
                                                                         <Badge
                                                                             variant="secondary"
@@ -392,7 +454,7 @@ export default function ByResidentReport() {
                                                                             }
                                                                         </Badge>
                                                                     </>
-                                                                )}
+                                                                ) : null}
                                                             </div>
                                                         </div>
                                                     </TableCell>
@@ -410,13 +472,13 @@ export default function ByResidentReport() {
                                                                     attempt.exam_title
                                                                 }
                                                             </div>
-                                                            {attempt.exam_category && (
+                                                            {attempt.exam_category ? (
                                                                 <div className="text-xs text-muted-foreground">
                                                                     {
                                                                         attempt.exam_category
                                                                     }
                                                                 </div>
-                                                            )}
+                                                            ) : null}
                                                         </div>
                                                     </TableCell>
                                                     <TableCell className="text-right">
@@ -460,10 +522,8 @@ export default function ByResidentReport() {
                         </Card>
                     )}
 
-                    {/* Pagination */}
                     {attempts.data.length > 0 && (
                         <div className="space-y-4">
-                            {/* Pagination Info */}
                             <div className="text-center text-sm text-muted-foreground">
                                 Showing{' '}
                                 {(attempts.current_page - 1) *
@@ -477,10 +537,8 @@ export default function ByResidentReport() {
                                 of {attempts.total} results
                             </div>
 
-                            {/* Pagination Controls */}
                             {attempts.last_page > 1 && (
                                 <div className="flex items-center justify-center gap-2">
-                                    {/* Previous Button */}
                                     <Button
                                         variant="outline"
                                         size="sm"
@@ -491,8 +549,7 @@ export default function ByResidentReport() {
                                                 {
                                                     ...filters,
                                                     page:
-                                                        attempts.current_page -
-                                                        1,
+                                                        attempts.current_page - 1,
                                                 },
                                                 {
                                                     preserveState: true,
@@ -504,13 +561,11 @@ export default function ByResidentReport() {
                                         Previous
                                     </Button>
 
-                                    {/* Page Numbers */}
                                     {Array.from(
                                         { length: attempts.last_page },
                                         (_, i) => i + 1,
                                     )
                                         .filter((page) => {
-                                            // Show first page, last page, current page, and pages around current
                                             if (page === 1) {
                                                 return true;
                                             }
@@ -518,17 +573,14 @@ export default function ByResidentReport() {
                                                 return true;
                                             }
                                             if (
-                                                page >=
-                                                    attempts.current_page - 1 &&
-                                                page <=
-                                                    attempts.current_page + 1
+                                                page >= attempts.current_page - 1 &&
+                                                page <= attempts.current_page + 1
                                             ) {
                                                 return true;
                                             }
                                             return false;
                                         })
                                         .map((page, index, array) => {
-                                            // Add ellipsis if there's a gap
                                             const showEllipsisBefore =
                                                 index > 0 &&
                                                 array[index - 1] < page - 1;
@@ -537,15 +589,14 @@ export default function ByResidentReport() {
                                                     key={page}
                                                     className="flex items-center gap-2"
                                                 >
-                                                    {showEllipsisBefore && (
+                                                    {showEllipsisBefore ? (
                                                         <span className="px-2 text-muted-foreground">
                                                             ...
                                                         </span>
-                                                    )}
+                                                    ) : null}
                                                     <Button
                                                         variant={
-                                                            page ===
-                                                            attempts.current_page
+                                                            page === attempts.current_page
                                                                 ? 'default'
                                                                 : 'outline'
                                                         }
@@ -570,13 +621,11 @@ export default function ByResidentReport() {
                                             );
                                         })}
 
-                                    {/* Next Button */}
                                     <Button
                                         variant="outline"
                                         size="sm"
                                         disabled={
-                                            attempts.current_page ===
-                                            attempts.last_page
+                                            attempts.current_page === attempts.last_page
                                         }
                                         onClick={() => {
                                             router.get(
@@ -584,8 +633,7 @@ export default function ByResidentReport() {
                                                 {
                                                     ...filters,
                                                     page:
-                                                        attempts.current_page +
-                                                        1,
+                                                        attempts.current_page + 1,
                                                 },
                                                 {
                                                     preserveState: true,

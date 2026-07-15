@@ -1,4 +1,5 @@
 import HeadingSmall from '@/components/heading-small';
+import { StatCard } from '@/components/stat-card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -44,7 +45,7 @@ import {
     Wifi,
     X,
 } from 'lucide-react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -160,6 +161,21 @@ export default function LiveExamMonitor() {
         useState<ActiveSession | null>(null);
     const [alarmEnabled, setAlarmEnabled] = useState(true);
     const previousSuspiciousCount = useRef(0);
+    const suspiciousCount = useMemo(
+        () => activeSessions.filter((session) => session.is_suspicious).length,
+        [activeSessions],
+    );
+    const idleCount = useMemo(
+        () => activeSessions.filter((session) => session.is_idle).length,
+        [activeSessions],
+    );
+    const multiSessionCount = useMemo(
+        () =>
+            activeSessions.filter(
+                (session) => session.has_multiple_account_sessions,
+            ).length,
+        [activeSessions],
+    );
 
     // Function to play alarm sound
     const playAlarmSound = useCallback(() => {
@@ -199,7 +215,7 @@ export default function LiveExamMonitor() {
             gainNode.gain.setValueAtTime(0, audioContext.currentTime + 0.5);
             oscillator.stop(audioContext.currentTime + 0.5);
 
-            console.log('🔊 Alarm sound played successfully');
+            console.log('Alarm sound played successfully');
         } catch (error) {
             console.error('❌ Failed to play alarm:', error);
         }
@@ -211,7 +227,7 @@ export default function LiveExamMonitor() {
             (s) => s.is_suspicious,
         ).length;
 
-        console.log('👀 Alarm check:', {
+        console.log('Alarm check:', {
             alarmEnabled,
             suspiciousCount,
             previousCount: previousSuspiciousCount.current,
@@ -227,9 +243,9 @@ export default function LiveExamMonitor() {
             suspiciousCount > 0 &&
             suspiciousCount > previousSuspiciousCount.current
         ) {
-            console.warn('🚨 ALARM: Suspicious activity detected!');
+            console.warn('ALARM: Suspicious activity detected!');
             console.log(
-                `Flagged sessions: ${previousSuspiciousCount.current} → ${suspiciousCount}`,
+                `Flagged sessions: ${previousSuspiciousCount.current} -> ${suspiciousCount}`,
             );
             playAlarmSound();
         }
@@ -280,12 +296,12 @@ export default function LiveExamMonitor() {
 
             <AssessmentReportsLayout>
                 <div className="space-y-6">
-                    <div className="flex items-start justify-between gap-4">
+                    <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
                         <HeadingSmall
                             title="Live Exam Monitor"
-                            description="Real-time monitoring of active exam sessions"
+                            description="Real-time visibility into active exam sessions, connection changes, and suspicious signals."
                         />
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
                             <Badge variant="secondary" className="gap-1">
                                 <Clock className="h-3 w-3" />
                                 {lastUpdate}
@@ -311,7 +327,7 @@ export default function LiveExamMonitor() {
                                 variant="outline"
                                 size="sm"
                                 onClick={() => {
-                                    console.log('🧪 Testing alarm sound...');
+                                    console.log('Testing alarm sound...');
                                     playAlarmSound();
                                 }}
                                 title="Test the alarm sound"
@@ -332,13 +348,81 @@ export default function LiveExamMonitor() {
                         </div>
                     </div>
 
+                    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                        <StatCard
+                            title="Active Sessions"
+                            value={activeSessions.length}
+                            description="Residents currently taking exams"
+                            icon={Activity}
+                            iconColor="text-primary"
+                        />
+                        <StatCard
+                            title="Flagged"
+                            value={suspiciousCount}
+                            description="Sessions with suspicious behavior"
+                            icon={AlertTriangle}
+                            iconColor="text-primary"
+                        />
+                        <StatCard
+                            title="Idle"
+                            value={idleCount}
+                            description="Sessions currently inactive"
+                            icon={Clock}
+                            iconColor="text-primary"
+                        />
+                        <StatCard
+                            title="Multi-Session"
+                            value={multiSessionCount}
+                            description="Accounts with multiple active sessions"
+                            icon={MonitorSmartphone}
+                            iconColor="text-primary"
+                        />
+                    </div>
+
+                    <Card className="overflow-hidden border-primary/10 bg-[linear-gradient(135deg,rgba(248,244,255,0.98),rgba(255,255,255,0.94))]">
+                        <CardContent className="flex flex-col gap-4 p-6 lg:flex-row lg:items-center lg:justify-between">
+                            <div className="space-y-1">
+                                <p className="text-[0.7rem] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
+                                    Monitor overview
+                                </p>
+                                <h3 className="text-2xl font-semibold tracking-[-0.04em] text-foreground">
+                                    Watch active exams before issues escalate
+                                </h3>
+                                <p className="text-sm leading-6 text-muted-foreground">
+                                    Track session locks, device changes, idle behavior, and suspicious activity from one surface.
+                                </p>
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                                <Badge variant="secondary">
+                                    {activeSessions.length} live
+                                </Badge>
+                                <Badge variant="outline">
+                                    {suspiciousCount} flagged
+                                </Badge>
+                                <Badge variant="outline">
+                                    {multiSessionCount} multi-session
+                                </Badge>
+                            </div>
+                        </CardContent>
+                    </Card>
+
                     {/* Filters */}
-                    <Card>
-                        <CardContent className="p-4">
+                    <Card className="border-primary/10 shadow-sm">
+                        <CardContent className="space-y-5 p-5">
+                            <div className="flex flex-col gap-1">
+                                <p className="text-[0.7rem] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
+                                    Filters
+                                </p>
+                                <h3 className="text-lg font-semibold tracking-[-0.02em] text-foreground">
+                                    Narrow the live session feed
+                                </h3>
+                            </div>
                             <div className="space-y-4">
                                 <div className="grid gap-4 sm:grid-cols-3">
                                     <div className="space-y-2">
-                                        <Label>Exam</Label>
+                                        <Label className="text-[0.7rem] font-semibold tracking-[0.14em] uppercase text-muted-foreground">
+                                            Exam
+                                        </Label>
                                         <Select
                                             value={examFilter}
                                             onValueChange={setExamFilter}
@@ -361,7 +445,9 @@ export default function LiveExamMonitor() {
 
                                     {isSystemAdmin && (
                                         <div className="space-y-2">
-                                            <Label>Institution</Label>
+                                            <Label className="text-[0.7rem] font-semibold tracking-[0.14em] uppercase text-muted-foreground">
+                                                Institution
+                                            </Label>
                                             <Select
                                                 value={organizationFilter}
                                                 onValueChange={
@@ -388,7 +474,9 @@ export default function LiveExamMonitor() {
                                     )}
 
                                     <div className="space-y-2">
-                                        <Label>Activity Status</Label>
+                                        <Label className="text-[0.7rem] font-semibold tracking-[0.14em] uppercase text-muted-foreground">
+                                            Activity Status
+                                        </Label>
                                         <Select
                                             value={activityStatusFilter}
                                             onValueChange={
@@ -406,15 +494,18 @@ export default function LiveExamMonitor() {
                                                     Idle
                                                 </SelectItem>
                                                 <SelectItem value="suspicious">
-                                                    🚨 Suspicious
+                                                    Suspicious
                                                 </SelectItem>
                                             </SelectContent>
                                         </Select>
                                     </div>
                                 </div>
 
-                                <div className="flex gap-2">
-                                    <Button onClick={handleFilter}>
+                                <div className="flex flex-wrap gap-2">
+                                    <Button
+                                        onClick={handleFilter}
+                                        className="bg-[linear-gradient(135deg,hsl(var(--primary)),hsl(var(--primary))/0.82)] shadow-sm"
+                                    >
                                         Apply Filters
                                     </Button>
                                     {hasActiveFilters && (
@@ -433,7 +524,7 @@ export default function LiveExamMonitor() {
 
                     {/* Active Sessions */}
                     {activeSessions.length === 0 ? (
-                        <Card>
+                        <Card className="border-primary/10 shadow-sm">
                             <CardContent className="p-12 text-center">
                                 <Activity className="mx-auto h-12 w-12 text-muted-foreground" />
                                 <p className="mt-4 text-sm text-muted-foreground">
@@ -444,7 +535,7 @@ export default function LiveExamMonitor() {
                             </CardContent>
                         </Card>
                     ) : (
-                        <Card>
+                        <Card className="border-primary/10 shadow-sm">
                             <CardContent className="p-0">
                                 <div className="overflow-x-auto">
                                     <Table>
@@ -481,8 +572,8 @@ export default function LiveExamMonitor() {
                                                     key={session.id}
                                                     className={
                                                         session.is_suspicious
-                                                            ? 'bg-red-50 dark:bg-red-950/20'
-                                                            : ''
+                                                            ? 'bg-destructive/5'
+                                                            : 'hover:bg-muted/40'
                                                     }
                                                 >
                                                     <TableCell>
@@ -540,7 +631,7 @@ export default function LiveExamMonitor() {
                                                         <div className="flex flex-col gap-1">
                                                             {session.is_idle ? (
                                                                 <Badge variant="outline">
-                                                                    💤 Idle
+                                                                    Idle
                                                                 </Badge>
                                                             ) : (
                                                                 <Badge
@@ -553,7 +644,7 @@ export default function LiveExamMonitor() {
                                                             )}
                                                             {session.is_suspicious && (
                                                                 <Badge variant="destructive">
-                                                                    🚨 Flagged
+                                                                    Flagged
                                                                 </Badge>
                                                             )}
                                                         </div>
@@ -755,64 +846,6 @@ export default function LiveExamMonitor() {
                         </Card>
                     )}
 
-                    {/* Summary Stats */}
-                    {activeSessions.length > 0 && (
-                        <div className="grid gap-4 sm:grid-cols-4">
-                            <Card>
-                                <CardContent className="p-4 text-center">
-                                    <div className="text-2xl font-bold">
-                                        {activeSessions.length}
-                                    </div>
-                                    <div className="text-sm text-muted-foreground">
-                                        Active Sessions
-                                    </div>
-                                </CardContent>
-                            </Card>
-                            <Card>
-                                <CardContent className="p-4 text-center">
-                                    <div className="text-2xl font-bold text-green-600">
-                                        {
-                                            activeSessions.filter(
-                                                (s) => !s.is_idle,
-                                            ).length
-                                        }
-                                    </div>
-                                    <div className="text-sm text-muted-foreground">
-                                        Active
-                                    </div>
-                                </CardContent>
-                            </Card>
-                            <Card>
-                                <CardContent className="p-4 text-center">
-                                    <div className="text-2xl font-bold text-yellow-600">
-                                        {
-                                            activeSessions.filter(
-                                                (s) => s.is_idle,
-                                            ).length
-                                        }
-                                    </div>
-                                    <div className="text-sm text-muted-foreground">
-                                        Idle
-                                    </div>
-                                </CardContent>
-                            </Card>
-                            <Card>
-                                <CardContent className="p-4 text-center">
-                                    <div className="flex items-center justify-center gap-1 text-2xl font-bold text-red-600">
-                                        <AlertTriangle className="h-6 w-6" />
-                                        {
-                                            activeSessions.filter(
-                                                (s) => s.is_suspicious,
-                                            ).length
-                                        }
-                                    </div>
-                                    <div className="text-sm text-muted-foreground">
-                                        Suspicious
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        </div>
-                    )}
                 </div>
             </AssessmentReportsLayout>
 
@@ -1114,7 +1147,7 @@ export default function LiveExamMonitor() {
                                                                         }
                                                                     </span>
                                                                     <span className="text-muted-foreground">
-                                                                        →
+                                                                        {'->'}
                                                                     </span>
                                                                     <span className="font-mono font-semibold text-red-600 dark:text-red-400">
                                                                         {
@@ -1167,7 +1200,7 @@ export default function LiveExamMonitor() {
                                                                     }
                                                                 </span>
                                                                 <span className="text-muted-foreground">
-                                                                    →
+                                                                    {'->'}
                                                                 </span>
                                                                 <span className="font-semibold text-red-600 dark:text-red-400">
                                                                     {change.to}

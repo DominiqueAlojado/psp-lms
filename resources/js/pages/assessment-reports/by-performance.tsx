@@ -1,4 +1,5 @@
 import HeadingSmall from '@/components/heading-small';
+import { StatCard } from '@/components/stat-card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -22,8 +23,8 @@ import AppLayout from '@/layouts/app-layout';
 import AssessmentReportsLayout from '@/layouts/assessment-reports/assessment-reports-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link } from '@inertiajs/react';
-import { Award, ExternalLink, Eye } from 'lucide-react';
-import { useState } from 'react';
+import { Award, ExternalLink, Eye, Search, TrendingUp, Users } from 'lucide-react';
+import { useMemo, useState } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -64,10 +65,28 @@ export default function ByPerformanceReport({ residents }: Props) {
     );
     const [sheetOpen, setSheetOpen] = useState(false);
 
-    // Filter residents by search
     const filteredResidents = residents.filter((resident) =>
         resident.name.toLowerCase().includes(search.toLowerCase()),
     );
+
+    const activeResidents = filteredResidents.filter(
+        (resident) => resident.status === 'active',
+    ).length;
+    const residentsWithAttempts = filteredResidents.filter(
+        (resident) => resident.stats.total_exams > 0,
+    ).length;
+    const averagePassRate = useMemo(() => {
+        if (filteredResidents.length === 0) {
+            return 0;
+        }
+
+        const total = filteredResidents.reduce(
+            (sum, resident) => sum + resident.stats.pass_rate,
+            0,
+        );
+
+        return total / filteredResidents.length;
+    }, [filteredResidents]);
 
     const handleViewDetails = (resident: Resident) => {
         setSelectedResident(resident);
@@ -80,150 +99,198 @@ export default function ByPerformanceReport({ residents }: Props) {
 
             <AssessmentReportsLayout>
                 <div className="flex h-full flex-1 flex-col gap-6 overflow-x-auto rounded-xl p-6">
-                    {/* Header */}
-                    <div className="flex items-start justify-between gap-4">
-                        <HeadingSmall
-                            title="Performance Report"
-                            description="Monitor resident performance and track progress"
+                    <HeadingSmall
+                        title="Performance Report"
+                        description="Monitor resident performance and track progress"
+                    />
+
+                    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                        <StatCard
+                            title="Residents"
+                            value={filteredResidents.length}
+                            description="Residents in the current report view"
+                            icon={Users}
+                            iconColor="text-primary"
+                        />
+                        <StatCard
+                            title="Active"
+                            value={activeResidents}
+                            description="Residents marked as active"
+                            icon={Award}
+                            iconColor="text-primary"
+                        />
+                        <StatCard
+                            title="With Attempts"
+                            value={residentsWithAttempts}
+                            description="Residents with completed assessments"
+                            icon={TrendingUp}
+                            iconColor="text-primary"
+                        />
+                        <StatCard
+                            title="Average Pass Rate"
+                            value={`${averagePassRate.toFixed(1)}%`}
+                            description="Average pass rate across visible residents"
+                            icon={TrendingUp}
+                            iconColor="text-primary"
                         />
                     </div>
 
-                    {/* Search */}
-                    <div className="flex items-center gap-4">
-                        <Input
-                            placeholder="Search residents..."
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                            className="max-w-sm"
-                        />
-                    </div>
+                    <Card className="overflow-hidden border-primary/10 bg-[linear-gradient(135deg,rgba(248,244,255,0.98),rgba(255,255,255,0.94))]">
+                        <CardContent className="flex flex-col gap-4 p-6 lg:flex-row lg:items-center lg:justify-between">
+                            <div className="space-y-1">
+                                <p className="text-[0.7rem] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
+                                    Report focus
+                                </p>
+                                <h3 className="text-2xl font-semibold tracking-[-0.04em] text-foreground">
+                                    Resident performance overview
+                                </h3>
+                                <p className="text-sm leading-6 text-muted-foreground">
+                                    Use this report to spot strong performers, residents needing support, and overall cohort movement.
+                                </p>
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                                <Badge variant="secondary">
+                                    {filteredResidents.length} visible residents
+                                </Badge>
+                                <Badge variant="outline">
+                                    {search ? 'Filtered search' : 'Full list'}
+                                </Badge>
+                            </div>
+                        </CardContent>
+                    </Card>
 
-                    {/* Residents Table */}
-                    <Card>
-                        <CardHeader>
+                    <Card className="overflow-hidden border-border/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,255,255,0.94))]">
+                        <CardContent className="space-y-4 pt-6">
+                            <div className="space-y-2">
+                                <label className="text-xs font-semibold tracking-[0.12em] text-muted-foreground uppercase">
+                                    Search Residents
+                                </label>
+                                <div className="relative max-w-sm">
+                                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                                    <Input
+                                        placeholder="Search residents..."
+                                        value={search}
+                                        onChange={(e) => setSearch(e.target.value)}
+                                        className="pl-9"
+                                    />
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    <Card className="overflow-hidden border-border/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,255,255,0.94))]">
+                        <CardHeader className="pb-3">
                             <CardTitle>
                                 Residents ({filteredResidents.length})
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
                             {filteredResidents.length > 0 ? (
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead>Name</TableHead>
-                                            <TableHead className="text-center">
-                                                Year Level
-                                            </TableHead>
-                                            <TableHead className="text-center">
-                                                Status
-                                            </TableHead>
-                                            <TableHead className="text-center">
-                                                Total Exams
-                                            </TableHead>
-                                            <TableHead className="text-center">
-                                                Average
-                                            </TableHead>
-                                            <TableHead className="text-center">
-                                                Pass Rate
-                                            </TableHead>
-                                            <TableHead className="text-right">
-                                                Actions
-                                            </TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {filteredResidents.map((resident) => (
-                                            <TableRow key={resident.id}>
-                                                <TableCell className="font-medium">
-                                                    {resident.name}
-                                                </TableCell>
-                                                <TableCell className="text-center">
-                                                    <Badge variant="outline">
-                                                        {resident.year_level}
-                                                    </Badge>
-                                                </TableCell>
-                                                <TableCell className="text-center">
-                                                    <Badge
-                                                        variant={
-                                                            resident.status ===
-                                                            'active'
-                                                                ? 'default'
-                                                                : 'secondary'
-                                                        }
-                                                    >
-                                                        {resident.status}
-                                                    </Badge>
-                                                </TableCell>
-                                                <TableCell className="text-center">
-                                                    {resident.stats.total_exams}
-                                                </TableCell>
-                                                <TableCell className="text-center">
-                                                    {resident.stats.total_exams >
-                                                    0 ? (
+                                <div className="overflow-x-auto">
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead>Name</TableHead>
+                                                <TableHead className="text-center">
+                                                    Year Level
+                                                </TableHead>
+                                                <TableHead className="text-center">
+                                                    Status
+                                                </TableHead>
+                                                <TableHead className="text-center">
+                                                    Total Exams
+                                                </TableHead>
+                                                <TableHead className="text-center">
+                                                    Average
+                                                </TableHead>
+                                                <TableHead className="text-center">
+                                                    Pass Rate
+                                                </TableHead>
+                                                <TableHead className="text-right">
+                                                    Actions
+                                                </TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {filteredResidents.map((resident) => (
+                                                <TableRow key={resident.id}>
+                                                    <TableCell className="font-medium">
+                                                        {resident.name}
+                                                    </TableCell>
+                                                    <TableCell className="text-center">
+                                                        <Badge variant="outline">
+                                                            {resident.year_level}
+                                                        </Badge>
+                                                    </TableCell>
+                                                    <TableCell className="text-center">
                                                         <Badge
                                                             variant={
-                                                                resident.stats
-                                                                    .average_percentage >=
-                                                                75
+                                                                resident.status ===
+                                                                'active'
                                                                     ? 'default'
-                                                                    : resident.stats
-                                                                            .average_percentage >=
-                                                                        60
-                                                                      ? 'secondary'
-                                                                      : 'destructive'
+                                                                    : 'secondary'
                                                             }
                                                         >
-                                                            {resident.stats.average_percentage.toFixed(
-                                                                1,
-                                                            )}
-                                                            %
+                                                            {resident.status}
                                                         </Badge>
-                                                    ) : (
-                                                        <span className="text-muted-foreground">
-                                                            N/A
-                                                        </span>
-                                                    )}
-                                                </TableCell>
-                                                <TableCell className="text-center">
-                                                    {resident.stats.total_exams >
-                                                    0 ? (
-                                                        <span>
-                                                            {resident.stats.pass_rate.toFixed(
-                                                                1,
-                                                            )}
-                                                            %
-                                                        </span>
-                                                    ) : (
-                                                        <span className="text-muted-foreground">
-                                                            N/A
-                                                        </span>
-                                                    )}
-                                                </TableCell>
-                                                <TableCell className="text-right">
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="sm"
-                                                        onClick={() =>
-                                                            handleViewDetails(
-                                                                resident,
-                                                            )
-                                                        }
-                                                    >
-                                                        <Eye className="mr-2 size-4" />
-                                                        View Details
-                                                    </Button>
-                                                </TableCell>
-                                            </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
+                                                    </TableCell>
+                                                    <TableCell className="text-center">
+                                                        {resident.stats.total_exams}
+                                                    </TableCell>
+                                                    <TableCell className="text-center">
+                                                        {resident.stats.total_exams > 0 ? (
+                                                            <Badge
+                                                                variant={
+                                                                    resident.stats.average_percentage >=
+                                                                    75
+                                                                        ? 'default'
+                                                                        : resident.stats.average_percentage >=
+                                                                            60
+                                                                          ? 'secondary'
+                                                                          : 'destructive'
+                                                                }
+                                                            >
+                                                                {resident.stats.average_percentage.toFixed(1)}%
+                                                            </Badge>
+                                                        ) : (
+                                                            <span className="text-muted-foreground">
+                                                                N/A
+                                                            </span>
+                                                        )}
+                                                    </TableCell>
+                                                    <TableCell className="text-center">
+                                                        {resident.stats.total_exams > 0 ? (
+                                                            <span>
+                                                                {resident.stats.pass_rate.toFixed(1)}%
+                                                            </span>
+                                                        ) : (
+                                                            <span className="text-muted-foreground">
+                                                                N/A
+                                                            </span>
+                                                        )}
+                                                    </TableCell>
+                                                    <TableCell className="text-right">
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            onClick={() =>
+                                                                handleViewDetails(resident)
+                                                            }
+                                                        >
+                                                            <Eye className="mr-2 size-4" />
+                                                            View Details
+                                                        </Button>
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
+                                </div>
                             ) : (
                                 <div className="flex flex-col items-center justify-center py-12">
                                     <Award className="mb-4 size-12 text-muted-foreground" />
                                     <h3 className="mb-2 text-lg font-semibold">
-                                        {search
-                                            ? 'No residents found'
-                                            : 'No residents yet'}
+                                        {search ? 'No residents found' : 'No residents yet'}
                                     </h3>
                                     <p className="text-center text-sm text-muted-foreground">
                                         {search
@@ -236,10 +303,9 @@ export default function ByPerformanceReport({ residents }: Props) {
                     </Card>
                 </div>
 
-                {/* Resident Details Sheet */}
                 <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
                     <SheetContent className="w-full overflow-y-auto sm:max-w-2xl">
-                        {selectedResident && (
+                        {selectedResident ? (
                             <>
                                 <SheetHeader>
                                     <SheetTitle className="text-2xl">
@@ -251,15 +317,13 @@ export default function ByPerformanceReport({ residents }: Props) {
                                 </SheetHeader>
 
                                 <div className="mt-6 space-y-6">
-                                    {/* Resident Info */}
                                     <div className="flex gap-2">
                                         <Badge variant="outline">
                                             {selectedResident.year_level}
                                         </Badge>
                                         <Badge
                                             variant={
-                                                selectedResident.status ===
-                                                'active'
+                                                selectedResident.status === 'active'
                                                     ? 'default'
                                                     : 'secondary'
                                             }
@@ -268,108 +332,37 @@ export default function ByPerformanceReport({ residents }: Props) {
                                         </Badge>
                                     </div>
 
-                                    {/* Statistics Cards */}
                                     <div className="grid gap-4 md:grid-cols-2">
-                                        <Card>
-                                            <CardHeader className="pb-3">
-                                                <CardTitle className="text-sm font-medium text-muted-foreground">
-                                                    Total Exams
-                                                </CardTitle>
-                                            </CardHeader>
-                                            <CardContent>
-                                                <div className="text-3xl font-bold">
-                                                    {
-                                                        selectedResident.stats
-                                                            .total_exams
-                                                    }
-                                                </div>
-                                                <p className="mt-1 text-xs text-muted-foreground">
-                                                    {
-                                                        selectedResident.stats
-                                                            .total_institution_exams
-                                                    }{' '}
-                                                    institution,{' '}
-                                                    {
-                                                        selectedResident.stats
-                                                            .total_national_exams
-                                                    }{' '}
-                                                    national
-                                                </p>
-                                            </CardContent>
-                                        </Card>
-
-                                        <Card>
-                                            <CardHeader className="pb-3">
-                                                <CardTitle className="text-sm font-medium text-muted-foreground">
-                                                    Average Score
-                                                </CardTitle>
-                                            </CardHeader>
-                                            <CardContent>
-                                                <div className="text-3xl font-bold">
-                                                    {selectedResident.stats.average_percentage.toFixed(
-                                                        1,
-                                                    )}
-                                                    %
-                                                </div>
-                                                <p className="mt-1 text-xs text-muted-foreground">
-                                                    Across all exams
-                                                </p>
-                                            </CardContent>
-                                        </Card>
-
-                                        <Card>
-                                            <CardHeader className="pb-3">
-                                                <CardTitle className="text-sm font-medium text-muted-foreground">
-                                                    Pass Rate
-                                                </CardTitle>
-                                            </CardHeader>
-                                            <CardContent>
-                                                <div className="text-3xl font-bold">
-                                                    {selectedResident.stats.pass_rate.toFixed(
-                                                        1,
-                                                    )}
-                                                    %
-                                                </div>
-                                                <p className="mt-1 text-xs text-muted-foreground">
-                                                    {
-                                                        selectedResident.stats
-                                                            .total_passed
-                                                    }{' '}
-                                                    passed,{' '}
-                                                    {
-                                                        selectedResident.stats
-                                                            .total_failed
-                                                    }{' '}
-                                                    failed
-                                                </p>
-                                            </CardContent>
-                                        </Card>
-
-                                        <Card>
-                                            <CardHeader className="pb-3">
-                                                <CardTitle className="text-sm font-medium text-muted-foreground">
-                                                    Score Range
-                                                </CardTitle>
-                                            </CardHeader>
-                                            <CardContent>
-                                                <div className="text-3xl font-bold">
-                                                    {selectedResident.stats.lowest_score.toFixed(
-                                                        0,
-                                                    )}
-                                                    % -{' '}
-                                                    {selectedResident.stats.highest_score.toFixed(
-                                                        0,
-                                                    )}
-                                                    %
-                                                </div>
-                                                <p className="mt-1 text-xs text-muted-foreground">
-                                                    Lowest to highest
-                                                </p>
-                                            </CardContent>
-                                        </Card>
+                                        <StatCard
+                                            title="Total Exams"
+                                            value={selectedResident.stats.total_exams}
+                                            description={`${selectedResident.stats.total_institution_exams} institution, ${selectedResident.stats.total_national_exams} national`}
+                                            icon={Award}
+                                            iconColor="text-primary"
+                                        />
+                                        <StatCard
+                                            title="Average Score"
+                                            value={`${selectedResident.stats.average_percentage.toFixed(1)}%`}
+                                            description="Across all completed exams"
+                                            icon={TrendingUp}
+                                            iconColor="text-primary"
+                                        />
+                                        <StatCard
+                                            title="Pass Rate"
+                                            value={`${selectedResident.stats.pass_rate.toFixed(1)}%`}
+                                            description={`${selectedResident.stats.total_passed} passed, ${selectedResident.stats.total_failed} failed`}
+                                            icon={TrendingUp}
+                                            iconColor="text-primary"
+                                        />
+                                        <StatCard
+                                            title="Score Range"
+                                            value={`${selectedResident.stats.lowest_score.toFixed(0)}% - ${selectedResident.stats.highest_score.toFixed(0)}%`}
+                                            description="Lowest to highest result"
+                                            icon={TrendingUp}
+                                            iconColor="text-primary"
+                                        />
                                     </div>
 
-                                    {/* View Full Report Button */}
                                     <Button className="w-full" asChild>
                                         <Link
                                             href={`/assessment-reports/resident/${selectedResident.id}`}
@@ -380,11 +373,10 @@ export default function ByPerformanceReport({ residents }: Props) {
                                     </Button>
                                 </div>
                             </>
-                        )}
+                        ) : null}
                     </SheetContent>
                 </Sheet>
             </AssessmentReportsLayout>
         </AppLayout>
     );
 }
-
