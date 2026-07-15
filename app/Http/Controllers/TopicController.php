@@ -2,7 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Repositories\Contracts\TopicRepositoryInterface;
+use App\Services\TopicManagementService;
+use App\Services\TopicReadService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
@@ -10,7 +11,8 @@ use Illuminate\Http\RedirectResponse;
 class TopicController extends Controller
 {
     public function __construct(
-        private readonly TopicRepositoryInterface $topicRepository,
+        private readonly TopicReadService $topicReadService,
+        private readonly TopicManagementService $topicManagementService,
     ) {}
 
     /**
@@ -19,7 +21,7 @@ class TopicController extends Controller
     public function index(Request $request): JsonResponse
     {
         $user = $request->user();
-        $topics = $this->topicRepository->getForOrganizationWithGlobals($user->current_organization_id);
+        $topics = $this->topicReadService->listForOrganization($user->current_organization_id);
 
         return response()->json($topics);
     }
@@ -34,12 +36,10 @@ class TopicController extends Controller
             'description' => ['nullable', 'string'],
         ]);
 
-        $topic = $this->topicRepository->create([
-            'name' => $validated['name'],
-            'description' => $validated['description'] ?? null,
-            'organization_id' => $request->user()->current_organization_id,
-            'is_global' => false,
-        ]);
+        $topic = $this->topicManagementService->createForOrganization(
+            $request->user()->current_organization_id,
+            $validated
+        );
 
         return back()->with([
             'success' => 'Topic created successfully',
