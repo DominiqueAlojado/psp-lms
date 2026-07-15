@@ -230,6 +230,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('my-grades', [App\Http\Controllers\GradebookController::class, 'myGrades'])
         ->name('gradebook.my-grades');
 
+    // Feedback (design preview module)
+    Route::get('feedback', function () {
+        return Inertia::render('feedback/index');
+    })->name('feedback.index');
+
     // Assignments (Training Officers create, Residents submit)
     Route::get('assignments', [App\Http\Controllers\AssignmentController::class, 'index'])
         ->middleware('permission:view-assignments')

@@ -30,6 +30,7 @@ import {
     LayoutGrid,
     LineChart,
     Megaphone,
+    MessageSquareText,
     Pencil,
     UserCog,
     Users,
@@ -73,6 +74,11 @@ const mainNavItems: NavItem[] = [
         href: '/announcements',
         icon: Megaphone,
         permission: 'view-announcements',
+    },
+    {
+        title: 'Feedback',
+        href: '/feedback',
+        icon: MessageSquareText,
     },
     {
         title: 'Events',
