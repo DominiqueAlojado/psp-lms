@@ -2,6 +2,8 @@ import {
     SubmitAssignmentSheet,
     ViewSubmissionSheet,
 } from '@/components/assignments';
+import HeadingSmall from '@/components/heading-small';
+import { StatCard } from '@/components/stat-card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -96,11 +98,11 @@ export default function MyAssignments({ assignments }: Props) {
         useState<Assignment | null>(null);
 
     const pendingAssignments = assignments.filter(
-        (a) => !a.has_submitted && a.can_still_submit,
+        (assignment) => !assignment.has_submitted && assignment.can_still_submit,
     );
-    const submittedAssignments = assignments.filter((a) => a.has_submitted);
+    const submittedAssignments = assignments.filter((assignment) => assignment.has_submitted);
     const overdueAssignments = assignments.filter(
-        (a) => !a.has_submitted && a.is_overdue,
+        (assignment) => !assignment.has_submitted && assignment.is_overdue,
     );
 
     const handleSubmit = (assignment: Assignment) => {
@@ -118,246 +120,209 @@ export default function MyAssignments({ assignments }: Props) {
             <Head title="My Assignments" />
 
             <div className="flex h-full flex-1 flex-col gap-6 overflow-x-auto rounded-xl p-6">
-                {/* Header */}
-                <div>
-                    <h1 className="text-3xl font-bold">My Assignments</h1>
-                    <p className="text-muted-foreground">
-                        Submit case reports, logs, and other required
-                        assignments
-                    </p>
-                </div>
+                <HeadingSmall
+                    title="My Assignments"
+                    description="Submit case reports, logs, and required learning work from a single queue."
+                />
 
-                {/* Summary Cards */}
                 <div className="grid gap-4 md:grid-cols-3">
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">
-                                Pending
-                            </CardTitle>
-                            <Clock className="size-4 text-muted-foreground" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold">
-                                {pendingAssignments.length}
-                            </div>
-                            <p className="text-xs text-muted-foreground">
-                                Awaiting submission
-                            </p>
-                        </CardContent>
-                    </Card>
-
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">
-                                Submitted
-                            </CardTitle>
-                            <CheckCircle2 className="size-4 text-muted-foreground" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold">
-                                {submittedAssignments.length}
-                            </div>
-                            <p className="text-xs text-muted-foreground">
-                                Completed assignments
-                            </p>
-                        </CardContent>
-                    </Card>
-
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">
-                                Overdue
-                            </CardTitle>
-                            <AlertCircle className="size-4 text-destructive" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold text-destructive">
-                                {overdueAssignments.length}
-                            </div>
-                            <p className="text-xs text-muted-foreground">
-                                Past deadline
-                            </p>
-                        </CardContent>
-                    </Card>
+                    <StatCard
+                        title="Pending"
+                        value={pendingAssignments.length}
+                        description="Awaiting submission"
+                        icon={Clock}
+                        iconColor="text-primary"
+                    />
+                    <StatCard
+                        title="Submitted"
+                        value={submittedAssignments.length}
+                        description="Completed assignments"
+                        icon={CheckCircle2}
+                        iconColor="text-primary"
+                    />
+                    <StatCard
+                        title="Overdue"
+                        value={overdueAssignments.length}
+                        description="Past deadline and needing attention"
+                        icon={AlertCircle}
+                        iconColor="text-primary"
+                    />
                 </div>
 
-                {/* Assignments Table */}
-                <Card>
-                    <CardHeader>
+                <Card className="overflow-hidden border-primary/10 bg-[linear-gradient(135deg,rgba(248,244,255,0.98),rgba(255,255,255,0.94))]">
+                    <CardContent className="flex flex-col gap-4 p-6 lg:flex-row lg:items-center lg:justify-between">
+                        <div className="space-y-1">
+                            <p className="text-[0.7rem] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
+                                Submission snapshot
+                            </p>
+                            <h3 className="text-2xl font-semibold tracking-[-0.04em] text-foreground">
+                                Keep your assignment queue under control
+                            </h3>
+                            <p className="text-sm leading-6 text-muted-foreground">
+                                Review deadlines, submission state, and grading outcomes before anything slips.
+                            </p>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                            <Badge variant="secondary">
+                                {pendingAssignments.length} pending
+                            </Badge>
+                            <Badge variant="outline">
+                                {submittedAssignments.length} submitted
+                            </Badge>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <Card className="overflow-hidden border-border/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,255,255,0.94))]">
+                    <CardHeader className="pb-3">
                         <CardTitle>
                             All Assignments ({assignments.length})
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
                         {assignments.length > 0 ? (
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>Assignment</TableHead>
-                                        <TableHead>Type</TableHead>
-                                        <TableHead>Due Date</TableHead>
-                                        <TableHead className="text-center">
-                                            Status
-                                        </TableHead>
-                                        <TableHead className="text-center">
-                                            Score
-                                        </TableHead>
-                                        <TableHead className="text-right">
-                                            Actions
-                                        </TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {assignments.map((assignment) => (
-                                        <TableRow key={assignment.id}>
-                                            <TableCell>
-                                                <div>
-                                                    <div className="font-medium">
-                                                        {assignment.title}
-                                                    </div>
-                                                    {assignment.description && (
-                                                        <div className="mt-1 line-clamp-1 text-sm text-muted-foreground">
-                                                            {
-                                                                assignment.description
-                                                            }
+                            <div className="overflow-x-auto">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Assignment</TableHead>
+                                            <TableHead>Type</TableHead>
+                                            <TableHead>Due Date</TableHead>
+                                            <TableHead className="text-center">
+                                                Status
+                                            </TableHead>
+                                            <TableHead className="text-center">
+                                                Score
+                                            </TableHead>
+                                            <TableHead className="text-right">
+                                                Actions
+                                            </TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {assignments.map((assignment) => (
+                                            <TableRow key={assignment.id}>
+                                                <TableCell>
+                                                    <div>
+                                                        <div className="font-medium">
+                                                            {assignment.title}
                                                         </div>
-                                                    )}
-                                                </div>
-                                            </TableCell>
-                                            <TableCell>
-                                                <Badge variant="outline">
-                                                    {
-                                                        assignmentTypeLabels[
-                                                            assignment
-                                                                .assignment_type
-                                                        ]
-                                                    }
-                                                </Badge>
-                                            </TableCell>
-                                            <TableCell>
-                                                {assignment.due_date ? (
-                                                    <div className="flex items-center gap-1">
-                                                        <Calendar className="size-3" />
-                                                        {new Date(
-                                                            assignment.due_date,
-                                                        ).toLocaleDateString()}
-                                                        {assignment.is_overdue &&
-                                                            !assignment.has_submitted && (
-                                                                <Badge
-                                                                    variant="destructive"
-                                                                    className="ml-2"
-                                                                >
+                                                        {assignment.description ? (
+                                                            <div className="mt-1 line-clamp-1 text-sm text-muted-foreground">
+                                                                {assignment.description}
+                                                            </div>
+                                                        ) : null}
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <Badge variant="outline">
+                                                        {assignmentTypeLabels[assignment.assignment_type]}
+                                                    </Badge>
+                                                </TableCell>
+                                                <TableCell>
+                                                    {assignment.due_date ? (
+                                                        <div className="flex flex-wrap items-center gap-2">
+                                                            <Calendar className="size-3" />
+                                                            {new Date(
+                                                                assignment.due_date,
+                                                            ).toLocaleDateString()}
+                                                            {assignment.is_overdue &&
+                                                            !assignment.has_submitted ? (
+                                                                <Badge variant="destructive">
                                                                     Overdue
                                                                 </Badge>
-                                                            )}
-                                                    </div>
-                                                ) : (
-                                                    'No deadline'
-                                                )}
-                                            </TableCell>
-                                            <TableCell className="text-center">
-                                                {assignment.submission ? (
-                                                    <Badge
-                                                        variant={
-                                                            statusLabels[
-                                                                assignment
-                                                                    .submission
-                                                                    .status
-                                                            ]?.variant ||
-                                                            'secondary'
-                                                        }
-                                                    >
-                                                        {statusLabels[
-                                                            assignment
-                                                                .submission
-                                                                .status
-                                                        ]?.label ||
-                                                            assignment
-                                                                .submission
-                                                                .status}
-                                                        {assignment.submission
-                                                            .is_late &&
-                                                            ' (Late)'}
-                                                    </Badge>
-                                                ) : (
-                                                    <Badge variant="secondary">
-                                                        Not Submitted
-                                                    </Badge>
-                                                )}
-                                            </TableCell>
-                                            <TableCell className="text-center">
-                                                {assignment.submission
-                                                    ?.score ? (
-                                                    <span className="font-medium">
-                                                        {
-                                                            assignment
-                                                                .submission
-                                                                .score
-                                                        }{' '}
-                                                        / {assignment.max_score}
-                                                    </span>
-                                                ) : (
-                                                    <span className="text-muted-foreground">
-                                                        —
-                                                    </span>
-                                                )}
-                                            </TableCell>
-                                            <TableCell className="text-right">
-                                                {!assignment.has_submitted &&
-                                                assignment.can_still_submit ? (
-                                                    <Button
-                                                        size="sm"
-                                                        onClick={() =>
-                                                            handleSubmit(
-                                                                assignment,
-                                                            )
-                                                        }
-                                                    >
-                                                        <FileText className="mr-2 size-4" />
-                                                        Submit
-                                                    </Button>
-                                                ) : assignment.allow_resubmission &&
-                                                  assignment.submission_count <
-                                                      assignment.max_submissions ? (
-                                                    <Button
-                                                        size="sm"
-                                                        variant="outline"
-                                                        onClick={() =>
-                                                            handleSubmit(
-                                                                assignment,
-                                                            )
-                                                        }
-                                                    >
-                                                        <FileText className="mr-2 size-4" />
-                                                        Resubmit
-                                                    </Button>
-                                                ) : assignment.submission ? (
-                                                    <Button
-                                                        size="sm"
-                                                        variant="outline"
-                                                        onClick={() =>
-                                                            handleViewSubmission(
-                                                                assignment,
-                                                            )
-                                                        }
-                                                    >
-                                                        <FileText className="mr-2 size-4" />
-                                                        View
-                                                    </Button>
-                                                ) : (
-                                                    <Button
-                                                        size="sm"
-                                                        variant="ghost"
-                                                        disabled
-                                                    >
-                                                        Closed
-                                                    </Button>
-                                                )}
-                                            </TableCell>
-                                        </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
+                                                            ) : null}
+                                                        </div>
+                                                    ) : (
+                                                        'No deadline'
+                                                    )}
+                                                </TableCell>
+                                                <TableCell className="text-center">
+                                                    {assignment.submission ? (
+                                                        <Badge
+                                                            variant={
+                                                                statusLabels[
+                                                                    assignment.submission.status
+                                                                ]?.variant || 'secondary'
+                                                            }
+                                                        >
+                                                            {statusLabels[
+                                                                assignment.submission.status
+                                                            ]?.label || assignment.submission.status}
+                                                            {assignment.submission.is_late
+                                                                ? ' (Late)'
+                                                                : ''}
+                                                        </Badge>
+                                                    ) : (
+                                                        <Badge variant="secondary">
+                                                            Not Submitted
+                                                        </Badge>
+                                                    )}
+                                                </TableCell>
+                                                <TableCell className="text-center">
+                                                    {assignment.submission?.score !== null &&
+                                                    assignment.submission?.score !== undefined ? (
+                                                        <span className="font-medium">
+                                                            {assignment.submission.score} /{' '}
+                                                            {assignment.max_score}
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-muted-foreground">
+                                                            No score
+                                                        </span>
+                                                    )}
+                                                </TableCell>
+                                                <TableCell className="text-right">
+                                                    {!assignment.has_submitted &&
+                                                    assignment.can_still_submit ? (
+                                                        <Button
+                                                            size="sm"
+                                                            onClick={() =>
+                                                                handleSubmit(assignment)
+                                                            }
+                                                        >
+                                                            <FileText className="mr-2 size-4" />
+                                                            Submit
+                                                        </Button>
+                                                    ) : assignment.allow_resubmission &&
+                                                      assignment.submission_count <
+                                                          assignment.max_submissions ? (
+                                                        <Button
+                                                            size="sm"
+                                                            variant="outline"
+                                                            onClick={() =>
+                                                                handleSubmit(assignment)
+                                                            }
+                                                        >
+                                                            <FileText className="mr-2 size-4" />
+                                                            Resubmit
+                                                        </Button>
+                                                    ) : assignment.submission ? (
+                                                        <Button
+                                                            size="sm"
+                                                            variant="outline"
+                                                            onClick={() =>
+                                                                handleViewSubmission(assignment)
+                                                            }
+                                                        >
+                                                            <FileText className="mr-2 size-4" />
+                                                            View
+                                                        </Button>
+                                                    ) : (
+                                                        <Button
+                                                            size="sm"
+                                                            variant="ghost"
+                                                            disabled
+                                                        >
+                                                            Closed
+                                                        </Button>
+                                                    )}
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </div>
                         ) : (
                             <div className="flex flex-col items-center justify-center py-12">
                                 <Pencil className="mb-4 size-12 text-muted-foreground" />
@@ -365,8 +330,7 @@ export default function MyAssignments({ assignments }: Props) {
                                     No assignments yet
                                 </h3>
                                 <p className="text-center text-sm text-muted-foreground">
-                                    Assignments from your training officers will
-                                    appear here
+                                    Assignments from your training officers will appear here
                                 </p>
                             </div>
                         )}
@@ -374,14 +338,12 @@ export default function MyAssignments({ assignments }: Props) {
                 </Card>
             </div>
 
-            {/* Submit Assignment Sheet */}
             <SubmitAssignmentSheet
                 open={submitSheetOpen}
                 assignment={selectedAssignment}
                 onClose={() => setSubmitSheetOpen(false)}
             />
 
-            {/* View Submission Sheet */}
             <ViewSubmissionSheet
                 open={viewSubmissionSheetOpen}
                 assignment={selectedAssignment}

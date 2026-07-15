@@ -1,3 +1,5 @@
+import HeadingSmall from '@/components/heading-small';
+import { StatCard } from '@/components/stat-card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -5,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import AppLayout from '@/layouts/app-layout';
-import { Head, Link, router, useForm } from '@inertiajs/react';
+import { Head, router, useForm } from '@inertiajs/react';
 import {
     ArrowLeft,
     Calendar,
@@ -76,30 +78,80 @@ export default function GradeSubmission({ submission }: Props) {
         <AppLayout>
             <Head title={`Grade: ${submission.resident_name}`} />
 
-            <div className="space-y-6">
-                {/* Header */}
-                <div>
-                    <Button variant="ghost" size="sm" onClick={() => router.visit('/assignments')}>
+            <div className="space-y-6 p-6">
+                <div className="space-y-4">
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => router.visit('/assignments')}
+                    >
                         <ArrowLeft className="mr-2 size-4" />
                         Back
                     </Button>
-                    <h1 className="mt-2 text-3xl font-bold">
-                        Grade Submission
-                    </h1>
-                    <p className="text-muted-foreground">
-                        Review and grade resident submission
-                    </p>
+                    <HeadingSmall
+                        title="Grade Submission"
+                        description="Review resident work, download evidence, and save structured grading feedback."
+                    />
                 </div>
 
-                {/* Submission Info */}
-                <Card>
-                    <CardHeader>
+                <div className="grid gap-4 md:grid-cols-3">
+                    <StatCard
+                        title="Maximum Score"
+                        value={submission.max_score}
+                        description="Total points available for this submission"
+                        icon={FileText}
+                        iconColor="text-primary"
+                    />
+                    <StatCard
+                        title="Current Score"
+                        value={submission.score ?? 'Not graded'}
+                        description="Most recent saved grading value"
+                        icon={Calendar}
+                        iconColor="text-primary"
+                    />
+                    <StatCard
+                        title="Submission Status"
+                        value={submission.status === 'graded' ? 'Graded' : 'Awaiting Grade'}
+                        description={submission.is_late ? `Late by ${submission.late_days} day(s)` : 'Submitted within the allowed window'}
+                        icon={User}
+                        iconColor="text-primary"
+                    />
+                </div>
+
+                <Card className="overflow-hidden border-primary/10 bg-[linear-gradient(135deg,rgba(248,244,255,0.98),rgba(255,255,255,0.94))]">
+                    <CardContent className="flex flex-col gap-4 p-6 lg:flex-row lg:items-center lg:justify-between">
+                        <div className="space-y-1">
+                            <p className="text-[0.7rem] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
+                                Grading context
+                            </p>
+                            <h3 className="text-2xl font-semibold tracking-[-0.04em] text-foreground">
+                                {submission.assignment_title}
+                            </h3>
+                            <p className="text-sm leading-6 text-muted-foreground">
+                                Validate the submission details, review uploaded files, and leave actionable feedback for the resident.
+                            </p>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                            <Badge variant="outline">
+                                {assignmentTypeLabels[submission.assignment_type]}
+                            </Badge>
+                            <Badge variant={submission.status === 'graded' ? 'default' : 'secondary'}>
+                                {submission.status === 'graded' ? 'Graded' : 'Awaiting Grade'}
+                            </Badge>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <Card className="overflow-hidden border-border/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,255,255,0.94))]">
+                    <CardHeader className="pb-3">
                         <CardTitle>Submission Information</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
                         <div className="grid gap-4 md:grid-cols-2">
                             <div>
-                                <Label>Assignment</Label>
+                                <Label className="text-xs font-semibold tracking-[0.12em] text-muted-foreground uppercase">
+                                    Assignment
+                                </Label>
                                 <p className="mt-1 text-sm font-medium">
                                     {submission.assignment_title}
                                 </p>
@@ -109,7 +161,9 @@ export default function GradeSubmission({ submission }: Props) {
                             </div>
 
                             <div>
-                                <Label>Resident</Label>
+                                <Label className="text-xs font-semibold tracking-[0.12em] text-muted-foreground uppercase">
+                                    Resident
+                                </Label>
                                 <div className="mt-1 flex items-center gap-2">
                                     <User className="size-4" />
                                     <span className="text-sm font-medium">
@@ -122,7 +176,9 @@ export default function GradeSubmission({ submission }: Props) {
                             </div>
 
                             <div>
-                                <Label>Submitted</Label>
+                                <Label className="text-xs font-semibold tracking-[0.12em] text-muted-foreground uppercase">
+                                    Submitted
+                                </Label>
                                 <div className="mt-1 flex items-center gap-2">
                                     <Calendar className="size-4" />
                                     <span className="text-sm">
@@ -130,16 +186,18 @@ export default function GradeSubmission({ submission }: Props) {
                                             submission.submitted_at,
                                         ).toLocaleString()}
                                     </span>
-                                    {submission.is_late && (
+                                    {submission.is_late ? (
                                         <Badge variant="destructive">
                                             Late ({submission.late_days}d)
                                         </Badge>
-                                    )}
+                                    ) : null}
                                 </div>
                             </div>
 
                             <div>
-                                <Label>Status</Label>
+                                <Label className="text-xs font-semibold tracking-[0.12em] text-muted-foreground uppercase">
+                                    Status
+                                </Label>
                                 <p className="mt-1">
                                     <Badge
                                         variant={
@@ -156,20 +214,21 @@ export default function GradeSubmission({ submission }: Props) {
                             </div>
                         </div>
 
-                        {submission.submission_text && (
+                        {submission.submission_text ? (
                             <div>
-                                <Label>Resident Notes</Label>
+                                <Label className="text-xs font-semibold tracking-[0.12em] text-muted-foreground uppercase">
+                                    Resident Notes
+                                </Label>
                                 <p className="mt-1 whitespace-pre-wrap text-sm">
                                     {submission.submission_text}
                                 </p>
                             </div>
-                        )}
+                        ) : null}
                     </CardContent>
                 </Card>
 
-                {/* Submitted Files */}
-                <Card>
-                    <CardHeader>
+                <Card className="overflow-hidden border-border/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,255,255,0.94))]">
+                    <CardHeader className="pb-3">
                         <CardTitle>
                             Submitted Files ({submission.files.length})
                         </CardTitle>
@@ -180,7 +239,7 @@ export default function GradeSubmission({ submission }: Props) {
                                 {submission.files.map((file) => (
                                     <div
                                         key={file.id}
-                                        className="flex items-center justify-between rounded-lg border p-3"
+                                        className="flex items-center justify-between rounded-2xl border border-border/70 bg-background/80 p-4"
                                     >
                                         <div className="flex items-center gap-3">
                                             <FileText className="size-5 text-muted-foreground" />
@@ -189,8 +248,8 @@ export default function GradeSubmission({ submission }: Props) {
                                                     {file.original_name}
                                                 </p>
                                                 <p className="text-xs text-muted-foreground">
-                                                    {file.file_type.toUpperCase()} •{' '}
-                                                    {file.file_size_formatted} • Downloaded{' '}
+                                                    {file.file_type.toUpperCase()} -{' '}
+                                                    {file.file_size_formatted} - Downloaded{' '}
                                                     {file.download_count} times
                                                 </p>
                                             </div>
@@ -214,15 +273,17 @@ export default function GradeSubmission({ submission }: Props) {
                     </CardContent>
                 </Card>
 
-                {/* Grading Form */}
                 <form onSubmit={handleSubmit}>
-                    <Card>
-                        <CardHeader>
+                    <Card className="overflow-hidden border-border/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,255,255,0.94))]">
+                        <CardHeader className="pb-3">
                             <CardTitle>Grade & Feedback</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-4">
                             <div>
-                                <Label htmlFor="score">
+                                <Label
+                                    htmlFor="score"
+                                    className="text-xs font-semibold tracking-[0.12em] text-muted-foreground uppercase"
+                                >
                                     Score (out of {submission.max_score}){' '}
                                     <span className="text-destructive">*</span>
                                 </Label>
@@ -238,15 +299,18 @@ export default function GradeSubmission({ submission }: Props) {
                                     step={0.5}
                                     className="max-w-[200px]"
                                 />
-                                {errors.score && (
+                                {errors.score ? (
                                     <p className="mt-1 text-sm text-destructive">
                                         {errors.score}
                                     </p>
-                                )}
+                                ) : null}
                             </div>
 
                             <div>
-                                <Label htmlFor="grader_feedback">
+                                <Label
+                                    htmlFor="grader_feedback"
+                                    className="text-xs font-semibold tracking-[0.12em] text-muted-foreground uppercase"
+                                >
                                     Feedback for Resident
                                 </Label>
                                 <Textarea
@@ -258,14 +322,14 @@ export default function GradeSubmission({ submission }: Props) {
                                     placeholder="Provide constructive feedback for the resident..."
                                     rows={6}
                                 />
-                                {errors.grader_feedback && (
+                                {errors.grader_feedback ? (
                                     <p className="mt-1 text-sm text-destructive">
                                         {errors.grader_feedback}
                                     </p>
-                                )}
+                                ) : null}
                             </div>
 
-                            <div className="flex justify-end gap-2">
+                            <div className="flex justify-end gap-2 border-t border-border/70 pt-5">
                                 <Button
                                     type="button"
                                     variant="outline"
@@ -284,4 +348,3 @@ export default function GradeSubmission({ submission }: Props) {
         </AppLayout>
     );
 }
-

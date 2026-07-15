@@ -4,6 +4,8 @@ import {
     ViewAssignmentSheet,
     AssignmentLogsSheet,
 } from '@/components/assignments';
+import HeadingSmall from '@/components/heading-small';
+import { StatCard } from '@/components/stat-card';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -28,7 +30,17 @@ import {
 } from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
 import { Head, router } from '@inertiajs/react';
-import { Calendar, Eye, FileText, Pencil, Plus, SquarePen, Trash2 } from 'lucide-react';
+import {
+    Calendar,
+    CheckCircle2,
+    Eye,
+    FileText,
+    Pencil,
+    Plus,
+    SquarePen,
+    TimerReset,
+    Trash2,
+} from 'lucide-react';
 import { useState } from 'react';
 
 interface Assignment {
@@ -105,6 +117,16 @@ export default function AssignmentsIndex({ assignments }: Props) {
     const [viewingLogsAssignment, setViewingLogsAssignment] =
         useState<Assignment | null>(null);
     const [showLogsSheet, setShowLogsSheet] = useState(false);
+    const publishedAssignments = assignments.filter((assignment) => assignment.is_published);
+    const overdueAssignments = assignments.filter((assignment) => assignment.is_overdue);
+    const totalSubmissions = assignments.reduce(
+        (total, assignment) => total + assignment.submissions_count,
+        0,
+    );
+    const gradedSubmissions = assignments.reduce(
+        (total, assignment) => total + assignment.graded_count,
+        0,
+    );
 
     const handleDelete = (id: number) => {
         router.delete(`/assignments/${id}`, {
@@ -158,30 +180,82 @@ export default function AssignmentsIndex({ assignments }: Props) {
             <Head title="Assignments" />
 
             <div className="flex h-full flex-1 flex-col gap-6 overflow-x-auto rounded-xl p-6">
-                {/* Header */}
-                <div className="flex items-center justify-between">
-                    <div>
-                        <h1 className="text-3xl font-bold">Assignments</h1>
-                        <p className="text-muted-foreground">
-                            Create and manage assignments for residents
-                        </p>
-                    </div>
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                    <HeadingSmall
+                        title="Assignments"
+                        description="Create, publish, and monitor assignment workflows for residents."
+                    />
                     <Button onClick={() => setCreateSheetOpen(true)}>
                         <Plus className="mr-2 size-4" />
                         Create Assignment
                     </Button>
                 </div>
 
-                {/* Assignments Table */}
-                <Card>
-                    <CardHeader>
+                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                    <StatCard
+                        title="Assignments"
+                        value={assignments.length}
+                        description="Total assignment records in this workspace"
+                        icon={FileText}
+                        iconColor="text-primary"
+                    />
+                    <StatCard
+                        title="Published"
+                        value={publishedAssignments.length}
+                        description="Assignments currently visible to residents"
+                        icon={CheckCircle2}
+                        iconColor="text-primary"
+                    />
+                    <StatCard
+                        title="Submissions"
+                        value={totalSubmissions}
+                        description="Resident submissions received across all assignments"
+                        icon={TimerReset}
+                        iconColor="text-primary"
+                    />
+                    <StatCard
+                        title="Graded"
+                        value={gradedSubmissions}
+                        description={`${overdueAssignments.length} overdue assignment${overdueAssignments.length === 1 ? '' : 's'}`}
+                        icon={Calendar}
+                        iconColor="text-primary"
+                    />
+                </div>
+
+                <Card className="overflow-hidden border-primary/10 bg-[linear-gradient(135deg,rgba(248,244,255,0.98),rgba(255,255,255,0.94))]">
+                    <CardContent className="flex flex-col gap-4 p-6 lg:flex-row lg:items-center lg:justify-between">
+                        <div className="space-y-1">
+                            <p className="text-[0.7rem] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
+                                Workflow overview
+                            </p>
+                            <h3 className="text-2xl font-semibold tracking-[-0.04em] text-foreground">
+                                Assignment operations at a glance
+                            </h3>
+                            <p className="text-sm leading-6 text-muted-foreground">
+                                Track publication state, upcoming deadlines, and grading throughput from one place.
+                            </p>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                            <Badge variant="secondary">
+                                {publishedAssignments.length} published
+                            </Badge>
+                            <Badge variant="outline">
+                                {overdueAssignments.length} overdue
+                            </Badge>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <Card className="overflow-hidden border-border/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,255,255,0.94))]">
+                    <CardHeader className="pb-3">
                         <CardTitle>
                             All Assignments ({assignments.length})
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
                         {assignments.length > 0 ? (
-                            <Table>
+                            <div className="overflow-x-auto">
+                                <Table>
                                 <TableHeader>
                                     <TableRow>
                                         <TableHead>Title</TableHead>
@@ -205,7 +279,12 @@ export default function AssignmentsIndex({ assignments }: Props) {
                                     {assignments.map((assignment) => (
                                         <TableRow key={assignment.id}>
                                             <TableCell className="font-medium">
-                                                {assignment.title}
+                                                <div className="space-y-1">
+                                                    <p>{assignment.title}</p>
+                                                    <p className="text-xs text-muted-foreground">
+                                                        Created by {assignment.created_by}
+                                                    </p>
+                                                </div>
                                             </TableCell>
                                             <TableCell>
                                                 <Badge variant="outline">
@@ -219,7 +298,7 @@ export default function AssignmentsIndex({ assignments }: Props) {
                                             </TableCell>
                                             <TableCell>
                                                 {assignment.due_date ? (
-                                                    <div className="flex items-center gap-1">
+                                                    <div className="flex flex-wrap items-center gap-2">
                                                         <Calendar className="size-3" />
                                                         {new Date(
                                                             assignment.due_date,
@@ -227,7 +306,6 @@ export default function AssignmentsIndex({ assignments }: Props) {
                                                         {assignment.is_overdue && (
                                                             <Badge
                                                                 variant="destructive"
-                                                                className="ml-2"
                                                             >
                                                                 Overdue
                                                             </Badge>
@@ -344,7 +422,8 @@ export default function AssignmentsIndex({ assignments }: Props) {
                                         </TableRow>
                                     ))}
                                 </TableBody>
-                            </Table>
+                                </Table>
+                            </div>
                         ) : (
                             <div className="flex flex-col items-center justify-center py-12">
                                 <Pencil className="mb-4 size-12 text-muted-foreground" />

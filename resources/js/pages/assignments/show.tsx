@@ -1,3 +1,5 @@
+import HeadingSmall from '@/components/heading-small';
+import { StatCard } from '@/components/stat-card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -68,7 +70,10 @@ const assignmentTypeLabels: Record<string, string> = {
     other: 'Other',
 };
 
-const statusLabels: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' }> = {
+const statusLabels: Record<
+    string,
+    { label: string; variant: 'default' | 'secondary' | 'destructive' }
+> = {
     draft: { label: 'Draft', variant: 'secondary' },
     submitted: { label: 'Submitted', variant: 'default' },
     graded: { label: 'Graded', variant: 'default' },
@@ -77,139 +82,150 @@ const statusLabels: Record<string, { label: string; variant: 'default' | 'second
 
 export default function AssignmentShow({ assignment, submissions }: Props) {
     const submittedCount = submissions.filter(
-        (s) => s.status === 'submitted',
+        (submission) => submission.status === 'submitted',
     ).length;
-    const gradedCount = submissions.filter((s) => s.status === 'graded').length;
+    const gradedCount = submissions.filter(
+        (submission) => submission.status === 'graded',
+    ).length;
 
     return (
         <AppLayout>
             <Head title={assignment.title} />
 
-            <div className="space-y-6">
-                {/* Header */}
-                <div>
+            <div className="space-y-6 p-6">
+                <div className="space-y-4">
                     <Button variant="ghost" size="sm" asChild>
                         <Link href="/assignments">
                             <ArrowLeft className="mr-2 size-4" />
                             Back
                         </Link>
                     </Button>
-                    <h1 className="mt-2 text-3xl font-bold">{assignment.title}</h1>
-                    <div className="mt-2 flex items-center gap-2">
+                    <HeadingSmall
+                        title={assignment.title}
+                        description="Review assignment details, publication state, and resident submission progress."
+                    />
+                    <div className="flex flex-wrap items-center gap-2">
                         <Badge variant="outline">
                             {assignmentTypeLabels[assignment.assignment_type]}
                         </Badge>
                         <Badge
-                            variant={
-                                assignment.is_published ? 'default' : 'secondary'
-                            }
+                            variant={assignment.is_published ? 'default' : 'secondary'}
                         >
                             {assignment.is_published ? 'Published' : 'Draft'}
                         </Badge>
-                        {assignment.is_overdue && (
+                        {assignment.is_overdue ? (
                             <Badge variant="destructive">Overdue</Badge>
-                        )}
+                        ) : null}
                     </div>
                 </div>
 
-                {/* Summary Cards */}
                 <div className="grid gap-4 md:grid-cols-3">
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">
-                                Total Submissions
-                            </CardTitle>
-                            <FileText className="size-4 text-muted-foreground" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold">
-                                {submissions.length}
-                            </div>
-                            <p className="text-xs text-muted-foreground">
-                                From residents
-                            </p>
-                        </CardContent>
-                    </Card>
-
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">
-                                Pending Grading
-                            </CardTitle>
-                            <Eye className="size-4 text-muted-foreground" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold">{submittedCount}</div>
-                            <p className="text-xs text-muted-foreground">
-                                Awaiting review
-                            </p>
-                        </CardContent>
-                    </Card>
-
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">
-                                Graded
-                            </CardTitle>
-                            <Calendar className="size-4 text-muted-foreground" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold">{gradedCount}</div>
-                            <p className="text-xs text-muted-foreground">
-                                Completed reviews
-                            </p>
-                        </CardContent>
-                    </Card>
+                    <StatCard
+                        title="Total Submissions"
+                        value={submissions.length}
+                        description="Resident submissions received so far"
+                        icon={FileText}
+                        iconColor="text-primary"
+                    />
+                    <StatCard
+                        title="Pending Grading"
+                        value={submittedCount}
+                        description="Submissions awaiting review"
+                        icon={Eye}
+                        iconColor="text-primary"
+                    />
+                    <StatCard
+                        title="Graded"
+                        value={gradedCount}
+                        description="Completed grading decisions"
+                        icon={Calendar}
+                        iconColor="text-primary"
+                    />
                 </div>
 
-                {/* Assignment Details */}
-                <Card>
-                    <CardHeader>
+                <Card className="overflow-hidden border-primary/10 bg-[linear-gradient(135deg,rgba(248,244,255,0.98),rgba(255,255,255,0.94))]">
+                    <CardContent className="flex flex-col gap-4 p-6 lg:flex-row lg:items-center lg:justify-between">
+                        <div className="space-y-1">
+                            <p className="text-[0.7rem] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
+                                Assignment brief
+                            </p>
+                            <h3 className="text-2xl font-semibold tracking-[-0.04em] text-foreground">
+                                Submission requirements and grading settings
+                            </h3>
+                            <p className="text-sm leading-6 text-muted-foreground">
+                                Confirm scope, deadline behavior, and target learners before grading the responses below.
+                            </p>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                            <Badge variant="secondary">
+                                {submissions.length} submissions
+                            </Badge>
+                            <Badge variant="outline">
+                                {gradedCount} graded
+                            </Badge>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <Card className="overflow-hidden border-border/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,255,255,0.94))]">
+                    <CardHeader className="pb-3">
                         <CardTitle>Assignment Details</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                        {assignment.description && (
+                        {assignment.description ? (
                             <div>
-                                <Label>Description</Label>
+                                <Label className="text-xs font-semibold tracking-[0.12em] text-muted-foreground uppercase">
+                                    Description
+                                </Label>
                                 <p className="mt-1 text-sm">{assignment.description}</p>
                             </div>
-                        )}
+                        ) : null}
 
-                        {assignment.instructions && (
+                        {assignment.instructions ? (
                             <div>
-                                <Label>Instructions</Label>
+                                <Label className="text-xs font-semibold tracking-[0.12em] text-muted-foreground uppercase">
+                                    Instructions
+                                </Label>
                                 <p className="mt-1 whitespace-pre-wrap text-sm">
                                     {assignment.instructions}
                                 </p>
                             </div>
-                        )}
+                        ) : null}
 
                         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                            {assignment.due_date && (
+                            {assignment.due_date ? (
                                 <div>
-                                    <Label>Due Date</Label>
+                                    <Label className="text-xs font-semibold tracking-[0.12em] text-muted-foreground uppercase">
+                                        Due Date
+                                    </Label>
                                     <p className="mt-1 text-sm">
                                         {new Date(assignment.due_date).toLocaleString()}
                                     </p>
                                 </div>
-                            )}
+                            ) : null}
                             <div>
-                                <Label>Max Score</Label>
+                                <Label className="text-xs font-semibold tracking-[0.12em] text-muted-foreground uppercase">
+                                    Max Score
+                                </Label>
                                 <p className="mt-1 text-sm">
                                     {assignment.max_score} points
                                 </p>
                             </div>
                             {assignment.target_year_levels &&
-                                assignment.target_year_levels.length > 0 && (
-                                    <div>
-                                        <Label>Target Year Levels</Label>
-                                        <p className="mt-1 text-sm">
-                                            {assignment.target_year_levels.join(', ')}
-                                        </p>
-                                    </div>
-                                )}
+                            assignment.target_year_levels.length > 0 ? (
+                                <div>
+                                    <Label className="text-xs font-semibold tracking-[0.12em] text-muted-foreground uppercase">
+                                        Target Year Levels
+                                    </Label>
+                                    <p className="mt-1 text-sm">
+                                        {assignment.target_year_levels.join(', ')}
+                                    </p>
+                                </div>
+                            ) : null}
                             <div>
-                                <Label>Late Submission</Label>
+                                <Label className="text-xs font-semibold tracking-[0.12em] text-muted-foreground uppercase">
+                                    Late Submission
+                                </Label>
                                 <p className="mt-1 text-sm">
                                     {assignment.allow_late_submission
                                         ? `Allowed (${assignment.late_penalty_percent}% penalty)`
@@ -220,103 +236,103 @@ export default function AssignmentShow({ assignment, submissions }: Props) {
                     </CardContent>
                 </Card>
 
-                {/* Submissions Table */}
-                <Card>
-                    <CardHeader>
+                <Card className="overflow-hidden border-border/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,255,255,0.94))]">
+                    <CardHeader className="pb-3">
                         <CardTitle>Resident Submissions ({submissions.length})</CardTitle>
                     </CardHeader>
                     <CardContent>
                         {submissions.length > 0 ? (
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>Resident</TableHead>
-                                        <TableHead>Year Level</TableHead>
-                                        <TableHead>Submitted</TableHead>
-                                        <TableHead className="text-center">
-                                            Files
-                                        </TableHead>
-                                        <TableHead className="text-center">
-                                            Status
-                                        </TableHead>
-                                        <TableHead className="text-center">
-                                            Score
-                                        </TableHead>
-                                        <TableHead className="text-right">
-                                            Actions
-                                        </TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {submissions.map((submission) => (
-                                        <TableRow key={submission.id}>
-                                            <TableCell className="font-medium">
-                                                {submission.resident_name}
-                                            </TableCell>
-                                            <TableCell>
-                                                <Badge variant="outline">
-                                                    {submission.year_level}
-                                                </Badge>
-                                            </TableCell>
-                                            <TableCell>
-                                                {new Date(
-                                                    submission.submitted_at,
-                                                ).toLocaleDateString()}
-                                                {submission.is_late && (
-                                                    <Badge
-                                                        variant="destructive"
-                                                        className="ml-2"
-                                                    >
-                                                        Late ({submission.late_days}d)
-                                                    </Badge>
-                                                )}
-                                            </TableCell>
-                                            <TableCell className="text-center">
-                                                {submission.files_count}
-                                            </TableCell>
-                                            <TableCell className="text-center">
-                                                <Badge
-                                                    variant={
-                                                        statusLabels[submission.status]
-                                                            ?.variant || 'secondary'
-                                                    }
-                                                >
-                                                    {statusLabels[submission.status]
-                                                        ?.label || submission.status}
-                                                </Badge>
-                                            </TableCell>
-                                            <TableCell className="text-center">
-                                                {submission.score !== null ? (
-                                                    <span className="font-medium">
-                                                        {submission.score} /{' '}
-                                                        {submission.max_score}
-                                                    </span>
-                                                ) : (
-                                                    <span className="text-muted-foreground">
-                                                        —
-                                                    </span>
-                                                )}
-                                            </TableCell>
-                                            <TableCell className="text-right">
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    asChild
-                                                >
-                                                    <Link
-                                                        href={`/submissions/${submission.id}/grade`}
-                                                    >
-                                                        <Eye className="mr-2 size-4" />
-                                                        {submission.status === 'graded'
-                                                            ? 'View'
-                                                            : 'Grade'}
-                                                    </Link>
-                                                </Button>
-                                            </TableCell>
+                            <div className="overflow-x-auto">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Resident</TableHead>
+                                            <TableHead>Year Level</TableHead>
+                                            <TableHead>Submitted</TableHead>
+                                            <TableHead className="text-center">
+                                                Files
+                                            </TableHead>
+                                            <TableHead className="text-center">
+                                                Status
+                                            </TableHead>
+                                            <TableHead className="text-center">
+                                                Score
+                                            </TableHead>
+                                            <TableHead className="text-right">
+                                                Actions
+                                            </TableHead>
                                         </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {submissions.map((submission) => (
+                                            <TableRow key={submission.id}>
+                                                <TableCell className="font-medium">
+                                                    {submission.resident_name}
+                                                </TableCell>
+                                                <TableCell>
+                                                    <Badge variant="outline">
+                                                        {submission.year_level}
+                                                    </Badge>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <div className="flex flex-wrap items-center gap-2">
+                                                        {new Date(
+                                                            submission.submitted_at,
+                                                        ).toLocaleDateString()}
+                                                        {submission.is_late ? (
+                                                            <Badge variant="destructive">
+                                                                Late ({submission.late_days}d)
+                                                            </Badge>
+                                                        ) : null}
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell className="text-center">
+                                                    {submission.files_count}
+                                                </TableCell>
+                                                <TableCell className="text-center">
+                                                    <Badge
+                                                        variant={
+                                                            statusLabels[submission.status]
+                                                                ?.variant || 'secondary'
+                                                        }
+                                                    >
+                                                        {statusLabels[submission.status]
+                                                            ?.label || submission.status}
+                                                    </Badge>
+                                                </TableCell>
+                                                <TableCell className="text-center">
+                                                    {submission.score !== null ? (
+                                                        <span className="font-medium">
+                                                            {submission.score} /{' '}
+                                                            {submission.max_score}
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-muted-foreground">
+                                                            No score
+                                                        </span>
+                                                    )}
+                                                </TableCell>
+                                                <TableCell className="text-right">
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        asChild
+                                                    >
+                                                        <Link
+                                                            href={`/submissions/${submission.id}/grade`}
+                                                        >
+                                                            <Eye className="mr-2 size-4" />
+                                                            {submission.status === 'graded'
+                                                                ? 'View'
+                                                                : 'Grade'}
+                                                        </Link>
+                                                    </Button>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </div>
                         ) : (
                             <div className="flex flex-col items-center justify-center py-12">
                                 <FileText className="mb-4 size-12 text-muted-foreground" />
@@ -334,4 +350,3 @@ export default function AssignmentShow({ assignment, submissions }: Props) {
         </AppLayout>
     );
 }
-
