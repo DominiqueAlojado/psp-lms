@@ -1,14 +1,35 @@
 import HeadingSmall from '@/components/heading-small';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardFooter,
+    CardHeader,
+    CardTitle,
+} from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { usePermissions } from '@/hooks/use-permissions';
 import { Head, Link, router } from '@inertiajs/react';
-import { Calendar, Clock, MapPin, Search, Settings, Users, Video } from 'lucide-react';
+import {
+    Calendar,
+    Clock,
+    MapPin,
+    Search,
+    Settings,
+    Users,
+    Video,
+} from 'lucide-react';
 import { useState } from 'react';
 import { format, parseISO } from 'date-fns';
 
@@ -135,14 +156,6 @@ export default function EventsIndex({ events, filters }: PageProps) {
         }
     };
 
-    const formatDateTime = (dateString: string) => {
-        try {
-            return format(parseISO(dateString), 'MMM dd, yyyy h:mm a');
-        } catch {
-            return dateString;
-        }
-    };
-
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Events" />
@@ -170,7 +183,6 @@ export default function EventsIndex({ events, filters }: PageProps) {
                     </div>
                 </div>
 
-                {/* Filters */}
                 <Card>
                     <CardContent className="pt-6">
                         <form onSubmit={handleSearch} className="flex flex-col gap-4 md:flex-row">
@@ -229,7 +241,6 @@ export default function EventsIndex({ events, filters }: PageProps) {
                     </CardContent>
                 </Card>
 
-                {/* Events Grid */}
                 {events.data.length === 0 ? (
                     <Card>
                         <CardContent className="flex flex-col items-center justify-center py-12">
@@ -273,8 +284,8 @@ export default function EventsIndex({ events, filters }: PageProps) {
                                             </div>
                                             <CardTitle className="line-clamp-2">{event.title}</CardTitle>
                                             <CardDescription className="line-clamp-3">
-                                                {event.description 
-                                                    ? event.description.replace(/<[^>]*>/g, '') 
+                                                {event.description
+                                                    ? event.description.replace(/<[^>]*>/g, '')
                                                     : 'No description available'}
                                             </CardDescription>
                                         </CardHeader>
@@ -286,7 +297,7 @@ export default function EventsIndex({ events, filters }: PageProps) {
                                                 </div>
                                                 {!event.is_free && event.price && (
                                                     <div className="flex items-center gap-2 font-medium text-primary">
-                                                        <span>₱{parseFloat(event.price).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                                        <span>PHP {parseFloat(event.price).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                                                     </div>
                                                 )}
                                                 {event.is_free && (
@@ -327,7 +338,6 @@ export default function EventsIndex({ events, filters }: PageProps) {
                             })}
                         </div>
 
-                        {/* Pagination */}
                         {events.last_page > 1 && (
                             <div className="flex items-center justify-center gap-2">
                                 {Array.from({ length: events.last_page }, (_, i) => i + 1).map((page) => (
@@ -354,4 +364,3 @@ export default function EventsIndex({ events, filters }: PageProps) {
         </AppLayout>
     );
 }
-

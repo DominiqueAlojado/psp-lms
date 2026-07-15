@@ -104,7 +104,6 @@ export default function ResourcesIndex() {
                     )}
                 </div>
 
-                {/* Filters */}
                 <Card>
                     <CardContent className="p-4">
                         <div className="flex flex-col gap-3 sm:flex-row">
@@ -153,7 +152,6 @@ export default function ResourcesIndex() {
                     </CardContent>
                 </Card>
 
-                {/* Resources List */}
                 {resources.data.length === 0 ? (
                     <Card>
                         <CardContent className="p-12 text-center">
@@ -199,11 +197,11 @@ export default function ResourcesIndex() {
                                                 <FileText className="h-3 w-3" />
                                                 {resource.file_type.toUpperCase()}
                                             </div>
-                                            <span>•</span>
+                                            <span>-</span>
                                             <span>
                                                 {resource.file_size_formatted}
                                             </span>
-                                            <span>•</span>
+                                            <span>-</span>
                                             <div className="flex items-center gap-1">
                                                 <Download className="h-3 w-3" />
                                                 {resource.download_count}
@@ -251,7 +249,7 @@ export default function ResourcesIndex() {
                                         </div>
 
                                         <div className="text-xs text-muted-foreground">
-                                            Uploaded by {resource.uploaded_by} •{' '}
+                                            Uploaded by {resource.uploaded_by} -{' '}
                                             {resource.created_at}
                                         </div>
                                     </div>

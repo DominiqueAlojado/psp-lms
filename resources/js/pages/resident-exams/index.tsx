@@ -85,7 +85,6 @@ export default function ResidentExams() {
     };
 
     const confirmStartExam = () => {
-        // For resume, no text confirmation needed
         if (
             actionType !== 'resume' &&
             confirmText.toUpperCase() !== 'START EXAM'
@@ -94,7 +93,6 @@ export default function ResidentExams() {
         }
 
         if (selectedExam) {
-            // Navigate to exam - metadata will be captured on the exam page
             router.visit(
                 preserveOrgParam(
                     `/exams/${selectedExam.type}/${selectedExam.id}/take`,
@@ -125,7 +123,6 @@ export default function ResidentExams() {
                     description="View and take available exams"
                 />
 
-                {/* Available Exams */}
                 <div className="space-y-4">
                     <h3 className="text-lg font-semibold">Available Exams</h3>
                     {availableExams.length === 0 ? (
@@ -147,7 +144,6 @@ export default function ResidentExams() {
                                     <CardContent className="p-6">
                                         <div className="space-y-4">
                                             <div>
-                                                {' '}
                                                 <Badge
                                                     variant={
                                                         exam.type ===
@@ -225,7 +221,7 @@ export default function ResidentExams() {
                                                         null && (
                                                         <>
                                                             <span className="mx-2 text-muted-foreground">
-                                                                •
+                                                                -
                                                             </span>
                                                             <span className="text-muted-foreground">
                                                                 Best:{' '}
@@ -247,7 +243,6 @@ export default function ResidentExams() {
                                                 </div>
                                             )}
 
-                                            {/* Show both View Results and Start/Retake if exam has been attempted */}
                                             {exam.attempt_count > 0 &&
                                             !exam.has_in_progress_attempt ? (
                                                 <div className="flex gap-2">
@@ -301,7 +296,6 @@ export default function ResidentExams() {
                     )}
                 </div>
 
-                {/* Upcoming Exams */}
                 {upcomingExams.length > 0 && (
                     <div className="space-y-4">
                         <h3 className="text-lg font-semibold">
@@ -365,7 +359,6 @@ export default function ResidentExams() {
                     </div>
                 )}
 
-                {/* Completed Exams */}
                 {completedExams.length > 0 && (
                     <div className="space-y-4">
                         <h3 className="text-lg font-semibold">
@@ -487,7 +480,6 @@ export default function ResidentExams() {
                     </div>
                 )}
 
-                {/* Results Sheet */}
                 {selectedExam && (
                     <ExamResultsSheet
                         open={showResultsDialog}
@@ -499,7 +491,6 @@ export default function ResidentExams() {
                     />
                 )}
 
-                {/* Confirmation Dialog */}
                 <AlertDialog
                     open={showStartDialog}
                     onOpenChange={setShowStartDialog}
@@ -522,7 +513,7 @@ export default function ResidentExams() {
                                     {selectedExam?.duration_minutes && (
                                         <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-900/50 dark:bg-amber-900/20">
                                             <p className="text-sm font-medium text-amber-900 dark:text-amber-200">
-                                                ⏱️ Time Limit:{' '}
+                                                Time Limit:{' '}
                                                 {selectedExam.duration_minutes}{' '}
                                                 minutes
                                             </p>
