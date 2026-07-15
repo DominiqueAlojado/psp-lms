@@ -161,4 +161,129 @@ class AnalyticsReadServiceTest extends TestCase
         $this->assertNull($payload['analytics']);
         $this->assertNull($payload['filters']['exam']);
     }
+
+    public function test_it_builds_topic_performance_payload_across_scoped_exams(): void
+    {
+        $user = Mockery::mock(User::class)->makePartial();
+        $user->current_organization_id = 10;
+        $user->currentOrganization = (object) ['id' => 10, 'type' => 'institution'];
+        $user->shouldReceive('hasPermissionTo')->with('view-all-assessment-reports')->andReturn(false);
+
+        $firstExam = new class extends InstitutionAssessment
+        {
+            public Collection $questions;
+
+            public function __construct()
+            {
+                parent::__construct([
+                    'id' => 7,
+                    'title' => 'Exam A',
+                    'exam_category' => 'In-Service',
+                ]);
+
+                $anatomy = new class
+                {
+                    public int $id = 101;
+                    public int $points = 2;
+                    public object $topic;
+
+                    public function __construct()
+                    {
+                        $this->topic = (object) ['name' => 'Anatomy'];
+                    }
+                };
+
+                $pharma = new class
+                {
+                    public int $id = 102;
+                    public int $points = 3;
+                    public object $topic;
+
+                    public function __construct()
+                    {
+                        $this->topic = (object) ['name' => 'Pharmacology'];
+                    }
+                };
+
+                $this->questions = collect([$anatomy, $pharma]);
+            }
+        };
+
+        $secondExam = new class extends InstitutionAssessment
+        {
+            public Collection $questions;
+
+            public function __construct()
+            {
+                parent::__construct([
+                    'id' => 8,
+                    'title' => 'Exam B',
+                    'exam_category' => 'In-Service',
+                ]);
+
+                $anatomy = new class
+                {
+                    public int $id = 201;
+                    public int $points = 4;
+                    public object $topic;
+
+                    public function __construct()
+                    {
+                        $this->topic = (object) ['name' => 'Anatomy'];
+                    }
+                };
+
+                $this->questions = collect([$anatomy]);
+            }
+        };
+
+        $attemptForExamA = new class
+        {
+            public Collection $answers;
+
+            public function __construct()
+            {
+                $this->answers = collect([
+                    (object) ['question_id' => 101, 'is_correct' => true],
+                    (object) ['question_id' => 102, 'is_correct' => false],
+                ]);
+            }
+        };
+
+        $attemptForExamB = new class
+        {
+            public Collection $answers;
+
+            public function __construct()
+            {
+                $this->answers = collect([
+                    (object) ['question_id' => 201, 'is_correct' => true],
+                ]);
+            }
+        };
+
+        $repo = Mockery::mock(AnalyticsRepositoryInterface::class);
+        $repo->shouldReceive('getPublishedInstitutionExams')->once()->andReturn(collect([
+            (object) ['id' => 7, 'title' => 'Exam A', 'exam_category' => 'In-Service'],
+            (object) ['id' => 8, 'title' => 'Exam B', 'exam_category' => 'In-Service'],
+        ]));
+        $repo->shouldReceive('findInstitutionAssessmentForAnalytics')->once()->with(7)->andReturn($firstExam);
+        $repo->shouldReceive('findInstitutionAssessmentForAnalytics')->once()->with(8)->andReturn($secondExam);
+        $repo->shouldReceive('getCompletedInstitutionAttemptsForExam')->once()->with(7, 10, false, Mockery::type('array'))->andReturn(collect([$attemptForExamA]));
+        $repo->shouldReceive('getCompletedInstitutionAttemptsForExam')->once()->with(8, 10, false, Mockery::type('array'))->andReturn(collect([$attemptForExamB]));
+
+        $service = new AnalyticsReadService($repo);
+        $request = Request::create('/analytics/topic-performance', 'GET', ['exam' => 'all']);
+        $request->setUserResolver(fn () => $user);
+
+        $payload = $service->topicPerformancePayload($request);
+
+        $this->assertNull($payload['filters']['exam']);
+        $this->assertSame(2, $payload['topicPerformance']['summary']['topics_count']);
+        $this->assertSame(2, $payload['topicPerformance']['summary']['exams_covered']);
+        $this->assertSame(3, $payload['topicPerformance']['summary']['total_responses']);
+        $this->assertSame('Anatomy', $payload['topicPerformance']['topics'][0]['topic']);
+        $this->assertSame(2, $payload['topicPerformance']['topics'][0]['exams_covered']);
+        $this->assertSame(100.0, $payload['topicPerformance']['topics'][0]['success_rate']);
+    }
 }

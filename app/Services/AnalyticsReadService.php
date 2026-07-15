@@ -82,6 +82,36 @@ class AnalyticsReadService
         ];
     }
 
+    public function topicPerformancePayload(Request $request): array
+    {
+        $user = $request->user();
+        $currentOrganization = $user->currentOrganization;
+        $organizationId = $user->current_organization_id;
+        $canViewAllOrganizations = $user->hasPermissionTo('view-all-assessment-reports');
+        $isNational = $currentOrganization?->type === 'national';
+        $examFilter = $this->normalizeExamFilter($request->input('exam'));
+
+        [$exams, $organizations] = $this->baseFilterData($organizationId, $canViewAllOrganizations, $isNational);
+
+        return [
+            'exams' => $exams,
+            'organizations' => $organizations,
+            'topicPerformance' => $this->calculateTopicPerformance(
+                $exams,
+                $examFilter,
+                $organizationId,
+                $canViewAllOrganizations,
+                $request
+            ),
+            'filters' => [
+                'exam' => $examFilter,
+                'organization' => $request->input('organization'),
+                'date_from' => $request->input('date_from'),
+                'date_to' => $request->input('date_to'),
+            ],
+        ];
+    }
+
     public function questionBankPayload(Request $request): array
     {
         $user = $request->user();
@@ -268,7 +298,7 @@ class AnalyticsReadService
             $totalAnswers = 0;
 
             foreach ($attempts as $attempt) {
-                $answer = $attempt->answers()->where('question_id', $question->id)->first();
+                $answer = $this->findAnswerForQuestion($attempt, $question->id);
                 if ($answer) {
                     $totalAnswers++;
                     if ($answer->is_correct) {
@@ -319,7 +349,7 @@ class AnalyticsReadService
             $topicStats[$topicName]['total_points'] += $question->points;
 
             foreach ($attempts as $attempt) {
-                $answer = $attempt->answers()->where('question_id', $question->id)->first();
+                $answer = $this->findAnswerForQuestion($attempt, $question->id);
                 if ($answer) {
                     $topicStats[$topicName]['total_answers']++;
                     if ($answer->is_correct) {
@@ -336,6 +366,137 @@ class AnalyticsReadService
         }
 
         return array_values($topicStats);
+    }
+
+    private function calculateTopicPerformance(
+        Collection $availableExams,
+        ?string $examFilter,
+        ?int $organizationId,
+        bool $canViewAllOrganizations,
+        Request $request
+    ): array {
+        $selectedExams = $examFilter === null
+            ? $availableExams
+            : $availableExams->where('id', $examFilter)->values();
+
+        if ($selectedExams->isEmpty()) {
+            return $this->emptyTopicPerformancePayload(0);
+        }
+
+        $aggregatedTopics = [];
+        $examIdsCovered = [];
+
+        foreach ($selectedExams as $selectedExam) {
+            $examType = $selectedExam['type'] ?? null;
+            $examId = (int) str_replace([$examType . '_'], '', (string) ($selectedExam['id'] ?? '0'));
+
+            if ($examId <= 0) {
+                continue;
+            }
+
+            if ($examType === 'institution') {
+                $exam = $this->analyticsRepository->findInstitutionAssessmentForAnalytics($examId);
+                $attempts = $this->analyticsRepository->getCompletedInstitutionAttemptsForExam(
+                    $examId,
+                    $organizationId,
+                    $canViewAllOrganizations,
+                    $request->only(['organization', 'date_from', 'date_to'])
+                );
+            } elseif ($examType === 'national') {
+                $exam = $this->analyticsRepository->findNationalAssessmentForAnalytics($examId);
+                $attempts = $this->analyticsRepository->getCompletedNationalAttemptsForExam(
+                    $examId,
+                    $request->only(['date_from', 'date_to'])
+                );
+            } else {
+                continue;
+            }
+
+            $examIdsCovered[] = $selectedExam['id'];
+
+            foreach ($this->calculateTopicBreakdown($attempts, $exam) as $topicBreakdown) {
+                $topicName = $topicBreakdown['topic'];
+
+                if (! isset($aggregatedTopics[$topicName])) {
+                    $aggregatedTopics[$topicName] = [
+                        'topic' => $topicName,
+                        'question_count' => 0,
+                        'total_points' => 0,
+                        'correct_answers' => 0,
+                        'total_answers' => 0,
+                        'exams_covered' => [],
+                    ];
+                }
+
+                $aggregatedTopics[$topicName]['question_count'] += $topicBreakdown['question_count'];
+                $aggregatedTopics[$topicName]['total_points'] += $topicBreakdown['total_points'];
+                $aggregatedTopics[$topicName]['correct_answers'] += $topicBreakdown['correct_answers'];
+                $aggregatedTopics[$topicName]['total_answers'] += $topicBreakdown['total_answers'];
+                $aggregatedTopics[$topicName]['exams_covered'][$selectedExam['id']] = true;
+            }
+        }
+
+        $topics = collect($aggregatedTopics)
+            ->map(function (array $topic) {
+                $topic['exams_covered'] = count($topic['exams_covered']);
+                $topic['success_rate'] = $topic['total_answers'] > 0
+                    ? round(($topic['correct_answers'] / $topic['total_answers']) * 100, 2)
+                    : 0;
+
+                return $topic;
+            })
+            ->sortBy([
+                ['success_rate', 'desc'],
+                ['total_answers', 'desc'],
+                ['topic', 'asc'],
+            ])
+            ->values();
+
+        $summary = [
+            'topics_count' => $topics->count(),
+            'exams_covered' => count(array_unique($examIdsCovered)),
+            'total_questions' => $topics->sum('question_count'),
+            'total_responses' => $topics->sum('total_answers'),
+            'average_success_rate' => $topics->isNotEmpty()
+                ? round($topics->avg('success_rate'), 2)
+                : 0,
+        ];
+
+        return [
+            'summary' => $summary,
+            'topics' => $topics->all(),
+            'top_topics' => $topics
+                ->filter(fn (array $topic) => $topic['total_answers'] > 0)
+                ->take(3)
+                ->values()
+                ->all(),
+            'needs_attention_topics' => $topics
+                ->filter(fn (array $topic) => $topic['total_answers'] > 0)
+                ->sortBy([
+                    ['success_rate', 'asc'],
+                    ['total_answers', 'desc'],
+                    ['topic', 'asc'],
+                ])
+                ->take(3)
+                ->values()
+                ->all(),
+        ];
+    }
+
+    private function emptyTopicPerformancePayload(int $examsCovered): array
+    {
+        return [
+            'summary' => [
+                'topics_count' => 0,
+                'exams_covered' => $examsCovered,
+                'total_questions' => 0,
+                'total_responses' => 0,
+                'average_success_rate' => 0,
+            ],
+            'topics' => [],
+            'top_topics' => [],
+            'needs_attention_topics' => [],
+        ];
     }
 
     private function calculateYearLevelStats(Collection $attempts): array
@@ -621,6 +782,15 @@ class AnalyticsReadService
         }
 
         return 'Marginal';
+    }
+
+    private function findAnswerForQuestion(object $attempt, int $questionId): mixed
+    {
+        if (isset($attempt->answers) && $attempt->answers instanceof Collection) {
+            return $attempt->answers->firstWhere('question_id', $questionId);
+        }
+
+        return $attempt->answers()->where('question_id', $questionId)->first();
     }
 
     private function normalizeExamFilter(?string $examFilter): ?string

@@ -25,7 +25,7 @@ class AnalyticsController extends Controller
 
     public function topicPerformance(Request $request): Response
     {
-        return Inertia::render('analytics/topic-performance', []);
+        return Inertia::render('analytics/topic-performance', $this->analyticsReadService->topicPerformancePayload($request));
     }
 
     public function questionBank(Request $request): Response
