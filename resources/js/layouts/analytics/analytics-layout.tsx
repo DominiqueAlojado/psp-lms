@@ -1,43 +1,57 @@
 import Heading from '@/components/heading';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { usePermissions } from '@/hooks/use-permissions';
 import { cn, isSameUrl, resolveUrl } from '@/lib/utils';
 import { type NavItem } from '@/types';
 import { Link } from '@inertiajs/react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import {
+    BarChart3,
+    ChartColumnBig,
+    ChartLine,
+    ChartNoAxesColumn,
+    ChevronLeft,
+    ChevronRight,
+    Database,
+    PieChart,
+} from 'lucide-react';
 import { type PropsWithChildren, useState } from 'react';
 
 const sidebarNavItems: NavItem[] = [
     {
         title: 'Exam Analytics',
         href: { url: '/analytics/exam-analytics', method: 'get' },
-        icon: null,
+        icon: BarChart3,
     },
     {
         title: 'Item Analysis',
         href: { url: '/analytics/item-analysis', method: 'get' },
-        icon: null,
+        icon: ChartColumnBig,
     },
     {
         title: 'Topic Performance',
         href: { url: '/analytics/topic-performance', method: 'get' },
-        icon: null,
+        icon: PieChart,
     },
     {
         title: 'Question Bank',
         href: { url: '/analytics/question-bank', method: 'get' },
-        icon: null,
+        icon: Database,
     },
     {
         title: 'Category Performance',
         href: { url: '/analytics/category-performance', method: 'get' },
-        icon: null,
+        icon: ChartNoAxesColumn,
     },
     {
         title: 'Trends',
         href: { url: '/analytics/trends', method: 'get' },
-        icon: null,
+        icon: ChartLine,
     },
 ];
 
@@ -64,37 +78,48 @@ export default function AnalyticsLayout({ children }: PropsWithChildren) {
         <div className="flex flex-col lg:flex-row lg:space-x-12">
             <aside
                 className={cn(
-                    'w-full transition-all duration-300',
-                    isCollapsed ? 'lg:w-12' : 'max-w-xl lg:w-48',
+                    'w-full pt-4 pl-2 transition-all duration-300 lg:pt-6',
+                    isCollapsed ? 'lg:w-16' : 'max-w-xl lg:w-56',
                 )}
             >
                 <div className="flex items-center justify-between gap-2">
-                    <nav
-                        className={cn(
-                            'flex flex-1 flex-col space-y-1 space-x-0',
-                            isCollapsed && 'lg:hidden',
-                        )}
-                    >
+                    <nav className="flex flex-1 flex-col space-y-1 space-x-0">
                         {filteredSidebarNavItems.map((item, index) => (
-                            <Button
-                                key={`${resolveUrl(item.href)}-${index}`}
-                                size="sm"
-                                variant="ghost"
-                                asChild
-                                className={cn('w-full justify-start', {
-                                    'bg-muted': isSameUrl(
-                                        currentPath,
-                                        item.href,
-                                    ),
-                                })}
-                            >
-                                <Link href={item.href}>
-                                    {item.icon && (
-                                        <item.icon className="h-4 w-4" />
-                                    )}
-                                    {item.title}
-                                </Link>
-                            </Button>
+                            <Tooltip key={`${resolveUrl(item.href)}-${index}`}>
+                                <TooltipTrigger asChild>
+                                    <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        asChild
+                                        className={cn(
+                                            'w-full gap-3',
+                                            isCollapsed
+                                                ? 'justify-center px-0'
+                                                : 'justify-start',
+                                            {
+                                                'bg-muted': isSameUrl(
+                                                    currentPath,
+                                                    item.href,
+                                                ),
+                                            },
+                                        )}
+                                    >
+                                        <Link href={item.href}>
+                                            {item.icon && (
+                                                <item.icon className="h-4 w-4 shrink-0" />
+                                            )}
+                                            {!isCollapsed && (
+                                                <span>{item.title}</span>
+                                            )}
+                                        </Link>
+                                    </Button>
+                                </TooltipTrigger>
+                                {isCollapsed && (
+                                    <TooltipContent side="right">
+                                        {item.title}
+                                    </TooltipContent>
+                                )}
+                            </Tooltip>
                         ))}
                     </nav>
                     <Button
