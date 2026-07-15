@@ -286,4 +286,76 @@ class AnalyticsReadServiceTest extends TestCase
         $this->assertSame(2, $payload['topicPerformance']['topics'][0]['exams_covered']);
         $this->assertSame(100.0, $payload['topicPerformance']['topics'][0]['success_rate']);
     }
+
+    public function test_it_builds_category_performance_payload_across_categories(): void
+    {
+        $user = Mockery::mock(User::class)->makePartial();
+        $user->current_organization_id = 10;
+        $user->currentOrganization = (object) ['id' => 10, 'type' => 'institution'];
+        $user->shouldReceive('hasPermissionTo')->with('view-all-assessment-reports')->andReturn(false);
+
+        $firstExam = new class extends InstitutionAssessment
+        {
+            public Collection $questions;
+
+            public function __construct()
+            {
+                parent::__construct([
+                    'id' => 7,
+                    'title' => 'Exam A',
+                    'exam_category' => 'In-Service',
+                    'total_points' => 10,
+                    'passing_score' => 6,
+                ]);
+
+                $this->questions = collect([(object) ['id' => 1], (object) ['id' => 2]]);
+            }
+        };
+
+        $secondExam = new class extends InstitutionAssessment
+        {
+            public Collection $questions;
+
+            public function __construct()
+            {
+                parent::__construct([
+                    'id' => 8,
+                    'title' => 'Exam B',
+                    'exam_category' => 'Mock Exam',
+                    'total_points' => 20,
+                    'passing_score' => 12,
+                ]);
+
+                $this->questions = collect([(object) ['id' => 3]]);
+            }
+        };
+
+        $repo = Mockery::mock(AnalyticsRepositoryInterface::class);
+        $repo->shouldReceive('getPublishedInstitutionExams')->once()->andReturn(collect([
+            (object) ['id' => 7, 'title' => 'Exam A', 'exam_category' => 'In-Service'],
+            (object) ['id' => 8, 'title' => 'Exam B', 'exam_category' => 'Mock Exam'],
+        ]));
+        $repo->shouldReceive('findInstitutionAssessmentForAnalytics')->once()->with(7)->andReturn($firstExam);
+        $repo->shouldReceive('findInstitutionAssessmentForAnalytics')->once()->with(8)->andReturn($secondExam);
+        $repo->shouldReceive('getCompletedInstitutionAttemptsForExam')->once()->with(7, 10, false, Mockery::type('array'))->andReturn(collect([
+            (object) ['score' => 8],
+            (object) ['score' => 4],
+        ]));
+        $repo->shouldReceive('getCompletedInstitutionAttemptsForExam')->once()->with(8, 10, false, Mockery::type('array'))->andReturn(collect([
+            (object) ['score' => 16],
+        ]));
+
+        $service = new AnalyticsReadService($repo);
+        $request = Request::create('/analytics/category-performance', 'GET');
+        $request->setUserResolver(fn () => $user);
+
+        $payload = $service->categoryPerformancePayload($request);
+
+        $this->assertSame(2, $payload['categoryPerformance']['summary']['categories_count']);
+        $this->assertSame(2, $payload['categoryPerformance']['summary']['exams_covered']);
+        $this->assertSame(3, $payload['categoryPerformance']['summary']['total_attempts']);
+        $this->assertSame('Mock Exam', $payload['categoryPerformance']['categories'][0]['category']);
+        $this->assertSame(100.0, $payload['categoryPerformance']['categories'][0]['pass_rate']);
+        $this->assertSame(50.0, $payload['categoryPerformance']['categories'][1]['pass_rate']);
+    }
 }

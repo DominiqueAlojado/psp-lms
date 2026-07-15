@@ -112,6 +112,33 @@ class AnalyticsReadService
         ];
     }
 
+    public function categoryPerformancePayload(Request $request): array
+    {
+        $user = $request->user();
+        $currentOrganization = $user->currentOrganization;
+        $organizationId = $user->current_organization_id;
+        $canViewAllOrganizations = $user->hasPermissionTo('view-all-assessment-reports');
+        $isNational = $currentOrganization?->type === 'national';
+
+        [$exams, $organizations] = $this->baseFilterData($organizationId, $canViewAllOrganizations, $isNational);
+
+        return [
+            'exams' => $exams,
+            'organizations' => $organizations,
+            'categoryPerformance' => $this->calculateCategoryPerformance(
+                $exams,
+                $organizationId,
+                $canViewAllOrganizations,
+                $request
+            ),
+            'filters' => [
+                'organization' => $request->input('organization'),
+                'date_from' => $request->input('date_from'),
+                'date_to' => $request->input('date_to'),
+            ],
+        ];
+    }
+
     public function questionBankPayload(Request $request): array
     {
         $user = $request->user();
@@ -496,6 +523,139 @@ class AnalyticsReadService
             'topics' => [],
             'top_topics' => [],
             'needs_attention_topics' => [],
+        ];
+    }
+
+    private function calculateCategoryPerformance(
+        Collection $availableExams,
+        ?int $organizationId,
+        bool $canViewAllOrganizations,
+        Request $request
+    ): array {
+        if ($availableExams->isEmpty()) {
+            return $this->emptyCategoryPerformancePayload();
+        }
+
+        $categories = [];
+
+        foreach ($availableExams as $selectedExam) {
+            $examType = $selectedExam['type'] ?? null;
+            $category = $selectedExam['category'] ?: 'Uncategorized';
+            $examId = (int) str_replace([$examType . '_'], '', (string) ($selectedExam['id'] ?? '0'));
+
+            if ($examId <= 0) {
+                continue;
+            }
+
+            if ($examType === 'institution') {
+                $exam = $this->analyticsRepository->findInstitutionAssessmentForAnalytics($examId);
+                $attempts = $this->analyticsRepository->getCompletedInstitutionAttemptsForExam(
+                    $examId,
+                    $organizationId,
+                    $canViewAllOrganizations,
+                    $request->only(['organization', 'date_from', 'date_to'])
+                );
+            } elseif ($examType === 'national') {
+                $exam = $this->analyticsRepository->findNationalAssessmentForAnalytics($examId);
+                $attempts = $this->analyticsRepository->getCompletedNationalAttemptsForExam(
+                    $examId,
+                    $request->only(['date_from', 'date_to'])
+                );
+            } else {
+                continue;
+            }
+
+            if (! isset($categories[$category])) {
+                $categories[$category] = [
+                    'category' => $category,
+                    'exams_count' => 0,
+                    'total_attempts' => 0,
+                    'passed_attempts' => 0,
+                    'total_score' => 0,
+                    'total_percentage' => 0,
+                    'total_questions' => 0,
+                ];
+            }
+
+            $categories[$category]['exams_count']++;
+            $categories[$category]['total_questions'] += $exam->questions->count();
+
+            $attemptCount = $attempts->count();
+            $categories[$category]['total_attempts'] += $attemptCount;
+            $categories[$category]['passed_attempts'] += $attempts
+                ->filter(fn ($attempt) => $attempt->score >= $exam->passing_score)
+                ->count();
+            $categories[$category]['total_score'] += $attempts->sum('score');
+            $categories[$category]['total_percentage'] += $attempts->sum(
+                fn ($attempt) => $exam->total_points > 0
+                    ? ($attempt->score / $exam->total_points) * 100
+                    : 0
+            );
+        }
+
+        $rows = collect($categories)
+            ->map(function (array $category) {
+                $totalAttempts = $category['total_attempts'];
+
+                $category['pass_rate'] = $totalAttempts > 0
+                    ? round(($category['passed_attempts'] / $totalAttempts) * 100, 2)
+                    : 0;
+                $category['average_score'] = $totalAttempts > 0
+                    ? round($category['total_score'] / $totalAttempts, 2)
+                    : 0;
+                $category['average_percentage'] = $totalAttempts > 0
+                    ? round($category['total_percentage'] / $totalAttempts, 2)
+                    : 0;
+
+                unset($category['total_score'], $category['total_percentage']);
+
+                return $category;
+            })
+            ->sortBy([
+                ['pass_rate', 'desc'],
+                ['total_attempts', 'desc'],
+                ['category', 'asc'],
+            ])
+            ->values();
+
+        return [
+            'summary' => [
+                'categories_count' => $rows->count(),
+                'exams_covered' => $availableExams->count(),
+                'total_attempts' => $rows->sum('total_attempts'),
+                'average_pass_rate' => $rows->isNotEmpty() ? round($rows->avg('pass_rate'), 2) : 0,
+            ],
+            'categories' => $rows->all(),
+            'top_categories' => $rows
+                ->filter(fn (array $row) => $row['total_attempts'] > 0)
+                ->take(3)
+                ->values()
+                ->all(),
+            'needs_attention_categories' => $rows
+                ->filter(fn (array $row) => $row['total_attempts'] > 0)
+                ->sortBy([
+                    ['pass_rate', 'asc'],
+                    ['total_attempts', 'desc'],
+                    ['category', 'asc'],
+                ])
+                ->take(3)
+                ->values()
+                ->all(),
+        ];
+    }
+
+    private function emptyCategoryPerformancePayload(): array
+    {
+        return [
+            'summary' => [
+                'categories_count' => 0,
+                'exams_covered' => 0,
+                'total_attempts' => 0,
+                'average_pass_rate' => 0,
+            ],
+            'categories' => [],
+            'top_categories' => [],
+            'needs_attention_categories' => [],
         ];
     }
 

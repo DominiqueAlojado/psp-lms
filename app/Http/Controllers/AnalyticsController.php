@@ -35,7 +35,7 @@ class AnalyticsController extends Controller
 
     public function categoryPerformance(Request $request): Response
     {
-        return Inertia::render('analytics/category-performance', []);
+        return Inertia::render('analytics/category-performance', $this->analyticsReadService->categoryPerformancePayload($request));
     }
 
     public function trends(Request $request): Response
