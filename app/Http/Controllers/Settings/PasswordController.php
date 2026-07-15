@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Settings;
 
 use App\Http\Controllers\Controller;
-use App\Repositories\Contracts\UserRepositoryInterface;
+use App\Services\PasswordSettingsManagementService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rules\Password;
@@ -13,7 +13,7 @@ use Inertia\Response;
 class PasswordController extends Controller
 {
     public function __construct(
-        private readonly UserRepositoryInterface $userRepository
+        private readonly PasswordSettingsManagementService $managementService,
     ) {}
 
     /**
@@ -34,7 +34,7 @@ class PasswordController extends Controller
             'password' => ['required', Password::defaults(), 'confirmed'],
         ]);
 
-        $this->userRepository->updatePassword($request->user(), $validated['password']);
+        $this->managementService->updatePassword($request->user(), $validated['password']);
 
         return back();
     }

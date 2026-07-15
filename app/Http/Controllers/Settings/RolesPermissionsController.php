@@ -3,7 +3,8 @@
 namespace App\Http\Controllers\Settings;
 
 use App\Http\Controllers\Controller;
-use App\Repositories\Contracts\RolesPermissionsRepositoryInterface;
+use App\Services\RolesPermissionsManagementService;
+use App\Services\RolesPermissionsReadService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -14,7 +15,8 @@ use Spatie\Permission\Models\Role;
 class RolesPermissionsController extends Controller
 {
     public function __construct(
-        private readonly RolesPermissionsRepositoryInterface $rolesPermissionsRepository,
+        private readonly RolesPermissionsReadService $readService,
+        private readonly RolesPermissionsManagementService $managementService,
     ) {}
 
     /**
@@ -22,36 +24,7 @@ class RolesPermissionsController extends Controller
      */
     public function index(): Response
     {
-        $roles = $this->rolesPermissionsRepository
-            ->getRolesWithPermissions()
-            ->map(fn ($role) => [
-                'id' => $role->id,
-                'name' => $role->name,
-                'guard_name' => $role->guard_name,
-                'permissions_count' => $role->permissions->count(),
-                'permissions' => $role->permissions->pluck('name'),
-            ]);
-
-        $permissions = $this->rolesPermissionsRepository
-            ->getPermissionsOrdered()
-            ->map(fn ($permission) => [
-                'id' => $permission->id,
-                'name' => $permission->name,
-                'guard_name' => $permission->guard_name,
-                'category' => $permission->category ?? 'Other',
-                'display_order' => $permission->display_order,
-            ]);
-
-        // Group permissions by category
-        $groupedPermissions = $permissions->groupBy('category')->map(function ($perms) {
-            return $perms->values();
-        });
-
-        return Inertia::render('settings/roles-permissions', [
-            'roles' => $roles,
-            'permissions' => $permissions,
-            'groupedPermissions' => $groupedPermissions,
-        ]);
+        return Inertia::render('settings/roles-permissions', $this->readService->indexPayload());
     }
 
     /**
@@ -63,10 +36,7 @@ class RolesPermissionsController extends Controller
             'name' => ['required', 'string', 'max:255', 'unique:roles,name'],
         ]);
 
-        $this->rolesPermissionsRepository->createRole([
-            'name' => $validated['name'],
-            'guard_name' => 'web',
-        ]);
+        $this->managementService->createRole($validated);
 
         return back()->with('success', 'Role created successfully');
     }
@@ -80,7 +50,7 @@ class RolesPermissionsController extends Controller
             'name' => ['required', 'string', 'max:255', 'unique:roles,name,'.$role->id],
         ]);
 
-        $this->rolesPermissionsRepository->updateRole($role, $validated);
+        $this->managementService->updateRole($role, $validated);
 
         return back()->with('success', 'Role updated successfully');
     }
@@ -90,12 +60,15 @@ class RolesPermissionsController extends Controller
      */
     public function deleteRole(Role $role): RedirectResponse
     {
-        // Prevent deletion of critical roles
-        if (in_array($role->name, ['System Admin', 'Admin', 'Resident'])) {
-            return back()->with('error', 'Cannot delete system roles');
-        }
+        try {
+            $this->managementService->deleteRole($role);
+        } catch (\Symfony\Component\HttpKernel\Exception\HttpException $exception) {
+            if ($exception->getStatusCode() === 422) {
+                return back()->with('error', 'Cannot delete system roles');
+            }
 
-        $this->rolesPermissionsRepository->deleteRole($role);
+            throw $exception;
+        }
 
         return back()->with('success', 'Role deleted successfully');
     }
@@ -110,12 +83,7 @@ class RolesPermissionsController extends Controller
             'category' => ['required', 'string', 'max:255'],
         ]);
 
-        $this->rolesPermissionsRepository->createPermission([
-            'name' => $validated['name'],
-            'guard_name' => 'web',
-            'category' => $validated['category'],
-            'display_order' => 999, // Put new permissions at the end
-        ]);
+        $this->managementService->createPermission($validated);
 
         return back()->with('success', 'Permission created successfully');
     }
@@ -130,7 +98,7 @@ class RolesPermissionsController extends Controller
             'category' => ['required', 'string', 'max:255'],
         ]);
 
-        $this->rolesPermissionsRepository->updatePermission($permission, $validated);
+        $this->managementService->updatePermission($permission, $validated);
 
         return back()->with('success', 'Permission updated successfully');
     }
@@ -140,7 +108,7 @@ class RolesPermissionsController extends Controller
      */
     public function deletePermission(Permission $permission): RedirectResponse
     {
-        $this->rolesPermissionsRepository->deletePermission($permission);
+        $this->managementService->deletePermission($permission);
 
         return back()->with('success', 'Permission deleted successfully');
     }
@@ -155,7 +123,7 @@ class RolesPermissionsController extends Controller
             'permissions.*' => ['exists:permissions,id'],
         ]);
 
-        $this->rolesPermissionsRepository->syncRolePermissions($role, $validated['permissions']);
+        $this->managementService->syncRolePermissions($role, $validated['permissions']);
 
         return back()->with('success', 'Role permissions updated successfully');
     }
