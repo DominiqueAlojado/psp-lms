@@ -5,6 +5,7 @@ namespace App\Http\Requests\NationalAssessments;
 use App\Models\National\NationalAssessment;
 use App\Models\National\NationalQuestion;
 use App\Models\National\NationalQuestionChoice;
+use App\Models\Topic;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -19,6 +20,7 @@ class SaveNationalAssessmentQuestionRequest extends FormRequest
     {
         /** @var NationalAssessment $assessment */
         $assessment = $this->route('assessment');
+        $currentOrganizationId = $this->user()?->current_organization_id;
 
         return [
             'id' => [
@@ -43,7 +45,30 @@ class SaveNationalAssessmentQuestionRequest extends FormRequest
             'question_text' => ['required', 'string'],
             'points' => ['required', 'integer', 'min:1'],
             'topic' => ['nullable', 'string', 'max:255'],
-            'topic_id' => ['nullable', 'integer', 'exists:topics,id'],
+            'topic_id' => [
+                'nullable',
+                'integer',
+                function (string $attribute, mixed $value, \Closure $fail) use ($currentOrganizationId) {
+                    if ($value === null || $value === '') {
+                        return;
+                    }
+
+                    $exists = Topic::query()
+                        ->whereKey($value)
+                        ->where(function ($query) use ($currentOrganizationId) {
+                            $query->where('is_global', true);
+
+                            if ($currentOrganizationId !== null) {
+                                $query->orWhere('organization_id', $currentOrganizationId);
+                            }
+                        })
+                        ->exists();
+
+                    if (! $exists) {
+                        $fail('The selected topic is invalid for this national assessment.');
+                    }
+                },
+            ],
             'choices' => ['nullable', 'array'],
             'choices.*.id' => [
                 'nullable',

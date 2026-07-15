@@ -7,6 +7,7 @@ use App\Models\National\NationalQuestion;
 use App\Models\National\NationalQuestionChoice;
 use App\Models\Organization;
 use App\Models\QuestionBank;
+use App\Models\Topic;
 use App\Models\User;
 use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -151,6 +152,42 @@ class NationalQuestionScopeValidationTest extends TestCase
             ]);
 
         $response->assertSessionHasErrors('question_ids.0');
+    }
+
+    public function test_save_one_question_rejects_foreign_topic_id(): void
+    {
+        $this->withoutMiddleware(ValidateCsrfToken::class);
+
+        [$user, $assessment] = $this->createNationalEditorFixture();
+
+        $foreignOrganization = Organization::create([
+            'name' => 'Foreign Institution',
+            'slug' => 'foreign-institution',
+            'type' => 'institution',
+            'is_active' => true,
+        ]);
+
+        $foreignTopic = Topic::create([
+            'name' => 'Foreign Topic',
+            'slug' => 'foreign-topic',
+            'organization_id' => $foreignOrganization->id,
+            'is_global' => false,
+        ]);
+
+        $response = $this->actingAs($user)
+            ->from(route('inservice-exams.edit', $assessment))
+            ->post(route('inservice-exams.questions.save-one', $assessment), [
+                'topic_id' => $foreignTopic->id,
+                'question_type' => 'multiple_choice',
+                'question_text' => 'Should fail',
+                'points' => 1,
+                'choices' => [
+                    ['choice_text' => 'A', 'is_correct' => true],
+                    ['choice_text' => 'B', 'is_correct' => false],
+                ],
+            ]);
+
+        $response->assertSessionHasErrors('topic_id');
     }
 
     /**
