@@ -1,5 +1,6 @@
 import AlertError from '@/components/alert-error';
 import HeadingSmall from '@/components/heading-small';
+import { StatCard } from '@/components/stat-card';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -72,10 +73,12 @@ interface Props {
     roles: Role[];
     permissions: Permission[];
     groupedPermissions: Record<string, Permission[]>;
+    errors?: Record<string, string>;
 }
 
 export default function RolesPermissions() {
-    const { roles, permissions, groupedPermissions } = usePage<Props>().props;
+    const { roles, permissions, groupedPermissions, errors = {} } =
+        usePage<Props>().props;
     const [editingRole, setEditingRole] = useState<Role | null>(null);
     const [addingRole, setAddingRole] = useState(false);
     const [editingPermission, setEditingPermission] =
@@ -183,8 +186,32 @@ export default function RolesPermissions() {
                         description="Manage system roles and permissions"
                     />
 
+                    <div className="grid gap-4 md:grid-cols-3">
+                        <StatCard
+                            title="Roles"
+                            value={roles.length}
+                            description="Permission bundles available across the system"
+                            icon={Shield}
+                            iconColor="text-primary"
+                        />
+                        <StatCard
+                            title="Permissions"
+                            value={permissions.length}
+                            description="Granular access rules available for assignment"
+                            icon={Search}
+                            iconColor="text-primary"
+                        />
+                        <StatCard
+                            title="Categories"
+                            value={Object.keys(groupedPermissions).length}
+                            description="Permission groups currently organized in settings"
+                            icon={Plus}
+                            iconColor="text-primary"
+                        />
+                    </div>
+
                     <Tabs defaultValue="roles" className="w-full">
-                        <TabsList className="grid w-full grid-cols-3">
+                        <TabsList className="grid w-full grid-cols-3 lg:w-fit lg:min-w-[34rem]">
                             <TabsTrigger value="roles">
                                 Roles ({roles.length})
                             </TabsTrigger>
@@ -198,8 +225,8 @@ export default function RolesPermissions() {
 
                         {/* Tab 1: Roles */}
                         <TabsContent value="roles" className="space-y-4 pt-4">
-                            <Card>
-                                <CardHeader>
+                            <Card className="overflow-hidden border-border/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,255,255,0.94))]">
+                                <CardHeader className="pb-3">
                                     <div className="flex items-center justify-between">
                                         <div>
                                             <CardTitle>Roles</CardTitle>
@@ -287,8 +314,8 @@ export default function RolesPermissions() {
                             value="permissions"
                             className="space-y-4 pt-4"
                         >
-                            <Card>
-                                <CardHeader>
+                            <Card className="overflow-hidden border-border/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,255,255,0.94))]">
+                                <CardHeader className="pb-3">
                                     <div className="flex items-center justify-between gap-4">
                                         <div>
                                             <CardTitle>Permissions</CardTitle>
@@ -382,8 +409,8 @@ export default function RolesPermissions() {
 
                         {/* Tab 3: Assign Permissions */}
                         <TabsContent value="assign" className="space-y-4 pt-4">
-                            <Card>
-                                <CardHeader>
+                            <Card className="overflow-hidden border-border/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,255,255,0.94))]">
+                                <CardHeader className="pb-3">
                                     <CardTitle>
                                         Assign Permissions to Roles
                                     </CardTitle>
@@ -453,7 +480,6 @@ export default function RolesPermissions() {
                                 }}
                             >
                                 {(() => {
-                                    const { errors } = usePage<any>().props;
                                     return (
                                         <div className="space-y-6">
                                             {Object.keys(errors).length > 0 && (
@@ -531,7 +557,6 @@ export default function RolesPermissions() {
                                     }}
                                 >
                                     {(() => {
-                                        const { errors } = usePage<any>().props;
                                         return (
                                             <div className="space-y-6">
                                                 {Object.keys(errors).length >
@@ -612,7 +637,6 @@ export default function RolesPermissions() {
                                 }}
                             >
                                 {(() => {
-                                    const { errors } = usePage<any>().props;
                                     const categories =
                                         Object.keys(groupedPermissions);
                                     return (
@@ -722,7 +746,6 @@ export default function RolesPermissions() {
                                     }}
                                 >
                                     {(() => {
-                                        const { errors } = usePage<any>().props;
                                         const categories =
                                             Object.keys(groupedPermissions);
                                         return (

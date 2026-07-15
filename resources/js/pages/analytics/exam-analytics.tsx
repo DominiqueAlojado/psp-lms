@@ -1,4 +1,5 @@
 import HeadingSmall from '@/components/heading-small';
+import { StatCard } from '@/components/stat-card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -142,14 +143,19 @@ export default function ExamAnalytics() {
                     </div>
 
                     {/* Filters */}
-                    <Card>
-                        <CardHeader>
+                    <Card className="overflow-hidden border-border/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,255,255,0.94))]">
+                        <CardHeader className="pb-3">
                             <CardTitle>Filters</CardTitle>
                         </CardHeader>
-                        <CardContent>
+                        <CardContent className="space-y-5">
                             <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                                 <div className="space-y-2">
-                                    <Label htmlFor="exam">Select Exam</Label>
+                                    <Label
+                                        htmlFor="exam"
+                                        className="text-xs font-semibold tracking-[0.12em] text-muted-foreground uppercase"
+                                    >
+                                        Select Exam
+                                    </Label>
                                     <Select
                                         value={examFilter}
                                         onValueChange={setExamFilter}
@@ -183,7 +189,12 @@ export default function ExamAnalytics() {
                                 </div>
 
                                 <div className="space-y-2">
-                                    <Label htmlFor="date_from">Date From</Label>
+                                    <Label
+                                        htmlFor="date_from"
+                                        className="text-xs font-semibold tracking-[0.12em] text-muted-foreground uppercase"
+                                    >
+                                        Date From
+                                    </Label>
                                     <Input
                                         id="date_from"
                                         type="date"
@@ -195,7 +206,12 @@ export default function ExamAnalytics() {
                                 </div>
 
                                 <div className="space-y-2">
-                                    <Label htmlFor="date_to">Date To</Label>
+                                    <Label
+                                        htmlFor="date_to"
+                                        className="text-xs font-semibold tracking-[0.12em] text-muted-foreground uppercase"
+                                    >
+                                        Date To
+                                    </Label>
                                     <Input
                                         id="date_to"
                                         type="date"
@@ -207,7 +223,7 @@ export default function ExamAnalytics() {
                                 </div>
                             </div>
 
-                            <div className="mt-4 flex items-center gap-2">
+                            <div className="flex flex-wrap items-center gap-3 border-t border-border/70 pt-5">
                                 <Button onClick={handleSearch}>
                                     <BarChart3 className="mr-2 h-4 w-4" />
                                     Analyze
@@ -230,66 +246,60 @@ export default function ExamAnalytics() {
                         <div className="space-y-6">
                             {/* Key Metrics */}
                             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-                                <Card>
-                                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                        <CardTitle className="text-sm font-medium">
-                                            Total Attempts
-                                        </CardTitle>
-                                        <Users className="h-4 w-4 text-muted-foreground" />
-                                    </CardHeader>
-                                    <CardContent>
-                                        <div className="text-2xl font-bold">
-                                            {analytics.total_attempts}
-                                        </div>
-                                    </CardContent>
-                                </Card>
-
-                                <Card>
-                                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                        <CardTitle className="text-sm font-medium">
-                                            Pass Rate
-                                        </CardTitle>
-                                        <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
-                                    </CardHeader>
-                                    <CardContent>
-                                        <div className="text-2xl font-bold">
-                                            {analytics.pass_rate}%
-                                        </div>
-                                    </CardContent>
-                                </Card>
-
-                                <Card>
-                                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                        <CardTitle className="text-sm font-medium">
-                                            Average Score
-                                        </CardTitle>
-                                        <TrendingUp className="h-4 w-4 text-muted-foreground" />
-                                    </CardHeader>
-                                    <CardContent>
-                                        <div className="text-2xl font-bold">
-                                            {analytics.average_score} /{' '}
-                                            {analytics.exam.total_points}
-                                        </div>
-                                        <p className="text-xs text-muted-foreground">
-                                            {analytics.average_percentage}%
-                                        </p>
-                                    </CardContent>
-                                </Card>
-
-                                <Card>
-                                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                        <CardTitle className="text-sm font-medium">
-                                            Completion Rate
-                                        </CardTitle>
-                                        <BarChart3 className="h-4 w-4 text-muted-foreground" />
-                                    </CardHeader>
-                                    <CardContent>
-                                        <div className="text-2xl font-bold">
-                                            {analytics.completion_rate}%
-                                        </div>
-                                    </CardContent>
-                                </Card>
+                                <StatCard
+                                    title="Total Attempts"
+                                    value={analytics.total_attempts}
+                                    description="Completed attempts included in this view"
+                                    icon={Users}
+                                    iconColor="text-primary"
+                                />
+                                <StatCard
+                                    title="Pass Rate"
+                                    value={`${analytics.pass_rate}%`}
+                                    description={`Target score ${analytics.exam.passing_score}%`}
+                                    icon={CheckCircle2}
+                                    iconColor="text-primary"
+                                />
+                                <StatCard
+                                    title="Average Score"
+                                    value={`${analytics.average_score} / ${analytics.exam.total_points}`}
+                                    description={`${analytics.average_percentage}% average performance`}
+                                    icon={TrendingUp}
+                                    iconColor="text-primary"
+                                />
+                                <StatCard
+                                    title="Completion Rate"
+                                    value={`${analytics.completion_rate}%`}
+                                    description="Residents who fully completed the exam"
+                                    icon={BarChart3}
+                                    iconColor="text-primary"
+                                />
                             </div>
+
+                            <Card className="overflow-hidden border-primary/10 bg-[linear-gradient(135deg,rgba(248,244,255,0.98),rgba(255,255,255,0.94))]">
+                                <CardContent className="flex flex-col gap-4 p-6 lg:flex-row lg:items-center lg:justify-between">
+                                    <div className="space-y-1">
+                                        <p className="text-[0.7rem] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
+                                            Current exam focus
+                                        </p>
+                                        <h3 className="text-2xl font-semibold tracking-[-0.04em] text-foreground">
+                                            {analytics.exam.title}
+                                        </h3>
+                                        <p className="text-sm leading-6 text-muted-foreground">
+                                            {analytics.exam.category || 'General exam'} with a passing score of{' '}
+                                            {analytics.exam.passing_score}%.
+                                        </p>
+                                    </div>
+                                    <div className="flex flex-wrap gap-2">
+                                        <Badge variant="secondary">
+                                            {analytics.question_stats.length} questions analyzed
+                                        </Badge>
+                                        <Badge variant="outline">
+                                            {analytics.year_level_stats.length} year-level segments
+                                        </Badge>
+                                    </div>
+                                </CardContent>
+                            </Card>
 
                             {/* Question Statistics */}
                             {analytics.question_stats.length > 0 && (
@@ -356,17 +366,7 @@ export default function ExamAnalytics() {
                                                                     }
                                                                 </TableCell>
                                                                 <TableCell>
-                                                                    <Badge
-                                                                        variant={
-                                                                            stat.success_rate >=
-                                                                            70
-                                                                                ? 'default'
-                                                                                : stat.success_rate >=
-                                                                                    50
-                                                                                  ? 'secondary'
-                                                                                  : 'destructive'
-                                                                        }
-                                                                    >
+                                                                    <Badge variant={stat.success_rate >= 70 ? 'default' : stat.success_rate >= 50 ? 'secondary' : 'destructive'}>
                                                                         {
                                                                             stat.success_rate
                                                                         }
@@ -446,17 +446,7 @@ export default function ExamAnalytics() {
                                                                     }
                                                                 </TableCell>
                                                                 <TableCell>
-                                                                    <Badge
-                                                                        variant={
-                                                                            topic.success_rate >=
-                                                                            70
-                                                                                ? 'default'
-                                                                                : topic.success_rate >=
-                                                                                    50
-                                                                                  ? 'secondary'
-                                                                                  : 'destructive'
-                                                                        }
-                                                                    >
+                                                                    <Badge variant={topic.success_rate >= 70 ? 'default' : topic.success_rate >= 50 ? 'secondary' : 'destructive'}>
                                                                         {
                                                                             topic.success_rate
                                                                         }
@@ -528,17 +518,7 @@ export default function ExamAnalytics() {
                                                                     }
                                                                 </TableCell>
                                                                 <TableCell>
-                                                                    <Badge
-                                                                        variant={
-                                                                            stat.pass_rate >=
-                                                                            70
-                                                                                ? 'default'
-                                                                                : stat.pass_rate >=
-                                                                                    50
-                                                                                  ? 'secondary'
-                                                                                  : 'destructive'
-                                                                        }
-                                                                    >
+                                                                    <Badge variant={stat.pass_rate >= 70 ? 'default' : stat.pass_rate >= 50 ? 'secondary' : 'destructive'}>
                                                                         {
                                                                             stat.pass_rate
                                                                         }

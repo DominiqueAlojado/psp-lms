@@ -1,5 +1,6 @@
 import AlertError from '@/components/alert-error';
 import HeadingSmall from '@/components/heading-small';
+import { StatCard } from '@/components/stat-card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -133,20 +134,47 @@ export default function OrganizationSettings() {
                         title="Organization Settings"
                         description="Manage your organization's information and view residents"
                     />
+                    <div className="grid gap-4 md:grid-cols-3">
+                        <StatCard
+                            title="Residents"
+                            value={residents.length}
+                            description="Current residents assigned to this organization"
+                            icon={Building2}
+                            iconColor="text-primary"
+                        />
+                        <StatCard
+                            title="Organization type"
+                            value={org.type}
+                            description="Workspace scope and visibility model"
+                            icon={Building2}
+                            iconColor="text-primary"
+                            className="capitalize"
+                        />
+                        <StatCard
+                            title="Status"
+                            value={org.is_active ? 'Active' : 'Inactive'}
+                            description="Organization access and workflow availability"
+                            icon={Building2}
+                            iconColor="text-primary"
+                        />
+                    </div>
                     {/* Organization Details Card */}
-                    <Card>
-                        <CardHeader>
+                    <Card className="overflow-hidden border-border/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,255,255,0.94))]">
+                        <CardHeader className="pb-3">
                             <CardTitle>Organization Details</CardTitle>
                             <CardDescription>
                                 Manage your organization's information
                             </CardDescription>
                         </CardHeader>
-                        <CardContent className="space-y-6">
+                        <CardContent className="space-y-8">
                             {/* Logo Section */}
                             <div className="space-y-4">
-                                <Label>Organization Logo</Label>
-                                <div className="flex items-start gap-4">
-                                    <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-lg border-2 border-dashed">
+                                <Label className="text-xs font-semibold tracking-[0.12em] text-muted-foreground uppercase">
+                                    Organization Logo
+                                </Label>
+                                <div className="rounded-[1.5rem] border border-border/70 bg-background/80 p-5">
+                                    <div className="flex flex-col gap-5 lg:flex-row lg:items-start">
+                                    <div className="flex h-28 w-28 items-center justify-center overflow-hidden rounded-[1.5rem] border border-dashed border-border/80 bg-accent/35">
                                         {org.logo ? (
                                             <img
                                                 src={`/storage/${org.logo}`}
@@ -157,10 +185,10 @@ export default function OrganizationSettings() {
                                             <Building2 className="h-10 w-10 text-muted-foreground" />
                                         )}
                                     </div>
-                                    <div className="flex-1 space-y-2">
+                                    <div className="flex-1 space-y-3">
                                         <form
                                             onSubmit={handleLogoUpload}
-                                            className="flex gap-2"
+                                            className="flex flex-col gap-3 sm:flex-row"
                                         >
                                             <Input
                                                 ref={logoInputRef}
@@ -169,7 +197,7 @@ export default function OrganizationSettings() {
                                                 accept="image/*"
                                                 className="flex-1"
                                             />
-                                            <Button type="submit" size="sm">
+                                            <Button type="submit" size="sm" className="sm:min-w-32">
                                                 <Upload className="mr-2 h-4 w-4" />
                                                 Upload
                                             </Button>
@@ -190,6 +218,7 @@ export default function OrganizationSettings() {
                                         </p>
                                     </div>
                                 </div>
+                                </div>
                             </div>
 
                             {/* Organization Form */}
@@ -209,7 +238,7 @@ export default function OrganizationSettings() {
                                     );
                                 }}
                             >
-                                <div className="space-y-4">
+                                <div className="space-y-5">
                                     {Object.keys(errors).length > 0 && (
                                         <AlertError
                                             errors={Object.values(errors)}
@@ -218,7 +247,7 @@ export default function OrganizationSettings() {
 
                                     <div className="grid gap-4 md:grid-cols-2">
                                         <div className="space-y-2">
-                                            <Label htmlFor="name">
+                                            <Label htmlFor="name" className="text-xs font-semibold tracking-[0.12em] text-muted-foreground uppercase">
                                                 Organization Name
                                             </Label>
                                             <Input
@@ -230,7 +259,7 @@ export default function OrganizationSettings() {
                                         </div>
 
                                         <div className="space-y-2">
-                                            <Label htmlFor="slug">Slug</Label>
+                                            <Label htmlFor="slug" className="text-xs font-semibold tracking-[0.12em] text-muted-foreground uppercase">Slug</Label>
                                             <Input
                                                 id="slug"
                                                 value={org.slug}
@@ -244,7 +273,7 @@ export default function OrganizationSettings() {
                                     </div>
 
                                     <div className="space-y-2">
-                                        <Label htmlFor="description">
+                                        <Label htmlFor="description" className="text-xs font-semibold tracking-[0.12em] text-muted-foreground uppercase">
                                             Description
                                         </Label>
                                         <Input
@@ -256,7 +285,7 @@ export default function OrganizationSettings() {
 
                                     <div className="grid gap-4 md:grid-cols-2">
                                         <div className="space-y-2">
-                                            <Label htmlFor="type">Type</Label>
+                                            <Label htmlFor="type" className="text-xs font-semibold tracking-[0.12em] text-muted-foreground uppercase">Type</Label>
                                             <Input
                                                 id="type"
                                                 value={org.type}
@@ -265,27 +294,32 @@ export default function OrganizationSettings() {
                                             />
                                         </div>
 
-                                        <div className="flex items-center space-x-2">
-                                            <input
-                                                type="hidden"
-                                                name="is_active"
-                                                value="0"
-                                            />
-                                            <input
-                                                type="checkbox"
-                                                id="is_active"
-                                                name="is_active"
-                                                defaultChecked={org.is_active}
-                                                value="1"
-                                                className="h-4 w-4 rounded border-gray-300"
-                                            />
-                                            <Label htmlFor="is_active">
-                                                Organization is active
-                                            </Label>
+                                        <div className="rounded-2xl border border-border/70 bg-background/80 p-4">
+                                            <p className="mb-3 text-xs font-semibold tracking-[0.12em] text-muted-foreground uppercase">
+                                                Access state
+                                            </p>
+                                            <div className="flex items-center space-x-2">
+                                                <input
+                                                    type="hidden"
+                                                    name="is_active"
+                                                    value="0"
+                                                />
+                                                <input
+                                                    type="checkbox"
+                                                    id="is_active"
+                                                    name="is_active"
+                                                    defaultChecked={org.is_active}
+                                                    value="1"
+                                                    className="h-4 w-4 rounded border-gray-300"
+                                                />
+                                                <Label htmlFor="is_active">
+                                                    Organization is active
+                                                </Label>
+                                            </div>
                                         </div>
                                     </div>
 
-                                    <div className="flex justify-end">
+                                    <div className="flex justify-end border-t border-border/70 pt-5">
                                         <Button type="submit">
                                             Save Changes
                                         </Button>
@@ -296,8 +330,8 @@ export default function OrganizationSettings() {
                     </Card>
 
                     {/* Residents Table Card */}
-                    <Card>
-                        <CardHeader>
+                    <Card className="overflow-hidden border-border/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,255,255,0.94))]">
+                        <CardHeader className="pb-3">
                             <CardTitle>
                                 Residents ({residents.length})
                             </CardTitle>
