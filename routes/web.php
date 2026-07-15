@@ -235,6 +235,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
         return Inertia::render('feedback/index');
     })->name('feedback.index');
 
+    // Customer support (design + interactive preview)
+    Route::get('support', function () {
+        return Inertia::render('support/index');
+    })->name('support.index');
+
     // Assignments (Training Officers create, Residents submit)
     Route::get('assignments', [App\Http\Controllers\AssignmentController::class, 'index'])
         ->middleware('permission:view-assignments')

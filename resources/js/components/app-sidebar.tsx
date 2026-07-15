@@ -28,6 +28,7 @@ import {
     GraduationCap,
     HelpCircle,
     LayoutGrid,
+    LifeBuoy,
     LineChart,
     Megaphone,
     MessageSquareText,
@@ -79,6 +80,11 @@ const mainNavItems: NavItem[] = [
         title: 'Feedback',
         href: '/feedback',
         icon: MessageSquareText,
+    },
+    {
+        title: 'Support',
+        href: '/support',
+        icon: LifeBuoy,
     },
     {
         title: 'Events',
