@@ -2,6 +2,11 @@ import HeadingSmall from '@/components/heading-small';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+    ChartContainer,
+    ChartTooltip,
+    ChartTooltipContent,
+} from '@/components/ui/chart';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -33,6 +38,15 @@ import {
     X,
 } from 'lucide-react';
 import { useState } from 'react';
+import {
+    Bar,
+    BarChart,
+    CartesianGrid,
+    Line,
+    LineChart,
+    XAxis,
+    YAxis,
+} from 'recharts';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -139,6 +153,24 @@ export default function Trends() {
 
     const hasActiveFilters =
         filters.exam || filters.date_from || filters.date_to;
+
+    const performanceChartConfig = {
+        pass_rate: {
+            label: 'Pass Rate',
+            color: 'hsl(24 95% 53%)',
+        },
+        average_percentage: {
+            label: 'Average Score %',
+            color: 'hsl(217 91% 60%)',
+        },
+    };
+
+    const attemptsChartConfig = {
+        attempts: {
+            label: 'Attempts',
+            color: 'hsl(142 71% 45%)',
+        },
+    };
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -289,6 +321,98 @@ export default function Trends() {
 
                     {trends.periods.length > 0 ? (
                         <div className="space-y-6">
+                            <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle>Performance Trend</CardTitle>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <ChartContainer
+                                            config={performanceChartConfig}
+                                            className="h-72 w-full"
+                                        >
+                                            <LineChart data={trends.periods}>
+                                                <CartesianGrid vertical={false} />
+                                                <XAxis
+                                                    dataKey="period_label"
+                                                    tickLine={false}
+                                                    axisLine={false}
+                                                    tickMargin={8}
+                                                />
+                                                <YAxis
+                                                    tickLine={false}
+                                                    axisLine={false}
+                                                    tickMargin={8}
+                                                    domain={[0, 100]}
+                                                />
+                                                <ChartTooltip
+                                                    content={
+                                                        <ChartTooltipContent />
+                                                    }
+                                                />
+                                                <Line
+                                                    type="monotone"
+                                                    dataKey="pass_rate"
+                                                    stroke="var(--color-pass_rate)"
+                                                    strokeWidth={2}
+                                                    dot={{
+                                                        fill: 'var(--color-pass_rate)',
+                                                    }}
+                                                    activeDot={{ r: 5 }}
+                                                />
+                                                <Line
+                                                    type="monotone"
+                                                    dataKey="average_percentage"
+                                                    stroke="var(--color-average_percentage)"
+                                                    strokeWidth={2}
+                                                    dot={{
+                                                        fill: 'var(--color-average_percentage)',
+                                                    }}
+                                                    activeDot={{ r: 5 }}
+                                                />
+                                            </LineChart>
+                                        </ChartContainer>
+                                    </CardContent>
+                                </Card>
+
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle>Attempt Volume</CardTitle>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <ChartContainer
+                                            config={attemptsChartConfig}
+                                            className="h-72 w-full"
+                                        >
+                                            <BarChart data={trends.periods}>
+                                                <CartesianGrid vertical={false} />
+                                                <XAxis
+                                                    dataKey="period_label"
+                                                    tickLine={false}
+                                                    axisLine={false}
+                                                    tickMargin={8}
+                                                />
+                                                <YAxis
+                                                    tickLine={false}
+                                                    axisLine={false}
+                                                    tickMargin={8}
+                                                />
+                                                <ChartTooltip
+                                                    content={
+                                                        <ChartTooltipContent />
+                                                    }
+                                                />
+                                                <Bar
+                                                    dataKey="attempts"
+                                                    fill="var(--color-attempts)"
+                                                    radius={[6, 6, 0, 0]}
+                                                />
+                                            </BarChart>
+                                        </ChartContainer>
+                                    </CardContent>
+                                </Card>
+                            </div>
+
                             <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
                                 <Card>
                                     <CardHeader>
