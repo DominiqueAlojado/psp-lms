@@ -1,4 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { cn } from '@/lib/utils';
 import { LucideIcon } from 'lucide-react';
 
 interface StatCardProps {
@@ -68,27 +69,47 @@ export function StatCard({
 
     return (
         <Card
-            className={`${onClick ? 'cursor-pointer transition-colors hover:bg-accent' : ''} ${className || ''}`}
+            className={cn(
+                'relative overflow-hidden border-border/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(255,255,255,0.92))]',
+                'before:absolute before:inset-x-6 before:top-0 before:h-px before:bg-[image:var(--gradient-brand-soft)] before:content-[""]',
+                onClick &&
+                    'cursor-pointer transition-[transform,box-shadow,border-color] hover:-translate-y-0.5 hover:border-primary/15 hover:shadow-[0_26px_52px_-36px_rgb(96_44_193_/_0.3)]',
+                className,
+            )}
             onClick={onClick}
         >
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">{title}</CardTitle>
-                {Icon && <Icon className={`h-4 w-4 ${iconColor}`} />}
+            <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-3">
+                <div className="space-y-1">
+                    <CardTitle className="text-[0.7rem] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
+                        {title}
+                    </CardTitle>
+                    {trend && (
+                        <span
+                            className={cn(
+                                'text-xs font-semibold',
+                                trendColors[trendDirection],
+                            )}
+                        >
+                            {trend}
+                        </span>
+                    )}
+                </div>
+                {Icon && (
+                    <div className="flex size-10 items-center justify-center rounded-2xl bg-accent">
+                        <Icon className={`h-4 w-4 ${iconColor}`} />
+                    </div>
+                )}
             </CardHeader>
-            <CardContent>
-                <div className="text-2xl font-bold">{value}</div>
-                {(description || trend) && (
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        {description && <span>{description}</span>}
-                        {trend && (
-                            <span className={trendColors[trendDirection]}>
-                                {trend}
-                            </span>
-                        )}
+            <CardContent className="space-y-3">
+                <div className="text-3xl font-semibold tracking-[-0.05em] text-foreground">
+                    {value}
+                </div>
+                {description && (
+                    <div className="text-sm leading-6 text-muted-foreground">
+                        {description}
                     </div>
                 )}
             </CardContent>
         </Card>
     );
 }
-

@@ -50,11 +50,13 @@ export function ResidentFilters({
     const hasActiveFilters = Object.keys(filters).some(
         (key) => filters[key as keyof typeof filters],
     );
+    const filterSelectClassName =
+        'flex h-10 w-full rounded-xl border border-input/90 bg-background/90 px-3.5 py-2 text-sm shadow-[0_1px_2px_rgb(27_31_59_/_0.04)] ring-offset-background transition-[border-color,box-shadow] focus-visible:border-primary/30 focus-visible:ring-[3px] focus-visible:ring-ring/35 focus-visible:outline-none';
 
     return (
-        <Card>
-            <CardContent className="space-y-6 p-8">
-                <div className="flex gap-4">
+        <Card className="overflow-hidden border-border/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,255,255,0.94))]">
+            <CardContent className="space-y-6 p-6 md:p-7">
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                     {/* Search Input */}
                     <div className="relative flex-1">
                         <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -68,41 +70,46 @@ export function ResidentFilters({
                     </div>
 
                     {/* Filter Toggle Button */}
-                    <Button
-                        variant={showFilters ? 'default' : 'outline'}
-                        onClick={() => setShowFilters(!showFilters)}
-                    >
-                        <Filter className="mr-2 h-4 w-4" />
-                        Filters
-                        {hasActiveFilters && (
-                            <Badge variant="secondary" className="ml-2">
-                                {
-                                    Object.keys(filters).filter(
-                                        (k) => filters[k as keyof typeof filters],
-                                    ).length
-                                }
-                            </Badge>
-                        )}
-                    </Button>
-
-                    {hasActiveFilters && (
-                        <Button variant="ghost" onClick={clearFilters}>
-                            <X className="mr-2 h-4 w-4" />
-                            Clear
+                    <div className="flex flex-wrap items-center gap-3">
+                        <Button
+                            variant={showFilters ? 'default' : 'outline'}
+                            onClick={() => setShowFilters(!showFilters)}
+                        >
+                            <Filter className="mr-2 h-4 w-4" />
+                            Filters
+                            {hasActiveFilters && (
+                                <Badge variant="secondary" className="ml-1.5">
+                                    {
+                                        Object.keys(filters).filter(
+                                            (k) =>
+                                                filters[
+                                                    k as keyof typeof filters
+                                                ],
+                                        ).length
+                                    }
+                                </Badge>
+                            )}
                         </Button>
-                    )}
+
+                        {hasActiveFilters && (
+                            <Button variant="ghost" onClick={clearFilters}>
+                                <X className="mr-2 h-4 w-4" />
+                                Clear
+                            </Button>
+                        )}
+                    </div>
                 </div>
 
                 {/* Filter Options */}
                 {showFilters && (
-                    <div className="grid grid-cols-1 gap-4 border-t pt-4 md:grid-cols-2 lg:grid-cols-4">
+                    <div className="grid grid-cols-1 gap-4 border-t border-border/70 pt-5 md:grid-cols-2 xl:grid-cols-4">
                         {/* Organization Filter */}
-                        <div>
-                            <label className="mb-2 block text-sm font-medium">
+                        <div className="space-y-2">
+                            <label className="block text-xs font-semibold tracking-[0.12em] text-muted-foreground uppercase">
                                 Organization
                             </label>
                             <select
-                                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none"
+                                className={filterSelectClassName}
                                 value={localFilters.organization_id || ''}
                                 onChange={(e) =>
                                     updateFilter(
@@ -121,12 +128,12 @@ export function ResidentFilters({
                         </div>
 
                         {/* Year Level Filter */}
-                        <div>
-                            <label className="mb-2 block text-sm font-medium">
+                        <div className="space-y-2">
+                            <label className="block text-xs font-semibold tracking-[0.12em] text-muted-foreground uppercase">
                                 Year Level
                             </label>
                             <select
-                                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none"
+                                className={filterSelectClassName}
                                 value={localFilters.year_level || ''}
                                 onChange={(e) =>
                                     updateFilter(
@@ -145,12 +152,12 @@ export function ResidentFilters({
                         </div>
 
                         {/* Status Filter */}
-                        <div>
-                            <label className="mb-2 block text-sm font-medium">
+                        <div className="space-y-2">
+                            <label className="block text-xs font-semibold tracking-[0.12em] text-muted-foreground uppercase">
                                 Status
                             </label>
                             <select
-                                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none"
+                                className={filterSelectClassName}
                                 value={localFilters.status || ''}
                                 onChange={(e) =>
                                     updateFilter(
@@ -170,12 +177,12 @@ export function ResidentFilters({
                         </div>
 
                         {/* Course Filter */}
-                        <div>
-                            <label className="mb-2 block text-sm font-medium">
+                        <div className="space-y-2">
+                            <label className="block text-xs font-semibold tracking-[0.12em] text-muted-foreground uppercase">
                                 Course
                             </label>
                             <select
-                                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none"
+                                className={filterSelectClassName}
                                 value={localFilters.course || ''}
                                 onChange={(e) =>
                                     updateFilter('course', e.target.value || undefined)
@@ -194,12 +201,12 @@ export function ResidentFilters({
 
                 {/* Active Filter Chips */}
                 {hasActiveFilters && (
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-wrap items-center gap-2 border-t border-border/70 pt-5">
                         {filters.search && (
-                            <Badge variant="secondary" className="gap-1">
+                            <Badge variant="secondary" className="gap-1.5">
                                 Search: {filters.search}
                                 <X
-                                    className="h-3 w-3 cursor-pointer"
+                                    className="h-3 w-3 cursor-pointer opacity-60 transition-opacity hover:opacity-100"
                                     onClick={() => {
                                         setSearch('');
                                         updateFilter('search', undefined);
@@ -208,7 +215,7 @@ export function ResidentFilters({
                             </Badge>
                         )}
                         {filters.organization_id && (
-                            <Badge variant="secondary" className="gap-1">
+                            <Badge variant="secondary" className="gap-1.5">
                                 Org:{' '}
                                 {
                                     organizations.find(
@@ -217,7 +224,7 @@ export function ResidentFilters({
                                     )?.name
                                 }
                                 <X
-                                    className="h-3 w-3 cursor-pointer"
+                                    className="h-3 w-3 cursor-pointer opacity-60 transition-opacity hover:opacity-100"
                                     onClick={() =>
                                         updateFilter('organization_id', undefined)
                                     }
@@ -225,10 +232,10 @@ export function ResidentFilters({
                             </Badge>
                         )}
                         {filters.year_level && (
-                            <Badge variant="secondary" className="gap-1">
+                            <Badge variant="secondary" className="gap-1.5">
                                 Year: {filters.year_level}
                                 <X
-                                    className="h-3 w-3 cursor-pointer"
+                                    className="h-3 w-3 cursor-pointer opacity-60 transition-opacity hover:opacity-100"
                                     onClick={() =>
                                         updateFilter('year_level', undefined)
                                     }
@@ -236,19 +243,19 @@ export function ResidentFilters({
                             </Badge>
                         )}
                         {filters.status && (
-                            <Badge variant="secondary" className="gap-1">
+                            <Badge variant="secondary" className="gap-1.5">
                                 Status: {filters.status}
                                 <X
-                                    className="h-3 w-3 cursor-pointer"
+                                    className="h-3 w-3 cursor-pointer opacity-60 transition-opacity hover:opacity-100"
                                     onClick={() => updateFilter('status', undefined)}
                                 />
                             </Badge>
                         )}
                         {filters.course && (
-                            <Badge variant="secondary" className="gap-1">
+                            <Badge variant="secondary" className="gap-1.5">
                                 Course: {filters.course}
                                 <X
-                                    className="h-3 w-3 cursor-pointer"
+                                    className="h-3 w-3 cursor-pointer opacity-60 transition-opacity hover:opacity-100"
                                     onClick={() => updateFilter('course', undefined)}
                                 />
                             </Badge>
@@ -259,4 +266,3 @@ export function ResidentFilters({
         </Card>
     );
 }
-
