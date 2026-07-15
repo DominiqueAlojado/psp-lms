@@ -14,7 +14,7 @@ class UpdateResidentAction
     public function execute(Resident $resident, array $validated): array
     {
         $residentData = collect($validated)
-            ->except(['password', 'password_confirmation'])
+            ->except(['password', 'password_confirmation', 'organization_id'])
             ->toArray();
 
         $this->residentRepository->update($resident, $residentData);

@@ -24,20 +24,45 @@ class ResidentReadService
 
     public function showOrganizationsPayload(Resident $resident): array
     {
-        $resident->load(['organization', 'user.organizations']);
+        $resident->load(['organization', 'activeMemberships.organization', 'user.organizations']);
 
-        $currentOrganizations = $resident->user
-            ? $resident->user->organizations->map(fn ($organization) => [
-                'id' => $organization->id,
-                'name' => $organization->name,
-                'slug' => $organization->slug,
-                'type' => $organization->type,
+        $currentOrganizations = $resident->activeMemberships
+            ->map(fn ($membership) => [
+                'id' => $membership->organization->id,
+                'name' => $membership->organization->name,
+                'slug' => $membership->organization->slug,
+                'type' => $membership->organization->type,
                 'pivot' => [
-                    'joined_at' => $organization->pivot->joined_at,
-                    'is_active' => $organization->pivot->is_active,
+                    'joined_at' => optional($membership->started_at)?->toISOString(),
+                    'is_active' => $membership->ended_at === null,
                 ],
-            ])
-            : collect();
+                'membership' => [
+                    'started_at' => optional($membership->started_at)?->toISOString(),
+                    'ended_at' => optional($membership->ended_at)?->toISOString(),
+                    'is_primary' => $membership->is_primary,
+                ],
+            ]);
+
+        if ($currentOrganizations->isEmpty() && $resident->user) {
+            $currentOrganizations = $resident->user->organizations
+                ->where('pivot.is_active', true)
+                ->map(fn ($organization) => [
+                    'id' => $organization->id,
+                    'name' => $organization->name,
+                    'slug' => $organization->slug,
+                    'type' => $organization->type,
+                    'pivot' => [
+                        'joined_at' => optional($organization->pivot->joined_at)?->toISOString(),
+                        'is_active' => $organization->pivot->is_active,
+                    ],
+                    'membership' => [
+                        'started_at' => optional($organization->pivot->joined_at)?->toISOString(),
+                        'ended_at' => null,
+                        'is_primary' => (int) $organization->id === (int) $resident->organization_id,
+                    ],
+                ])
+                ->values();
+        }
 
         $associatedIds = $currentOrganizations->pluck('id')->toArray();
         $availableOrganizations = $this->residentRepository
@@ -73,7 +98,8 @@ class ResidentReadService
                 'year_level' => $resident->year_level,
                 'status' => $resident->status,
                 'updated_at' => $resident->updated_at->diffForHumans(),
-                'organizations_count' => $resident->user ? $resident->user->organizations()->count() : 0,
+                'organizations_count' => $resident->activeMemberships()->count()
+                    ?: ($resident->user ? $resident->user->organizations()->wherePivot('is_active', true)->count() : 0),
                 'organization' => [
                     'id' => $resident->organization->id,
                     'name' => $resident->organization->name,

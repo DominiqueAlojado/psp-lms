@@ -134,6 +134,7 @@ class ResidentActivityLogService
         string $oldCourse,
         string $oldYearLevel,
         string $oldStatus,
+        ?int $oldOrganizationId,
         bool $passwordChanged
     ): array {
         $attributes = [];
@@ -196,6 +197,16 @@ class ResidentActivityLogService
             $hasChanges = true;
         }
 
+        if (
+            array_key_exists('organization_id', $validated)
+            && $validated['organization_id'] !== null
+            && (int) $validated['organization_id'] !== (int) $oldOrganizationId
+        ) {
+            $attributes['organization_id'] = (int) $validated['organization_id'];
+            $oldValues['organization_id'] = $oldOrganizationId;
+            $hasChanges = true;
+        }
+
         // Check password change
         if ($passwordChanged) {
             $attributes['password'] = '***changed***';
@@ -210,4 +221,3 @@ class ResidentActivityLogService
         ];
     }
 }
-

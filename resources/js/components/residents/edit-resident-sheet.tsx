@@ -40,6 +40,7 @@ interface Resident {
 interface Props {
     open: boolean;
     resident: Resident | null;
+    organizations: Organization[];
     yearLevels: string[];
     statuses: string[];
     onClose: () => void;
@@ -48,6 +49,7 @@ interface Props {
 export function EditResidentSheet({
     open,
     resident,
+    organizations,
     yearLevels,
     statuses,
     onClose,
@@ -165,6 +167,8 @@ export function EditResidentSheet({
                                     yearLevels={yearLevels}
                                     statuses={statuses}
                                     defaultValues={{
+                                        organization_id:
+                                            resident.organization.id.toString(),
                                         first_name: resident.first_name,
                                         middle_name: resident.middle_name || '',
                                         last_name: resident.last_name,
@@ -176,12 +180,17 @@ export function EditResidentSheet({
                                         status: resident.status,
                                     }}
                                     validationErrors={validationErrors}
-                                    showOrganization={false}
+                                    showOrganization
                                 />
                             </TabsContent>
 
                             <TabsContent value="account" className="space-y-6">
                                 {/* Hidden inputs to preserve personal data when on Account tab */}
+                                <input
+                                    type="hidden"
+                                    name="organization_id"
+                                    value={resident.organization.id}
+                                />
                                 <input
                                     type="hidden"
                                     name="first_name"

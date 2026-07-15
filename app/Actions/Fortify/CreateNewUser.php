@@ -3,6 +3,7 @@
 namespace App\Actions\Fortify;
 
 use App\Models\Resident;
+use App\Models\ResidentOrganizationMembership;
 use App\Models\User;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
@@ -75,7 +76,7 @@ class CreateNewUser implements CreatesNewUsers
                 'current_organization_id' => $validated['organization_id'],
             ]);
 
-            Resident::create([
+            $resident = Resident::create([
                 'user_id' => $user->id,
                 'organization_id' => $validated['organization_id'],
                 'first_name' => $validated['first_name'],
@@ -91,6 +92,16 @@ class CreateNewUser implements CreatesNewUsers
             $user->organizations()->attach($validated['organization_id'], [
                 'joined_at' => now(),
                 'is_active' => true,
+            ]);
+
+            ResidentOrganizationMembership::create([
+                'resident_id' => $resident->id,
+                'organization_id' => $validated['organization_id'],
+                'started_at' => now(),
+                'ended_at' => null,
+                'is_primary' => true,
+                'year_level' => $resident->year_level,
+                'status' => $resident->status,
             ]);
 
             if (function_exists('setPermissionsTeamId')) {

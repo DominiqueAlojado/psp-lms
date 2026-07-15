@@ -24,6 +24,7 @@ class UpdateResidentRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'organization_id' => ['nullable', 'exists:organizations,id'],
             'first_name' => ['required', 'string', 'max:255'],
             'middle_name' => ['nullable', 'string', 'max:255'],
             'last_name' => ['required', 'string', 'max:255'],

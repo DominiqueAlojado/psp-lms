@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
 
@@ -60,6 +61,16 @@ class Resident extends Model
         return $this->belongsTo(User::class);
     }
 
+    public function memberships(): HasMany
+    {
+        return $this->hasMany(ResidentOrganizationMembership::class);
+    }
+
+    public function activeMemberships(): HasMany
+    {
+        return $this->memberships()->whereNull('ended_at');
+    }
+
     /**
      * Get all organizations the resident is associated with (through their user account).
      */
@@ -85,15 +96,48 @@ class Resident extends Model
             return false;
         }
 
-        // Check if already associated
-        if ($this->user->organizations->contains($organization->id)) {
+        $this->user->loadMissing('organizations');
+
+        $existingOrganization = $this->user->organizations->firstWhere('id', $organization->id);
+
+        if ($existingOrganization && ($existingOrganization->pivot->is_active ?? false)) {
             return false;
         }
 
-        $this->user->organizations()->attach($organization->id, array_merge([
-            'joined_at' => now(),
-            'is_active' => true,
-        ], $pivotData));
+        if ($existingOrganization) {
+            $this->user->organizations()->updateExistingPivot($organization->id, array_merge([
+                'is_active' => true,
+            ], $pivotData));
+        } else {
+            $this->user->organizations()->attach($organization->id, array_merge([
+                'joined_at' => now(),
+                'is_active' => true,
+            ], $pivotData));
+        }
+
+        $membership = $this->memberships()
+            ->where('organization_id', $organization->id)
+            ->orderByDesc('id')
+            ->first();
+
+        if ($membership) {
+            $membership->update([
+                'started_at' => $membership->started_at ?? now(),
+                'ended_at' => null,
+                'is_primary' => false,
+                'year_level' => $this->year_level,
+                'status' => $this->status,
+            ]);
+        } else {
+            $this->memberships()->create([
+                'organization_id' => $organization->id,
+                'started_at' => now(),
+                'ended_at' => null,
+                'is_primary' => false,
+                'year_level' => $this->year_level,
+                'status' => $this->status,
+            ]);
+        }
 
         return true;
     }
@@ -112,7 +156,17 @@ class Resident extends Model
             return false;
         }
 
-        $this->user->organizations()->detach($organization->id);
+        $this->user->organizations()->updateExistingPivot($organization->id, [
+            'is_active' => false,
+        ]);
+
+        $this->memberships()
+            ->where('organization_id', $organization->id)
+            ->whereNull('ended_at')
+            ->update([
+                'ended_at' => now(),
+                'is_primary' => false,
+            ]);
 
         return true;
     }

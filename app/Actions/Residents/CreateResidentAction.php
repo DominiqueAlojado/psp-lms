@@ -3,6 +3,7 @@
 namespace App\Actions\Residents;
 
 use App\Models\Resident;
+use App\Models\ResidentOrganizationMembership;
 use App\Models\User;
 use App\Repositories\Contracts\ResidentRepositoryInterface;
 
@@ -32,6 +33,16 @@ class CreateResidentAction
         $user->organizations()->attach($validated['organization_id'], [
             'joined_at' => now(),
             'is_active' => true,
+        ]);
+
+        ResidentOrganizationMembership::create([
+            'resident_id' => $resident->id,
+            'organization_id' => $validated['organization_id'],
+            'started_at' => now(),
+            'ended_at' => null,
+            'is_primary' => true,
+            'year_level' => $resident->year_level,
+            'status' => $resident->status,
         ]);
 
         if (function_exists('setPermissionsTeamId')) {

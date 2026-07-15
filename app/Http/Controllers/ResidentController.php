@@ -100,6 +100,7 @@ class ResidentController extends Controller
         $oldCourse = $resident->course;
         $oldYearLevel = $resident->year_level;
         $oldStatus = $resident->status;
+        $oldOrganizationId = $resident->organization_id;
         // Temporarily disable automatic logging to prevent duplicates
         $updateResult = [];
         $this->withoutActivityLogging(function () use ($resident, $validated, &$updateResult) {
@@ -118,6 +119,7 @@ class ResidentController extends Controller
             $oldCourse,
             $oldYearLevel,
             $oldStatus,
+            $oldOrganizationId,
             $updateResult['passwordChanged']
         );
 

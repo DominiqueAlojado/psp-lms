@@ -322,6 +322,7 @@ export default function ResidentsIndex({
             <EditResidentSheet
                 open={!!editingResident}
                 resident={editingResident}
+                organizations={organizations}
                 yearLevels={yearLevels}
                 statuses={statuses}
                 onClose={() => setEditingResident(null)}

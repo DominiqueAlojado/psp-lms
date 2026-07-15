@@ -35,8 +35,9 @@ export const step2Schema = z
         path: ['password_confirmation'],
     });
 
-// Edit: Personal Information Schema (without organization_id)
+// Edit: Personal Information Schema
 export const editPersonalSchema = z.object({
+    organization_id: z.string().min(1, 'Organization is required'),
     first_name: z.string().min(1, 'First name is required').max(255),
     middle_name: z.string().max(255).optional().or(z.literal('')),
     last_name: z.string().min(1, 'Last name is required').max(255),

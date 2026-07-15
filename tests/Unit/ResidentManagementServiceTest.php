@@ -4,6 +4,7 @@ namespace Tests\Unit;
 
 use App\Models\Organization;
 use App\Models\Resident;
+use App\Models\ResidentOrganizationMembership;
 use App\Models\User;
 use App\Services\ResidentManagementService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -57,6 +58,12 @@ class ResidentManagementServiceTest extends TestCase
         $this->assertTrue(Hash::check('secret123', $user->password));
         $this->assertTrue($user->roles->contains('name', 'Resident'));
         $this->assertTrue($user->organizations->contains('id', $organization->id));
+        $this->assertDatabaseHas('resident_organization_memberships', [
+            'resident_id' => $resident->id,
+            'organization_id' => $organization->id,
+            'is_primary' => true,
+            'ended_at' => null,
+        ]);
     }
 
     public function test_it_updates_resident_and_linked_user_details(): void
@@ -108,6 +115,94 @@ class ResidentManagementServiceTest extends TestCase
         $this->assertSame('New Middle Resident', $user->name);
         $this->assertSame('new@example.com', $user->email);
         $this->assertTrue(Hash::check('new-secret123', $user->password));
-        $this->assertSame(['passwordChanged' => true], $result);
+        $this->assertSame([
+            'passwordChanged' => true,
+            'organizationChanged' => false,
+        ], $result);
+    }
+
+    public function test_it_transfers_a_resident_and_preserves_membership_history(): void
+    {
+        $service = app(ResidentManagementService::class);
+
+        $oldOrganization = Organization::create([
+            'name' => 'Alpha Chapter',
+            'slug' => 'alpha-chapter',
+            'type' => 'chapter',
+            'is_active' => true,
+        ]);
+        $newOrganization = Organization::create([
+            'name' => 'Beta Chapter',
+            'slug' => 'beta-chapter',
+            'type' => 'chapter',
+            'is_active' => true,
+        ]);
+
+        $user = User::factory()->create([
+            'current_organization_id' => $oldOrganization->id,
+            'name' => 'Transfer Me',
+            'email' => 'transfer@example.com',
+        ]);
+        $user->organizations()->attach($oldOrganization->id, [
+            'joined_at' => now()->subMonth(),
+            'is_active' => true,
+        ]);
+
+        $resident = Resident::factory()->create([
+            'organization_id' => $oldOrganization->id,
+            'user_id' => $user->id,
+            'first_name' => 'Transfer',
+            'middle_name' => null,
+            'last_name' => 'Resident',
+            'email' => 'transfer@example.com',
+            'year_level' => 'Second Year',
+            'status' => 'active',
+        ]);
+
+        ResidentOrganizationMembership::create([
+            'resident_id' => $resident->id,
+            'organization_id' => $oldOrganization->id,
+            'started_at' => now()->subMonth(),
+            'ended_at' => null,
+            'is_primary' => true,
+            'year_level' => 'Second Year',
+            'status' => 'active',
+        ]);
+
+        $result = $service->update($resident, [
+            'organization_id' => $newOrganization->id,
+            'first_name' => 'Transfer',
+            'middle_name' => null,
+            'last_name' => 'Resident',
+            'email' => 'transfer@example.com',
+            'contact_number' => '09999999999',
+            'course' => $resident->course,
+            'year_level' => 'Second Year',
+            'status' => 'active',
+        ]);
+
+        $resident->refresh();
+        $user->refresh();
+
+        $this->assertSame($newOrganization->id, $resident->organization_id);
+        $this->assertSame($newOrganization->id, $user->current_organization_id);
+        $this->assertTrue($result['organizationChanged']);
+
+        $oldMembership = ResidentOrganizationMembership::query()
+            ->where('resident_id', $resident->id)
+            ->where('organization_id', $oldOrganization->id)
+            ->latest('id')
+            ->firstOrFail();
+        $newMembership = ResidentOrganizationMembership::query()
+            ->where('resident_id', $resident->id)
+            ->where('organization_id', $newOrganization->id)
+            ->latest('id')
+            ->firstOrFail();
+
+        $this->assertNotNull($oldMembership->ended_at);
+        $this->assertFalse($oldMembership->is_primary);
+        $this->assertNull($newMembership->ended_at);
+        $this->assertTrue($newMembership->is_primary);
+        $this->assertTrue($user->organizations()->where('organizations.id', $newOrganization->id)->exists());
     }
 }

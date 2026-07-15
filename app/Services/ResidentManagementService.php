@@ -6,6 +6,7 @@ use App\Actions\Residents\AttachResidentOrganizationAction;
 use App\Actions\Residents\CreateResidentAction;
 use App\Actions\Residents\DeleteResidentAction;
 use App\Actions\Residents\DetachResidentOrganizationAction;
+use App\Actions\Residents\TransferResidentOrganizationAction;
 use App\Actions\Residents\UpdateResidentAction;
 use App\Models\Organization;
 use App\Models\Resident;
@@ -21,6 +22,7 @@ class ResidentManagementService
         private readonly DeleteResidentAction $deleteResidentAction,
         private readonly AttachResidentOrganizationAction $attachResidentOrganizationAction,
         private readonly DetachResidentOrganizationAction $detachResidentOrganizationAction,
+        private readonly TransferResidentOrganizationAction $transferResidentOrganizationAction,
     ) {}
 
     public function create(array $validated): Resident
@@ -30,7 +32,21 @@ class ResidentManagementService
 
     public function update(Resident $resident, array $validated): array
     {
-        return DB::transaction(fn () => $this->updateResidentAction->execute($resident, $validated));
+        return DB::transaction(function () use ($resident, $validated) {
+            $previousOrganizationId = $resident->organization_id;
+            $result = $this->updateResidentAction->execute($resident, $validated);
+            $organizationChanged = false;
+
+            if (! empty($validated['organization_id']) && (int) $validated['organization_id'] !== (int) $previousOrganizationId) {
+                $organization = $this->residentRepository->findOrganizationById((int) $validated['organization_id']);
+
+                if ($organization) {
+                    $organizationChanged = $this->transferResidentOrganizationAction->execute($resident->fresh(), $organization);
+                }
+            }
+
+            return $result + ['organizationChanged' => $organizationChanged];
+        });
     }
 
     public function delete(Resident $resident): bool

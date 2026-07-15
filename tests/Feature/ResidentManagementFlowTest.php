@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Http\Middleware\SetOrganizationFromUrl;
 use App\Models\Organization;
 use App\Models\Resident;
+use App\Models\ResidentOrganizationMembership;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
@@ -145,5 +146,101 @@ class ResidentManagementFlowTest extends TestCase
         $this->assertSame('New Middle Resident', $user->name);
         $this->assertSame('new@example.com', $user->email);
         $this->assertTrue(Hash::check('new-secret123', $user->password));
+    }
+
+    public function test_authorized_user_can_transfer_resident_to_another_organization(): void
+    {
+        $this->withoutMiddleware([
+            ValidateCsrfToken::class,
+            SetOrganizationFromUrl::class,
+        ]);
+
+        Permission::create(['name' => 'edit-residents', 'guard_name' => 'web']);
+
+        $oldOrganization = Organization::create([
+            'name' => 'Alpha Chapter',
+            'slug' => 'alpha-chapter',
+            'type' => 'chapter',
+            'is_active' => true,
+        ]);
+        $newOrganization = Organization::create([
+            'name' => 'Gamma Chapter',
+            'slug' => 'gamma-chapter',
+            'type' => 'chapter',
+            'is_active' => true,
+        ]);
+
+        $admin = User::factory()->create([
+            'current_organization_id' => $oldOrganization->id,
+        ]);
+        $admin->organizations()->attach($oldOrganization->id, [
+            'joined_at' => now(),
+            'is_active' => true,
+        ]);
+        $admin->givePermissionTo('edit-residents');
+
+        $user = User::factory()->create([
+            'name' => 'Transfer Resident',
+            'email' => 'transfer@example.com',
+            'current_organization_id' => $oldOrganization->id,
+        ]);
+        $user->organizations()->attach($oldOrganization->id, [
+            'joined_at' => now()->subMonth(),
+            'is_active' => true,
+        ]);
+
+        $resident = Resident::factory()->create([
+            'organization_id' => $oldOrganization->id,
+            'user_id' => $user->id,
+            'first_name' => 'Transfer',
+            'middle_name' => 'Old',
+            'last_name' => 'Resident',
+            'email' => 'transfer@example.com',
+            'contact_number' => '09111111111',
+            'course' => 'Anatomic and Clinical Pathology',
+            'year_level' => 'First Year',
+            'status' => 'active',
+        ]);
+
+        ResidentOrganizationMembership::create([
+            'resident_id' => $resident->id,
+            'organization_id' => $oldOrganization->id,
+            'started_at' => now()->subMonth(),
+            'ended_at' => null,
+            'is_primary' => true,
+            'year_level' => 'First Year',
+            'status' => 'active',
+        ]);
+
+        $response = $this->actingAs($admin)
+            ->from(route('residents.index'))
+            ->patch(route('residents.update', $resident), [
+                'organization_id' => $newOrganization->id,
+                'first_name' => 'Transfer',
+                'middle_name' => 'Old',
+                'last_name' => 'Resident',
+                'email' => 'transfer@example.com',
+                'contact_number' => '09111111111',
+                'course' => 'Anatomic and Clinical Pathology',
+                'year_level' => 'First Year',
+                'status' => 'active',
+                'password' => '',
+                'password_confirmation' => '',
+            ]);
+
+        $response->assertSessionHasNoErrors()
+            ->assertRedirect(route('residents.index'));
+
+        $resident->refresh();
+        $user->refresh();
+
+        $this->assertSame($newOrganization->id, $resident->organization_id);
+        $this->assertSame($newOrganization->id, $user->current_organization_id);
+        $this->assertDatabaseHas('resident_organization_memberships', [
+            'resident_id' => $resident->id,
+            'organization_id' => $newOrganization->id,
+            'is_primary' => true,
+            'ended_at' => null,
+        ]);
     }
 }
