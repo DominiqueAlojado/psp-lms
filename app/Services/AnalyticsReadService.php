@@ -21,13 +21,14 @@ class AnalyticsReadService
         $organizationId = $user->current_organization_id;
         $canViewAllOrganizations = $user->hasPermissionTo('view-all-assessment-reports');
         $isNational = $currentOrganization?->type === 'national';
+        $examFilter = $this->normalizeExamFilter($request->input('exam'));
 
         [$exams, $organizations] = $this->baseFilterData($organizationId, $canViewAllOrganizations, $isNational);
 
         $analytics = null;
-        if ($request->filled('exam')) {
+        if ($examFilter !== null) {
             $analytics = $this->calculateExamAnalytics(
-                $request->input('exam'),
+                $examFilter,
                 $organizationId,
                 $canViewAllOrganizations,
                 $request
@@ -39,7 +40,7 @@ class AnalyticsReadService
             'organizations' => $organizations,
             'analytics' => $analytics,
             'filters' => [
-                'exam' => $request->input('exam'),
+                'exam' => $examFilter,
                 'organization' => $request->input('organization'),
                 'date_from' => $request->input('date_from'),
                 'date_to' => $request->input('date_to'),
@@ -54,13 +55,14 @@ class AnalyticsReadService
         $organizationId = $user->current_organization_id;
         $canViewAllOrganizations = $user->hasPermissionTo('view-all-assessment-reports');
         $isNational = $currentOrganization?->type === 'national';
+        $examFilter = $this->normalizeExamFilter($request->input('exam'));
 
         [$exams, $organizations] = $this->baseFilterData($organizationId, $canViewAllOrganizations, $isNational);
 
         $itemAnalysis = null;
-        if ($request->filled('exam')) {
+        if ($examFilter !== null) {
             $itemAnalysis = $this->calculateItemAnalysis(
-                $request->input('exam'),
+                $examFilter,
                 $organizationId,
                 $canViewAllOrganizations,
                 $request
@@ -72,7 +74,7 @@ class AnalyticsReadService
             'organizations' => $organizations,
             'itemAnalysis' => $itemAnalysis,
             'filters' => [
-                'exam' => $request->input('exam'),
+                'exam' => $examFilter,
                 'organization' => $request->input('organization'),
                 'date_from' => $request->input('date_from'),
                 'date_to' => $request->input('date_to'),
@@ -619,5 +621,20 @@ class AnalyticsReadService
         }
 
         return 'Marginal';
+    }
+
+    private function normalizeExamFilter(?string $examFilter): ?string
+    {
+        if ($examFilter === null) {
+            return null;
+        }
+
+        $examFilter = trim($examFilter);
+
+        if ($examFilter === '' || $examFilter === 'all') {
+            return null;
+        }
+
+        return $examFilter;
     }
 }

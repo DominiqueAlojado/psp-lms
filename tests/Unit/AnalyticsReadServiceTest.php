@@ -139,4 +139,26 @@ class AnalyticsReadServiceTest extends TestCase
         $this->assertSame(1, $payload['summary']['total_questions']);
         $this->assertSame('created_at', $payload['filters']['sort_by']);
     }
+
+    public function test_it_treats_all_exam_filter_as_no_specific_exam(): void
+    {
+        $user = Mockery::mock(User::class)->makePartial();
+        $user->current_organization_id = 10;
+        $user->currentOrganization = (object) ['id' => 10, 'type' => 'institution'];
+        $user->shouldReceive('hasPermissionTo')->with('view-all-assessment-reports')->andReturn(false);
+
+        $repo = Mockery::mock(AnalyticsRepositoryInterface::class);
+        $repo->shouldReceive('getPublishedInstitutionExams')->once()->andReturn(collect());
+        $repo->shouldNotReceive('findInstitutionAssessmentForAnalytics');
+        $repo->shouldNotReceive('getCompletedInstitutionAttemptsForExam');
+
+        $service = new AnalyticsReadService($repo);
+        $request = Request::create('/analytics/exam-analytics', 'GET', ['exam' => 'all']);
+        $request->setUserResolver(fn () => $user);
+
+        $payload = $service->examAnalyticsPayload($request);
+
+        $this->assertNull($payload['analytics']);
+        $this->assertNull($payload['filters']['exam']);
+    }
 }
