@@ -40,6 +40,6 @@ class AnalyticsController extends Controller
 
     public function trends(Request $request): Response
     {
-        return Inertia::render('analytics/trends', []);
+        return Inertia::render('analytics/trends', $this->analyticsReadService->trendsPayload($request));
     }
 }

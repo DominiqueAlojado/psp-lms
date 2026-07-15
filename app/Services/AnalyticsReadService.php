@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Institution\InstitutionAssessment;
 use App\Models\National\NationalAssessment;
 use App\Repositories\Contracts\AnalyticsRepositoryInterface;
+use Carbon\CarbonInterface;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 
@@ -132,6 +133,36 @@ class AnalyticsReadService
                 $request
             ),
             'filters' => [
+                'organization' => $request->input('organization'),
+                'date_from' => $request->input('date_from'),
+                'date_to' => $request->input('date_to'),
+            ],
+        ];
+    }
+
+    public function trendsPayload(Request $request): array
+    {
+        $user = $request->user();
+        $currentOrganization = $user->currentOrganization;
+        $organizationId = $user->current_organization_id;
+        $canViewAllOrganizations = $user->hasPermissionTo('view-all-assessment-reports');
+        $isNational = $currentOrganization?->type === 'national';
+        $examFilter = $this->normalizeExamFilter($request->input('exam'));
+
+        [$exams, $organizations] = $this->baseFilterData($organizationId, $canViewAllOrganizations, $isNational);
+
+        return [
+            'exams' => $exams,
+            'organizations' => $organizations,
+            'trends' => $this->calculateTrends(
+                $exams,
+                $examFilter,
+                $organizationId,
+                $canViewAllOrganizations,
+                $request
+            ),
+            'filters' => [
+                'exam' => $examFilter,
                 'organization' => $request->input('organization'),
                 'date_from' => $request->input('date_from'),
                 'date_to' => $request->input('date_to'),
@@ -659,6 +690,152 @@ class AnalyticsReadService
         ];
     }
 
+    private function calculateTrends(
+        Collection $availableExams,
+        ?string $examFilter,
+        ?int $organizationId,
+        bool $canViewAllOrganizations,
+        Request $request
+    ): array {
+        $selectedExams = $examFilter === null
+            ? $availableExams
+            : $availableExams->where('id', $examFilter)->values();
+
+        if ($selectedExams->isEmpty()) {
+            return $this->emptyTrendsPayload();
+        }
+
+        $periods = [];
+        $examIdsCovered = [];
+
+        foreach ($selectedExams as $selectedExam) {
+            $examType = $selectedExam['type'] ?? null;
+            $examId = (int) str_replace([$examType . '_'], '', (string) ($selectedExam['id'] ?? '0'));
+
+            if ($examId <= 0) {
+                continue;
+            }
+
+            if ($examType === 'institution') {
+                $exam = $this->analyticsRepository->findInstitutionAssessmentForAnalytics($examId);
+                $attempts = $this->analyticsRepository->getCompletedInstitutionAttemptsForExam(
+                    $examId,
+                    $organizationId,
+                    $canViewAllOrganizations,
+                    $request->only(['organization', 'date_from', 'date_to'])
+                );
+            } elseif ($examType === 'national') {
+                $exam = $this->analyticsRepository->findNationalAssessmentForAnalytics($examId);
+                $attempts = $this->analyticsRepository->getCompletedNationalAttemptsForExam(
+                    $examId,
+                    $request->only(['date_from', 'date_to'])
+                );
+            } else {
+                continue;
+            }
+
+            $examIdsCovered[] = $selectedExam['id'];
+
+            foreach ($attempts as $attempt) {
+                $submittedAt = $attempt->submitted_at;
+                if (! $submittedAt instanceof CarbonInterface) {
+                    continue;
+                }
+
+                $periodKey = $submittedAt->format('Y-m');
+                if (! isset($periods[$periodKey])) {
+                    $periods[$periodKey] = [
+                        'period_key' => $periodKey,
+                        'period_label' => $submittedAt->format('M Y'),
+                        'attempts' => 0,
+                        'passed_attempts' => 0,
+                        'total_score' => 0,
+                        'total_percentage' => 0,
+                    ];
+                }
+
+                $periods[$periodKey]['attempts']++;
+                $periods[$periodKey]['total_score'] += $attempt->score;
+                $periods[$periodKey]['total_percentage'] += $exam->total_points > 0
+                    ? ($attempt->score / $exam->total_points) * 100
+                    : 0;
+
+                if ($attempt->score >= $exam->passing_score) {
+                    $periods[$periodKey]['passed_attempts']++;
+                }
+            }
+        }
+
+        $rows = collect($periods)
+            ->sortBy('period_key')
+            ->values()
+            ->map(function (array $period) {
+                $period['pass_rate'] = $period['attempts'] > 0
+                    ? round(($period['passed_attempts'] / $period['attempts']) * 100, 2)
+                    : 0;
+                $period['average_score'] = $period['attempts'] > 0
+                    ? round($period['total_score'] / $period['attempts'], 2)
+                    : 0;
+                $period['average_percentage'] = $period['attempts'] > 0
+                    ? round($period['total_percentage'] / $period['attempts'], 2)
+                    : 0;
+
+                unset($period['total_score'], $period['total_percentage']);
+
+                return $period;
+            });
+
+        if ($rows->isEmpty()) {
+            return $this->emptyTrendsPayload(count(array_unique($examIdsCovered)));
+        }
+
+        $firstPeriod = $rows->first();
+        $lastPeriod = $rows->last();
+        $passRateChange = round($lastPeriod['pass_rate'] - $firstPeriod['pass_rate'], 2);
+        $averagePercentageChange = round($lastPeriod['average_percentage'] - $firstPeriod['average_percentage'], 2);
+
+        return [
+            'summary' => [
+                'periods_count' => $rows->count(),
+                'exams_covered' => count(array_unique($examIdsCovered)),
+                'total_attempts' => $rows->sum('attempts'),
+                'average_pass_rate' => round($rows->avg('pass_rate'), 2),
+                'latest_period' => $lastPeriod['period_label'],
+                'pass_rate_change' => $passRateChange,
+                'average_percentage_change' => $averagePercentageChange,
+                'direction' => $this->determineTrendDirection($passRateChange, $averagePercentageChange),
+            ],
+            'periods' => $rows->all(),
+            'best_period' => $rows
+                ->sortByDesc('pass_rate')
+                ->sortByDesc('attempts')
+                ->first(),
+            'lowest_period' => $rows
+                ->sortBy('pass_rate')
+                ->sortByDesc('attempts')
+                ->first(),
+        ];
+    }
+
+    private function emptyTrendsPayload(int $examsCovered = 0): array
+    {
+        return [
+            'summary' => [
+                'periods_count' => 0,
+                'exams_covered' => $examsCovered,
+                'total_attempts' => 0,
+                'average_pass_rate' => 0,
+                'latest_period' => null,
+                'pass_rate_change' => 0,
+                'average_percentage_change' => 0,
+                'direction' => 'stable',
+            ],
+            'periods' => [],
+            'best_period' => null,
+            'lowest_period' => null,
+        ];
+    }
+
     private function calculateYearLevelStats(Collection $attempts): array
     {
         $yearLevelStats = [];
@@ -951,6 +1128,19 @@ class AnalyticsReadService
         }
 
         return $attempt->answers()->where('question_id', $questionId)->first();
+    }
+
+    private function determineTrendDirection(float $passRateChange, float $averagePercentageChange): string
+    {
+        if ($passRateChange > 0 || $averagePercentageChange > 0) {
+            return 'improving';
+        }
+
+        if ($passRateChange < 0 || $averagePercentageChange < 0) {
+            return 'declining';
+        }
+
+        return 'stable';
     }
 
     private function normalizeExamFilter(?string $examFilter): ?string

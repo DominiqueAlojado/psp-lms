@@ -7,6 +7,7 @@ use App\Models\Organization;
 use App\Models\User;
 use App\Repositories\Contracts\AnalyticsRepositoryInterface;
 use App\Services\AnalyticsReadService;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
@@ -357,5 +358,57 @@ class AnalyticsReadServiceTest extends TestCase
         $this->assertSame('Mock Exam', $payload['categoryPerformance']['categories'][0]['category']);
         $this->assertSame(100.0, $payload['categoryPerformance']['categories'][0]['pass_rate']);
         $this->assertSame(50.0, $payload['categoryPerformance']['categories'][1]['pass_rate']);
+    }
+
+    public function test_it_builds_trends_payload_grouped_by_period(): void
+    {
+        $user = Mockery::mock(User::class)->makePartial();
+        $user->current_organization_id = 10;
+        $user->currentOrganization = (object) ['id' => 10, 'type' => 'institution'];
+        $user->shouldReceive('hasPermissionTo')->with('view-all-assessment-reports')->andReturn(false);
+
+        $exam = new class extends InstitutionAssessment
+        {
+            public Collection $questions;
+
+            public function __construct()
+            {
+                parent::__construct([
+                    'id' => 7,
+                    'title' => 'Exam A',
+                    'exam_category' => 'In-Service',
+                    'total_points' => 10,
+                    'passing_score' => 6,
+                ]);
+
+                $this->questions = collect();
+            }
+        };
+
+        $repo = Mockery::mock(AnalyticsRepositoryInterface::class);
+        $repo->shouldReceive('getPublishedInstitutionExams')->once()->andReturn(collect([
+            (object) ['id' => 7, 'title' => 'Exam A', 'exam_category' => 'In-Service'],
+        ]));
+        $repo->shouldReceive('findInstitutionAssessmentForAnalytics')->once()->with(7)->andReturn($exam);
+        $repo->shouldReceive('getCompletedInstitutionAttemptsForExam')->once()->with(7, 10, false, Mockery::type('array'))->andReturn(collect([
+            (object) ['score' => 4, 'submitted_at' => Carbon::parse('2026-01-10')],
+            (object) ['score' => 8, 'submitted_at' => Carbon::parse('2026-01-20')],
+            (object) ['score' => 9, 'submitted_at' => Carbon::parse('2026-02-11')],
+        ]));
+
+        $service = new AnalyticsReadService($repo);
+        $request = Request::create('/analytics/trends', 'GET', ['exam' => 'all']);
+        $request->setUserResolver(fn () => $user);
+
+        $payload = $service->trendsPayload($request);
+
+        $this->assertNull($payload['filters']['exam']);
+        $this->assertSame(2, $payload['trends']['summary']['periods_count']);
+        $this->assertSame(1, $payload['trends']['summary']['exams_covered']);
+        $this->assertSame(3, $payload['trends']['summary']['total_attempts']);
+        $this->assertSame('improving', $payload['trends']['summary']['direction']);
+        $this->assertSame('Jan 2026', $payload['trends']['periods'][0]['period_label']);
+        $this->assertSame(50.0, $payload['trends']['periods'][0]['pass_rate']);
+        $this->assertSame(100.0, $payload['trends']['periods'][1]['pass_rate']);
     }
 }
