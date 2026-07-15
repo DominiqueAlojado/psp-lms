@@ -2,6 +2,11 @@ import HeadingSmall from '@/components/heading-small';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+    ChartContainer,
+    ChartTooltip,
+    ChartTooltipContent,
+} from '@/components/ui/chart';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -25,6 +30,15 @@ import {
     X,
 } from 'lucide-react';
 import { useState } from 'react';
+import {
+    Bar,
+    BarChart,
+    CartesianGrid,
+    Line,
+    LineChart,
+    XAxis,
+    YAxis,
+} from 'recharts';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -101,6 +115,26 @@ export default function CategoryPerformance() {
     };
 
     const hasActiveFilters = filters.date_from || filters.date_to;
+    const passRateChartConfig = {
+        pass_rate: {
+            label: 'Pass Rate',
+            color: 'hsl(24 95% 53%)',
+        },
+        average_percentage: {
+            label: 'Average %',
+            color: 'hsl(217 91% 60%)',
+        },
+    };
+    const attemptsChartConfig = {
+        total_attempts: {
+            label: 'Attempts',
+            color: 'hsl(142 71% 45%)',
+        },
+        passed_attempts: {
+            label: 'Passed',
+            color: 'hsl(221 83% 53%)',
+        },
+    };
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -229,6 +263,111 @@ export default function CategoryPerformance() {
 
                     {categoryPerformance.categories.length > 0 ? (
                         <div className="space-y-6">
+                            <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle>Pass Rate by Category</CardTitle>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <ChartContainer
+                                            config={passRateChartConfig}
+                                            className="h-80 w-full"
+                                        >
+                                            <LineChart
+                                                data={categoryPerformance.categories}
+                                                margin={{ left: 12, right: 12 }}
+                                            >
+                                                <CartesianGrid vertical={false} />
+                                                <XAxis
+                                                    dataKey="category"
+                                                    tickLine={false}
+                                                    axisLine={false}
+                                                    tickMargin={8}
+                                                    interval={0}
+                                                    angle={-18}
+                                                    textAnchor="end"
+                                                    height={56}
+                                                />
+                                                <YAxis
+                                                    tickLine={false}
+                                                    axisLine={false}
+                                                    tickMargin={8}
+                                                    domain={[0, 100]}
+                                                />
+                                                <ChartTooltip
+                                                    content={<ChartTooltipContent />}
+                                                />
+                                                <Line
+                                                    type="monotone"
+                                                    dataKey="pass_rate"
+                                                    stroke="var(--color-pass_rate)"
+                                                    strokeWidth={2}
+                                                    dot={{ fill: 'var(--color-pass_rate)' }}
+                                                    activeDot={{ r: 5 }}
+                                                />
+                                                <Line
+                                                    type="monotone"
+                                                    dataKey="average_percentage"
+                                                    stroke="var(--color-average_percentage)"
+                                                    strokeWidth={2}
+                                                    dot={{
+                                                        fill: 'var(--color-average_percentage)',
+                                                    }}
+                                                    activeDot={{ r: 5 }}
+                                                />
+                                            </LineChart>
+                                        </ChartContainer>
+                                    </CardContent>
+                                </Card>
+
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle>Attempt Volume by Category</CardTitle>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <ChartContainer
+                                            config={attemptsChartConfig}
+                                            className="h-80 w-full"
+                                        >
+                                            <BarChart
+                                                data={categoryPerformance.categories}
+                                                margin={{ left: 12, right: 12 }}
+                                            >
+                                                <CartesianGrid vertical={false} />
+                                                <XAxis
+                                                    dataKey="category"
+                                                    tickLine={false}
+                                                    axisLine={false}
+                                                    tickMargin={8}
+                                                    interval={0}
+                                                    angle={-18}
+                                                    textAnchor="end"
+                                                    height={56}
+                                                />
+                                                <YAxis
+                                                    tickLine={false}
+                                                    axisLine={false}
+                                                    tickMargin={8}
+                                                />
+                                                <ChartTooltip
+                                                    content={<ChartTooltipContent />}
+                                                />
+                                                <Bar
+                                                    dataKey="total_attempts"
+                                                    fill="var(--color-total_attempts)"
+                                                    radius={[6, 6, 0, 0]}
+                                                />
+                                                <Bar
+                                                    dataKey="passed_attempts"
+                                                    fill="var(--color-passed_attempts)"
+                                                    radius={[6, 6, 0, 0]}
+                                                />
+                                            </BarChart>
+                                        </ChartContainer>
+                                    </CardContent>
+                                </Card>
+                            </div>
+
                             <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
                                 <Card>
                                     <CardHeader>
