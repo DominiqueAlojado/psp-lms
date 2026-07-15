@@ -78,8 +78,31 @@ export default function MyGrades({
     categoryPerformance,
     topicPerformance,
     recentExams,
-    performanceTrend,
 }: Props) {
+    const getAccuracyBadgeClassName = (accuracy: number) => {
+        if (accuracy >= 80) {
+            return 'border-transparent bg-emerald-100 text-emerald-700';
+        }
+
+        if (accuracy >= 60) {
+            return 'border-transparent bg-amber-100 text-amber-700';
+        }
+
+        return '';
+    };
+
+    const getMasteryProgressClassName = (accuracy: number) => {
+        if (accuracy >= 80) {
+            return '[&>[data-slot=progress-indicator]]:bg-emerald-500';
+        }
+
+        if (accuracy >= 60) {
+            return '[&>[data-slot=progress-indicator]]:bg-amber-500';
+        }
+
+        return '[&>[data-slot=progress-indicator]]:bg-rose-500';
+    };
+
     return (
         <AppLayout>
             <Head title="My Grades" />
@@ -270,6 +293,9 @@ export default function MyGrades({
                                                               ? 'secondary'
                                                               : 'destructive'
                                                     }
+                                                    className={getAccuracyBadgeClassName(
+                                                        topic.accuracy,
+                                                    )}
                                                 >
                                                     {topic.accuracy.toFixed(1)}%
                                                 </Badge>
@@ -277,7 +303,9 @@ export default function MyGrades({
                                             <TableCell>
                                                 <Progress
                                                     value={topic.accuracy}
-                                                    className="h-2"
+                                                    className={`h-2 ${getMasteryProgressClassName(
+                                                        topic.accuracy,
+                                                    )}`}
                                                 />
                                             </TableCell>
                                         </TableRow>
@@ -333,7 +361,7 @@ export default function MyGrades({
                                             </TableCell>
                                             <TableCell className="text-center">
                                                 {exam.passed ? (
-                                                    <Badge className="gap-1 bg-green-500">
+                                                    <Badge className="gap-1 border-transparent bg-emerald-100 text-emerald-700">
                                                         <CheckCircle2 className="size-3" />
                                                         Passed
                                                     </Badge>
