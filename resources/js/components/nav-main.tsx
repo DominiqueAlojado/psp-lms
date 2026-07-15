@@ -15,7 +15,7 @@ export function NavMain({ items = [] }: { items: NavItem[] }) {
     const currentOrgSlug = auth.currentOrganization?.slug;
 
     return (
-        <SidebarGroup className="px-2 py-0">
+        <SidebarGroup className="px-2 py-0.5">
             <SidebarGroupLabel>Platform</SidebarGroupLabel>
             <SidebarMenu>
                 {items.map((item) => {
@@ -31,6 +31,7 @@ export function NavMain({ items = [] }: { items: NavItem[] }) {
                                     resolveUrl(item.href),
                                 )}
                                 tooltip={{ children: item.title }}
+                                className="font-medium"
                             >
                                 <Link href={hrefWithOrg} prefetch>
                                     {item.icon && <item.icon />}

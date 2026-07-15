@@ -216,7 +216,11 @@ export function AppSidebar() {
             <SidebarHeader>
                 <SidebarMenu>
                     <SidebarMenuItem>
-                        <SidebarMenuButton size="lg" asChild>
+                        <SidebarMenuButton
+                            size="lg"
+                            asChild
+                            className="min-h-[3.75rem] rounded-[1.35rem] bg-[image:var(--gradient-brand-soft)] px-3 shadow-[0_18px_40px_-30px_rgb(96_44_193_/_0.45)] hover:bg-[image:var(--gradient-brand-soft)]"
+                        >
                             <Link
                                 href={preserveOrgParam(
                                     dashboard(),

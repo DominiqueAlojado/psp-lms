@@ -14,7 +14,6 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { useIsMobile } from '@/hooks/use-mobile';
 import { type SharedData } from '@/types';
 import { router, usePage } from '@inertiajs/react';
 import { Building2, Check, ChevronsUpDown, Search } from 'lucide-react';
@@ -31,16 +30,13 @@ export function OrganizationSwitcher({
     const { organizations, currentOrganization } = auth;
     const [search, setSearch] = useState('');
     const { state } = useSidebar();
-    const isMobile = useIsMobile();
     const isCollapsed = state === 'collapsed';
-
-    if (!organizations || organizations.length === 0) {
-        return null;
-    }
 
     // Sort organizations alphabetically
     const sortedOrganizations = useMemo(() => {
-        return [...organizations].sort((a, b) => a.name.localeCompare(b.name));
+        return [...(organizations ?? [])].sort((a, b) =>
+            a.name.localeCompare(b.name),
+        );
     }, [organizations]);
 
     // Filter organizations based on search
@@ -55,7 +51,11 @@ export function OrganizationSwitcher({
         );
     }, [sortedOrganizations, search]);
 
-    const handleSwitch = (organizationId: number, organizationSlug: string) => {
+    if (!organizations || organizations.length === 0) {
+        return null;
+    }
+
+    const handleSwitch = (organizationId: number) => {
         router.post(
             `/organization/${organizationId}/switch`,
             {},
@@ -69,24 +69,26 @@ export function OrganizationSwitcher({
 
     const dropdownContent = (
         <DropdownMenuContent
-            className="w-[300px]"
+            className="w-[320px] rounded-2xl border-border/75 bg-popover/96 p-1 shadow-[0_24px_52px_-34px_rgb(35_24_74_/_0.32)]"
             align={isCollapsed ? 'start' : 'start'}
             side={isCollapsed ? 'right' : 'bottom'}
             sideOffset={isCollapsed ? 4 : 8}
         >
-            <DropdownMenuLabel>Your Organizations</DropdownMenuLabel>
+            <DropdownMenuLabel className="px-3 pt-2 pb-1 text-[0.7rem] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
+                Your Organizations
+            </DropdownMenuLabel>
             <DropdownMenuSeparator />
 
             {/* Search Input */}
             <div className="px-2 py-2">
                 <div className="relative">
-                    <Search className="absolute top-2.5 left-2 h-4 w-4 text-muted-foreground" />
+                    <Search className="absolute top-3 left-3 h-4 w-4 text-muted-foreground" />
                     <Input
                         placeholder="Search organizations..."
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                         onKeyDown={(event) => event.stopPropagation()}
-                        className="h-9 pl-8"
+                        className="h-10 rounded-xl bg-background pl-9"
                     />
                 </div>
             </div>
@@ -104,13 +106,15 @@ export function OrganizationSwitcher({
                         <DropdownMenuItem
                             key={organization.id}
                             onClick={() =>
-                                handleSwitch(organization.id, organization.slug)
+                                handleSwitch(organization.id)
                             }
-                            className="cursor-pointer"
+                            className="cursor-pointer rounded-xl px-3 py-2.5 focus:bg-accent/80"
                         >
                             <div className="flex w-full items-center justify-between gap-2">
                                 <div className="flex min-w-0 flex-1 items-center gap-2">
-                                    <Building2 className="h-4 w-4 shrink-0" />
+                                    <div className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-accent text-primary">
+                                        <Building2 className="h-4 w-4 shrink-0" />
+                                    </div>
                                     <div className="flex min-w-0 flex-col">
                                         <span className="truncate text-sm font-medium">
                                             {organization.name}
@@ -142,7 +146,7 @@ export function OrganizationSwitcher({
                             <DropdownMenuTrigger asChild>
                                 <SidebarMenuButton
                                     size="lg"
-                                    className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+                                    className={`rounded-[1.25rem] border border-sidebar-border/70 bg-background/80 data-[state=open]:bg-sidebar-accent/85 data-[state=open]:text-sidebar-accent-foreground ${className || ''}`}
                                 >
                                     <Building2 className="h-4 w-4" />
                                     <span className="sr-only">
@@ -175,10 +179,12 @@ export function OrganizationSwitcher({
             <DropdownMenuTrigger asChild>
                 <SidebarMenuButton
                     size="lg"
-                    className="w-full data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+                    className={`w-full rounded-[1.35rem] border border-sidebar-border/70 bg-background/80 px-3 data-[state=open]:bg-sidebar-accent/85 data-[state=open]:text-sidebar-accent-foreground ${className || ''}`}
                 >
                     <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
-                        <Building2 className="h-4 w-4 shrink-0" />
+                        <div className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-accent text-primary">
+                            <Building2 className="h-4 w-4 shrink-0" />
+                        </div>
                         <div className="flex min-w-0 flex-1 flex-col items-start">
                             <span className="truncate text-sm font-medium">
                                 {currentOrganization?.name ??
