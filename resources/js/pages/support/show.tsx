@@ -1,4 +1,5 @@
 import HeadingSmall from '@/components/heading-small';
+import InputError from '@/components/input-error';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -162,17 +163,17 @@ export default function SupportShow({
     };
 
     const updateTicket = () => {
-        manageForm
-            .transform((data) => ({
-                ...data,
-                assigned_to_user_id:
-                    data.assigned_to_user_id === 'unassigned'
-                        ? null
-                        : Number(data.assigned_to_user_id),
-            }))
-            .patch(preserveOrgParam(`/support/${ticket.id}`, currentOrgSlug), {
-                preserveScroll: true,
-            });
+        manageForm.transform((data) => ({
+            ...data,
+            assigned_to_user_id:
+                data.assigned_to_user_id === 'unassigned'
+                    ? null
+                    : Number(data.assigned_to_user_id),
+        }));
+
+        manageForm.patch(preserveOrgParam(`/support/${ticket.id}`, currentOrgSlug), {
+            preserveScroll: true,
+        });
     };
 
     return (
@@ -470,6 +471,9 @@ export default function SupportShow({
                                                 ))}
                                             </SelectContent>
                                         </Select>
+                                        <InputError
+                                            message={manageForm.errors.status}
+                                        />
                                     </div>
 
                                     <div className="space-y-2">
@@ -497,6 +501,9 @@ export default function SupportShow({
                                                 ))}
                                             </SelectContent>
                                         </Select>
+                                        <InputError
+                                            message={manageForm.errors.priority}
+                                        />
                                     </div>
 
                                     <div className="space-y-2">
@@ -527,14 +534,26 @@ export default function SupportShow({
                                                 ))}
                                             </SelectContent>
                                         </Select>
+                                        <InputError
+                                            message={
+                                                manageForm.errors
+                                                    .assigned_to_user_id
+                                            }
+                                        />
                                     </div>
+
+                                    <InputError
+                                        message={manageForm.errors.error}
+                                    />
 
                                     <Button
                                         onClick={updateTicket}
                                         disabled={manageForm.processing}
                                         className="w-full"
                                     >
-                                        Save Changes
+                                        {manageForm.processing
+                                            ? 'Saving Changes...'
+                                            : 'Save Changes'}
                                     </Button>
                                 </CardContent>
                             </Card>
