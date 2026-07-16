@@ -144,7 +144,7 @@ export default function TopicPerformance() {
                         description="See which topics are strongest, weakest, and most answered across your exam results."
                     />
 
-                    <Card className="overflow-hidden border-border/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,255,255,0.94))]">
+                    <Card className="overflow-hidden border-border/80 bg-[linear-gradient(180deg,color-mix(in_oklab,var(--color-card)_97%,white),color-mix(in_oklab,var(--color-card)_94%,var(--color-accent)))]">
                         <CardHeader className="pb-3">
                             <div className="space-y-1">
                                 <p className="text-[0.7rem] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
@@ -261,7 +261,7 @@ export default function TopicPerformance() {
 
                     {topicPerformance.topics.length > 0 ? (
                         <div className="space-y-6">
-                            <Card className="overflow-hidden border-primary/10 bg-[linear-gradient(135deg,rgba(248,244,255,0.98),rgba(255,255,255,0.94))]">
+                            <Card className="overflow-hidden border-primary/12 bg-[linear-gradient(135deg,color-mix(in_oklab,var(--color-accent)_88%,white)_0%,color-mix(in_oklab,var(--color-card)_96%,var(--color-accent))_100%)] dark:bg-[linear-gradient(135deg,color-mix(in_oklab,var(--color-accent)_72%,black)_0%,color-mix(in_oklab,var(--color-card)_92%,var(--color-accent))_100%)]">
                                 <CardContent className="flex flex-col gap-4 p-6 lg:flex-row lg:items-center lg:justify-between">
                                     <div className="space-y-1">
                                         <p className="text-[0.7rem] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
@@ -286,7 +286,7 @@ export default function TopicPerformance() {
                             </Card>
 
                             <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-                                <Card className="overflow-hidden border-border/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,255,255,0.94))]">
+                                <Card className="overflow-hidden border-border/80 bg-[linear-gradient(180deg,color-mix(in_oklab,var(--color-card)_97%,white),color-mix(in_oklab,var(--color-card)_94%,var(--color-accent)))]">
                                     <CardHeader className="pb-3">
                                         <CardTitle>Strongest Topics</CardTitle>
                                     </CardHeader>
@@ -323,7 +323,7 @@ export default function TopicPerformance() {
                                     </CardContent>
                                 </Card>
 
-                                <Card className="overflow-hidden border-border/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,255,255,0.94))]">
+                                <Card className="overflow-hidden border-border/80 bg-[linear-gradient(180deg,color-mix(in_oklab,var(--color-card)_97%,white),color-mix(in_oklab,var(--color-card)_94%,var(--color-accent)))]">
                                     <CardHeader className="pb-3">
                                         <CardTitle>Needs Attention</CardTitle>
                                     </CardHeader>

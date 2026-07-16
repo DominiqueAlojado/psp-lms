@@ -235,7 +235,7 @@ export function ExamResultsSheet({
                                                 'flex h-8 w-8 shrink-0 items-center justify-center rounded-full sm:h-10 sm:w-10',
                                                 passed
                                                     ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400'
-                                                    : 'bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400',
+                                                    : 'bg-warning-soft text-warning',
                                             )}
                                         >
                                             <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5" />
@@ -373,7 +373,7 @@ export function ExamResultsSheet({
                                                                     question.image_url
                                                                 }
                                                                 alt="Question"
-                                                                className="w-full max-w-full rounded-lg border bg-white sm:max-w-md"
+                                                                className="w-full max-w-full rounded-lg border bg-background/94 sm:max-w-md"
                                                             />
                                                         </div>
                                                     )}

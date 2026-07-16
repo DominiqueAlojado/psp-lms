@@ -266,7 +266,7 @@ export default function QuestionBank() {
                     </div>
 
                     {/* Filters */}
-                    <Card className="overflow-hidden border-border/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,255,255,0.94))]">
+                    <Card className="overflow-hidden border-border/80 bg-[linear-gradient(180deg,color-mix(in_oklab,var(--color-card)_97%,white),color-mix(in_oklab,var(--color-card)_94%,var(--color-accent)))]">
                         <CardHeader className="pb-3">
                             <CardTitle>Filters</CardTitle>
                         </CardHeader>
@@ -439,7 +439,7 @@ export default function QuestionBank() {
                     </Card>
 
                     {/* Questions Table */}
-                    <Card className="overflow-hidden border-border/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,255,255,0.94))]">
+                    <Card className="overflow-hidden border-border/80 bg-[linear-gradient(180deg,color-mix(in_oklab,var(--color-card)_97%,white),color-mix(in_oklab,var(--color-card)_94%,var(--color-accent)))]">
                         <CardHeader className="pb-3">
                             <CardTitle>Question Performance</CardTitle>
                         </CardHeader>

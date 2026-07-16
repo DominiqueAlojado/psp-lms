@@ -109,7 +109,7 @@ export function QuestionDisplay({
                                     <img
                                         src={question.image_url}
                                         alt="Question"
-                                        className="w-full max-w-full rounded-md border bg-white sm:max-w-md"
+                                        className="w-full max-w-full rounded-md border bg-background/94 sm:max-w-md"
                                         onMouseEnter={() =>
                                             setIsMagnifierVisible(true)
                                         }

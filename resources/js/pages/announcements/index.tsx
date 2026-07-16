@@ -141,7 +141,7 @@ export default function AnnouncementsIndex() {
                     />
                 </div>
 
-                <Card className="overflow-hidden border-primary/10 bg-[linear-gradient(135deg,rgba(248,244,255,0.98),rgba(255,255,255,0.94))]">
+                <Card className="overflow-hidden border-primary/12 bg-[linear-gradient(135deg,color-mix(in_oklab,var(--color-accent)_88%,white)_0%,color-mix(in_oklab,var(--color-card)_96%,var(--color-accent))_100%)] dark:bg-[linear-gradient(135deg,color-mix(in_oklab,var(--color-accent)_72%,black)_0%,color-mix(in_oklab,var(--color-card)_92%,var(--color-accent))_100%)]">
                     <CardContent className="flex flex-col gap-4 p-6 lg:flex-row lg:items-center lg:justify-between">
                         <div className="space-y-1">
                             <p className="text-[0.7rem] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
@@ -192,7 +192,7 @@ export default function AnnouncementsIndex() {
                                         announcement.priority === 'urgent'
                                             ? 'border-2 border-red-200 dark:border-red-900/50'
                                             : ''
-                                    } overflow-hidden bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,255,255,0.94))]`}
+                                    } overflow-hidden bg-[linear-gradient(180deg,color-mix(in_oklab,var(--color-card)_97%,white),color-mix(in_oklab,var(--color-card)_94%,var(--color-accent)))]`}
                                 >
                                     <CardContent className="p-6">
                                         <div className="flex items-start gap-4">
