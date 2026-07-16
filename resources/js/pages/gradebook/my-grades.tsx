@@ -81,11 +81,11 @@ export default function MyGrades({
 }: Props) {
     const getAccuracyBadgeClassName = (accuracy: number) => {
         if (accuracy >= 80) {
-            return 'border-transparent bg-emerald-100 text-emerald-700';
+            return 'border-transparent bg-success-soft text-success';
         }
 
         if (accuracy >= 60) {
-            return 'border-transparent bg-amber-100 text-amber-700';
+            return 'border-transparent bg-warning-soft text-warning';
         }
 
         return '';
@@ -361,7 +361,7 @@ export default function MyGrades({
                                             </TableCell>
                                             <TableCell className="text-center">
                                                 {exam.passed ? (
-                                                    <Badge className="gap-1 border-transparent bg-emerald-100 text-emerald-700">
+                                                    <Badge className="gap-1 border-transparent bg-success-soft text-success">
                                                         <CheckCircle2 className="size-3" />
                                                         Passed
                                                     </Badge>

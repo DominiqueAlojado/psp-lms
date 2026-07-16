@@ -24,7 +24,6 @@ import {
     LifeBuoy,
     MessageSquareText,
     Send,
-    Sparkles,
 } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -89,13 +88,13 @@ function statusBadge(status: string) {
     switch (status) {
         case 'resolved':
             return (
-                <Badge className="border-transparent bg-emerald-100 text-emerald-700">
+                <Badge className="border-transparent bg-success-soft text-success">
                     Resolved
                 </Badge>
             );
         case 'in_review':
             return (
-                <Badge className="border-transparent bg-amber-100 text-amber-700">
+                <Badge className="border-transparent bg-warning-soft text-warning">
                     In Review
                 </Badge>
             );
@@ -112,13 +111,13 @@ function priorityBadge(priority: string) {
     switch (priority) {
         case 'high':
             return (
-                <Badge className="border-transparent bg-rose-100 text-rose-700">
+                <Badge className="border-transparent bg-danger-soft text-danger">
                     High
                 </Badge>
             );
         case 'medium':
             return (
-                <Badge className="border-transparent bg-amber-100 text-amber-700">
+                <Badge className="border-transparent bg-warning-soft text-warning">
                     Medium
                 </Badge>
             );
@@ -255,7 +254,7 @@ export default function SupportIndex({
                     />
                 </div>
 
-                <Card className="overflow-hidden border-primary/10 bg-[linear-gradient(135deg,rgba(248,244,255,0.98),rgba(255,255,255,0.94))]">
+                <Card className="overflow-hidden border-primary/12 bg-[linear-gradient(135deg,color-mix(in_oklab,var(--color-accent)_88%,white)_0%,color-mix(in_oklab,var(--color-card)_96%,var(--color-accent))_100%)] dark:bg-[linear-gradient(135deg,color-mix(in_oklab,var(--color-accent)_72%,black)_0%,color-mix(in_oklab,var(--color-card)_92%,var(--color-accent))_100%)]">
                     <CardContent className="flex flex-col gap-4 p-6 lg:flex-row lg:items-center lg:justify-between">
                         <div className="space-y-1">
                             <p className="text-[0.7rem] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
@@ -285,7 +284,7 @@ export default function SupportIndex({
 
                 <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
                     <div className="space-y-6">
-                        <Card className="overflow-hidden border-border/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,255,255,0.94))]">
+                        <Card className="overflow-hidden border-border/80 bg-[linear-gradient(180deg,color-mix(in_oklab,var(--color-card)_97%,white),color-mix(in_oklab,var(--color-card)_94%,var(--color-accent)))]">
                             <CardHeader className="flex flex-col gap-3 pb-3 lg:flex-row lg:items-center lg:justify-between">
                                 <CardTitle>
                                     {showsManagedTickets ? 'Organization Tickets' : 'Your Tickets'}
@@ -332,7 +331,7 @@ export default function SupportIndex({
                                     tickets.data.map((ticket) => (
                                         <div
                                             key={ticket.id}
-                                            className="rounded-[1.35rem] border border-border/70 bg-background/85 p-5"
+                                            className="rounded-[1.35rem] border border-border/75 bg-background/88 p-5 shadow-[0_18px_34px_-30px_rgb(35_24_74_/_0.18)] dark:shadow-[0_18px_34px_-28px_rgb(0_0_0_/_0.44)]"
                                         >
                                             <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                                                 <div className="space-y-2">
@@ -447,7 +446,7 @@ export default function SupportIndex({
                     </div>
 
                     <div className="space-y-6">
-                        <Card className="overflow-hidden border-border/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,255,255,0.94))]">
+                        <Card className="overflow-hidden border-border/80 bg-[linear-gradient(180deg,color-mix(in_oklab,var(--color-card)_97%,white),color-mix(in_oklab,var(--color-card)_94%,var(--color-accent)))]">
                             <CardHeader className="pb-3">
                                 <CardTitle>Create a Ticket</CardTitle>
                             </CardHeader>
@@ -597,7 +596,7 @@ export default function SupportIndex({
                                     )}
                                 </div>
 
-                                <div className="rounded-[1.25rem] border border-dashed border-primary/20 bg-primary/5 p-4">
+                                <div className="rounded-[1.25rem] border border-dashed border-primary/25 bg-primary/8 p-4">
                                     <p className="font-medium text-foreground">
                                         Ticket thread is ready
                                     </p>
@@ -625,7 +624,7 @@ export default function SupportIndex({
                             </CardContent>
                         </Card>
 
-                        <Card className="overflow-hidden border-primary/10 bg-[linear-gradient(160deg,rgba(255,248,240,0.98),rgba(255,255,255,0.95))]">
+                        <Card className="overflow-hidden border-primary/12 bg-[linear-gradient(160deg,color-mix(in_oklab,var(--color-card)_96%,var(--color-warning-soft))_0%,color-mix(in_oklab,var(--color-card)_94%,var(--color-accent))_100%)] dark:bg-[linear-gradient(160deg,color-mix(in_oklab,var(--color-card)_88%,var(--color-warning-soft))_0%,color-mix(in_oklab,var(--color-card)_94%,var(--color-accent))_100%)]">
                             <CardContent className="space-y-3 p-5">
                                 <p className="text-[0.7rem] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
                                     Support flow

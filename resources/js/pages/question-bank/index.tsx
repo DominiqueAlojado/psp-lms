@@ -89,9 +89,9 @@ const typeLabels: Record<string, string> = {
 };
 
 const difficultyColors: Record<string, string> = {
-    easy: 'border border-emerald-200/70 bg-emerald-50 text-emerald-700',
-    medium: 'border border-amber-200/80 bg-amber-50 text-amber-700',
-    hard: 'border border-rose-200/80 bg-rose-50 text-rose-700',
+    easy: 'border border-success/20 bg-success-soft text-success',
+    medium: 'border border-warning/20 bg-warning-soft text-warning',
+    hard: 'border border-danger/20 bg-danger-soft text-danger',
 };
 
 export default function QuestionBankIndex({ questions, filters }: PageProps) {
@@ -306,7 +306,7 @@ export default function QuestionBankIndex({ questions, filters }: PageProps) {
                     />
                 </div>
 
-                <Card className="overflow-hidden border-primary/10 bg-[linear-gradient(135deg,rgba(248,244,255,0.98),rgba(255,255,255,0.94))]">
+                <Card className="overflow-hidden border-primary/12 bg-[linear-gradient(135deg,color-mix(in_oklab,var(--color-accent)_88%,white)_0%,color-mix(in_oklab,var(--color-card)_96%,var(--color-accent))_100%)] dark:bg-[linear-gradient(135deg,color-mix(in_oklab,var(--color-accent)_72%,black)_0%,color-mix(in_oklab,var(--color-card)_92%,var(--color-accent))_100%)]">
                     <CardContent className="flex flex-col gap-4 p-6 lg:flex-row lg:items-center lg:justify-between">
                         <div className="space-y-1">
                             <p className="text-[0.7rem] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
@@ -330,7 +330,7 @@ export default function QuestionBankIndex({ questions, filters }: PageProps) {
                     </CardContent>
                 </Card>
 
-                <Card className="overflow-hidden border-border/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,255,255,0.94))]">
+                <Card className="overflow-hidden border-border/80 bg-[linear-gradient(180deg,color-mix(in_oklab,var(--color-card)_97%,white),color-mix(in_oklab,var(--color-card)_94%,var(--color-accent)))]">
                     <CardContent className="space-y-5 pt-6">
                         <form onSubmit={handleSearch} className="flex flex-col gap-4 md:flex-row">
                             <div className="relative flex-1">
@@ -371,7 +371,7 @@ export default function QuestionBankIndex({ questions, filters }: PageProps) {
 
                 {/* Questions List */}
                 {questions.data.length === 0 ? (
-                    <Card className="overflow-hidden border-border/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,255,255,0.94))]">
+                    <Card className="overflow-hidden border-border/80 bg-[linear-gradient(180deg,color-mix(in_oklab,var(--color-card)_97%,white),color-mix(in_oklab,var(--color-card)_94%,var(--color-accent)))]">
                         <CardContent className="flex flex-col items-center justify-center py-12">
                             <p className="text-lg font-medium">No questions found</p>
                             <p className="mb-4 text-muted-foreground">
@@ -393,14 +393,14 @@ export default function QuestionBankIndex({ questions, filters }: PageProps) {
                                 return (
                                     <Card
                                         key={question.id}
-                                        className="overflow-hidden border-border/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.99),rgba(255,255,255,0.95))]"
+                                        className="overflow-hidden border-border/80 bg-[linear-gradient(180deg,color-mix(in_oklab,var(--color-card)_98%,white),color-mix(in_oklab,var(--color-card)_95%,var(--color-accent)))]"
                                     >
                                         <CardContent className="pt-6">
                                             <div className="flex items-start justify-between gap-4">
                                                 <div className="flex-1 space-y-3">
                                                     <div className="flex flex-wrap items-center gap-2">
                                                         {question.is_approved && (
-                                                            <Badge className="border border-emerald-200/80 bg-emerald-500 text-white shadow-[0_16px_32px_-24px_rgba(16,185,129,0.8)]">
+                                                            <Badge className="border border-success/25 bg-success text-white shadow-[0_16px_32px_-24px_rgba(16,185,129,0.55)]">
                                                                 <Check className="mr-1 h-3 w-3" />
                                                                 Approved
                                                             </Badge>

@@ -114,7 +114,7 @@ export default function FeedbackDesignPage() {
                     />
                 </div>
 
-                <Card className="overflow-hidden border-primary/10 bg-[linear-gradient(135deg,rgba(248,244,255,0.98),rgba(255,255,255,0.94))]">
+                <Card className="overflow-hidden border-primary/12 bg-[linear-gradient(135deg,color-mix(in_oklab,var(--color-accent)_88%,white)_0%,color-mix(in_oklab,var(--color-card)_96%,var(--color-accent))_100%)] dark:bg-[linear-gradient(135deg,color-mix(in_oklab,var(--color-accent)_72%,black)_0%,color-mix(in_oklab,var(--color-card)_92%,var(--color-accent))_100%)]">
                     <CardContent className="flex flex-col gap-4 p-6 lg:flex-row lg:items-center lg:justify-between">
                         <div className="space-y-1">
                             <p className="text-[0.7rem] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
@@ -135,7 +135,7 @@ export default function FeedbackDesignPage() {
                 </Card>
 
                 <div className="grid gap-6 xl:grid-cols-[1.3fr_0.7fr]">
-                    <Card className="overflow-hidden border-border/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,255,255,0.94))]">
+                    <Card className="overflow-hidden border-border/80 bg-[linear-gradient(180deg,color-mix(in_oklab,var(--color-card)_97%,white),color-mix(in_oklab,var(--color-card)_94%,var(--color-accent)))]">
                         <CardHeader className="pb-3">
                             <CardTitle>Rate Your Experience</CardTitle>
                         </CardHeader>
@@ -147,7 +147,7 @@ export default function FeedbackDesignPage() {
                                     return (
                                         <div
                                             key={area.id}
-                                            className="rounded-[1.5rem] border border-border/70 bg-background/85 p-5"
+                                            className="rounded-[1.5rem] border border-border/75 bg-background/88 p-5 shadow-[0_18px_34px_-30px_rgb(35_24_74_/_0.16)] dark:shadow-[0_18px_34px_-28px_rgb(0_0_0_/_0.42)]"
                                         >
                                             <div className="mb-4 flex items-start gap-3">
                                                 <div className="flex size-11 items-center justify-center rounded-2xl bg-primary/10 text-primary">
@@ -187,8 +187,8 @@ export default function FeedbackDesignPage() {
                                                             }
                                                             className={`flex min-w-[4.5rem] flex-col items-center gap-2 rounded-2xl border px-4 py-3 text-center transition ${
                                                                 isActive
-                                                                    ? 'border-primary/35 bg-[linear-gradient(180deg,rgba(139,92,246,0.14),rgba(255,255,255,0.96))] text-primary shadow-[0_14px_32px_-24px_rgb(96_44_193_/_0.45)]'
-                                                                    : 'border-border/70 bg-background text-muted-foreground hover:border-primary/20 hover:bg-primary/5 hover:text-foreground'
+                                                                    ? 'border-primary/35 bg-[linear-gradient(180deg,color-mix(in_oklab,var(--color-primary)_16%,var(--color-card)),color-mix(in_oklab,var(--color-card)_96%,white))] text-primary shadow-[0_14px_32px_-24px_rgb(96_44_193_/_0.35)] dark:bg-[linear-gradient(180deg,color-mix(in_oklab,var(--color-primary)_20%,var(--color-card)),color-mix(in_oklab,var(--color-card)_92%,var(--color-accent)))]'
+                                                                    : 'border-border/75 bg-background/92 text-muted-foreground hover:border-primary/20 hover:bg-primary/6 hover:text-foreground'
                                                             }`}
                                                             aria-label={`${area.title}: ${rating.label}`}
                                                         >
@@ -205,7 +205,7 @@ export default function FeedbackDesignPage() {
                                 })}
                             </div>
 
-                            <div className="rounded-[1.5rem] border border-border/70 bg-background/85 p-5">
+                            <div className="rounded-[1.5rem] border border-border/75 bg-background/88 p-5 shadow-[0_18px_34px_-30px_rgb(35_24_74_/_0.16)] dark:shadow-[0_18px_34px_-28px_rgb(0_0_0_/_0.42)]">
                                 <div className="mb-3 space-y-1">
                                     <p className="text-[0.7rem] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
                                         Written feedback
@@ -236,7 +236,7 @@ export default function FeedbackDesignPage() {
                                 <div className="flex gap-2">
                                     <Button
                                         type="button"
-                                        className="border border-border/80 bg-white text-foreground shadow-[0_10px_24px_-20px_rgb(27_31_59_/_0.22)] hover:bg-accent"
+                                        className="border border-border/80 bg-background/94 text-foreground shadow-[0_10px_24px_-20px_rgb(27_31_59_/_0.18)] hover:bg-accent"
                                         variant="outline"
                                     >
                                         Not Yet
@@ -253,7 +253,7 @@ export default function FeedbackDesignPage() {
                     </Card>
 
                     <div className="space-y-6">
-                        <Card className="overflow-hidden border-border/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,255,255,0.94))]">
+                        <Card className="overflow-hidden border-border/80 bg-[linear-gradient(180deg,color-mix(in_oklab,var(--color-card)_97%,white),color-mix(in_oklab,var(--color-card)_94%,var(--color-accent)))]">
                             <CardHeader className="pb-3">
                                 <CardTitle>Why This Design Works</CardTitle>
                             </CardHeader>
@@ -270,7 +270,7 @@ export default function FeedbackDesignPage() {
                             </CardContent>
                         </Card>
 
-                        <Card className="overflow-hidden border-border/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,255,255,0.94))]">
+                        <Card className="overflow-hidden border-border/80 bg-[linear-gradient(180deg,color-mix(in_oklab,var(--color-card)_97%,white),color-mix(in_oklab,var(--color-card)_94%,var(--color-accent)))]">
                             <CardHeader className="pb-3">
                                 <CardTitle>Suggested Fields</CardTitle>
                             </CardHeader>
@@ -284,7 +284,7 @@ export default function FeedbackDesignPage() {
                             </CardContent>
                         </Card>
 
-                        <Card className="overflow-hidden border-primary/10 bg-[linear-gradient(160deg,rgba(255,248,240,0.98),rgba(255,255,255,0.95))]">
+                        <Card className="overflow-hidden border-primary/12 bg-[linear-gradient(160deg,color-mix(in_oklab,var(--color-card)_96%,var(--color-warning-soft))_0%,color-mix(in_oklab,var(--color-card)_94%,var(--color-accent))_100%)] dark:bg-[linear-gradient(160deg,color-mix(in_oklab,var(--color-card)_88%,var(--color-warning-soft))_0%,color-mix(in_oklab,var(--color-card)_94%,var(--color-accent))_100%)]">
                             <CardContent className="space-y-3 p-5">
                                 <p className="text-[0.7rem] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
                                     Next step

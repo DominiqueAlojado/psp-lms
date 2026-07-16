@@ -68,7 +68,7 @@ export default function Dashboard() {
             <Head title="Dashboard" />
 
             <div className="flex h-full flex-1 flex-col gap-6 overflow-x-auto px-5 py-6 md:px-6">
-                <Card className="overflow-hidden border-primary/10 bg-[linear-gradient(135deg,rgba(248,244,255,0.98),rgba(255,255,255,0.94))]">
+                <Card className="overflow-hidden border-primary/12 bg-[linear-gradient(135deg,color-mix(in_oklab,var(--color-accent)_88%,white)_0%,color-mix(in_oklab,var(--color-card)_96%,var(--color-accent))_100%)] dark:bg-[linear-gradient(135deg,color-mix(in_oklab,var(--color-accent)_72%,black)_0%,color-mix(in_oklab,var(--color-card)_92%,var(--color-accent))_100%)]">
                     <CardContent className="grid gap-8 p-7 lg:grid-cols-[1.4fr_0.9fr] lg:items-center">
                         <div className="space-y-5">
                             <Badge className="gap-1.5">
@@ -90,7 +90,7 @@ export default function Dashboard() {
                         </div>
 
                         <div className="grid gap-4 sm:grid-cols-2">
-                            <Card className="border-primary/10 bg-white/85">
+                            <Card className="border-primary/12 bg-background/90">
                                 <CardContent className="space-y-2 p-5">
                                     <p className="text-[0.7rem] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
                                         Delivery status
@@ -109,7 +109,7 @@ export default function Dashboard() {
                                 </CardContent>
                             </Card>
 
-                            <Card className="border-primary/10 bg-white/85">
+                            <Card className="border-primary/12 bg-background/90">
                                 <CardContent className="space-y-2 p-5">
                                     <p className="text-[0.7rem] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
                                         This week
@@ -231,7 +231,7 @@ export default function Dashboard() {
                                     {[42, 58, 54, 71, 66, 79].map((value, index) => (
                                         <div
                                             key={index}
-                                            className="flex h-40 flex-col justify-end rounded-2xl bg-[linear-gradient(180deg,rgba(244,238,255,0.5),rgba(255,255,255,0.96))] p-3"
+                                            className="flex h-40 flex-col justify-end rounded-2xl bg-[linear-gradient(180deg,color-mix(in_oklab,var(--color-accent)_34%,transparent),color-mix(in_oklab,var(--color-card)_96%,white))] p-3 dark:bg-[linear-gradient(180deg,color-mix(in_oklab,var(--color-accent)_40%,transparent),color-mix(in_oklab,var(--color-card)_90%,var(--color-accent)))]"
                                         >
                                             <div
                                                 className="rounded-xl bg-[image:var(--gradient-brand)]"

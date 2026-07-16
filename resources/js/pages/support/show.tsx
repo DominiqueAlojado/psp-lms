@@ -88,13 +88,13 @@ function statusBadge(status: string) {
     switch (status) {
         case 'resolved':
             return (
-                <Badge className="border-transparent bg-emerald-100 text-emerald-700">
+                <Badge className="border-transparent bg-success-soft text-success">
                     Resolved
                 </Badge>
             );
         case 'in_review':
             return (
-                <Badge className="border-transparent bg-amber-100 text-amber-700">
+                <Badge className="border-transparent bg-warning-soft text-warning">
                     In Review
                 </Badge>
             );
@@ -111,13 +111,13 @@ function priorityBadge(priority: string) {
     switch (priority) {
         case 'high':
             return (
-                <Badge className="border-transparent bg-rose-100 text-rose-700">
+                <Badge className="border-transparent bg-danger-soft text-danger">
                     High
                 </Badge>
             );
         case 'medium':
             return (
-                <Badge className="border-transparent bg-amber-100 text-amber-700">
+                <Badge className="border-transparent bg-warning-soft text-warning">
                     Medium
                 </Badge>
             );
@@ -270,7 +270,7 @@ export default function SupportShow({
                                     </div>
                                 </div>
 
-                                <div className="rounded-[1.25rem] border border-border/70 bg-background/85 p-5">
+                                <div className="rounded-[1.25rem] border border-border/75 bg-background/88 p-5 shadow-[0_18px_34px_-30px_rgb(35_24_74_/_0.16)] dark:shadow-[0_18px_34px_-28px_rgb(0_0_0_/_0.44)]">
                                     <p className="text-[0.7rem] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
                                         Initial issue details
                                     </p>
@@ -300,7 +300,7 @@ export default function SupportShow({
                                         </p>
                                     </div>
                                 ) : (
-                                    <div className="space-y-5 rounded-[1.75rem] border border-border/70 bg-[linear-gradient(180deg,rgba(250,250,255,0.98),rgba(255,255,255,0.95))] p-4 md:p-5">
+                                    <div className="space-y-5 rounded-[1.75rem] border border-border/75 bg-[linear-gradient(180deg,color-mix(in_oklab,var(--color-card)_97%,white),color-mix(in_oklab,var(--color-card)_93%,var(--color-accent)))] p-4 md:p-5">
                                         {messages.map((message) => (
                                             <div
                                                 key={message.id}
@@ -320,7 +320,7 @@ export default function SupportShow({
                                                     }`}
                                                 >
                                                     {!message.is_current_user && (
-                                                        <div className="flex size-9 shrink-0 items-center justify-center rounded-full border border-border/70 bg-background text-[0.72rem] font-semibold text-foreground shadow-sm">
+                                                        <div className="flex size-9 shrink-0 items-center justify-center rounded-full border border-border/75 bg-background/94 text-[0.72rem] font-semibold text-foreground shadow-[0_12px_24px_-20px_rgb(35_24_74_/_0.18)] dark:shadow-[0_14px_26px_-20px_rgb(0_0_0_/_0.48)]">
                                                             {initials(
                                                                 message.user.name,
                                                             )}
@@ -337,8 +337,8 @@ export default function SupportShow({
                                                         <div
                                                             className={`inline-flex w-fit max-w-full rounded-[1.5rem] px-4 py-3 text-sm leading-7 shadow-sm ${
                                                                 message.is_current_user
-                                                                    ? 'rounded-br-md bg-[linear-gradient(135deg,#2563eb,#1d4ed8)] text-white shadow-[0_20px_36px_-24px_rgb(37_99_235_/_0.6)]'
-                                                                    : 'rounded-bl-md border border-border/70 bg-white text-foreground'
+                                                                    ? 'rounded-br-md bg-[linear-gradient(135deg,color-mix(in_oklab,var(--color-primary)_76%,#2563eb),color-mix(in_oklab,var(--color-primary)_88%,#1d4ed8))] text-white shadow-[0_20px_36px_-24px_rgb(37_99_235_/_0.48)]'
+                                                                    : 'rounded-bl-md border border-border/75 bg-background/92 text-foreground'
                                                             }`}
                                                         >
                                                             <span className="break-words text-left">
@@ -369,7 +369,7 @@ export default function SupportShow({
                                                     </div>
 
                                                     {message.is_current_user && (
-                                                        <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[linear-gradient(135deg,#7c3aed,#a855f7)] text-[0.72rem] font-semibold text-white shadow-[0_18px_34px_-24px_rgb(124_58_237_/_0.6)]">
+                                                        <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[image:var(--gradient-brand)] text-[0.72rem] font-semibold text-white shadow-[0_18px_34px_-24px_rgb(124_58_237_/_0.48)]">
                                                             {initials(
                                                                 message.user.name,
                                                             )}
@@ -381,7 +381,7 @@ export default function SupportShow({
                                     </div>
                                 )}
 
-                                <div className="space-y-3 rounded-[1.5rem] border border-border/70 bg-background/95 p-4 shadow-sm">
+                                <div className="space-y-3 rounded-[1.5rem] border border-border/75 bg-background/94 p-4 shadow-[0_18px_34px_-30px_rgb(35_24_74_/_0.16)] dark:shadow-[0_18px_34px_-28px_rgb(0_0_0_/_0.4)]">
                                     <Label className="text-[0.7rem] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
                                         Add reply
                                     </Label>
@@ -466,7 +466,7 @@ export default function SupportShow({
                                     activityLogs.map((log) => (
                                         <div
                                             key={log.id}
-                                            className="rounded-[1.25rem] border border-border/70 bg-background/85 p-4"
+                                            className="rounded-[1.25rem] border border-border/75 bg-background/88 p-4 shadow-[0_16px_30px_-28px_rgb(35_24_74_/_0.14)] dark:shadow-[0_16px_30px_-26px_rgb(0_0_0_/_0.38)]"
                                         >
                                             <div className="flex flex-col gap-2">
                                                 <div className="flex items-start justify-between gap-3">
