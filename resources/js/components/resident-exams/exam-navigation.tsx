@@ -1,5 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { memo } from 'react';
 
 interface ExamNavigationProps {
     currentIndex: number;
@@ -9,7 +10,7 @@ interface ExamNavigationProps {
     onNext: () => void;
 }
 
-export function ExamNavigation({
+export const ExamNavigation = memo(function ExamNavigation({
     currentIndex,
     totalQuestions,
     answeredCount,
@@ -40,4 +41,4 @@ export function ExamNavigation({
             </div>
         </div>
     );
-}
+});

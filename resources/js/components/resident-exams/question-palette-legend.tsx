@@ -1,26 +1,27 @@
+import { ExamTimer } from '@/components/resident-exams/exam-timer';
 import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
-import { Clock, Flag } from 'lucide-react';
+import { Flag } from 'lucide-react';
+import { memo } from 'react';
 
 interface QuestionPaletteLegendProps {
     answeredCount: number;
     notAnsweredCount: number;
     markedCount: number;
-    timeRemaining: number | null;
     durationMinutes: number | null;
-    formatTime: (seconds: number) => string;
+    startedAt: string;
     onSubmit: () => void;
+    onTimeExpired: () => void;
     isSaving?: boolean;
 }
 
-export function QuestionPaletteLegend({
+export const QuestionPaletteLegend = memo(function QuestionPaletteLegend({
     answeredCount,
     notAnsweredCount,
     markedCount,
-    timeRemaining,
     durationMinutes,
-    formatTime,
+    startedAt,
     onSubmit,
+    onTimeExpired,
     isSaving = false,
 }: QuestionPaletteLegendProps) {
     return (
@@ -36,18 +37,13 @@ export function QuestionPaletteLegend({
                 )}
                 {/* Timer and Submit Button Row */}
                 <div className="flex items-center justify-between gap-2">
-                    {durationMinutes && timeRemaining !== null && (
-                        <div className="flex items-center gap-1.5 rounded-lg border bg-background px-2.5 py-1.5 sm:gap-2 sm:px-3 sm:py-2">
-                            <Clock className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                            <span
-                                className={cn(
-                                    'font-mono text-sm font-bold sm:text-base',
-                                    timeRemaining < 300 && 'text-destructive',
-                                )}
-                            >
-                                {formatTime(timeRemaining)}
-                            </span>
-                        </div>
+                    {durationMinutes && (
+                        <ExamTimer
+                            durationMinutes={durationMinutes}
+                            startedAt={startedAt}
+                            onExpire={onTimeExpired}
+                            className="gap-1.5 px-2.5 py-1.5 sm:gap-2 sm:px-3 sm:py-2 [&_svg]:h-3.5 [&_svg]:w-3.5 [&_span]:text-sm [&_span]:sm:text-base"
+                        />
                     )}
                     <Button
                         onClick={onSubmit}
@@ -96,18 +92,12 @@ export function QuestionPaletteLegend({
                         <span>Saving...</span>
                     </div>
                 )}
-                {durationMinutes && timeRemaining !== null && (
-                    <div className="flex items-center gap-2 rounded-lg border bg-background px-4 py-2">
-                        <Clock className="h-4 w-4" />
-                        <span
-                            className={cn(
-                                'font-mono text-lg font-bold',
-                                timeRemaining < 300 && 'text-destructive',
-                            )}
-                        >
-                            {formatTime(timeRemaining)}
-                        </span>
-                    </div>
+                {durationMinutes && (
+                    <ExamTimer
+                        durationMinutes={durationMinutes}
+                        startedAt={startedAt}
+                        onExpire={onTimeExpired}
+                    />
                 )}
                 <div className="flex items-center justify-end">
                     <div className="flex items-center gap-3">
@@ -143,4 +133,4 @@ export function QuestionPaletteLegend({
             </div>
         </div>
     );
-}
+});

@@ -17,7 +17,9 @@ interface UseExamSessionMonitorProps {
 }
 
 const IDLE_THRESHOLD = 120; // 2 minutes of no activity = idle
-const ACTIVITY_CHECK_INTERVAL = 5000; // Check every 5 seconds
+const ACTIVITY_CHECK_INTERVAL = 15000; // Heartbeat every 15 seconds
+const SESSION_CHECK_INTERVAL = 30000; // Session/IP check every 30 seconds
+const VISIBILITY_CHECK_COOLDOWN = 10000; // Avoid duplicate checks on quick refocus
 
 /**
  * Hook to monitor and log browser/IP changes and idle time during an exam
@@ -31,6 +33,7 @@ export function useExamSessionMonitor({
     const checkIntervalRef = useRef<NodeJS.Timeout | null>(null);
     const lastActivityTime = useRef<number>(0);
     const activityIntervalRef = useRef<NodeJS.Timeout | null>(null);
+    const lastSessionCheckAt = useRef<number>(0);
 
     // Track user activity
     useEffect(() => {
@@ -84,8 +87,8 @@ export function useExamSessionMonitor({
 
                     // Reset timer after logging
                     lastActivityTime.current = now;
-                } catch (error) {
-                    console.error('Failed to log idle time:', error);
+                } catch {
+                    return;
                 }
             } else {
                 // Normal activity heartbeat (no idle duration)
@@ -94,8 +97,8 @@ export function useExamSessionMonitor({
                         `/exams/${examType}/${attemptId}/log-activity`,
                         {},
                     );
-                } catch (error) {
-                    console.error('Failed to log activity:', error);
+                } catch {
+                    return;
                 }
             }
         };
@@ -121,6 +124,8 @@ export function useExamSessionMonitor({
         // Fetch initial session data from server and check for changes
         const initializeAndCheck = async () => {
             try {
+                lastSessionCheckAt.current = Date.now();
+
                 // Get the attempt data from server (includes initial user_agent and IP)
                 const response = await axios.get(
                     `/exams/${examType}/${attemptId}/session-info`,
@@ -130,20 +135,11 @@ export function useExamSessionMonitor({
                 const serverIpAddress = response.data.ip_address;
                 const currentMetadata = captureExamMetadataSync();
 
-                console.log('🔍 Session Monitor Check:', {
-                    serverUserAgent: serverUserAgent?.substring(0, 50) + '...',
-                    currentUserAgent:
-                        currentMetadata.userAgent.substring(0, 50) + '...',
-                    serverIp: serverIpAddress,
-                });
-
                 // Get current IP from server (can't get it from JavaScript directly)
                 const currentIpResponse = await axios.get(
                     `/exams/${examType}/${attemptId}/current-ip`,
                 );
                 const currentIpAddress = currentIpResponse.data.ip_address;
-
-                console.log('🔍 Current IP:', currentIpAddress);
 
                 // Store initial session from this page load
                 if (!initialSession.current) {
@@ -183,27 +179,6 @@ export function useExamSessionMonitor({
                 }
 
                 // Log browser change if detected and not already logged
-                if (
-                    userAgentChanged &&
-                    !initialSession.current.browserChangeLogged
-                ) {
-                    console.warn(
-                        '⚠️ Browser/Device change detected during exam!',
-                    );
-                    console.log('Original Browser:', serverUserAgent);
-                    console.log('Current Browser:', currentMetadata.userAgent);
-                }
-
-                // Log IP change if detected and not already logged
-                if (
-                    ipAddressChanged &&
-                    !initialSession.current.ipChangeLogged
-                ) {
-                    console.warn('⚠️ IP Address change detected during exam!');
-                    console.log('Original IP:', serverIpAddress);
-                    console.log('Current IP:', currentIpAddress);
-                }
-
                 // Log the change(s) if detected
                 if (changeType) {
                     const shouldLogBrowser =
@@ -236,19 +211,13 @@ export function useExamSessionMonitor({
                             if (shouldLogIp) {
                                 initialSession.current.ipChangeLogged = true;
                             }
-                            console.log(
-                                '✅ Session change logged successfully',
-                            );
-                        } catch (error) {
-                            console.error(
-                                'Failed to log session change:',
-                                error,
-                            );
+                        } catch {
+                            return;
                         }
                     }
                 }
-            } catch (error) {
-                console.error('Failed to fetch session info:', error);
+            } catch {
+                return;
             }
         };
 
@@ -256,7 +225,7 @@ export function useExamSessionMonitor({
         initializeAndCheck();
         checkIntervalRef.current = setInterval(
             initializeAndCheck,
-            ACTIVITY_CHECK_INTERVAL,
+            SESSION_CHECK_INTERVAL,
         );
 
         // Cleanup
@@ -275,8 +244,17 @@ export function useExamSessionMonitor({
 
         const handleVisibilityChange = async () => {
             if (document.visibilityState === 'visible') {
+                if (
+                    Date.now() - lastSessionCheckAt.current <
+                    VISIBILITY_CHECK_COOLDOWN
+                ) {
+                    return;
+                }
+
                 // User came back to the tab, check for changes against server data
                 try {
+                    lastSessionCheckAt.current = Date.now();
+
                     const response = await axios.get(
                         `/exams/${examType}/${attemptId}/session-info`,
                     );
@@ -326,22 +304,6 @@ export function useExamSessionMonitor({
                         !initialSession.current.ipChangeLogged;
 
                     if (shouldLogBrowser || shouldLogIp) {
-                        console.warn(
-                            '⚠️ Session change detected after tab became visible!',
-                        );
-
-                        if (userAgentChanged) {
-                            console.log('Browser changed!');
-                        }
-                        if (ipAddressChanged) {
-                            console.log(
-                                'IP changed:',
-                                serverIpAddress,
-                                '→',
-                                currentIpAddress,
-                            );
-                        }
-
                         await axios.post(
                             `/exams/${examType}/${attemptId}/log-session-change`,
                             {
@@ -369,15 +331,9 @@ export function useExamSessionMonitor({
                                 initialSession.current.ipChangeLogged = true;
                             }
                         }
-                        console.log(
-                            '✅ Session change logged from visibility event',
-                        );
                     }
-                } catch (error) {
-                    console.error(
-                        'Failed to check session on visibility change:',
-                        error,
-                    );
+                } catch {
+                    return;
                 }
             }
         };

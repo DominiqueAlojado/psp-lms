@@ -1,7 +1,7 @@
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { Flag, X } from 'lucide-react';
-import { MutableRefObject } from 'react';
+import { memo, MutableRefObject } from 'react';
 
 interface Question {
     id: number;
@@ -13,19 +13,19 @@ interface QuestionPaletteSidebarProps {
     questions: Question[];
     currentQuestionIndex: number;
     markedForReview: Set<number>;
+    answeredQuestionIds: Set<number>;
     onQuestionClick: (index: number) => void;
-    isQuestionAnswered: (questionId: number) => boolean;
     questionRefs: MutableRefObject<(HTMLButtonElement | null)[]>;
 }
 
-export function QuestionPaletteSidebar({
+export const QuestionPaletteSidebar = memo(function QuestionPaletteSidebar({
     isOpen,
     onClose,
     questions,
     currentQuestionIndex,
     markedForReview,
+    answeredQuestionIds,
     onQuestionClick,
-    isQuestionAnswered,
     questionRefs,
 }: QuestionPaletteSidebarProps) {
     return (
@@ -55,7 +55,9 @@ export function QuestionPaletteSidebar({
                 <div className="flex-1 overflow-y-auto p-4">
                     <div className="space-y-2">
                         {questions.map((question, index) => {
-                            const answered = isQuestionAnswered(question.id);
+                            const answered = answeredQuestionIds.has(
+                                question.id,
+                            );
                             const current = index === currentQuestionIndex;
                             const marked = markedForReview.has(question.id);
 
@@ -116,4 +118,4 @@ export function QuestionPaletteSidebar({
             </div>
         </div>
     );
-}
+});

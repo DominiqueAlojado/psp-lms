@@ -1,7 +1,7 @@
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { Flag } from 'lucide-react';
-import { useState } from 'react';
+import { memo, useState } from 'react';
 
 interface Choice {
     id: number;
@@ -33,7 +33,7 @@ interface QuestionDisplayProps {
 
 const MAGNIFIER_SIZE = 180;
 
-export function QuestionDisplay({
+export const QuestionDisplay = memo(function QuestionDisplay({
     question,
     questionIndex,
     answer,
@@ -216,4 +216,4 @@ export function QuestionDisplay({
             </div>
         </div>
     );
-}
+});

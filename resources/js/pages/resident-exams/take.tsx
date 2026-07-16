@@ -1,11 +1,11 @@
 import {
+    ExamHeader,
     ExamNavigation,
     QuestionDisplay,
     QuestionPaletteLegend,
     QuestionPaletteSidebar,
     SubmitExamDialog,
 } from '@/components/resident-exams';
-import { Button } from '@/components/ui/button';
 import { useSidebar } from '@/components/ui/sidebar';
 import { useCaptureExamMetadata } from '@/hooks/use-capture-exam-metadata';
 import { useExamSessionMonitor } from '@/hooks/use-exam-session-monitor';
@@ -13,8 +13,7 @@ import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, router } from '@inertiajs/react';
 import axios from 'axios';
-import { Menu } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -68,20 +67,17 @@ interface PageProps {
 function ExamContent({ exam, attempt, savedAnswers }: PageProps) {
     const { setOpen } = useSidebar();
 
-    // Capture exam metadata on page load
     useCaptureExamMetadata({
         examType: exam.type,
         attemptId: attempt.id,
     });
 
-    // Monitor session for changes and idle time
     useExamSessionMonitor({
         examType: exam.type,
         attemptId: attempt.id,
         isActive: true,
     });
 
-    const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
     const [answers, setAnswers] = useState<Record<number, number | number[]>>(
         () => {
             const loadedAnswers: Record<number, number | number[]> = {};
@@ -105,23 +101,20 @@ function ExamContent({ exam, attempt, savedAnswers }: PageProps) {
         new Set(),
     );
     const [confirmText, setConfirmText] = useState('');
-    const [isChangingAnswer, setIsChangingAnswer] = useState(false);
     const questionRefs = useRef<(HTMLButtonElement | null)[]>([]);
     const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const lastSaveTimeRef = useRef<number>(0);
+    const hasAutoSubmittedRef = useRef(false);
 
     const currentQuestion = exam.questions[currentQuestionIndex];
 
-    // Collapse the main app sidebar when entering exam mode
     useEffect(() => {
         setOpen(false);
         return () => {
-            // Restore sidebar when leaving exam
             setOpen(true);
         };
     }, [setOpen]);
 
-    // Cleanup save timeout on unmount
     useEffect(() => {
         return () => {
             if (saveTimeoutRef.current) {
@@ -130,7 +123,6 @@ function ExamContent({ exam, attempt, savedAnswers }: PageProps) {
         };
     }, []);
 
-    // Auto-scroll to current question in sidebar
     useEffect(() => {
         const currentRef = questionRefs.current[currentQuestionIndex];
         if (currentRef) {
@@ -141,90 +133,29 @@ function ExamContent({ exam, attempt, savedAnswers }: PageProps) {
         }
     }, [currentQuestionIndex]);
 
-    // Calculate time remaining
-    useEffect(() => {
-        if (!exam.duration_minutes) return;
-
-        const startTime = new Date(attempt.started_at).getTime();
-        const endTime = startTime + exam.duration_minutes * 60 * 1000;
-        let autoSubmitted = false;
-
-        const interval = setInterval(() => {
-            const now = Date.now();
-            const remaining = Math.max(0, endTime - now);
-            setTimeRemaining(Math.floor(remaining / 1000));
-
-            // Auto-submit when time runs out (only once)
-            if (remaining === 0 && !autoSubmitted) {
-                autoSubmitted = true;
-                clearInterval(interval);
-
-                toast.warning(
-                    '⏱️ Time is up! Exam is being submitted automatically...',
-                    {
-                        duration: 5000,
-                    },
-                );
-
-                // Auto-submit without confirmation (time expired)
-                setTimeout(() => {
-                    router.post(
-                        `/exams/${exam.type}/${attempt.id}/submit`,
-                        {},
-                        {
-                            onSuccess: () => {
-                                toast.success('Exam submitted successfully!');
-                            },
-                            onError: (errors) => {
-                                console.error('Auto-submission error:', errors);
-                                toast.error('Failed to auto-submit exam.');
-                            },
-                        },
-                    );
-                }, 1000); // Small delay to show the warning message
-            }
-        }, 1000);
-
-        return () => clearInterval(interval);
-    }, [exam.duration_minutes, attempt.started_at, exam.type, attempt.id]);
-
-    const formatTime = (seconds: number) => {
-        const hours = Math.floor(seconds / 3600);
-        const minutes = Math.floor((seconds % 3600) / 60);
-        const secs = seconds % 60;
-        return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-    };
-
-    const handleAnswerChange = async (
+    const handleAnswerChange = (
         questionId: number,
         answerId: number | number[],
         questionType: string,
     ) => {
-        // Rate limiting: Prevent rapid successive changes (only runs on user interaction, not during render)
         const timeSinceLastSave = Date.now() - lastSaveTimeRef.current;
 
-        // Minimum 300ms between answer changes to prevent gaming
         if (timeSinceLastSave < 300 && lastSaveTimeRef.current > 0) {
             toast.error('Please wait before changing your answer again');
             return;
         }
 
-        // Update local state immediately
         setAnswers((prev) => ({
             ...prev,
             [questionId]: answerId,
         }));
 
-        // Set loading state to disable inputs
-        setIsChangingAnswer(true);
         setSaving(questionId);
 
-        // Clear any pending save timeout
         if (saveTimeoutRef.current) {
             clearTimeout(saveTimeoutRef.current);
         }
 
-        // Debounce the save operation (wait 500ms after last change)
         saveTimeoutRef.current = setTimeout(async () => {
             const answerData =
                 questionType === 'multiple_select'
@@ -236,26 +167,14 @@ function ExamContent({ exam, attempt, savedAnswers }: PageProps) {
                     : { choice_id: answerId };
 
             try {
-                console.log('🔵 Saving answer to database', {
-                    questionId,
-                    answerData,
+                await axios.post(`/exams/${exam.type}/${attempt.id}/save-answer`, {
+                    question_id: questionId,
+                    answer_data: answerData,
                 });
 
-                // Use axios which handles CSRF automatically
-                const response = await axios.post(
-                    `/exams/${exam.type}/${attempt.id}/save-answer`,
-                    {
-                        question_id: questionId,
-                        answer_data: answerData,
-                    },
-                );
-
-                console.log('✅ Answer saved successfully', response.data);
                 lastSaveTimeRef.current = Date.now();
                 setSaving(null);
-                setIsChangingAnswer(false);
             } catch (error) {
-                console.error('❌ Failed to save answer:', error);
                 const axiosError = error as {
                     response?: { data?: { message?: string } };
                 };
@@ -264,13 +183,11 @@ function ExamContent({ exam, attempt, savedAnswers }: PageProps) {
                         'Failed to save answer. Please try again.',
                 );
                 setSaving(null);
-                setIsChangingAnswer(false);
             }
         }, 500);
     };
 
-    const handleSubmit = () => {
-        // Check if all questions are answered
+    const handleSubmit = useCallback(() => {
         const count =
             exam.questions.length -
             Object.keys(answers).filter((k) => {
@@ -284,15 +201,14 @@ function ExamContent({ exam, attempt, savedAnswers }: PageProps) {
         setUnansweredCount(count);
         setConfirmText('');
         setShowSubmitDialog(true);
-    };
+    }, [answers, exam.questions.length]);
 
-    const confirmSubmit = () => {
+    const confirmSubmit = useCallback(() => {
         if (confirmText.toUpperCase() !== 'FINALIZE') {
             toast.error('Please type FINALIZE to confirm submission');
             return;
         }
 
-        // Submit to finalize (answers already saved in database)
         setShowSubmitDialog(false);
         router.post(
             `/exams/${exam.type}/${attempt.id}/submit`,
@@ -301,126 +217,143 @@ function ExamContent({ exam, attempt, savedAnswers }: PageProps) {
                 onSuccess: () => {
                     toast.success('Exam submitted successfully!');
                 },
-                onError: (errors) => {
-                    console.error('Submission error:', errors);
+                onError: () => {
                     toast.error('Failed to submit exam. Please try again.');
                 },
             },
         );
-    };
+    }, [attempt.id, confirmText, exam.type]);
 
-    const isQuestionAnswered = (questionId: number): boolean => {
-        const answer = answers[questionId];
-        return (
-            answer !== undefined &&
-            (Array.isArray(answer) ? answer.length > 0 : true)
-        );
-    };
-
-    const goToQuestion = (index: number) => {
-        if (index >= 0 && index < exam.questions.length) {
-            setCurrentQuestionIndex(index);
+    const handleTimeExpired = useCallback(() => {
+        if (hasAutoSubmittedRef.current) {
+            return;
         }
-    };
 
-    const goToNextQuestion = () => {
+        hasAutoSubmittedRef.current = true;
+
+        toast.warning('Time is up! Exam is being submitted automatically...', {
+            duration: 5000,
+        });
+
+        setTimeout(() => {
+            router.post(
+                `/exams/${exam.type}/${attempt.id}/submit`,
+                {},
+                {
+                    onSuccess: () => {
+                        toast.success('Exam submitted successfully!');
+                    },
+                    onError: () => {
+                        toast.error('Failed to auto-submit exam.');
+                    },
+                },
+            );
+        }, 1000);
+    }, [attempt.id, exam.type]);
+
+    const goToQuestion = useCallback(
+        (index: number) => {
+            if (index >= 0 && index < exam.questions.length) {
+                setCurrentQuestionIndex(index);
+            }
+        },
+        [exam.questions.length],
+    );
+
+    const goToNextQuestion = useCallback(() => {
         if (currentQuestionIndex < exam.questions.length - 1) {
             setCurrentQuestionIndex(currentQuestionIndex + 1);
         }
-    };
+    }, [currentQuestionIndex, exam.questions.length]);
 
-    const goToPreviousQuestion = () => {
+    const goToPreviousQuestion = useCallback(() => {
         if (currentQuestionIndex > 0) {
             setCurrentQuestionIndex(currentQuestionIndex - 1);
         }
-    };
+    }, [currentQuestionIndex]);
 
-    const toggleMarkForReview = (questionId: number) => {
+    const toggleMarkForReview = useCallback((questionId: number) => {
         setMarkedForReview((prev) => {
-            const newSet = new Set(prev);
-            if (newSet.has(questionId)) {
-                newSet.delete(questionId);
+            const next = new Set(prev);
+            if (next.has(questionId)) {
+                next.delete(questionId);
             } else {
-                newSet.add(questionId);
+                next.add(questionId);
             }
-            return newSet;
+            return next;
         });
-    };
+    }, []);
 
-    const answeredCount = Object.keys(answers).filter((k) =>
-        isQuestionAnswered(parseInt(k)),
-    ).length;
-    const notAnsweredCount = exam.questions.filter(
-        (q) => !isQuestionAnswered(q.id),
-    ).length;
+    const answeredQuestionIds = useMemo(() => {
+        const answeredIds = new Set<number>();
+
+        Object.entries(answers).forEach(([questionId, answer]) => {
+            if (
+                answer !== undefined &&
+                (Array.isArray(answer) ? answer.length > 0 : true)
+            ) {
+                answeredIds.add(Number(questionId));
+            }
+        });
+
+        return answeredIds;
+    }, [answers]);
+
+    const answeredCount = answeredQuestionIds.size;
+    const notAnsweredCount = exam.questions.length - answeredCount;
+
+    const handleOpenSidebar = useCallback(() => {
+        setShowSidebar(true);
+    }, []);
+
+    const handleCloseSidebar = useCallback(() => {
+        setShowSidebar(false);
+    }, []);
 
     return (
         <>
             <Head title={`Taking: ${exam.title}`} />
 
             <div className="relative flex h-[calc(100vh-4rem)] overflow-hidden">
-                {/* Question Palette Sidebar */}
                 <QuestionPaletteSidebar
                     isOpen={showSidebar}
-                    onClose={() => setShowSidebar(false)}
+                    onClose={handleCloseSidebar}
                     questions={exam.questions}
                     currentQuestionIndex={currentQuestionIndex}
                     markedForReview={markedForReview}
+                    answeredQuestionIds={answeredQuestionIds}
                     onQuestionClick={goToQuestion}
-                    isQuestionAnswered={isQuestionAnswered}
                     questionRefs={questionRefs}
                 />
 
-                {/* Main Content */}
                 <div className="flex flex-1 flex-col overflow-hidden">
-                    {/* Question Palette Legend */}
                     <QuestionPaletteLegend
                         answeredCount={answeredCount}
                         notAnsweredCount={notAnsweredCount}
                         markedCount={markedForReview.size}
-                        timeRemaining={timeRemaining}
                         durationMinutes={exam.duration_minutes}
-                        formatTime={formatTime}
+                        startedAt={attempt.started_at}
                         onSubmit={handleSubmit}
+                        onTimeExpired={handleTimeExpired}
                     />
 
-                    {/* Header */}
-                    <div className="border-b bg-background p-4">
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-4">
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="lg:hidden"
-                                    onClick={() => setShowSidebar(true)}
-                                >
-                                    <Menu className="h-5 w-5" />
-                                </Button>
-                                <div>
-                                    <h1 className="text-xl font-bold">
-                                        {exam.title}
-                                    </h1>
-                                    <p className="text-sm text-muted-foreground">
-                                        Question {currentQuestionIndex + 1} of{' '}
-                                        {exam.questions.length}
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                    <ExamHeader
+                        title={exam.title}
+                        currentQuestionIndex={currentQuestionIndex}
+                        totalQuestions={exam.questions.length}
+                        onOpenSidebar={handleOpenSidebar}
+                    />
 
-                    {/* Question Content */}
                     <QuestionDisplay
                         question={currentQuestion}
                         questionIndex={currentQuestionIndex}
                         answer={answers[currentQuestion.id]}
-                        isChangingAnswer={isChangingAnswer}
+                        isChangingAnswer={saving === currentQuestion.id}
                         isMarked={markedForReview.has(currentQuestion.id)}
                         onAnswerChange={handleAnswerChange}
                         onToggleMark={toggleMarkForReview}
                     />
 
-                    {/* Navigation Footer */}
                     <ExamNavigation
                         currentIndex={currentQuestionIndex}
                         totalQuestions={exam.questions.length}
@@ -431,7 +364,6 @@ function ExamContent({ exam, attempt, savedAnswers }: PageProps) {
                 </div>
             </div>
 
-            {/* Submit Confirmation Dialog */}
             <SubmitExamDialog
                 open={showSubmitDialog}
                 onOpenChange={setShowSubmitDialog}

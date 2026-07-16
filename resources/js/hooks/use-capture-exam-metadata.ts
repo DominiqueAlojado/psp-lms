@@ -21,15 +21,7 @@ export function useCaptureExamMetadata({
 
         const capture = async () => {
             try {
-                console.log('📊 Capturing exam metadata...');
                 const metadata = await captureExamMetadata();
-
-                console.log('Metadata captured:', {
-                    browser: metadata.browserMetadata.browser,
-                    device: metadata.browserMetadata.device,
-                    connectionType: metadata.connectionType,
-                    connectionSpeed: metadata.connectionSpeed,
-                });
 
                 await axios.post(
                     `/exams/${examType}/${attemptId}/update-metadata`,
@@ -39,11 +31,9 @@ export function useCaptureExamMetadata({
                         connection_speed: metadata.connectionSpeed,
                     },
                 );
-
-                console.log('✅ Metadata sent to server successfully');
                 captured.current = true;
-            } catch (error) {
-                console.error('❌ Failed to capture/send metadata:', error);
+            } catch {
+                return;
             }
         };
 
@@ -53,4 +43,3 @@ export function useCaptureExamMetadata({
         return () => clearTimeout(timeout);
     }, [examType, attemptId]);
 }
-

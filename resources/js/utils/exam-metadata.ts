@@ -242,8 +242,7 @@ async function measureConnectionSpeed(): Promise<number | null> {
         const speedMbps = speedBps / (1024 * 1024);
 
         return Math.round(speedMbps * 100) / 100; // Round to 2 decimals
-    } catch (error) {
-        console.error('Failed to measure connection speed:', error);
+    } catch {
         return null;
     }
 }
@@ -258,8 +257,12 @@ export async function captureExamMetadata(): Promise<ExamMetadata> {
     // Measure connection speed (optional, can be skipped if slow)
     let connectionSpeed = connectionInfo.downlink || null;
 
-    // If Network Information API not available, do a simple speed test
-    if (!connectionSpeed) {
+    // Only fall back to a small speed test when the browser exposes no useful network hints.
+    if (
+        !connectionSpeed &&
+        !connectionInfo.effectiveType &&
+        !connectionInfo.saveData
+    ) {
         connectionSpeed = await measureConnectionSpeed();
     }
 

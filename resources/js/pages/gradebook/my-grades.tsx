@@ -626,23 +626,63 @@ export default function MyGrades({
                 {categoryPerformance.length > 0 && (
                     <Card>
                         <CardHeader>
-                            <CardTitle>Performance by Category</CardTitle>
+                            <div className="flex items-center gap-2">
+                                <CardTitle>Performance by Category</CardTitle>
+                                <HelpTooltip
+                                    content="This section summarizes how you perform across exam categories based on completed attempts."
+                                    ariaLabel="Explain performance by category"
+                                />
+                            </div>
                         </CardHeader>
                         <CardContent>
                             <Table>
                                 <TableHeader>
                                     <TableRow>
-                                        <TableHead>Category</TableHead>
-                                        <TableHead className="text-center">
-                                            Exams
+                                        <TableHead>
+                                            <div className="flex items-center gap-2">
+                                                <span>Category</span>
+                                                <HelpTooltip
+                                                    content="The exam category or grouping used for these attempts."
+                                                    ariaLabel="Explain category column"
+                                                />
+                                            </div>
                                         </TableHead>
                                         <TableHead className="text-center">
-                                            Average
+                                            <div className="flex items-center justify-center gap-2">
+                                                <span>Exams</span>
+                                                <HelpTooltip
+                                                    content="The number of completed exams included in that category."
+                                                    ariaLabel="Explain exams count"
+                                                />
+                                            </div>
                                         </TableHead>
                                         <TableHead className="text-center">
-                                            Pass Rate
+                                            <div className="flex items-center justify-center gap-2">
+                                                <span>Average</span>
+                                                <HelpTooltip
+                                                    content="Your average percentage score for exams in that category."
+                                                    ariaLabel="Explain category average"
+                                                />
+                                            </div>
                                         </TableHead>
-                                        <TableHead>Performance</TableHead>
+                                        <TableHead className="text-center">
+                                            <div className="flex items-center justify-center gap-2">
+                                                <span>Pass Rate</span>
+                                                <HelpTooltip
+                                                    content="The percentage of exams in that category that you passed."
+                                                    ariaLabel="Explain category pass rate"
+                                                />
+                                            </div>
+                                        </TableHead>
+                                        <TableHead>
+                                            <div className="flex items-center gap-2">
+                                                <span>Performance</span>
+                                                <HelpTooltip
+                                                    content="A quick visual bar showing your average score level for that category."
+                                                    ariaLabel="Explain category performance bar"
+                                                />
+                                            </div>
+                                        </TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -683,23 +723,63 @@ export default function MyGrades({
                 {topicPerformance.length > 0 && (
                     <Card>
                         <CardHeader>
-                            <CardTitle>Performance by Topic</CardTitle>
+                            <div className="flex items-center gap-2">
+                                <CardTitle>Performance by Topic</CardTitle>
+                                <HelpTooltip
+                                    content="This section shows how accurately you answer questions within each topic."
+                                    ariaLabel="Explain performance by topic"
+                                />
+                            </div>
                         </CardHeader>
                         <CardContent>
                             <Table>
                                 <TableHeader>
                                     <TableRow>
-                                        <TableHead>Topic</TableHead>
-                                        <TableHead className="text-center">
-                                            Questions
+                                        <TableHead>
+                                            <div className="flex items-center gap-2">
+                                                <span>Topic</span>
+                                                <HelpTooltip
+                                                    content="The topic or subject area the questions belong to."
+                                                    ariaLabel="Explain topic column"
+                                                />
+                                            </div>
                                         </TableHead>
                                         <TableHead className="text-center">
-                                            Correct
+                                            <div className="flex items-center justify-center gap-2">
+                                                <span>Questions</span>
+                                                <HelpTooltip
+                                                    content="The total number of answered questions recorded for that topic."
+                                                    ariaLabel="Explain topic question count"
+                                                />
+                                            </div>
                                         </TableHead>
                                         <TableHead className="text-center">
-                                            Accuracy
+                                            <div className="flex items-center justify-center gap-2">
+                                                <span>Correct</span>
+                                                <HelpTooltip
+                                                    content="The number of correct answers you achieved within that topic."
+                                                    ariaLabel="Explain correct answers"
+                                                />
+                                            </div>
                                         </TableHead>
-                                        <TableHead>Mastery</TableHead>
+                                        <TableHead className="text-center">
+                                            <div className="flex items-center justify-center gap-2">
+                                                <span>Accuracy</span>
+                                                <HelpTooltip
+                                                    content="Your correctness rate for that topic, shown as a percentage."
+                                                    ariaLabel="Explain topic accuracy"
+                                                />
+                                            </div>
+                                        </TableHead>
+                                        <TableHead>
+                                            <div className="flex items-center gap-2">
+                                                <span>Mastery</span>
+                                                <HelpTooltip
+                                                    content="A visual progress indicator of how strong your performance is in that topic."
+                                                    ariaLabel="Explain topic mastery"
+                                                />
+                                            </div>
+                                        </TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -751,23 +831,71 @@ export default function MyGrades({
                 {recentExams.length > 0 && (
                     <Card>
                         <CardHeader>
-                            <CardTitle>Recent Exams</CardTitle>
+                            <div className="flex items-center gap-2">
+                                <CardTitle>Recent Exams</CardTitle>
+                                <HelpTooltip
+                                    content="This table lists your most recent completed exams and the outcome for each one."
+                                    ariaLabel="Explain recent exams"
+                                />
+                            </div>
                         </CardHeader>
                         <CardContent>
                             <Table>
                                 <TableHeader>
                                     <TableRow>
-                                        <TableHead>Exam</TableHead>
-                                        <TableHead>Type</TableHead>
-                                        <TableHead>Category</TableHead>
-                                        <TableHead className="text-center">
-                                            Score
+                                        <TableHead>
+                                            <div className="flex items-center gap-2">
+                                                <span>Exam</span>
+                                                <HelpTooltip
+                                                    content="The title of the completed exam."
+                                                    ariaLabel="Explain exam title"
+                                                />
+                                            </div>
+                                        </TableHead>
+                                        <TableHead>
+                                            <div className="flex items-center gap-2">
+                                                <span>Type</span>
+                                                <HelpTooltip
+                                                    content="Whether the exam belongs to an institution or national exam flow."
+                                                    ariaLabel="Explain exam type"
+                                                />
+                                            </div>
+                                        </TableHead>
+                                        <TableHead>
+                                            <div className="flex items-center gap-2">
+                                                <span>Category</span>
+                                                <HelpTooltip
+                                                    content="The exam category attached to that attempt, if available."
+                                                    ariaLabel="Explain recent exam category"
+                                                />
+                                            </div>
                                         </TableHead>
                                         <TableHead className="text-center">
-                                            Result
+                                            <div className="flex items-center justify-center gap-2">
+                                                <span>Score</span>
+                                                <HelpTooltip
+                                                    content="Your achieved score, total possible points, and percentage for the exam."
+                                                    ariaLabel="Explain recent exam score"
+                                                />
+                                            </div>
+                                        </TableHead>
+                                        <TableHead className="text-center">
+                                            <div className="flex items-center justify-center gap-2">
+                                                <span>Result</span>
+                                                <HelpTooltip
+                                                    content="Whether the exam attempt passed or failed based on the required passing score."
+                                                    ariaLabel="Explain recent exam result"
+                                                />
+                                            </div>
                                         </TableHead>
                                         <TableHead className="text-right">
-                                            Date
+                                            <div className="flex items-center justify-end gap-2">
+                                                <span>Date</span>
+                                                <HelpTooltip
+                                                    content="The submission date recorded for the exam attempt."
+                                                    ariaLabel="Explain recent exam date"
+                                                />
+                                            </div>
                                         </TableHead>
                                     </TableRow>
                                 </TableHeader>
