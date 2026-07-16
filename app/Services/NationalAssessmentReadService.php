@@ -55,6 +55,7 @@ class NationalAssessmentReadService
     public function editPayload(NationalAssessment $assessment): array
     {
         $assessment = $this->assessmentRepository->loadForEdit($assessment);
+        $publicDisk = Storage::disk('public');
 
         return [
             'assessment' => [
@@ -81,7 +82,7 @@ class NationalAssessmentReadService
                     'topic_id' => $question->topic_id,
                     'order' => $question->order,
                     'image_path' => $question->image_path,
-                    'image_url' => $question->image_path ? Storage::url($question->image_path) : null,
+                    'image_url' => $question->image_path ? $publicDisk->url($question->image_path) : null,
                     'choices' => $question->choices->map(fn ($choice) => [
                         'id' => $choice->id,
                         'choice_text' => $choice->choice_text,

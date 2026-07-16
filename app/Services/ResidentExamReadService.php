@@ -188,6 +188,8 @@ class ResidentExamReadService
             $questions = $questions->shuffle($attempt->id);
         }
 
+        $publicDisk = Storage::disk('public');
+
         $attempt = $this->residentExamRepository->loadAttemptAnswers($attempt);
         $validChoiceIds = $questions->mapWithKeys(fn ($question) => [$question->id => $question->choices->pluck('id')->toArray()]);
 
@@ -231,7 +233,7 @@ class ResidentExamReadService
                         'question_type' => $q->question_type,
                         'question_text' => $q->question_text,
                         'points' => $q->points,
-                        'image_url' => $q->image_path ? Storage::disk('public')->url($q->image_path) : null,
+                        'image_url' => $q->image_path ? $publicDisk->url($q->image_path) : null,
                         'choices' => $choices->map(fn ($c) => [
                             'id' => $c->id,
                             'choice_text' => $c->choice_text,
@@ -265,7 +267,8 @@ class ResidentExamReadService
             }
 
             $answers = $this->residentExamRepository->loadInstitutionResultAnswers($attempt);
-            $questionsData = $answers->map(function ($answer) {
+            $publicDisk = Storage::disk('public');
+            $questionsData = $answers->map(function ($answer) use ($publicDisk) {
                 $question = $answer->question;
                 $selectedChoiceIds = [];
 
@@ -281,7 +284,7 @@ class ResidentExamReadService
                     'question_text' => $question->question_text,
                     'points' => $question->points,
                     'explanation' => $question->explanation,
-                    'image_url' => $question->image_path ? Storage::disk('public')->url($question->image_path) : null,
+                    'image_url' => $question->image_path ? $publicDisk->url($question->image_path) : null,
                     'order' => $question->order,
                     'choices' => $question->choices->map(fn ($choice) => [
                         'id' => $choice->id,
@@ -311,8 +314,9 @@ class ResidentExamReadService
 
             $questions = $this->residentExamRepository->loadNationalQuestionsWithChoices($assessment);
             $answers = $this->residentExamRepository->loadNationalAnswersKeyedByQuestion($attempt);
+            $publicDisk = Storage::disk('public');
 
-            $questionsData = $questions->map(function ($question) use ($answers) {
+            $questionsData = $questions->map(function ($question) use ($answers, $publicDisk) {
                 $answer = $answers->get($question->id);
                 $selectedChoiceIds = [];
 
@@ -330,7 +334,7 @@ class ResidentExamReadService
                     'question_text' => $question->question_text,
                     'points' => $question->points,
                     'explanation' => $question->explanation,
-                    'image_url' => $question->image_path ? Storage::disk('public')->url($question->image_path) : null,
+                    'image_url' => $question->image_path ? $publicDisk->url($question->image_path) : null,
                     'order' => $question->order,
                     'choices' => $question->choices->map(fn ($choice) => [
                         'id' => $choice->id,
