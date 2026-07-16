@@ -13,6 +13,8 @@ export interface Auth {
     user: User;
     organizations: Organization[];
     currentOrganization: Organization | null;
+    actualOrganization?: Organization | null;
+    supportsAllOrganizations?: boolean;
     permissions: string[];
     roles: string[];
 }
@@ -41,6 +43,24 @@ export interface SharedData {
     name: string;
     quote: { message: string; author: string };
     auth: Auth;
+    notifications: {
+        unreadCount: number;
+        latest: Array<{
+            id: string;
+            title: string;
+            message: string;
+            category: string;
+            event: string;
+            url: string;
+            ticket_number?: string | null;
+            organization_name?: string | null;
+            actor_name?: string | null;
+            is_read: boolean;
+            read_at?: string | null;
+            created_at: string;
+            created_at_human: string;
+        }>;
+    };
     sidebarOpen: boolean;
     [key: string]: unknown;
 }

@@ -9,6 +9,14 @@ use Symfony\Component\HttpFoundation\Response;
 
 class SetOrganizationFromUrl
 {
+    private const ALL_ORGANIZATIONS_SLUG = 'all-organizations';
+    private const ALL_ORGANIZATIONS_ALLOWED_PATTERNS = [
+        'support',
+        'support/*',
+        'notifications',
+        'notifications/*',
+    ];
+
     /**
      * Handle an incoming request.
      *
@@ -47,6 +55,27 @@ class SetOrganizationFromUrl
         }
 
         $orgSlug = $request->query('org');
+
+        if ($orgSlug === self::ALL_ORGANIZATIONS_SLUG) {
+            if ($user->hasAnyRole(['System Admin', 'BOP'])) {
+                foreach (self::ALL_ORGANIZATIONS_ALLOWED_PATTERNS as $pattern) {
+                    if ($request->is($pattern)) {
+                        return $next($request);
+                    }
+                }
+
+                if ($user->currentOrganization) {
+                    $queryParams = $request->query();
+                    $queryParams['org'] = $user->currentOrganization->slug;
+
+                    return redirect($request->path().'?'.http_build_query($queryParams));
+                }
+
+                return $next($request);
+            }
+
+            $orgSlug = null;
+        }
 
         // If org parameter is in URL
         if ($orgSlug) {

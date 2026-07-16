@@ -12,11 +12,19 @@ interface SupportTicketRepositoryInterface
 {
     public function paginateForUser(int $userId, int $organizationId, array $filters, int $perPage = 10): LengthAwarePaginator;
 
+    public function paginateForUserAcrossOrganizations(int $userId, array $organizationIds, array $filters, int $perPage = 10): LengthAwarePaginator;
+
     public function paginateForManagement(int $organizationId, array $filters, int $perPage = 15): LengthAwarePaginator;
+
+    public function paginateForManagementAcrossOrganizations(array $organizationIds, array $filters, int $perPage = 15): LengthAwarePaginator;
 
     public function getUserSummary(int $userId, int $organizationId): array;
 
+    public function getUserSummaryAcrossOrganizations(int $userId, array $organizationIds): array;
+
     public function getManagementSummary(int $organizationId, array $filters): array;
+
+    public function getManagementSummaryAcrossOrganizations(array $organizationIds, array $filters): array;
 
     public function create(array $attributes): SupportTicket;
 

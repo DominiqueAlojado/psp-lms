@@ -8,6 +8,8 @@ use App\Repositories\Contracts\SupportTicketRepositoryInterface;
 
 class SupportReadService
 {
+    private const ALL_ORGANIZATIONS_SLUG = 'all-organizations';
+
     public function __construct(
         private readonly SupportTicketRepositoryInterface $supportTicketRepository,
         private readonly SupportManagementService $supportManagementService,
@@ -15,6 +17,28 @@ class SupportReadService
 
     public function indexPayload(User $user, array $filters): array
     {
+        if ($this->isAllOrganizationsContext($user)) {
+            $organizationIds = $this->organizationIdsForAllContext($user);
+            $canManage = $this->supportManagementService->canManage($user);
+
+            return [
+                'tickets' => ($canManage
+                    ? $this->supportTicketRepository->paginateForManagementAcrossOrganizations($organizationIds, $filters)
+                    : $this->supportTicketRepository->paginateForUserAcrossOrganizations($user->id, $organizationIds, $filters))
+                    ->through(fn (SupportTicket $ticket) => $this->ticketListItem($ticket)),
+                'summary' => $canManage
+                    ? $this->supportTicketRepository->getManagementSummaryAcrossOrganizations($organizationIds, $filters)
+                    : $this->supportTicketRepository->getUserSummaryAcrossOrganizations($user->id, $organizationIds),
+                'categories' => $this->options($this->supportTicketRepository->getCategories()),
+                'priorities' => $this->options($this->supportTicketRepository->getPriorities()),
+                'statuses' => $this->options($this->supportTicketRepository->getStatuses()),
+                'canManage' => $canManage,
+                'isAllOrganizationsContext' => true,
+                'canCreateTicket' => false,
+                'showsManagedTickets' => $canManage,
+            ];
+        }
+
         abort_if($user->current_organization_id === null, 403, 'No active organization selected.');
 
         return [
@@ -26,12 +50,31 @@ class SupportReadService
             'priorities' => $this->options($this->supportTicketRepository->getPriorities()),
             'statuses' => $this->options($this->supportTicketRepository->getStatuses()),
             'canManage' => $this->supportManagementService->canManage($user),
+            'isAllOrganizationsContext' => false,
+            'canCreateTicket' => true,
+            'showsManagedTickets' => false,
         ];
     }
 
     public function managePayload(User $user, array $filters): array
     {
         abort_unless($this->supportManagementService->canManage($user), 403);
+
+        if ($this->isAllOrganizationsContext($user)) {
+            $organizationIds = $this->organizationIdsForAllContext($user);
+
+            return [
+                'tickets' => $this->supportTicketRepository
+                    ->paginateForManagementAcrossOrganizations($organizationIds, $filters)
+                    ->through(fn (SupportTicket $ticket) => $this->ticketListItem($ticket)),
+                'summary' => $this->supportTicketRepository->getManagementSummaryAcrossOrganizations($organizationIds, $filters),
+                'categories' => $this->options($this->supportTicketRepository->getCategories()),
+                'priorities' => $this->options($this->supportTicketRepository->getPriorities()),
+                'statuses' => $this->options($this->supportTicketRepository->getStatuses()),
+                'isAllOrganizationsContext' => true,
+            ];
+        }
+
         abort_if($user->current_organization_id === null, 403, 'No active organization selected.');
 
         $organizationId = $user->current_organization_id;
@@ -44,6 +87,7 @@ class SupportReadService
             'categories' => $this->options($this->supportTicketRepository->getCategories()),
             'priorities' => $this->options($this->supportTicketRepository->getPriorities()),
             'statuses' => $this->options($this->supportTicketRepository->getStatuses()),
+            'isAllOrganizationsContext' => false,
         ];
     }
 
@@ -135,6 +179,20 @@ class SupportReadService
                 'label' => str($value)->replace('_', ' ')->title()->toString(),
             ])
             ->values()
+            ->all();
+    }
+
+    private function isAllOrganizationsContext(User $user): bool
+    {
+        return $user->hasAnyRole(['System Admin', 'BOP'])
+            && request()->query('org') === self::ALL_ORGANIZATIONS_SLUG;
+    }
+
+    private function organizationIdsForAllContext(User $user): array
+    {
+        return $user->organizations()
+            ->wherePivot('is_active', true)
+            ->pluck('organizations.id')
             ->all();
     }
 }

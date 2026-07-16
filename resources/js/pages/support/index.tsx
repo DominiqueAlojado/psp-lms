@@ -80,6 +80,9 @@ interface PageProps {
         status?: string;
     };
     canManage: boolean;
+    isAllOrganizationsContext: boolean;
+    canCreateTicket: boolean;
+    showsManagedTickets: boolean;
 }
 
 function statusBadge(status: string) {
@@ -132,6 +135,9 @@ export default function SupportIndex({
     statuses,
     filters,
     canManage,
+    isAllOrganizationsContext,
+    canCreateTicket,
+    showsManagedTickets,
 }: PageProps) {
     const page = usePage<SharedData>();
     const currentOrgSlug = page.props.auth.currentOrganization?.slug;
@@ -158,6 +164,11 @@ export default function SupportIndex({
     };
 
     const submit = () => {
+        if (!canCreateTicket) {
+            toast.error('Select a specific organization before creating a support ticket.');
+            return;
+        }
+
         form.post(preserveOrgParam('/support', currentOrgSlug), {
             preserveScroll: true,
             onSuccess: () => {
@@ -204,7 +215,7 @@ export default function SupportIndex({
                         )}
                         <Button
                             onClick={submit}
-                            disabled={form.processing}
+                            disabled={form.processing || !canCreateTicket}
                             className="border-transparent bg-[linear-gradient(135deg,#7c3aed,#c026d3)] text-white shadow-[0_18px_36px_-22px_rgb(124_58_237_/_0.58)] hover:brightness-[1.03]"
                         >
                             <Send className="mr-2 h-4 w-4" />
@@ -217,7 +228,11 @@ export default function SupportIndex({
                     <StatCard
                         title="All Tickets"
                         value={summary.total}
-                        description="Your submitted requests"
+                        description={
+                            showsManagedTickets
+                                ? 'Support requests in scope'
+                                : 'Your submitted requests'
+                        }
                         icon={LifeBuoy}
                     />
                     <StatCard
@@ -254,6 +269,12 @@ export default function SupportIndex({
                                 keeps a thread per request, and gives staff a
                                 real queue to manage.
                             </p>
+                            {isAllOrganizationsContext && (
+                                <p className="text-sm leading-6 text-muted-foreground">
+                                    You are viewing support across all organizations.
+                                    Choose a specific organization from the switcher to create a new ticket.
+                                </p>
+                            )}
                         </div>
                         <div className="flex flex-wrap gap-2">
                             <Badge variant="secondary">Database-backed</Badge>
@@ -266,7 +287,9 @@ export default function SupportIndex({
                     <div className="space-y-6">
                         <Card className="overflow-hidden border-border/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,255,255,0.94))]">
                             <CardHeader className="flex flex-col gap-3 pb-3 lg:flex-row lg:items-center lg:justify-between">
-                                <CardTitle>Your Tickets</CardTitle>
+                                <CardTitle>
+                                    {showsManagedTickets ? 'Organization Tickets' : 'Your Tickets'}
+                                </CardTitle>
                                 <div className="w-full max-w-[220px]">
                                     <Select
                                         value={statusFilter}
@@ -295,11 +318,14 @@ export default function SupportIndex({
                                 {tickets.data.length === 0 ? (
                                     <div className="rounded-[1.25rem] border border-dashed border-border/80 p-8 text-center">
                                         <p className="font-medium text-foreground">
-                                            No support tickets yet
+                                            {showsManagedTickets
+                                                ? 'No support tickets found'
+                                                : 'No support tickets yet'}
                                         </p>
                                         <p className="mt-2 text-sm text-muted-foreground">
-                                            Submit your first ticket using the
-                                            form on this page.
+                                            {showsManagedTickets
+                                                ? 'There are no tickets matching the current scope and filters.'
+                                                : 'Submit your first ticket using the form on this page.'}
                                         </p>
                                     </div>
                                 ) : (
@@ -337,6 +363,13 @@ export default function SupportIndex({
                                                                 {ticket.module_name}
                                                             </span>
                                                         )}
+                                                        {isAllOrganizationsContext &&
+                                                            ticket.organization_name && (
+                                                                <span>
+                                                                    Organization:{' '}
+                                                                    {ticket.organization_name}
+                                                                </span>
+                                                            )}
                                                         <span>
                                                             Updated{' '}
                                                             {ticket.updated_at_human}
@@ -573,11 +606,17 @@ export default function SupportIndex({
                                         ticket, add replies, and follow status
                                         changes from staff.
                                     </p>
+                                    {!canCreateTicket && (
+                                        <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                                            Ticket creation is disabled while
+                                            `All Organizations` is selected.
+                                        </p>
+                                    )}
                                 </div>
 
                                 <Button
                                     onClick={submit}
-                                    disabled={form.processing}
+                                    disabled={form.processing || !canCreateTicket}
                                     className="w-full border-transparent bg-[linear-gradient(135deg,#7c3aed,#c026d3)] text-white shadow-[0_18px_36px_-22px_rgb(124_58_237_/_0.58)] hover:brightness-[1.03]"
                                 >
                                     <Send className="mr-2 h-4 w-4" />

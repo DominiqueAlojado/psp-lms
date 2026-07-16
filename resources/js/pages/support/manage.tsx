@@ -75,6 +75,7 @@ interface PageProps {
         priority?: string;
         category?: string;
     };
+    isAllOrganizationsContext: boolean;
 }
 
 function statusBadge(status: string) {
@@ -126,6 +127,7 @@ export default function SupportManage({
     priorities,
     statuses,
     filters,
+    isAllOrganizationsContext,
 }: PageProps) {
     const page = usePage<SharedData>();
     const currentOrgSlug = page.props.auth.currentOrganization?.slug;
@@ -163,6 +165,14 @@ export default function SupportManage({
                         </Link>
                     </Button>
                 </div>
+
+                {isAllOrganizationsContext && (
+                    <Card>
+                        <CardContent className="p-5 text-sm text-muted-foreground">
+                            You are reviewing the support queue across all organizations you can manage.
+                        </CardContent>
+                    </Card>
+                )}
 
                 <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                     <StatCard title="Total" value={summary.total} description="Tickets in scope" icon={LifeBuoy} />

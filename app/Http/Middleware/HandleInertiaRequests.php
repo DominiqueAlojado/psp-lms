@@ -2,12 +2,15 @@
 
 namespace App\Http\Middleware;
 
+use App\Services\NotificationReadService;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
 class HandleInertiaRequests extends Middleware
 {
+    private const ALL_ORGANIZATIONS_SLUG = 'all-organizations';
+
     /**
      * The root template that's loaded on the first page visit.
      *
@@ -39,6 +42,18 @@ class HandleInertiaRequests extends Middleware
         [$message, $author] = str(Inspiring::quotes()->random())->explode('-');
 
         $user = $request->user();
+        $supportsAllOrganizations = $user?->hasAnyRole(['System Admin', 'BOP']) ?? false;
+        $isAllOrganizationsContext = $supportsAllOrganizations
+            && $request->query('org') === self::ALL_ORGANIZATIONS_SLUG;
+        $currentOrganization = $isAllOrganizationsContext
+            ? (object) [
+                'id' => 0,
+                'name' => 'All Organizations',
+                'slug' => self::ALL_ORGANIZATIONS_SLUG,
+                'type' => 'all',
+                'logo' => null,
+            ]
+            : $user?->currentOrganization;
 
         return [
             ...parent::share($request),
@@ -50,10 +65,18 @@ class HandleInertiaRequests extends Middleware
                     ->wherePivot('organization_user.is_active', true)
                     ->get(['organizations.id', 'organizations.name', 'organizations.slug', 'organizations.type', 'organizations.logo'])
                     : null,
-                'currentOrganization' => $user?->currentOrganization,
+                'currentOrganization' => $currentOrganization,
+                'actualOrganization' => $user?->currentOrganization,
+                'supportsAllOrganizations' => $supportsAllOrganizations,
                 'permissions' => $user?->getAllPermissions()->pluck('name')->toArray() ?? [],
                 'roles' => $user?->getRoleNames()->toArray() ?? [],
             ],
+            'notifications' => $user
+                ? app(NotificationReadService::class)->sharedPayload($user)
+                : [
+                    'unreadCount' => 0,
+                    'latest' => [],
+                ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
             'flash' => [
                 'success' => session('success'),

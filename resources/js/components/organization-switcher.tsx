@@ -19,6 +19,8 @@ import { router, usePage } from '@inertiajs/react';
 import { Building2, Check, ChevronsUpDown, Search } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
+const ALL_ORGANIZATIONS_SLUG = 'all-organizations';
+
 interface OrganizationSwitcherProps {
     className?: string;
 }
@@ -27,7 +29,7 @@ export function OrganizationSwitcher({
     className,
 }: OrganizationSwitcherProps = {}) {
     const { auth } = usePage<SharedData>().props;
-    const { organizations, currentOrganization } = auth;
+    const { organizations, currentOrganization, supportsAllOrganizations } = auth;
     const [search, setSearch] = useState('');
     const { state } = useSidebar();
     const isCollapsed = state === 'collapsed';
@@ -41,21 +43,59 @@ export function OrganizationSwitcher({
 
     // Filter organizations based on search
     const filteredOrganizations = useMemo(() => {
-        if (!search) return sortedOrganizations;
+        const allOrganizationsEntry =
+            supportsAllOrganizations
+                ? [
+                      {
+                          id: 0,
+                          name: 'All Organizations',
+                          slug: ALL_ORGANIZATIONS_SLUG,
+                          type: 'aggregate',
+                      },
+                  ]
+                : [];
+
+        if (!search) return [...allOrganizationsEntry, ...sortedOrganizations];
 
         const searchLower = search.toLowerCase();
-        return sortedOrganizations.filter(
+        const organizationMatches = sortedOrganizations.filter(
             (org) =>
                 org.name.toLowerCase().includes(searchLower) ||
                 org.type.toLowerCase().includes(searchLower),
         );
-    }, [sortedOrganizations, search]);
+
+        const includeAllOrganizations =
+            supportsAllOrganizations
+            && 'all organizations'.includes(searchLower);
+
+        return [
+            ...(includeAllOrganizations ? allOrganizationsEntry : []),
+            ...organizationMatches,
+        ];
+    }, [sortedOrganizations, search, supportsAllOrganizations]);
 
     if (!organizations || organizations.length === 0) {
         return null;
     }
 
-    const handleSwitch = (organizationId: number) => {
+    const handleSwitch = (organizationId: number, organizationSlug?: string) => {
+        if (organizationSlug === ALL_ORGANIZATIONS_SLUG) {
+            const currentUrl = new URL(window.location.href);
+            currentUrl.searchParams.set('org', ALL_ORGANIZATIONS_SLUG);
+
+            router.get(
+                `${currentUrl.pathname}${currentUrl.search}`,
+                {},
+                {
+                    preserveScroll: true,
+                    preserveState: true,
+                },
+            );
+            setSearch('');
+
+            return;
+        }
+
         router.post(
             `/organization/${organizationId}/switch`,
             {},
@@ -106,7 +146,7 @@ export function OrganizationSwitcher({
                         <DropdownMenuItem
                             key={organization.id}
                             onClick={() =>
-                                handleSwitch(organization.id)
+                                handleSwitch(organization.id, organization.slug)
                             }
                             className="cursor-pointer rounded-xl px-3 py-2.5 focus:bg-accent/80"
                         >
@@ -124,8 +164,8 @@ export function OrganizationSwitcher({
                                         </span>
                                     </div>
                                 </div>
-                                {currentOrganization?.id ===
-                                    organization.id && (
+                                {(currentOrganization?.id === organization.id
+                                    || currentOrganization?.slug === organization.slug) && (
                                     <Check className="h-4 w-4 shrink-0 text-primary" />
                                 )}
                             </div>

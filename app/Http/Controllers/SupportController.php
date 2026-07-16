@@ -35,6 +35,9 @@ class SupportController extends Controller
             'statuses' => $payload['statuses'],
             'filters' => $request->only(['status']),
             'canManage' => $payload['canManage'],
+            'isAllOrganizationsContext' => $payload['isAllOrganizationsContext'],
+            'canCreateTicket' => $payload['canCreateTicket'],
+            'showsManagedTickets' => $payload['showsManagedTickets'],
         ]);
     }
 
@@ -59,6 +62,7 @@ class SupportController extends Controller
             'priorities' => $payload['priorities'],
             'statuses' => $payload['statuses'],
             'filters' => $request->only(['search', 'status', 'priority', 'category']),
+            'isAllOrganizationsContext' => $payload['isAllOrganizationsContext'],
         ]);
     }
 

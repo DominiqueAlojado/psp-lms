@@ -40,6 +40,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->middleware('permission:view-activity-logs')
         ->name('activities.index');
 
+    Route::get('notifications', [App\Http\Controllers\NotificationController::class, 'index'])
+        ->name('notifications.index');
+    Route::post('notifications/read-all', [App\Http\Controllers\NotificationController::class, 'markAllAsRead'])
+        ->name('notifications.read-all');
+    Route::post('notifications/{notification}/read', [App\Http\Controllers\NotificationController::class, 'markAsRead'])
+        ->name('notifications.read');
+
     // Resident Exams (for residents to view and take exams)
     Route::get('resident-exams', [App\Http\Controllers\ResidentExamController::class, 'index'])
         ->name('resident-exams.index');
@@ -241,12 +248,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('support', [App\Http\Controllers\SupportController::class, 'store'])
         ->name('support.store');
     Route::get('support/manage', [App\Http\Controllers\SupportController::class, 'manage'])
-        ->middleware('permission:manage-support-tickets')
         ->name('support.manage');
     Route::get('support/{ticket}', [App\Http\Controllers\SupportController::class, 'show'])
         ->name('support.show');
     Route::patch('support/{ticket}', [App\Http\Controllers\SupportController::class, 'update'])
-        ->middleware('permission:manage-support-tickets')
         ->name('support.update');
     Route::post('support/{ticket}/messages', [App\Http\Controllers\SupportController::class, 'storeMessage'])
         ->name('support.messages.store');

@@ -20,6 +20,7 @@ import {
     Activity,
     Award,
     BarChart3,
+    Bell,
     Building2,
     CalendarDays,
     ClipboardList,
@@ -82,9 +83,9 @@ const mainNavItems: NavItem[] = [
         icon: MessageSquareText,
     },
     {
-        title: 'Support',
-        href: '/support',
-        icon: LifeBuoy,
+        title: 'Notifications',
+        href: '/notifications',
+        icon: Bell,
     },
     {
         title: 'Events',
@@ -158,6 +159,11 @@ const footerNavItems: NavItem[] = [
         href: '/institutions',
         icon: Building2,
         permission: 'view-institutions',
+    },
+    {
+        title: 'Support',
+        href: '/support',
+        icon: LifeBuoy,
     },
 ];
 

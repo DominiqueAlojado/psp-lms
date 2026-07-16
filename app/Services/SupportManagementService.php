@@ -11,13 +11,22 @@ use Spatie\Permission\Exceptions\PermissionDoesNotExist;
 
 class SupportManagementService
 {
+    private const ALL_ORGANIZATIONS_SLUG = 'all-organizations';
+
     public function __construct(
         private readonly SupportTicketRepositoryInterface $supportTicketRepository,
         private readonly SupportTicketActivityLogService $activityLogService,
+        private readonly SupportNotificationService $supportNotificationService,
     ) {}
 
     public function create(User $user, array $validated): SupportTicket
     {
+        abort_if(
+            request()->query('org') === self::ALL_ORGANIZATIONS_SLUG,
+            422,
+            'Select a specific organization before creating a support ticket.'
+        );
+
         abort_if($user->current_organization_id === null, 403, 'No active organization selected.');
 
         $ticket = $this->supportTicketRepository->create([
@@ -40,6 +49,7 @@ class SupportManagementService
         $ticket->refresh();
 
         $this->activityLogService->logCreated($ticket);
+        $this->supportNotificationService->notifyTicketCreated($ticket, $user);
 
         return $ticket;
     }
@@ -85,6 +95,12 @@ class SupportManagementService
         ], fn ($value) => $value !== null);
 
         $this->activityLogService->logUpdated($ticket, $changes, $oldChanges);
+        $this->supportNotificationService->notifyTicketUpdated(
+            $ticket,
+            $user,
+            $old['assigned_to_user_id'],
+            $old['status'],
+        );
     }
 
     public function addReply(User $user, SupportTicket $ticket, string $message): SupportTicketMessage
@@ -93,6 +109,8 @@ class SupportManagementService
             abort(403, 'You do not have access to this support ticket.');
         }
 
+        $isManagerReply = $this->canManageTicket($user, $ticket);
+
         $reply = $this->supportTicketRepository->createMessage([
             'support_ticket_id' => $ticket->id,
             'user_id' => $user->id,
@@ -100,11 +118,11 @@ class SupportManagementService
         ]);
 
         $nextStatus = $ticket->status;
-        if ($this->canManageTicket($user, $ticket) && $ticket->status === 'open') {
+        if ($isManagerReply && $ticket->status === 'open') {
             $nextStatus = 'in_review';
         }
 
-        if (! $this->canManageTicket($user, $ticket) && $ticket->status === 'resolved') {
+        if (! $isManagerReply && $ticket->status === 'resolved') {
             $nextStatus = 'open';
         }
 
@@ -116,6 +134,7 @@ class SupportManagementService
 
         $ticket->refresh();
         $this->activityLogService->logReply($ticket, $message);
+        $this->supportNotificationService->notifyReply($ticket, $user, $isManagerReply);
 
         return $reply;
     }
@@ -144,6 +163,13 @@ class SupportManagementService
 
     public function canManageTicket(User $user, SupportTicket $ticket): bool
     {
+        if (
+            request()->query('org') === self::ALL_ORGANIZATIONS_SLUG
+            && $this->canManage($user)
+        ) {
+            return $user->organizations()->where('organizations.id', $ticket->organization_id)->exists();
+        }
+
         return $this->canManage($user)
             && $ticket->organization_id === $user->current_organization_id;
     }
