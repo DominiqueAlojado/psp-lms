@@ -28,6 +28,7 @@ use App\Repositories\Contracts\RolesPermissionsRepositoryInterface;
 use App\Repositories\Contracts\StaffRepositoryInterface;
 use App\Repositories\Contracts\SubmissionFileRepositoryInterface;
 use App\Repositories\Contracts\SubmissionRepositoryInterface;
+use App\Repositories\Contracts\SupportTicketRepositoryInterface;
 use App\Repositories\Contracts\TopicRepositoryInterface;
 use App\Repositories\Contracts\UserRepositoryInterface;
 use App\Repositories\Eloquent\AssignmentRepository;
@@ -56,6 +57,7 @@ use App\Repositories\Eloquent\RolesPermissionsRepository;
 use App\Repositories\Eloquent\StaffRepository;
 use App\Repositories\Eloquent\SubmissionFileRepository;
 use App\Repositories\Eloquent\SubmissionRepository;
+use App\Repositories\Eloquent\SupportTicketRepository;
 use App\Repositories\Eloquent\TopicRepository;
 use App\Repositories\Eloquent\UserRepository;
 use Illuminate\Support\Facades\URL;
@@ -94,6 +96,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(StaffRepositoryInterface::class, StaffRepository::class);
         $this->app->bind(SubmissionFileRepositoryInterface::class, SubmissionFileRepository::class);
         $this->app->bind(SubmissionRepositoryInterface::class, SubmissionRepository::class);
+        $this->app->bind(SupportTicketRepositoryInterface::class, SupportTicketRepository::class);
         $this->app->bind(TopicRepositoryInterface::class, TopicRepository::class);
         $this->app->bind(UserRepositoryInterface::class, UserRepository::class);
     }

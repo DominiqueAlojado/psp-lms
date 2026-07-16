@@ -235,10 +235,21 @@ Route::middleware(['auth', 'verified'])->group(function () {
         return Inertia::render('feedback/index');
     })->name('feedback.index');
 
-    // Customer support (design + interactive preview)
-    Route::get('support', function () {
-        return Inertia::render('support/index');
-    })->name('support.index');
+    // Customer support
+    Route::get('support', [App\Http\Controllers\SupportController::class, 'index'])
+        ->name('support.index');
+    Route::post('support', [App\Http\Controllers\SupportController::class, 'store'])
+        ->name('support.store');
+    Route::get('support/manage', [App\Http\Controllers\SupportController::class, 'manage'])
+        ->middleware('permission:manage-support-tickets')
+        ->name('support.manage');
+    Route::get('support/{ticket}', [App\Http\Controllers\SupportController::class, 'show'])
+        ->name('support.show');
+    Route::patch('support/{ticket}', [App\Http\Controllers\SupportController::class, 'update'])
+        ->middleware('permission:manage-support-tickets')
+        ->name('support.update');
+    Route::post('support/{ticket}/messages', [App\Http\Controllers\SupportController::class, 'storeMessage'])
+        ->name('support.messages.store');
 
     // Assignments (Training Officers create, Residents submit)
     Route::get('assignments', [App\Http\Controllers\AssignmentController::class, 'index'])

@@ -16,7 +16,7 @@ import { Textarea } from '@/components/ui/textarea';
 import AppLayout from '@/layouts/app-layout';
 import { preserveOrgParam } from '@/lib/utils';
 import { type BreadcrumbItem, type SharedData } from '@/types';
-import { Head, Link, usePage } from '@inertiajs/react';
+import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import {
     AlertTriangle,
     CheckCircle2,
@@ -25,9 +25,8 @@ import {
     MessageSquareText,
     Send,
     Sparkles,
-    Wrench,
 } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { toast } from 'sonner';
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -37,71 +36,53 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
 ];
 
-type TicketStatus = 'open' | 'in_review' | 'resolved';
-type TicketPriority = 'low' | 'medium' | 'high';
-type TicketCategory = 'bug' | 'billing' | 'content' | 'account' | 'feature';
-
-interface Ticket {
-    id: string;
-    title: string;
-    category: TicketCategory;
-    priority: TicketPriority;
-    status: TicketStatus;
-    updatedAt: string;
-    summary: string;
+interface Option {
+    value: string;
+    label: string;
 }
 
-const initialTickets: Ticket[] = [
-    {
-        id: 'SUP-1042',
-        title: 'Unable to open one resident exam result page',
-        category: 'bug',
-        priority: 'high',
-        status: 'in_review',
-        updatedAt: '10 minutes ago',
-        summary: 'Results page loads, but one attempt shows a blank panel after submission.',
-    },
-    {
-        id: 'SUP-1038',
-        title: 'Request to improve grade breakdown clarity',
-        category: 'feature',
-        priority: 'medium',
-        status: 'open',
-        updatedAt: '2 hours ago',
-        summary: 'Resident asked for clearer topic-level explanations in the grades section.',
-    },
-    {
-        id: 'SUP-1017',
-        title: 'Announcement formatting issue resolved',
-        category: 'content',
-        priority: 'low',
-        status: 'resolved',
-        updatedAt: 'Yesterday',
-        summary: 'Long announcement text was overflowing on mobile and has already been corrected.',
-    },
-];
+interface SupportTicketItem {
+    id: number;
+    ticket_number: string;
+    title: string;
+    category: string;
+    priority: string;
+    status: string;
+    module_name: string | null;
+    organization_name: string | null;
+    creator_name: string | null;
+    creator_email: string | null;
+    assignee_name: string | null;
+    details_preview: string;
+    created_at: string;
+    updated_at_human: string;
+}
 
-const categoryOptions: Array<{
-    value: TicketCategory;
-    label: string;
-}> = [
-    { value: 'bug', label: 'Bug or Error' },
-    { value: 'billing', label: 'Billing or Subscription' },
-    { value: 'content', label: 'Content or Data Issue' },
-    { value: 'account', label: 'Account Access' },
-    { value: 'feature', label: 'Feature Request' },
-];
+interface PaginatedTickets {
+    data: SupportTicketItem[];
+    total: number;
+    current_page: number;
+    last_page: number;
+}
 
-const priorityOptions: Array<{
-    value: TicketPriority;
-    label: string;
-}> = [
-    { value: 'low', label: 'Low' },
-    { value: 'medium', label: 'Medium' },
-    { value: 'high', label: 'High' },
-];
+interface PageProps {
+    tickets: PaginatedTickets;
+    summary: {
+        total: number;
+        open: number;
+        in_review: number;
+        resolved: number;
+    };
+    categories: Option[];
+    priorities: Option[];
+    statuses: Option[];
+    filters: {
+        status?: string;
+    };
+    canManage: boolean;
+}
 
-function statusBadge(status: TicketStatus) {
+function statusBadge(status: string) {
     switch (status) {
         case 'resolved':
             return (
@@ -124,7 +105,7 @@ function statusBadge(status: TicketStatus) {
     }
 }
 
-function priorityBadge(priority: TicketPriority) {
+function priorityBadge(priority: string) {
     switch (priority) {
         case 'high':
             return (
@@ -139,60 +120,51 @@ function priorityBadge(priority: TicketPriority) {
                 </Badge>
             );
         default:
-            return (
-                <Badge variant="outline">Low</Badge>
-            );
+            return <Badge variant="outline">Low</Badge>;
     }
 }
 
-export default function SupportIndex() {
+export default function SupportIndex({
+    tickets,
+    summary,
+    categories,
+    priorities,
+    statuses,
+    filters,
+    canManage,
+}: PageProps) {
     const page = usePage<SharedData>();
     const currentOrgSlug = page.props.auth.currentOrganization?.slug;
-    const [tickets, setTickets] = useState<Ticket[]>(initialTickets);
-    const [title, setTitle] = useState('');
-    const [category, setCategory] = useState<TicketCategory>('bug');
-    const [priority, setPriority] = useState<TicketPriority>('medium');
-    const [moduleName, setModuleName] = useState('');
-    const [details, setDetails] = useState('');
+    const [statusFilter, setStatusFilter] = useState(filters.status || 'all');
+    const form = useForm({
+        title: '',
+        category: categories[0]?.value ?? 'bug',
+        priority: priorities[1]?.value ?? 'medium',
+        module_name: '',
+        page_url: '',
+        details: '',
+    });
 
-    const openCount = useMemo(
-        () => tickets.filter((ticket) => ticket.status === 'open').length,
-        [tickets],
-    );
-    const reviewCount = useMemo(
-        () => tickets.filter((ticket) => ticket.status === 'in_review').length,
-        [tickets],
-    );
-    const resolvedCount = useMemo(
-        () => tickets.filter((ticket) => ticket.status === 'resolved').length,
-        [tickets],
-    );
+    const applyFilter = (value: string) => {
+        setStatusFilter(value);
 
-    const handleSubmit = () => {
-        if (!title.trim() || !details.trim()) {
-            toast.error('Please add a ticket title and issue details.');
-            return;
-        }
+        router.get(
+            preserveOrgParam('/support', currentOrgSlug),
+            {
+                status: value === 'all' ? undefined : value,
+            },
+            { preserveState: true, preserveScroll: true },
+        );
+    };
 
-        const nextTicket: Ticket = {
-            id: `SUP-${1000 + tickets.length + 51}`,
-            title: title.trim(),
-            category,
-            priority,
-            status: 'open',
-            updatedAt: 'Just now',
-            summary: moduleName.trim()
-                ? `${moduleName.trim()}: ${details.trim()}`
-                : details.trim(),
-        };
-
-        setTickets((current) => [nextTicket, ...current]);
-        setTitle('');
-        setCategory('bug');
-        setPriority('medium');
-        setModuleName('');
-        setDetails('');
-        toast.success('Support ticket created in the preview module.');
+    const submit = () => {
+        form.post(preserveOrgParam('/support', currentOrgSlug), {
+            preserveScroll: true,
+            onSuccess: () => {
+                toast.success('Support ticket created successfully!');
+                form.reset();
+            },
+        });
     };
 
     return (
@@ -203,7 +175,7 @@ export default function SupportIndex() {
                 <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
                     <HeadingSmall
                         title="Customer Support"
-                        description="Create tickets, track issue progress, and keep residents and staff supported in one place."
+                        description="Create real tickets, follow progress, and keep communication in one place."
                     />
                     <div className="flex flex-wrap gap-2">
                         <Button
@@ -211,17 +183,32 @@ export default function SupportIndex() {
                             variant="outline"
                             className="border-primary/20 text-primary"
                         >
-                            <Link href={preserveOrgParam('/feedback', currentOrgSlug)}>
+                            <Link
+                                href={preserveOrgParam('/feedback', currentOrgSlug)}
+                            >
                                 <MessageSquareText className="mr-2 h-4 w-4" />
                                 Leave Feedback
                             </Link>
                         </Button>
+                        {canManage && (
+                            <Button asChild variant="outline">
+                                <Link
+                                    href={preserveOrgParam(
+                                        '/support/manage',
+                                        currentOrgSlug,
+                                    )}
+                                >
+                                    View Queue
+                                </Link>
+                            </Button>
+                        )}
                         <Button
-                            onClick={handleSubmit}
+                            onClick={submit}
+                            disabled={form.processing}
                             className="border-transparent bg-[linear-gradient(135deg,#7c3aed,#c026d3)] text-white shadow-[0_18px_36px_-22px_rgb(124_58_237_/_0.58)] hover:brightness-[1.03]"
                         >
                             <Send className="mr-2 h-4 w-4" />
-                            Create Ticket
+                            Submit Ticket
                         </Button>
                     </div>
                 </div>
@@ -229,31 +216,27 @@ export default function SupportIndex() {
                 <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                     <StatCard
                         title="All Tickets"
-                        value={tickets.length}
-                        description="Preview queue across support requests"
+                        value={summary.total}
+                        description="Your submitted requests"
                         icon={LifeBuoy}
-                        iconColor="text-primary"
                     />
                     <StatCard
                         title="Open"
-                        value={openCount}
-                        description="New issues waiting for triage"
+                        value={summary.open}
+                        description="Waiting for triage"
                         icon={AlertTriangle}
-                        iconColor="text-primary"
                     />
                     <StatCard
                         title="In Review"
-                        value={reviewCount}
-                        description="Requests currently being investigated"
+                        value={summary.in_review}
+                        description="Actively being worked on"
                         icon={Clock3}
-                        iconColor="text-primary"
                     />
                     <StatCard
                         title="Resolved"
-                        value={resolvedCount}
-                        description="Tickets already completed"
+                        value={summary.resolved}
+                        description="Completed support requests"
                         icon={CheckCircle2}
-                        iconColor="text-primary"
                     />
                 </div>
 
@@ -264,103 +247,168 @@ export default function SupportIndex() {
                                 Support hub
                             </p>
                             <h3 className="text-2xl font-semibold tracking-[-0.04em] text-foreground">
-                                Same calm layout, but built for issue reporting
+                                Real ticket submission and tracking
                             </h3>
                             <p className="text-sm leading-6 text-muted-foreground">
-                                This support space mirrors the polished SaaS feel from your reference while giving users a clean place to submit and review issues.
+                                This module now stores tickets in the database,
+                                keeps a thread per request, and gives staff a
+                                real queue to manage.
                             </p>
                         </div>
                         <div className="flex flex-wrap gap-2">
-                            <Badge variant="secondary">Design + interactive preview</Badge>
-                            <Badge variant="outline">Backend persistence can be added next</Badge>
+                            <Badge variant="secondary">Database-backed</Badge>
+                            <Badge variant="outline">Thread-ready support flow</Badge>
                         </div>
                     </CardContent>
                 </Card>
 
-                <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
+                <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
                     <div className="space-y-6">
                         <Card className="overflow-hidden border-border/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,255,255,0.94))]">
-                            <CardHeader className="pb-3">
-                                <CardTitle>Recent Tickets</CardTitle>
+                            <CardHeader className="flex flex-col gap-3 pb-3 lg:flex-row lg:items-center lg:justify-between">
+                                <CardTitle>Your Tickets</CardTitle>
+                                <div className="w-full max-w-[220px]">
+                                    <Select
+                                        value={statusFilter}
+                                        onValueChange={applyFilter}
+                                    >
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="All Statuses" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="all">
+                                                All Statuses
+                                            </SelectItem>
+                                            {statuses.map((status) => (
+                                                <SelectItem
+                                                    key={status.value}
+                                                    value={status.value}
+                                                >
+                                                    {status.label}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
                             </CardHeader>
                             <CardContent className="space-y-4">
-                                {tickets.map((ticket) => (
-                                    <div
-                                        key={ticket.id}
-                                        className="rounded-[1.35rem] border border-border/70 bg-background/85 p-5"
-                                    >
-                                        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                                            <div className="space-y-2">
-                                                <div className="flex flex-wrap items-center gap-2">
-                                                    <Badge variant="outline">{ticket.id}</Badge>
-                                                    {statusBadge(ticket.status)}
-                                                    {priorityBadge(ticket.priority)}
+                                {tickets.data.length === 0 ? (
+                                    <div className="rounded-[1.25rem] border border-dashed border-border/80 p-8 text-center">
+                                        <p className="font-medium text-foreground">
+                                            No support tickets yet
+                                        </p>
+                                        <p className="mt-2 text-sm text-muted-foreground">
+                                            Submit your first ticket using the
+                                            form on this page.
+                                        </p>
+                                    </div>
+                                ) : (
+                                    tickets.data.map((ticket) => (
+                                        <div
+                                            key={ticket.id}
+                                            className="rounded-[1.35rem] border border-border/70 bg-background/85 p-5"
+                                        >
+                                            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                                                <div className="space-y-2">
+                                                    <div className="flex flex-wrap items-center gap-2">
+                                                        <Badge variant="outline">
+                                                            {ticket.ticket_number}
+                                                        </Badge>
+                                                        {statusBadge(ticket.status)}
+                                                        {priorityBadge(ticket.priority)}
+                                                    </div>
+                                                    <h3 className="text-base font-semibold text-foreground">
+                                                        {ticket.title}
+                                                    </h3>
+                                                    <p className="text-sm leading-6 text-muted-foreground">
+                                                        {ticket.details_preview}
+                                                    </p>
+                                                    <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+                                                        <span>
+                                                            Category:{' '}
+                                                            {ticket.category.replace(
+                                                                '_',
+                                                                ' ',
+                                                            )}
+                                                        </span>
+                                                        {ticket.module_name && (
+                                                            <span>
+                                                                Module:{' '}
+                                                                {ticket.module_name}
+                                                            </span>
+                                                        )}
+                                                        <span>
+                                                            Updated{' '}
+                                                            {ticket.updated_at_human}
+                                                        </span>
+                                                    </div>
                                                 </div>
-                                                <h3 className="text-base font-semibold text-foreground">
-                                                    {ticket.title}
-                                                </h3>
-                                                <p className="text-sm leading-6 text-muted-foreground">
-                                                    {ticket.summary}
-                                                </p>
-                                            </div>
-                                            <div className="flex shrink-0 flex-col items-start gap-2 lg:items-end">
-                                                <Badge className="border-transparent bg-primary/10 text-primary">
-                                                    {
-                                                        categoryOptions.find(
-                                                            (option) =>
-                                                                option.value ===
-                                                                ticket.category,
-                                                        )?.label
-                                                    }
-                                                </Badge>
-                                                <span className="text-xs font-medium text-muted-foreground">
-                                                    Updated {ticket.updatedAt}
-                                                </span>
+                                                <div className="flex shrink-0 items-start gap-2">
+                                                    {ticket.assignee_name && (
+                                                        <Badge
+                                                            variant="outline"
+                                                            className="hidden lg:inline-flex"
+                                                        >
+                                                            {ticket.assignee_name}
+                                                        </Badge>
+                                                    )}
+                                                    <Button asChild variant="outline">
+                                                        <Link
+                                                            href={preserveOrgParam(
+                                                                `/support/${ticket.id}`,
+                                                                currentOrgSlug,
+                                                            )}
+                                                        >
+                                                            Open Ticket
+                                                        </Link>
+                                                    </Button>
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
-                                ))}
-                            </CardContent>
-                        </Card>
+                                    ))
+                                )}
 
-                        <Card className="overflow-hidden border-border/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,255,255,0.94))]">
-                            <CardHeader className="pb-3">
-                                <CardTitle>Suggested Ticket Flow</CardTitle>
-                            </CardHeader>
-                            <CardContent className="grid gap-4 md:grid-cols-3">
-                                <div className="rounded-[1.25rem] border border-border/70 bg-background/85 p-4">
-                                    <div className="mb-3 flex size-10 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-                                        <AlertTriangle className="size-4" />
+                                {tickets.last_page > 1 && (
+                                    <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
+                                        {Array.from(
+                                            { length: tickets.last_page },
+                                            (_, index) => index + 1,
+                                        ).map((pageNumber) => (
+                                            <Button
+                                                key={pageNumber}
+                                                size="sm"
+                                                variant={
+                                                    pageNumber ===
+                                                    tickets.current_page
+                                                        ? 'default'
+                                                        : 'outline'
+                                                }
+                                                onClick={() =>
+                                                    router.get(
+                                                        preserveOrgParam(
+                                                            '/support',
+                                                            currentOrgSlug,
+                                                        ),
+                                                        {
+                                                            status:
+                                                                statusFilter ===
+                                                                'all'
+                                                                    ? undefined
+                                                                    : statusFilter,
+                                                            page: pageNumber,
+                                                        },
+                                                        {
+                                                            preserveState: true,
+                                                            preserveScroll: true,
+                                                        },
+                                                    )
+                                                }
+                                            >
+                                                {pageNumber}
+                                            </Button>
+                                        ))}
                                     </div>
-                                    <h3 className="font-semibold text-foreground">
-                                        1. Report
-                                    </h3>
-                                    <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                                        User reports a bug, blocker, or account issue.
-                                    </p>
-                                </div>
-                                <div className="rounded-[1.25rem] border border-border/70 bg-background/85 p-4">
-                                    <div className="mb-3 flex size-10 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-                                        <Wrench className="size-4" />
-                                    </div>
-                                    <h3 className="font-semibold text-foreground">
-                                        2. Triage
-                                    </h3>
-                                    <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                                        Support reviews the issue and updates the ticket status.
-                                    </p>
-                                </div>
-                                <div className="rounded-[1.25rem] border border-border/70 bg-background/85 p-4">
-                                    <div className="mb-3 flex size-10 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-                                        <Sparkles className="size-4" />
-                                    </div>
-                                    <h3 className="font-semibold text-foreground">
-                                        3. Resolve
-                                    </h3>
-                                    <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                                        The team closes the ticket and can follow up with feedback later.
-                                    </p>
-                                </div>
+                                )}
                             </CardContent>
                         </Card>
                     </div>
@@ -380,12 +428,20 @@ export default function SupportIndex() {
                                     </Label>
                                     <Input
                                         id="ticket-title"
-                                        value={title}
+                                        value={form.data.title}
                                         onChange={(event) =>
-                                            setTitle(event.target.value)
+                                            form.setData(
+                                                'title',
+                                                event.target.value,
+                                            )
                                         }
                                         placeholder="Briefly describe the issue"
                                     />
+                                    {form.errors.title && (
+                                        <p className="text-sm text-destructive">
+                                            {form.errors.title}
+                                        </p>
+                                    )}
                                 </div>
 
                                 <div className="grid gap-4 md:grid-cols-2">
@@ -394,18 +450,16 @@ export default function SupportIndex() {
                                             Category
                                         </Label>
                                         <Select
-                                            value={category}
+                                            value={form.data.category}
                                             onValueChange={(value) =>
-                                                setCategory(
-                                                    value as TicketCategory,
-                                                )
+                                                form.setData('category', value)
                                             }
                                         >
                                             <SelectTrigger>
                                                 <SelectValue />
                                             </SelectTrigger>
                                             <SelectContent>
-                                                {categoryOptions.map((option) => (
+                                                {categories.map((option) => (
                                                     <SelectItem
                                                         key={option.value}
                                                         value={option.value}
@@ -422,18 +476,16 @@ export default function SupportIndex() {
                                             Priority
                                         </Label>
                                         <Select
-                                            value={priority}
+                                            value={form.data.priority}
                                             onValueChange={(value) =>
-                                                setPriority(
-                                                    value as TicketPriority,
-                                                )
+                                                form.setData('priority', value)
                                             }
                                         >
                                             <SelectTrigger>
                                                 <SelectValue />
                                             </SelectTrigger>
                                             <SelectContent>
-                                                {priorityOptions.map((option) => (
+                                                {priorities.map((option) => (
                                                     <SelectItem
                                                         key={option.value}
                                                         value={option.value}
@@ -455,13 +507,34 @@ export default function SupportIndex() {
                                     </Label>
                                     <Input
                                         id="ticket-module"
-                                        value={moduleName}
+                                        value={form.data.module_name}
                                         onChange={(event) =>
-                                            setModuleName(
+                                            form.setData(
+                                                'module_name',
                                                 event.target.value,
                                             )
                                         }
                                         placeholder="Example: My Grades, Events, Question Bank"
+                                    />
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label
+                                        htmlFor="ticket-page"
+                                        className="text-[0.7rem] font-semibold tracking-[0.14em] text-muted-foreground uppercase"
+                                    >
+                                        Page URL
+                                    </Label>
+                                    <Input
+                                        id="ticket-page"
+                                        value={form.data.page_url}
+                                        onChange={(event) =>
+                                            form.setData(
+                                                'page_url',
+                                                event.target.value,
+                                            )
+                                        }
+                                        placeholder="/analytics/exam-analytics?org=..."
                                     />
                                 </div>
 
@@ -475,32 +548,63 @@ export default function SupportIndex() {
                                     <Textarea
                                         id="ticket-details"
                                         className="min-h-40"
-                                        value={details}
+                                        value={form.data.details}
                                         onChange={(event) =>
-                                            setDetails(
+                                            form.setData(
+                                                'details',
                                                 event.target.value,
                                             )
                                         }
-                                        placeholder="Explain what happened, what you expected, and any steps to reproduce the issue."
+                                        placeholder="Explain what happened, what you expected, and how we can reproduce it."
                                     />
+                                    {form.errors.details && (
+                                        <p className="text-sm text-destructive">
+                                            {form.errors.details}
+                                        </p>
+                                    )}
                                 </div>
 
                                 <div className="rounded-[1.25rem] border border-dashed border-primary/20 bg-primary/5 p-4">
                                     <p className="font-medium text-foreground">
-                                        Future-ready support flow
+                                        Ticket thread is ready
                                     </p>
                                     <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                                        This first version is interactive on the frontend. Next we can connect it to database-backed tickets, assignment rules, staff replies, and email notifications.
+                                        After submission, you can open the
+                                        ticket, add replies, and follow status
+                                        changes from staff.
                                     </p>
                                 </div>
 
                                 <Button
-                                    onClick={handleSubmit}
+                                    onClick={submit}
+                                    disabled={form.processing}
                                     className="w-full border-transparent bg-[linear-gradient(135deg,#7c3aed,#c026d3)] text-white shadow-[0_18px_36px_-22px_rgb(124_58_237_/_0.58)] hover:brightness-[1.03]"
                                 >
                                     <Send className="mr-2 h-4 w-4" />
                                     Submit Ticket
                                 </Button>
+                            </CardContent>
+                        </Card>
+
+                        <Card className="overflow-hidden border-primary/10 bg-[linear-gradient(160deg,rgba(255,248,240,0.98),rgba(255,255,255,0.95))]">
+                            <CardContent className="space-y-3 p-5">
+                                <p className="text-[0.7rem] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
+                                    Support flow
+                                </p>
+                                <h3 className="text-lg font-semibold text-foreground">
+                                    Built for real follow-up
+                                </h3>
+                                <p className="text-sm leading-6 text-muted-foreground">
+                                    Residents and staff can create tickets from
+                                    the same entry point, while managers get a
+                                    queue and status controls behind the scenes.
+                                </p>
+                                <div className="flex flex-wrap gap-2">
+                                    <Badge variant="outline">Create</Badge>
+                                    <Badge variant="outline">Track</Badge>
+                                    <Badge variant="outline">Reply</Badge>
+                                    <Badge variant="outline">Resolve</Badge>
+                                </div>
                             </CardContent>
                         </Card>
                     </div>

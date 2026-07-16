@@ -11,6 +11,7 @@ use App\Models\National\NationalAssessment;
 use App\Models\Organization;
 use App\Models\QuestionBank;
 use App\Models\Resident;
+use App\Models\SupportTicket;
 use App\Models\User;
 use App\Repositories\Contracts\ActivityRepositoryInterface;
 
@@ -72,6 +73,7 @@ class ActivityReadService
             ['value' => 'question_bank', 'label' => 'Question Bank'],
             ['value' => 'residents', 'label' => 'Residents'],
             ['value' => 'resources', 'label' => 'Learning Resources'],
+            ['value' => 'support', 'label' => 'Support'],
             ['value' => 'users', 'label' => 'Staff'],
         ];
     }
@@ -108,6 +110,7 @@ class ActivityReadService
             || $subject instanceof LearningResource
             || $subject instanceof NationalAssessment
             || $subject instanceof Organization
+            || $subject instanceof SupportTicket
         ) {
             return $subject->title ?? $subject->name ?? ($attributes['title'] ?? $attributes['name'] ?? 'Record');
         }
@@ -139,7 +142,8 @@ class ActivityReadService
             $subject instanceof Assignment,
             $subject instanceof InstitutionAssessment,
             $subject instanceof QuestionBank,
-            $subject instanceof Resident => $subject->organization?->name,
+            $subject instanceof Resident,
+            $subject instanceof SupportTicket => $subject->organization?->name,
             $subject instanceof Organization => $subject->name,
             $subject instanceof User => $subject->currentOrganization?->name,
             $subject instanceof NationalAssessment => 'National',

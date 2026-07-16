@@ -11,6 +11,7 @@ use App\Models\National\NationalAssessment;
 use App\Models\Organization;
 use App\Models\QuestionBank;
 use App\Models\Resident;
+use App\Models\SupportTicket;
 use App\Models\User;
 use App\Repositories\Contracts\ActivityRepositoryInterface;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -119,6 +120,9 @@ class ActivityRepository implements ActivityRepositoryInterface
             })
             ->orWhereHasMorph('subject', [InstitutionAssessment::class], function (Builder $subjectQuery) use ($organizationId) {
                 $subjectQuery->where('organization_id', $organizationId);
+            })
+            ->orWhereHasMorph('subject', [SupportTicket::class], function (Builder $subjectQuery) use ($organizationId) {
+                $subjectQuery->where('organization_id', $organizationId);
             });
 
         if ($organizationType === 'national') {
@@ -139,6 +143,7 @@ class ActivityRepository implements ActivityRepositoryInterface
             Organization::class => [],
             QuestionBank::class => ['organization'],
             Resident::class => ['organization'],
+            SupportTicket::class => ['organization', 'creator', 'assignee'],
             User::class => ['currentOrganization'],
             NationalAssessment::class => [],
         ]);
