@@ -20,6 +20,10 @@ import { Building2, Check, ChevronsUpDown, Search } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 const ALL_ORGANIZATIONS_SLUG = 'all-organizations';
+const ALL_ORGANIZATIONS_SUPPORTED_PATHS = [
+    /^\/support(?:\/.*)?$/,
+    /^\/notifications(?:\/.*)?$/,
+];
 
 interface OrganizationSwitcherProps {
     className?: string;
@@ -81,14 +85,28 @@ export function OrganizationSwitcher({
     const handleSwitch = (organizationId: number, organizationSlug?: string) => {
         if (organizationSlug === ALL_ORGANIZATIONS_SLUG) {
             const currentUrl = new URL(window.location.href);
-            currentUrl.searchParams.set('org', ALL_ORGANIZATIONS_SLUG);
+            const supportsAllOrganizationsPath =
+                ALL_ORGANIZATIONS_SUPPORTED_PATHS.some((pattern) =>
+                    pattern.test(currentUrl.pathname),
+                );
 
+            if (!supportsAllOrganizationsPath) {
+                router.get('/support', { org: ALL_ORGANIZATIONS_SLUG }, {
+                    preserveScroll: true,
+                    preserveState: false,
+                });
+                setSearch('');
+
+                return;
+            }
+
+            currentUrl.searchParams.set('org', ALL_ORGANIZATIONS_SLUG);
             router.get(
                 `${currentUrl.pathname}${currentUrl.search}`,
                 {},
                 {
                     preserveScroll: true,
-                    preserveState: true,
+                    preserveState: false,
                 },
             );
             setSearch('');
