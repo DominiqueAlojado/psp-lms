@@ -109,7 +109,7 @@ export function OrganizationSwitcher({
 
     const dropdownContent = (
         <DropdownMenuContent
-            className="w-[320px] rounded-2xl border-border/75 bg-popover/96 p-1 shadow-[0_24px_52px_-34px_rgb(35_24_74_/_0.32)]"
+            className="w-[320px] rounded-2xl border border-border/80 bg-popover/96 p-1 shadow-[0_24px_52px_-34px_rgb(35_24_74_/_0.32)] dark:shadow-[0_28px_56px_-32px_rgb(0_0_0_/_0.76)]"
             align={isCollapsed ? 'start' : 'start'}
             side={isCollapsed ? 'right' : 'bottom'}
             sideOffset={isCollapsed ? 4 : 8}
@@ -148,11 +148,11 @@ export function OrganizationSwitcher({
                             onClick={() =>
                                 handleSwitch(organization.id, organization.slug)
                             }
-                            className="cursor-pointer rounded-xl px-3 py-2.5 focus:bg-accent/80"
+                            className="cursor-pointer rounded-xl px-3 py-2.5 focus:bg-accent/85"
                         >
                             <div className="flex w-full items-center justify-between gap-2">
                                 <div className="flex min-w-0 flex-1 items-center gap-2">
-                                    <div className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-accent text-primary">
+                                    <div className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-accent/88 text-primary shadow-[0_10px_22px_-18px_rgb(96_44_193_/_0.34)]">
                                         <Building2 className="h-4 w-4 shrink-0" />
                                     </div>
                                     <div className="flex min-w-0 flex-col">
@@ -186,7 +186,7 @@ export function OrganizationSwitcher({
                             <DropdownMenuTrigger asChild>
                                 <SidebarMenuButton
                                     size="lg"
-                                    className={`rounded-[1.25rem] border border-sidebar-border/70 bg-background/80 data-[state=open]:bg-sidebar-accent/85 data-[state=open]:text-sidebar-accent-foreground ${className || ''}`}
+                                    className={`rounded-[1.25rem] border border-sidebar-border/80 bg-background/88 shadow-[0_14px_28px_-24px_rgb(35_24_74_/_0.22)] data-[state=open]:border-sidebar-border/90 data-[state=open]:bg-sidebar-accent/88 data-[state=open]:text-sidebar-accent-foreground dark:shadow-[0_18px_32px_-24px_rgb(0_0_0_/_0.58)] ${className || ''}`}
                                 >
                                     <Building2 className="h-4 w-4" />
                                     <span className="sr-only">
@@ -219,10 +219,10 @@ export function OrganizationSwitcher({
             <DropdownMenuTrigger asChild>
                 <SidebarMenuButton
                     size="lg"
-                    className={`w-full rounded-[1.35rem] border border-sidebar-border/70 bg-background/80 px-3 data-[state=open]:bg-sidebar-accent/85 data-[state=open]:text-sidebar-accent-foreground ${className || ''}`}
+                    className={`w-full rounded-[1.35rem] border border-sidebar-border/80 bg-background/88 px-3 shadow-[0_16px_32px_-28px_rgb(35_24_74_/_0.2)] data-[state=open]:border-sidebar-border/90 data-[state=open]:bg-sidebar-accent/88 data-[state=open]:text-sidebar-accent-foreground dark:shadow-[0_18px_36px_-26px_rgb(0_0_0_/_0.58)] ${className || ''}`}
                 >
                     <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
-                        <div className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-accent text-primary">
+                        <div className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-accent/88 text-primary shadow-[0_10px_22px_-18px_rgb(96_44_193_/_0.34)]">
                             <Building2 className="h-4 w-4 shrink-0" />
                         </div>
                         <div className="flex min-w-0 flex-1 flex-col items-start">

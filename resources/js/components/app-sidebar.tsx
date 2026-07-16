@@ -237,7 +237,7 @@ export function AppSidebar() {
                         <SidebarMenuButton
                             size="lg"
                             asChild
-                            className="min-h-[3.75rem] rounded-[1.35rem] bg-[image:var(--gradient-brand-soft)] px-3 shadow-[0_18px_40px_-30px_rgb(96_44_193_/_0.45)] hover:bg-[image:var(--gradient-brand-soft)]"
+                            className="min-h-[3.75rem] rounded-[1.35rem] border border-sidebar-border/75 bg-[image:linear-gradient(135deg,color-mix(in_oklab,var(--color-sidebar-accent)_88%,white)_0%,color-mix(in_oklab,var(--color-primary)_12%,var(--color-sidebar-accent))_100%)] px-3 shadow-[0_20px_42px_-30px_rgb(96_44_193_/_0.34)] hover:bg-[image:linear-gradient(135deg,color-mix(in_oklab,var(--color-sidebar-accent)_92%,white)_0%,color-mix(in_oklab,var(--color-primary)_16%,var(--color-sidebar-accent))_100%)]"
                         >
                             <Link
                                 href={preserveOrgParam(

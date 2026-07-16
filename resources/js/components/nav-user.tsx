@@ -28,7 +28,7 @@ export function NavUser() {
                     <DropdownMenuTrigger asChild>
                         <SidebarMenuButton
                             size="lg"
-                            className="group min-h-[3.75rem] rounded-[1.35rem] border border-sidebar-border/70 bg-background/80 px-3 shadow-[0_14px_34px_-28px_rgb(35_24_74_/_0.25)] text-sidebar-accent-foreground data-[state=open]:bg-sidebar-accent/85"
+                            className="group min-h-[3.75rem] rounded-[1.35rem] border border-sidebar-border/80 bg-background/88 px-3 shadow-[0_16px_34px_-28px_rgb(35_24_74_/_0.22)] text-sidebar-accent-foreground data-[state=open]:border-sidebar-border/90 data-[state=open]:bg-sidebar-accent/88 dark:shadow-[0_18px_36px_-26px_rgb(0_0_0_/_0.58)]"
                             data-test="sidebar-menu-button"
                         >
                             <UserInfo user={auth.user} />
@@ -36,7 +36,7 @@ export function NavUser() {
                         </SidebarMenuButton>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent
-                        className="w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-2xl border-border/75 bg-popover/96 shadow-[0_24px_52px_-34px_rgb(35_24_74_/_0.32)]"
+                        className="w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-2xl border border-border/80 bg-popover/96 shadow-[0_24px_52px_-34px_rgb(35_24_74_/_0.32)] dark:shadow-[0_28px_56px_-32px_rgb(0_0_0_/_0.76)]"
                         align="end"
                         side={
                             isMobile

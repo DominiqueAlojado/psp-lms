@@ -400,7 +400,7 @@ function SidebarGroupLabel({
       data-slot="sidebar-group-label"
       data-sidebar="group-label"
       className={cn(
-        "text-sidebar-foreground/55 ring-sidebar-ring flex h-8 shrink-0 items-center rounded-full px-3 text-[0.68rem] font-semibold tracking-[0.14em] uppercase outline-hidden transition-[margin,opacity] duration-200 ease-linear focus-visible:ring-2 [&>svg]:size-4 [&>svg]:shrink-0",
+        "text-sidebar-foreground/60 ring-sidebar-ring flex h-8 shrink-0 items-center rounded-full px-3 text-[0.68rem] font-semibold tracking-[0.14em] uppercase outline-hidden transition-[margin,opacity,color] duration-200 ease-linear focus-visible:ring-2 [&>svg]:size-4 [&>svg]:shrink-0",
         "group-data-[collapsible=icon]:-mt-8 group-data-[collapsible=icon]:opacity-0 group-data-[collapsible=icon]:select-none group-data-[collapsible=icon]:pointer-events-none",
         className
       )}
@@ -469,13 +469,13 @@ function SidebarMenuItem({ className, ...props }: React.ComponentProps<"li">) {
 }
 
 const sidebarMenuButtonVariants = cva(
-  "peer/menu-button flex w-full items-center gap-3 overflow-hidden rounded-2xl p-2.5 text-left text-sm text-sidebar-foreground/78 outline-hidden ring-sidebar-ring transition-[width,height,padding,background-color,color,box-shadow,transform] hover:bg-sidebar-accent/80 hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent/90 active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 group-has-data-[sidebar=menu-action]/menu-item:pr-8 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[active=true]:bg-[image:var(--gradient-brand-soft)] data-[active=true]:font-semibold data-[active=true]:text-sidebar-accent-foreground data-[active=true]:shadow-[0_16px_28px_-24px_rgb(96_44_193_/_0.5)] data-[state=open]:hover:bg-sidebar-accent/85 data-[state=open]:hover:text-sidebar-accent-foreground group-data-[collapsible=icon]:size-10! group-data-[collapsible=icon]:p-2.5! [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0 [&>svg]:text-sidebar-foreground/70 data-[active=true]:[&_svg]:text-primary",
+  "peer/menu-button flex w-full items-center gap-3 overflow-hidden rounded-2xl p-2.5 text-left text-sm text-sidebar-foreground/78 outline-hidden ring-sidebar-ring transition-[width,height,padding,background-color,color,box-shadow,transform,border-color] hover:bg-sidebar-accent/82 hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent/90 active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 group-has-data-[sidebar=menu-action]/menu-item:pr-8 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[active=true]:border data-[active=true]:border-sidebar-border/70 data-[active=true]:bg-[image:linear-gradient(135deg,color-mix(in_oklab,var(--color-sidebar-accent)_84%,white)_0%,color-mix(in_oklab,var(--color-primary)_16%,var(--color-sidebar-accent))_100%)] data-[active=true]:font-semibold data-[active=true]:text-sidebar-accent-foreground data-[active=true]:shadow-[0_18px_32px_-26px_rgb(96_44_193_/_0.42)] data-[state=open]:hover:bg-sidebar-accent/88 data-[state=open]:hover:text-sidebar-accent-foreground group-data-[collapsible=icon]:size-10! group-data-[collapsible=icon]:p-2.5! [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0 [&>svg]:text-sidebar-foreground/70 data-[active=true]:[&_svg]:text-primary",
   {
     variants: {
       variant: {
         default: "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
         outline:
-          "bg-background/80 shadow-[0_0_0_1px_color-mix(in_oklab,var(--color-sidebar-border)_85%,transparent)] hover:bg-sidebar-accent/80 hover:text-sidebar-accent-foreground hover:shadow-[0_0_0_1px_color-mix(in_oklab,var(--color-primary)_18%,white)]",
+          "bg-background/86 shadow-[0_0_0_1px_color-mix(in_oklab,var(--color-sidebar-border)_88%,transparent),0_16px_28px_-26px_rgb(0_0_0_/_0.45)] hover:bg-sidebar-accent/82 hover:text-sidebar-accent-foreground hover:shadow-[0_0_0_1px_color-mix(in_oklab,var(--color-primary)_22%,white),0_18px_32px_-28px_rgb(0_0_0_/_0.54)]",
       },
       size: {
         default: "h-10 text-sm",
