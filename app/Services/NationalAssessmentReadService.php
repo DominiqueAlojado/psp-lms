@@ -151,7 +151,7 @@ class NationalAssessmentReadService
             'national_ranking_enabled' => $assessment->national_ranking_enabled,
             'created_by' => $assessment->creator?->name,
             'created_at' => $assessment->created_at?->format('Y-m-d'),
-            'updated_at' => $assessment->updated_at?->diffForHumans(),
+            'updated_at' => $assessment->updated_at?->toIso8601String(),
         ];
     }
 }

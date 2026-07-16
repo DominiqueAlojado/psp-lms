@@ -99,11 +99,14 @@ export default function Drafts() {
 					) : (
 						<div className="space-y-3">
 							{exams.data.map((exam) => (
-								<div key={exam.id} className="flex items-center justify-between rounded border p-4">
+								<div
+									key={exam.id}
+									className="flex items-center justify-between rounded-[1.35rem] border border-border/80 bg-[linear-gradient(180deg,color-mix(in_oklab,var(--color-card)_97%,white),color-mix(in_oklab,var(--color-card)_94%,var(--color-accent)))] p-4 shadow-[0_16px_30px_-28px_rgb(35_24_74_/_0.12)] transition-[border-color,box-shadow,transform] hover:-translate-y-0.5 hover:border-primary/15 hover:shadow-[0_22px_40px_-30px_rgb(96_44_193_/_0.22)] dark:shadow-[0_18px_32px_-28px_rgb(0_0_0_/_0.42)]"
+								>
 									<div>
 										<div className="flex items-center gap-2">
 											<span className="font-medium">{exam.title}</span>
-											<span className="rounded bg-muted px-2 py-0.5 text-xs">
+											<span className="rounded-full border border-border/70 bg-background/88 px-2.5 py-0.5 text-xs font-medium text-foreground">
 												{exam.exam_year} – {exam.exam_period}
 											</span>
 										</div>

@@ -61,7 +61,7 @@ class StaffReadService
                 'current_organization' => $user->currentOrganization?->name ?? 'N/A',
                 'organizations_count' => (int) ($user->organizations_count ?? 0),
                 'created_at' => $user->created_at->format('Y-m-d'),
-                'updated_at' => $user->updated_at->diffForHumans(),
+                'updated_at' => $user->updated_at->toIso8601String(),
             ]);
     }
 }

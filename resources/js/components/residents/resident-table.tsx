@@ -16,6 +16,7 @@ import {
     TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { usePermissions } from '@/hooks/use-permissions';
+import { formatRelativeTime } from '@/lib/utils';
 import { router } from '@inertiajs/react';
 import { ArrowRightLeft, Building2, Edit, Eye, FileText, Trash2 } from 'lucide-react';
 
@@ -80,7 +81,7 @@ export function ResidentTable({
     const { hasPermission } = usePermissions();
 
     return (
-        <Card>
+        <Card className="border-border/80 bg-[linear-gradient(180deg,color-mix(in_oklab,var(--color-card)_97%,white),color-mix(in_oklab,var(--color-card)_94%,var(--color-accent)))]">
             <CardContent className="p-8">
                 <div className="space-y-6">
                     {/* Results Count */}
@@ -166,7 +167,7 @@ export function ResidentTable({
                                         </TableCell>
                                         <TableCell className="py-4">
                                             <span className="text-sm text-muted-foreground">
-                                                {resident.updated_at}
+                                                {formatRelativeTime(resident.updated_at)}
                                             </span>
                                         </TableCell>
                                         <TableCell className="py-4">

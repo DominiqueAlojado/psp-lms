@@ -75,6 +75,7 @@ class InstitutionAssessmentReadServiceTest extends TestCase
         $this->assertTrue($item['is_published']);
         $this->assertTrue($item['is_available']);
         $this->assertSame($user->name, $item['created_by']);
+        $this->assertStringContainsString('T', $item['updated_at']);
     }
 
     public function test_it_builds_edit_payload_with_question_bank_scope(): void

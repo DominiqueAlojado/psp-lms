@@ -16,6 +16,7 @@ import {
     TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { usePermissions } from '@/hooks/use-permissions';
+import { formatRelativeTime } from '@/lib/utils';
 import { router } from '@inertiajs/react';
 import { Edit, FileText, Trash2, Users } from 'lucide-react';
 
@@ -162,7 +163,7 @@ export function InstitutionTable({
                                         </TableCell>
                                         <TableCell className="py-4">
                                             <span className="text-sm text-muted-foreground">
-                                                {institution.updated_at}
+                                                {formatRelativeTime(institution.updated_at)}
                                             </span>
                                         </TableCell>
                                         <TableCell className="py-4">

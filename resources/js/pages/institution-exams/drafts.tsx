@@ -9,6 +9,7 @@ import {
     TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { usePermissions } from '@/hooks/use-permissions';
+import { formatRelativeTime } from '@/lib/utils';
 import AppLayout from '@/layouts/app-layout';
 import InstitutionExamsLayout from '@/layouts/exams/institution-layout';
 import { type BreadcrumbItem } from '@/types';
@@ -165,7 +166,7 @@ export default function Drafts() {
                                                     By {exam.created_by}
                                                 </span>
                                                 <span>
-                                                    Updated {exam.updated_at}
+                                                    Updated {formatRelativeTime(exam.updated_at)}
                                                 </span>
                                             </div>
                                         </div>

@@ -15,6 +15,7 @@ import {
     TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { usePermissions } from '@/hooks/use-permissions';
+import { formatRelativeTime } from '@/lib/utils';
 import { router } from '@inertiajs/react';
 import { Building2, FileText, Pencil, Trash2 } from 'lucide-react';
 import { useState } from 'react';
@@ -126,7 +127,7 @@ export function StaffTable({ staff, onEdit, onViewLogs }: StaffTableProps) {
                                 </div>
                             </TableCell>
                             <TableCell className="text-sm text-muted-foreground">
-                                {member.updated_at}
+                                {formatRelativeTime(member.updated_at)}
                             </TableCell>
                             <TableCell className="text-right">
                                 <div className="flex justify-end gap-2">

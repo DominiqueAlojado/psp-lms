@@ -48,6 +48,7 @@ class NationalAssessmentReadServiceTest extends TestCase
         $this->assertSame(2026, $item['exam_year']);
         $this->assertTrue($item['is_available']);
         $this->assertTrue($item['can_view_results']);
+        $this->assertStringContainsString('T', $item['updated_at']);
     }
 
     public function test_it_builds_edit_payload_from_normalized_topic_reference(): void

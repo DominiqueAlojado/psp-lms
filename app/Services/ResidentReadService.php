@@ -117,7 +117,7 @@ class ResidentReadService
                 'course' => $resident->course,
                 'year_level' => $resident->year_level,
                 'status' => $resident->status,
-                'updated_at' => $resident->updated_at->diffForHumans(),
+                'updated_at' => $resident->updated_at->toIso8601String(),
                 'organizations_count' => $resident->activeMemberships()->count()
                     ?: ($resident->user ? $resident->user->organizations()->wherePivot('is_active', true)->count() : 0),
                 'organization' => [

@@ -1,5 +1,6 @@
 import { InertiaLinkProps } from '@inertiajs/react';
 import { type ClassValue, clsx } from 'clsx';
+import { formatDistanceToNow, parseISO } from 'date-fns';
 import { twMerge } from 'tailwind-merge';
 
 export function cn(...inputs: ClassValue[]) {
@@ -71,4 +72,16 @@ export function preserveOrgParam(
     }
 
     return href;
+}
+
+export function formatRelativeTime(value: string | null | undefined): string {
+    if (!value) {
+        return 'N/A';
+    }
+
+    try {
+        return formatDistanceToNow(parseISO(value), { addSuffix: true });
+    } catch {
+        return value;
+    }
 }

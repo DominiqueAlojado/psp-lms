@@ -61,8 +61,8 @@ export default function InServiceExamsLayout({ children }: PropsWithChildren) {
                                     size="sm"
                                     variant="ghost"
                                     asChild
-                                    className={cn('w-full justify-start', {
-                                        'bg-muted': isSameUrl(
+                                    className={cn('w-full justify-start rounded-xl', {
+                                        'bg-accent/85 text-foreground shadow-[0_14px_28px_-24px_rgb(96_44_193_/_0.24)]': isSameUrl(
                                             currentPath,
                                             item.href,
                                         ),

@@ -56,6 +56,7 @@ class StaffReadServiceTest extends TestCase
         $this->assertSame('Staff User', $staffItem['name']);
         $this->assertSame('Coordinator', $staffItem['primary_role']);
         $this->assertSame('Alpha Chapter', $staffItem['current_organization']);
+        $this->assertStringContainsString('T', $staffItem['updated_at']);
         $this->assertTrue($payload['roleStats']->contains(fn ($stat) => $stat['role'] === 'Coordinator' && $stat['count'] >= 1));
         $this->assertTrue($payload['roles']->contains('name', 'Coordinator'));
         $this->assertTrue($payload['organizations']->contains('name', 'Alpha Chapter'));

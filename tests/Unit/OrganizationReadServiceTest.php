@@ -30,6 +30,7 @@ class OrganizationReadServiceTest extends TestCase
         $this->assertSame('Alpha Chapter', $institution['name']);
         $this->assertSame('chapter', $institution['type']);
         $this->assertSame(2, $institution['training_officers_count']);
+        $this->assertStringContainsString('T', $institution['updated_at']);
         $this->assertContains('chapter', $payload['types']->toArray());
         $this->assertSame(1, $payload['typeStats']['chapter']);
     }

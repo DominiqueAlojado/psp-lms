@@ -71,7 +71,14 @@ interface PageProps {
 
 export default function Active() {
     const pageProps = usePage<PageProps>().props;
-    const { auth, exams, filters } = pageProps;
+    const { auth, exams } = pageProps;
+    const availabilityBadgeClassName = (isAvailable: boolean) =>
+        isAvailable
+            ? 'border-transparent bg-primary/14 text-primary'
+            : 'border-transparent bg-muted text-muted-foreground';
+
+    const publicationBadgeClassName =
+        'border-transparent bg-success-soft text-success';
 
     // Debug: Check what we're receiving
     if (!exams) {
@@ -157,7 +164,7 @@ export default function Active() {
                             {exams?.data?.map((exam) => (
                                 <div
                                     key={exam.id}
-                                    className="rounded-lg border p-4 hover:bg-muted/50"
+                                    className="rounded-[1.35rem] border border-border/80 bg-[linear-gradient(180deg,color-mix(in_oklab,var(--color-card)_97%,white),color-mix(in_oklab,var(--color-card)_94%,var(--color-accent)))] p-4 shadow-[0_16px_30px_-28px_rgb(35_24_74_/_0.12)] transition-[border-color,box-shadow,transform] hover:-translate-y-0.5 hover:border-primary/15 hover:shadow-[0_22px_40px_-30px_rgb(96_44_193_/_0.22)] dark:shadow-[0_18px_32px_-28px_rgb(0_0_0_/_0.42)]"
                                 >
                                     <div className="flex items-start justify-between">
                                         <div className="flex-1">
@@ -167,13 +174,13 @@ export default function Active() {
                                                 </h3>
                                                 <Badge
                                                     variant="outline"
-                                                    className="text-xs"
+                                                    className="rounded-full border-border/70 bg-background/88 text-xs font-medium text-foreground"
                                                 >
                                                     {exam.exam_year} –{' '}
                                                     {exam.exam_period}
                                                 </Badge>
                                                 {exam.is_available && (
-                                                    <Badge className="bg-green-600">
+                                                    <Badge className={availabilityBadgeClassName(true)}>
                                                         Available
                                                     </Badge>
                                                 )}
@@ -214,7 +221,7 @@ export default function Active() {
                                             )}
                                         </div>
                                         <div className="flex items-center gap-2">
-                                            <Badge className="bg-green-600">
+                                            <Badge className={publicationBadgeClassName}>
                                                 Published
                                             </Badge>
                                             {canCreate && (

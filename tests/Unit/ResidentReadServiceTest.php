@@ -43,6 +43,7 @@ class ResidentReadServiceTest extends TestCase
         $this->assertSame('Jane Santos Doe', $resident['full_name']);
         $this->assertSame('resident@example.com', $resident['email']);
         $this->assertSame('Alpha Chapter', $resident['organization']['name']);
+        $this->assertStringContainsString('T', $resident['updated_at']);
         $this->assertNotEmpty($payload['organizations']);
     }
 

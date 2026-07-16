@@ -35,7 +35,7 @@ class OrganizationReadService
                 'users_count' => $institution->users_count,
                 'training_officers' => $institution->training_officers ?? [],
                 'training_officers_count' => is_array($institution->training_officers) ? count($institution->training_officers) : 0,
-                'updated_at' => $institution->updated_at->diffForHumans(),
+                'updated_at' => $institution->updated_at->toIso8601String(),
             ]);
     }
 }

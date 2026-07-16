@@ -54,7 +54,7 @@ export function ResidentFilters({
         'flex h-10 w-full rounded-xl border border-input/90 bg-background/90 px-3.5 py-2 text-sm shadow-[0_1px_2px_rgb(27_31_59_/_0.04)] ring-offset-background transition-[border-color,box-shadow] focus-visible:border-primary/30 focus-visible:ring-[3px] focus-visible:ring-ring/35 focus-visible:outline-none';
 
     return (
-        <Card className="overflow-hidden border-border/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,255,255,0.94))]">
+        <Card className="overflow-hidden border-border/80 bg-[linear-gradient(180deg,color-mix(in_oklab,var(--color-card)_97%,white),color-mix(in_oklab,var(--color-card)_94%,var(--color-accent)))]">
             <CardContent className="space-y-6 p-6 md:p-7">
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                     {/* Search Input */}

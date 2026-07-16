@@ -124,7 +124,7 @@ class InstitutionAssessmentReadService
             'available_until' => $assessment->available_until?->format('Y-m-d H:i'),
             'created_by' => $assessment->creator->name,
             'created_at' => $assessment->created_at->format('Y-m-d'),
-            'updated_at' => $assessment->updated_at->diffForHumans(),
+            'updated_at' => $assessment->updated_at->toIso8601String(),
         ];
     }
 }
