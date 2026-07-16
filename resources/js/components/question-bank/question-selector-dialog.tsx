@@ -61,9 +61,9 @@ const typeLabels: Record<string, string> = {
 };
 
 const difficultyColors: Record<string, string> = {
-    easy: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
-    medium: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
-    hard: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
+    easy: 'border-transparent bg-success-soft text-success',
+    medium: 'border-transparent bg-warning-soft text-warning',
+    hard: 'border-transparent bg-destructive/12 text-destructive',
 };
 
 export function QuestionSelectorDialog({
@@ -236,7 +236,7 @@ export function QuestionSelectorDialog({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-h-[92vh] w-[95vw] sm:!max-w-3xl lg:!max-w-5xl">
+            <DialogContent className="max-h-[92vh] w-[95vw] border border-border/80 bg-[linear-gradient(180deg,color-mix(in_oklab,var(--color-card)_98%,white),color-mix(in_oklab,var(--color-card)_94%,var(--color-accent)))] shadow-[0_26px_64px_-36px_rgb(0_0_0_/_0.56)] sm:!max-w-3xl lg:!max-w-5xl">
                 <DialogHeader>
                     <DialogTitle>Select Questions from Bank</DialogTitle>
                     <DialogDescription>
@@ -260,7 +260,7 @@ export function QuestionSelectorDialog({
                                         search: e.target.value,
                                     })
                                 }
-                                className="h-11 w-full pl-9"
+                                className="h-11 w-full rounded-2xl border-border/70 bg-background/88 pl-9"
                             />
                         </div>
                         <Select
@@ -272,7 +272,7 @@ export function QuestionSelectorDialog({
                                 })
                             }
                         >
-                            <SelectTrigger className="h-11 w-full">
+                            <SelectTrigger className="h-11 w-full rounded-2xl border-border/70 bg-background/88">
                                 <SelectValue placeholder="All Topics / Categories" />
                             </SelectTrigger>
                             <SelectContent>
@@ -298,7 +298,7 @@ export function QuestionSelectorDialog({
                                 })
                             }
                         >
-                            <SelectTrigger className="h-11 w-full">
+                            <SelectTrigger className="h-11 w-full rounded-2xl border-border/70 bg-background/88">
                                 <SelectValue placeholder="All Types" />
                             </SelectTrigger>
                             <SelectContent>
@@ -323,7 +323,7 @@ export function QuestionSelectorDialog({
                                 })
                             }
                         >
-                            <SelectTrigger className="h-11 w-full">
+                            <SelectTrigger className="h-11 w-full rounded-2xl border-border/70 bg-background/88">
                                 <SelectValue placeholder="All Approval States" />
                             </SelectTrigger>
                             <SelectContent>
@@ -339,7 +339,7 @@ export function QuestionSelectorDialog({
                     </div>
 
                     {/* Questions List */}
-                    <div className="max-h-[58vh] min-h-[420px] space-y-3 overflow-y-auto rounded-lg border p-4">
+                    <div className="max-h-[58vh] min-h-[420px] space-y-3 overflow-y-auto rounded-[1.4rem] border border-border/80 bg-background/36 p-4">
                         {loading ? (
                             <div className="py-8 text-center text-muted-foreground">
                                 Loading questions...
@@ -367,13 +367,13 @@ export function QuestionSelectorDialog({
                                 return (
                                     <div
                                         key={question.id}
-                                        className={`flex items-start gap-3 rounded-lg border p-4 transition-colors ${
+                                        className={`flex items-start gap-3 rounded-[1.2rem] border border-border/80 bg-[linear-gradient(180deg,color-mix(in_oklab,var(--color-card)_97%,white),color-mix(in_oklab,var(--color-card)_94%,var(--color-accent)))] p-4 shadow-[0_16px_30px_-28px_rgb(0_0_0_/_0.42)] transition-[border-color,box-shadow,transform,background-color] ${
                                             alreadyInExam
                                                 ? 'cursor-not-allowed opacity-60'
-                                                : 'cursor-pointer hover:bg-accent'
+                                                : 'cursor-pointer hover:-translate-y-0.5 hover:border-primary/15 hover:shadow-[0_22px_40px_-30px_rgb(96_44_193_/_0.2)]'
                                         } ${
                                             isSelected
-                                                ? 'border-primary bg-accent'
+                                                ? 'border-primary/35 bg-accent/40 shadow-[0_22px_40px_-30px_rgb(96_44_193_/_0.24)]'
                                                 : ''
                                         }`}
                                         onClick={() => {
@@ -392,20 +392,19 @@ export function QuestionSelectorDialog({
                                         <div className="flex-1 space-y-2">
                                             <div className="flex flex-wrap items-center gap-2">
                                                 {alreadyInExam && (
-                                                    <Badge variant="secondary">
+                                                    <Badge className="border-transparent bg-muted text-muted-foreground">
                                                         Already in exam
                                                     </Badge>
                                                 )}
                                                 {question.is_approved && (
                                                     <Badge
-                                                        variant="default"
-                                                        className="bg-green-600"
+                                                        className="border-transparent bg-success-soft text-success"
                                                     >
                                                         <Check className="mr-1 h-3 w-3" />
                                                         Approved
                                                     </Badge>
                                                 )}
-                                                <Badge variant="outline">
+                                                <Badge className="border-border/70 bg-background/88 text-foreground">
                                                     {
                                                         typeLabels[
                                                             question
@@ -426,11 +425,11 @@ export function QuestionSelectorDialog({
                                                         difficulty.slice(1)}
                                                 </Badge>
                                                 {question.topic && (
-                                                    <Badge variant="secondary">
+                                                    <Badge className="border-transparent bg-muted text-muted-foreground">
                                                         {question.topic.name}
                                                     </Badge>
                                                 )}
-                                                <Badge variant="outline">
+                                                <Badge className="border-border/70 bg-background/88 text-foreground">
                                                     {question.points} pts
                                                 </Badge>
                                             </div>

@@ -14,7 +14,13 @@ import AppLayout from '@/layouts/app-layout';
 import InstitutionExamsLayout from '@/layouts/exams/institution-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { ClipboardList, Pencil, Plus, Trash2 } from 'lucide-react';
+import {
+    Building2,
+    ClipboardList,
+    Pencil,
+    Plus,
+    Trash2,
+} from 'lucide-react';
 import { useState } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -29,6 +35,7 @@ interface Exam {
     title: string;
     description: string | null;
     exam_category: string | null;
+    organization_name?: string | null;
     questions_count: number;
     total_points: number;
     passing_score: number;
@@ -54,8 +61,18 @@ interface PageProps {
 
 export default function Drafts() {
     const { hasPermission } = usePermissions();
-    const { exams } = usePage<PageProps>().props;
+    const { auth, exams } = usePage<
+        PageProps & {
+            auth: {
+                currentOrganization?: {
+                    slug?: string | null;
+                } | null;
+            };
+        }
+    >().props;
     const [deletingExam, setDeletingExam] = useState<Exam | null>(null);
+    const currentOrgSlug = auth.currentOrganization?.slug;
+    const isAllOrganizationsView = currentOrgSlug === 'all-organizations';
     const categoryBadgeClassName =
         'rounded-full border border-border/70 bg-background/88 text-xs font-medium text-foreground';
 
@@ -133,6 +150,16 @@ export default function Drafts() {
                                                 <h3 className="font-semibold">
                                                     {exam.title}
                                                 </h3>
+                                                {isAllOrganizationsView
+                                                    && exam.organization_name && (
+                                                    <Badge
+                                                        variant="outline"
+                                                        className="rounded-full border-primary/20 bg-primary/5 text-xs font-medium text-primary"
+                                                    >
+                                                        <Building2 className="mr-1 h-3 w-3" />
+                                                        {exam.organization_name}
+                                                    </Badge>
+                                                )}
                                                 {exam.exam_category && (
                                                     <Badge
                                                         variant="outline"
