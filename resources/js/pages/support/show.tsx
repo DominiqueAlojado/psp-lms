@@ -62,6 +62,18 @@ interface PageProps {
         resolved_at: string | null;
     };
     messages: MessageItem[];
+    activityLogs: Array<{
+        id: number;
+        description: string;
+        created_at: string;
+        created_at_human: string;
+        causer: {
+            id: number;
+            name: string;
+            email: string;
+        } | null;
+        changes: string[];
+    }>;
     canManage: boolean;
     priorities: Option[];
     statuses: Option[];
@@ -128,6 +140,7 @@ function initials(name: string | null) {
 export default function SupportShow({
     ticket,
     messages,
+    activityLogs,
     canManage,
     priorities,
     statuses,
@@ -436,6 +449,53 @@ export default function SupportShow({
                                 )}
                                 {ticket.resolved_at && (
                                     <p>Resolved {ticket.resolved_at}</p>
+                                )}
+                            </CardContent>
+                        </Card>
+
+                        <Card>
+                            <CardHeader className="pb-3">
+                                <CardTitle>Activity Timeline</CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                                {activityLogs.length === 0 ? (
+                                    <div className="rounded-[1.25rem] border border-dashed border-border/80 p-5 text-sm text-muted-foreground">
+                                        No activity recorded yet.
+                                    </div>
+                                ) : (
+                                    activityLogs.map((log) => (
+                                        <div
+                                            key={log.id}
+                                            className="rounded-[1.25rem] border border-border/70 bg-background/85 p-4"
+                                        >
+                                            <div className="flex flex-col gap-2">
+                                                <div className="flex items-start justify-between gap-3">
+                                                    <div>
+                                                        <p className="font-medium text-foreground">
+                                                            {log.description}
+                                                        </p>
+                                                        <p className="text-xs text-muted-foreground">
+                                                            {log.causer
+                                                                ? `${log.causer.name} (${log.causer.email})`
+                                                                : 'System'}
+                                                        </p>
+                                                    </div>
+                                                    <div className="text-right text-xs text-muted-foreground">
+                                                        <p>{log.created_at_human}</p>
+                                                        <p>{log.created_at}</p>
+                                                    </div>
+                                                </div>
+
+                                                {log.changes.length > 0 && (
+                                                    <div className="space-y-1 rounded-xl bg-muted/45 p-3 text-xs text-muted-foreground">
+                                                        {log.changes.map((change, index) => (
+                                                            <p key={index}>{change}</p>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))
                                 )}
                             </CardContent>
                         </Card>

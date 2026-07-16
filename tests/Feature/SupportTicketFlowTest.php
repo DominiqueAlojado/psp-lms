@@ -49,6 +49,37 @@ class SupportTicketFlowTest extends TestCase
         $this->assertSame('open', $ticket->status);
     }
 
+    public function test_support_ticket_detail_includes_activity_logs(): void
+    {
+        $this->withoutMiddleware([
+            ValidateCsrfToken::class,
+            SetOrganizationFromUrl::class,
+        ]);
+
+        $organization = $this->createOrganization('alpha-chapter', 'Alpha Chapter');
+        $user = $this->createUserForOrganization($organization);
+
+        $this->actingAs($user)->post(route('support.store'), [
+            'title' => 'Activity log check',
+            'category' => 'bug',
+            'priority' => 'medium',
+            'module_name' => 'Support',
+            'page_url' => '/support',
+            'details' => 'Create a ticket and verify the timeline is present.',
+        ])->assertRedirect('/support');
+
+        $ticket = SupportTicket::query()->where('title', 'Activity log check')->firstOrFail();
+
+        $response = $this->actingAs($user)->get(route('support.show', $ticket));
+
+        $response->assertOk();
+        $response->assertInertia(fn ($page) => $page
+            ->component('support/show')
+            ->where('ticket.id', $ticket->id)
+            ->where('activityLogs.0.description', 'Support ticket created')
+        );
+    }
+
     public function test_support_index_only_shows_requester_tickets_for_current_organization(): void
     {
         $this->withoutMiddleware([SetOrganizationFromUrl::class]);

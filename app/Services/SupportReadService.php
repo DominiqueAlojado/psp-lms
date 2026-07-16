@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\SupportTicket;
 use App\Models\User;
 use App\Repositories\Contracts\SupportTicketRepositoryInterface;
+use App\Services\ActivityLog\SupportTicketActivityLogService;
 
 class SupportReadService
 {
@@ -13,6 +14,7 @@ class SupportReadService
     public function __construct(
         private readonly SupportTicketRepositoryInterface $supportTicketRepository,
         private readonly SupportManagementService $supportManagementService,
+        private readonly SupportTicketActivityLogService $supportTicketActivityLogService,
     ) {}
 
     public function indexPayload(User $user, array $filters): array
@@ -153,6 +155,7 @@ class SupportReadService
                 ],
                 'is_current_user' => $message->user_id === $user->id,
             ])->values(),
+            'activityLogs' => $this->supportTicketActivityLogService->getLogs($ticket),
             'canManage' => $canManage,
             'priorities' => $this->options($this->supportTicketRepository->getPriorities()),
             'statuses' => $this->options($this->supportTicketRepository->getStatuses()),
