@@ -176,7 +176,7 @@ class InstitutionExamCompletedAttemptsSeeder extends Seeder
                     }
                 }
 
-                $isCorrect = (rand(1, 100) <= 65); // 65% chance of correct answer (realistic performance)
+                $isCorrect = rand(1, 100) <= $this->correctChanceForYearLevel($resident->year_level);
                 $answerData = $this->generateAnswerData($question, $isCorrect);
 
                 if (empty($answerData) || (isset($answerData['choice_id']) && $answerData['choice_id'] === null)) {
@@ -296,5 +296,18 @@ class InstitutionExamCompletedAttemptsSeeder extends Seeder
             default:
                 return [];
         }
+    }
+
+    private function correctChanceForYearLevel(?string $yearLevel): int
+    {
+        return match ($yearLevel) {
+            'First Year' => 56,
+            'Second Year' => 64,
+            'Third Year' => 72,
+            'Fourth Year' => 78,
+            'Graduate' => 84,
+            'Pre Resident', 'Pre-Resident' => 48,
+            default => 65,
+        };
     }
 }

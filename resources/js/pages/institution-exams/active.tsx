@@ -66,6 +66,10 @@ export default function Active() {
     const [duplicateExam, setDuplicateExam] = useState<Exam | null>(null);
     const [duplicateTitle, setDuplicateTitle] = useState('');
     const [submittingDuplicate, setSubmittingDuplicate] = useState(false);
+    const publishedBadgeClassName =
+        'border-transparent bg-success-soft text-success';
+    const draftBadgeClassName =
+        'border-transparent bg-muted text-muted-foreground';
 
     const openDuplicateModal = (exam: Exam) => {
         setDuplicateExam(exam);
@@ -150,7 +154,7 @@ export default function Active() {
                             {exams.data.map((exam) => (
                                 <div
                                     key={exam.id}
-                                    className="rounded-lg border p-4 hover:bg-muted/50"
+                                    className="rounded-[1.35rem] border border-border/80 bg-[linear-gradient(180deg,color-mix(in_oklab,var(--color-card)_97%,white),color-mix(in_oklab,var(--color-card)_94%,var(--color-accent)))] p-4 shadow-[0_16px_30px_-28px_rgb(35_24_74_/_0.12)] transition-[border-color,box-shadow,transform] hover:-translate-y-0.5 hover:border-primary/15 hover:shadow-[0_22px_40px_-30px_rgb(96_44_193_/_0.22)] dark:shadow-[0_18px_32px_-28px_rgb(0_0_0_/_0.42)]"
                                 >
                                     <div className="flex items-start justify-between">
                                         <div className="flex-1">
@@ -161,7 +165,7 @@ export default function Active() {
                                                 {exam.exam_category && (
                                                     <Badge
                                                         variant="outline"
-                                                        className="text-xs"
+                                                        className="rounded-full border-border/70 bg-background/88 text-xs font-medium text-foreground"
                                                     >
                                                         {exam.exam_category}
                                                     </Badge>
@@ -196,11 +200,11 @@ export default function Active() {
                                         </div>
                                         <div className="flex items-center gap-2">
                                             {exam.is_published ? (
-                                                <Badge className="bg-green-600">
+                                                <Badge className={publishedBadgeClassName}>
                                                     Published
                                                 </Badge>
                                             ) : (
-                                                <Badge variant="secondary">
+                                                <Badge className={draftBadgeClassName}>
                                                     Draft
                                                 </Badge>
                                             )}

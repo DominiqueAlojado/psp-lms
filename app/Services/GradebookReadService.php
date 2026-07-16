@@ -129,8 +129,10 @@ class GradebookReadService
                 'year_level' => $resident->year_level,
                 'status' => $resident->status,
                 'course' => $resident->course,
+                'organization_name' => $resident->organization?->name,
             ],
             'stats' => $this->calculateUserStats($resident->user_id),
+            'comparison' => $this->buildComparisonPayload($resident),
             'categoryPerformance' => $this->getCategoryPerformance($resident->user_id),
             'topicPerformance' => $this->getTopicPerformance($resident->user_id),
             'recentExams' => $this->getRecentExams($resident->user_id, 20),
@@ -315,5 +317,76 @@ class GradebookReadService
             ->sortBy('date')
             ->values()
             ->toArray();
+    }
+
+    private function buildComparisonPayload(Resident $resident): array
+    {
+        $cohort = $this->gradebookRepository
+            ->getResidentsForOrganization($resident->organization_id)
+            ->filter(fn ($peer) => $peer->user_id !== null)
+            ->map(function ($peer) {
+                return [
+                    'resident_id' => $peer->id,
+                    'name' => $peer->full_name,
+                    'year_level' => $peer->year_level,
+                    'stats' => $this->calculateUserStats($peer->user_id),
+                ];
+            })
+            ->filter(fn (array $peer) => $peer['stats']['total_exams'] > 0)
+            ->values();
+
+        $residentStats = $cohort->firstWhere('resident_id', $resident->id)['stats'] ?? $this->calculateUserStats($resident->user_id);
+        $sameLevel = $cohort->where('year_level', $resident->year_level)->values();
+
+        $organizationLeaderboard = $cohort
+            ->sortByDesc(fn (array $peer) => $peer['stats']['average_percentage'])
+            ->values();
+
+        $sameLevelLeaderboard = $sameLevel
+            ->sortByDesc(fn (array $peer) => $peer['stats']['average_percentage'])
+            ->values();
+
+        $organizationRank = $organizationLeaderboard->search(fn (array $peer) => $peer['resident_id'] === $resident->id);
+        $sameLevelRank = $sameLevelLeaderboard->search(fn (array $peer) => $peer['resident_id'] === $resident->id);
+
+        $organizationAverage = $cohort->isNotEmpty()
+            ? round($cohort->avg(fn (array $peer) => $peer['stats']['average_percentage']), 2)
+            : 0;
+
+        $sameLevelAverage = $sameLevel->isNotEmpty()
+            ? round($sameLevel->avg(fn (array $peer) => $peer['stats']['average_percentage']), 2)
+            : 0;
+
+        return [
+            'organization_name' => $resident->organization?->name,
+            'resident_average_percentage' => round($residentStats['average_percentage'], 2),
+            'same_year_level_average_percentage' => $sameLevelAverage,
+            'organization_average_percentage' => $organizationAverage,
+            'same_year_level_gap' => round($residentStats['average_percentage'] - $sameLevelAverage, 2),
+            'organization_gap' => round($residentStats['average_percentage'] - $organizationAverage, 2),
+            'same_year_level_rank' => $sameLevelRank === false ? null : $sameLevelRank + 1,
+            'same_year_level_total' => $sameLevel->count(),
+            'organization_rank' => $organizationRank === false ? null : $organizationRank + 1,
+            'organization_total' => $cohort->count(),
+            'top_same_year_level_residents' => $sameLevelLeaderboard
+                ->take(3)
+                ->map(fn (array $peer) => [
+                    'resident_id' => $peer['resident_id'],
+                    'name' => $peer['name'],
+                    'average_percentage' => round($peer['stats']['average_percentage'], 2),
+                ])
+                ->values()
+                ->toArray(),
+            'top_organization_residents' => $organizationLeaderboard
+                ->take(5)
+                ->map(fn (array $peer) => [
+                    'resident_id' => $peer['resident_id'],
+                    'name' => $peer['name'],
+                    'year_level' => $peer['year_level'],
+                    'average_percentage' => round($peer['stats']['average_percentage'], 2),
+                ])
+                ->values()
+                ->toArray(),
+        ];
     }
 }

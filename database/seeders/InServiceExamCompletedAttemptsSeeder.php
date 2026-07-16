@@ -16,20 +16,14 @@ class InServiceExamCompletedAttemptsSeeder extends Seeder
      */
     public function run(): void
     {
-        // Only seed for Bataan General Hospital residents
-        $bataanOrg = \App\Models\Organization::where('slug', 'bataan-general-hospital')->first();
-
-        if (! $bataanOrg) {
-            $this->command->warn('Bataan General Hospital not found. Please run OrganizationSeeder first.');
-
-            return;
-        }
-
-        // Get only active residents from Bataan General Hospital with user accounts
+        // Get active residents with user accounts across active institution organizations
         $residents = Resident::with('user')
             ->whereHas('user')
             ->where('status', 'active')
-            ->where('organization_id', $bataanOrg->id)
+            ->whereHas('organization', function ($query) {
+                $query->where('type', 'institution')
+                    ->where('is_active', true);
+            })
             ->get();
 
         if ($residents->isEmpty()) {
@@ -61,7 +55,7 @@ class InServiceExamCompletedAttemptsSeeder extends Seeder
             return;
         }
 
-        $this->command->info("Found {$residents->count()} active resident(s)");
+        $this->command->info("Found {$residents->count()} active resident(s) across institutions");
         $this->command->info("Anatomic Pathology exam: {$anatomicExam->title} ({$anatomicExam->questions()->count()} questions)");
         $this->command->info("Clinical Pathology exam: {$clinicalExam->title} ({$clinicalExam->questions()->count()} questions)");
         $this->command->newLine();
@@ -115,6 +109,14 @@ class InServiceExamCompletedAttemptsSeeder extends Seeder
         $this->command->info("✅ Created {$totalAttemptsCreated} completed exam attempts");
         $this->command->info("✅ Created {$totalAnswersCreated} answers");
         $this->command->info('✅ Question bank statistics have been updated');
+
+        $anatomicExam->calculateNationalRankings();
+        $anatomicExam->calculateInstitutionRankings();
+        $this->calculatePercentiles($anatomicExam);
+
+        $clinicalExam->calculateNationalRankings();
+        $clinicalExam->calculateInstitutionRankings();
+        $this->calculatePercentiles($clinicalExam);
 
         // Recalculate discrimination indices for all questions with enough attempts
         $this->command->newLine();
@@ -265,7 +267,7 @@ class InServiceExamCompletedAttemptsSeeder extends Seeder
                     }
                 }
 
-                $isCorrect = (rand(1, 100) <= 65); // 65% chance of correct answer (realistic performance)
+                $isCorrect = rand(1, 100) <= $this->correctChanceForYearLevel($resident->year_level);
 
                 $answerData = $this->generateAnswerData($question, $isCorrect);
 
@@ -468,5 +470,41 @@ class InServiceExamCompletedAttemptsSeeder extends Seeder
         // Update statistics
         $timeSeconds = rand(30, 180); // Random time between 30-180 seconds per question
         $bankQuestion->updateStatistics($wasCorrect, $timeSeconds);
+    }
+
+    private function calculatePercentiles(NationalAssessment $exam): void
+    {
+        $attempts = $exam->attempts()
+            ->where('status', 'completed')
+            ->orderByDesc('score')
+            ->orderBy('submitted_at')
+            ->get();
+
+        $total = $attempts->count();
+
+        if ($total === 0) {
+            return;
+        }
+
+        foreach ($attempts as $index => $attempt) {
+            $percentile = $total === 1
+                ? 100
+                : round((($total - ($index + 1)) / ($total - 1)) * 100, 2);
+
+            $attempt->update(['percentile' => $percentile]);
+        }
+    }
+
+    private function correctChanceForYearLevel(?string $yearLevel): int
+    {
+        return match ($yearLevel) {
+            'First Year' => 54,
+            'Second Year' => 62,
+            'Third Year' => 70,
+            'Fourth Year' => 77,
+            'Graduate' => 82,
+            'Pre Resident', 'Pre-Resident' => 46,
+            default => 65,
+        };
     }
 }

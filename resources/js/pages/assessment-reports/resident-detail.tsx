@@ -33,6 +33,7 @@ interface ResidentInfo {
     year_level: string;
     status: string;
     course: string;
+    organization_name?: string | null;
 }
 
 interface Stats {
@@ -94,9 +95,32 @@ interface NationalAttempt {
     submitted_at: string;
 }
 
+interface ComparisonResident {
+    resident_id: number;
+    name: string;
+    average_percentage: number;
+    year_level?: string;
+}
+
+interface Comparison {
+    organization_name: string | null;
+    resident_average_percentage: number;
+    same_year_level_average_percentage: number;
+    organization_average_percentage: number;
+    same_year_level_gap: number;
+    organization_gap: number;
+    same_year_level_rank: number | null;
+    same_year_level_total: number;
+    organization_rank: number | null;
+    organization_total: number;
+    top_same_year_level_residents: ComparisonResident[];
+    top_organization_residents: ComparisonResident[];
+}
+
 interface Props {
     resident: ResidentInfo;
     stats: Stats;
+    comparison: Comparison;
     categoryPerformance: CategoryPerformance[];
     topicPerformance: TopicPerformance[];
     institutionAttempts: InstitutionAttempt[];
@@ -113,6 +137,7 @@ const breadcrumbs: BreadcrumbItem[] = [
 export default function ResidentDetailReport({
     resident,
     stats,
+    comparison,
     categoryPerformance,
     topicPerformance,
     institutionAttempts,
@@ -153,6 +178,11 @@ export default function ResidentDetailReport({
                                 {resident.status}
                             </Badge>
                             <Badge variant="secondary">{resident.course}</Badge>
+                            {resident.organization_name ? (
+                                <Badge variant="outline">
+                                    {resident.organization_name}
+                                </Badge>
+                            ) : null}
                         </div>
                     </div>
 
@@ -210,6 +240,132 @@ export default function ResidentDetailReport({
                             </div>
                         </CardContent>
                     </Card>
+
+                    <div className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
+                        <Card className="overflow-hidden border-border/80 bg-[linear-gradient(180deg,color-mix(in_oklab,var(--color-card)_97%,white),color-mix(in_oklab,var(--color-card)_94%,var(--color-accent)))]">
+                            <CardHeader className="pb-3">
+                                <CardTitle>Peer Comparison</CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                                <div className="grid gap-4 md:grid-cols-3">
+                                    <div className="rounded-xl border border-border/70 bg-background/80 p-4">
+                                        <p className="text-xs font-semibold tracking-[0.12em] text-muted-foreground uppercase">
+                                            Resident
+                                        </p>
+                                        <p className="mt-2 text-2xl font-semibold">
+                                            {comparison.resident_average_percentage.toFixed(1)}%
+                                        </p>
+                                        <p className="text-sm text-muted-foreground">
+                                            Overall average
+                                        </p>
+                                    </div>
+                                    <div className="rounded-xl border border-border/70 bg-background/80 p-4">
+                                        <p className="text-xs font-semibold tracking-[0.12em] text-muted-foreground uppercase">
+                                            Same Level
+                                        </p>
+                                        <p className="mt-2 text-2xl font-semibold">
+                                            {comparison.same_year_level_average_percentage.toFixed(1)}%
+                                        </p>
+                                        <p className="text-sm text-muted-foreground">
+                                            {comparison.same_year_level_rank
+                                                ? `Rank ${comparison.same_year_level_rank} of ${comparison.same_year_level_total}`
+                                                : 'No same-level cohort data'}
+                                        </p>
+                                    </div>
+                                    <div className="rounded-xl border border-border/70 bg-background/80 p-4">
+                                        <p className="text-xs font-semibold tracking-[0.12em] text-muted-foreground uppercase">
+                                            All Residents
+                                        </p>
+                                        <p className="mt-2 text-2xl font-semibold">
+                                            {comparison.organization_average_percentage.toFixed(1)}%
+                                        </p>
+                                        <p className="text-sm text-muted-foreground">
+                                            {comparison.organization_rank
+                                                ? `Rank ${comparison.organization_rank} of ${comparison.organization_total}`
+                                                : 'No organization cohort data'}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div className="grid gap-4 md:grid-cols-2">
+                                    <div className="rounded-xl border border-border/70 bg-background/80 p-4">
+                                        <p className="text-sm font-medium">
+                                            Versus same year level
+                                        </p>
+                                        <p className="mt-2 text-xl font-semibold">
+                                            {comparison.same_year_level_gap >= 0 ? '+' : ''}
+                                            {comparison.same_year_level_gap.toFixed(1)} pts
+                                        </p>
+                                        <p className="text-sm text-muted-foreground">
+                                            Difference from the {resident.year_level.toLowerCase()} average
+                                        </p>
+                                    </div>
+                                    <div className="rounded-xl border border-border/70 bg-background/80 p-4">
+                                        <p className="text-sm font-medium">
+                                            Versus all residents
+                                        </p>
+                                        <p className="mt-2 text-xl font-semibold">
+                                            {comparison.organization_gap >= 0 ? '+' : ''}
+                                            {comparison.organization_gap.toFixed(1)} pts
+                                        </p>
+                                        <p className="text-sm text-muted-foreground">
+                                            Difference from the organization-wide average
+                                        </p>
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        <Card className="overflow-hidden border-border/80 bg-[linear-gradient(180deg,color-mix(in_oklab,var(--color-card)_97%,white),color-mix(in_oklab,var(--color-card)_94%,var(--color-accent)))]">
+                            <CardHeader className="pb-3">
+                                <CardTitle>Cohort Leaders</CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                                <div className="space-y-3">
+                                    <p className="text-xs font-semibold tracking-[0.12em] text-muted-foreground uppercase">
+                                        Same year level
+                                    </p>
+                                    {comparison.top_same_year_level_residents.map((peer, index) => (
+                                        <div
+                                            key={`same-level-${peer.resident_id}`}
+                                            className="flex items-center justify-between rounded-xl border border-border/70 bg-background/80 px-4 py-3"
+                                        >
+                                            <div>
+                                                <p className="font-medium">{index + 1}. {peer.name}</p>
+                                            </div>
+                                            <Badge variant="secondary">
+                                                {peer.average_percentage.toFixed(1)}%
+                                            </Badge>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                <div className="space-y-3">
+                                    <p className="text-xs font-semibold tracking-[0.12em] text-muted-foreground uppercase">
+                                        Overall
+                                    </p>
+                                    {comparison.top_organization_residents.map((peer, index) => (
+                                        <div
+                                            key={`org-${peer.resident_id}`}
+                                            className="flex items-center justify-between rounded-xl border border-border/70 bg-background/80 px-4 py-3"
+                                        >
+                                            <div>
+                                                <p className="font-medium">{index + 1}. {peer.name}</p>
+                                                {peer.year_level ? (
+                                                    <p className="text-xs text-muted-foreground">
+                                                        {peer.year_level}
+                                                    </p>
+                                                ) : null}
+                                            </div>
+                                            <Badge variant="secondary">
+                                                {peer.average_percentage.toFixed(1)}%
+                                            </Badge>
+                                        </div>
+                                    ))}
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </div>
 
                     <Tabs defaultValue="overview" className="space-y-4">
                         <TabsList className="grid w-full grid-cols-3 lg:w-fit lg:min-w-[34rem]">
