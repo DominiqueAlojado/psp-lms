@@ -51,12 +51,12 @@ class NationalAssessmentRepository implements NationalAssessmentRepositoryInterf
 
     public function loadForEdit(NationalAssessment $assessment): NationalAssessment
     {
-        return $assessment->load(['questions.choices', 'questions.topicRecord:id,name', 'creator:id,name']);
+        return $assessment->load($this->assessmentDetailRelations(true));
     }
 
     public function loadForShow(NationalAssessment $assessment): NationalAssessment
     {
-        return $assessment->load(['questions.choices', 'creator:id,name']);
+        return $assessment->load($this->assessmentDetailRelations(false));
     }
 
     public function loadQuestionsWithChoices(NationalAssessment $assessment): NationalAssessment
@@ -99,5 +99,35 @@ class NationalAssessmentRepository implements NationalAssessmentRepositoryInterf
                 }
             })
             ->orderBy($sort, $direction);
+    }
+
+    private function assessmentDetailRelations(bool $includeTopicRelation): array
+    {
+        $relations = [
+            'questions' => fn ($query) => $query
+                ->select([
+                    'id',
+                    'assessment_id',
+                    'question_type',
+                    'question_text',
+                    'points',
+                    'explanation',
+                    'image_path',
+                    'topic',
+                    'topic_id',
+                    'order',
+                ])
+                ->orderBy('order'),
+            'questions.choices' => fn ($query) => $query
+                ->select(['id', 'question_id', 'choice_text', 'is_correct', 'order'])
+                ->orderBy('order'),
+            'creator:id,name',
+        ];
+
+        if ($includeTopicRelation) {
+            $relations[] = 'questions.topicRecord:id,name';
+        }
+
+        return $relations;
     }
 }

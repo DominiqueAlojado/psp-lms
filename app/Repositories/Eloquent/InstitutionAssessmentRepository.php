@@ -47,16 +47,12 @@ class InstitutionAssessmentRepository implements InstitutionAssessmentRepository
 
     public function loadForEdit(InstitutionAssessment $assessment): InstitutionAssessment
     {
-        return $assessment->load([
-            'questions' => fn ($query) => $query->orderBy('order'),
-            'questions.choices',
-            'creator:id,name',
-        ]);
+        return $assessment->load($this->assessmentDetailRelations(true));
     }
 
     public function loadForShow(InstitutionAssessment $assessment): InstitutionAssessment
     {
-        return $assessment->load(['questions.choices', 'creator:id,name']);
+        return $assessment->load($this->assessmentDetailRelations(false));
     }
 
     public function loadQuestionsWithChoices(InstitutionAssessment $assessment): InstitutionAssessment
@@ -80,5 +76,33 @@ class InstitutionAssessmentRepository implements InstitutionAssessmentRepository
             ->where('organization_id', $organizationId)
             ->where('title', $title)
             ->exists();
+    }
+
+    private function assessmentDetailRelations(bool $includeTopicId): array
+    {
+        $questionColumns = [
+            'id',
+            'assessment_id',
+            'question_type',
+            'question_text',
+            'points',
+            'explanation',
+            'image_path',
+            'order',
+        ];
+
+        if ($includeTopicId) {
+            $questionColumns[] = 'topic_id';
+        }
+
+        return [
+            'questions' => fn ($query) => $query
+                ->select($questionColumns)
+                ->orderBy('order'),
+            'questions.choices' => fn ($query) => $query
+                ->select(['id', 'question_id', 'choice_text', 'is_correct', 'order'])
+                ->orderBy('order'),
+            'creator:id,name',
+        ];
     }
 }
