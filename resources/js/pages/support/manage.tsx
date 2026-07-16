@@ -84,13 +84,13 @@ function statusBadge(status: string) {
     switch (status) {
         case 'resolved':
             return (
-                <Badge className="border-transparent bg-emerald-100 text-emerald-700">
+                <Badge className="border-transparent bg-success-soft text-success">
                     Resolved
                 </Badge>
             );
         case 'in_review':
             return (
-                <Badge className="border-transparent bg-amber-100 text-amber-700">
+                <Badge className="border-transparent bg-warning-soft text-warning">
                     In Review
                 </Badge>
             );
@@ -107,13 +107,13 @@ function priorityBadge(priority: string) {
     switch (priority) {
         case 'high':
             return (
-                <Badge className="border-transparent bg-rose-100 text-rose-700">
+                <Badge className="border-transparent bg-danger-soft text-danger">
                     High
                 </Badge>
             );
         case 'medium':
             return (
-                <Badge className="border-transparent bg-amber-100 text-amber-700">
+                <Badge className="border-transparent bg-warning-soft text-warning">
                     Medium
                 </Badge>
             );
@@ -209,7 +209,7 @@ export default function SupportManage({
                     <StatCard title="Resolved" value={summary.resolved} description="Closed out cleanly" icon={CheckCircle2} />
                 </div>
 
-                <Card>
+                <Card className="border-border/80 bg-[linear-gradient(180deg,color-mix(in_oklab,var(--color-card)_97%,white),color-mix(in_oklab,var(--color-card)_94%,var(--color-accent)))]">
                     <CardHeader className="pb-4">
                         <CardTitle className="flex items-center gap-2 text-base">
                             <Filter className="h-4 w-4" />
@@ -328,7 +328,7 @@ export default function SupportManage({
                     </CardContent>
                 </Card>
 
-                <Card>
+                <Card className="border-border/80 bg-[linear-gradient(180deg,color-mix(in_oklab,var(--color-card)_97%,white),color-mix(in_oklab,var(--color-card)_94%,var(--color-accent)))]">
                     <CardHeader className="pb-4">
                         <CardTitle className="text-base">Queue</CardTitle>
                     </CardHeader>
@@ -344,7 +344,7 @@ export default function SupportManage({
                             tickets.data.map((ticket) => (
                                 <div
                                     key={ticket.id}
-                                    className="rounded-[1.25rem] border border-border/70 bg-background/85 p-5"
+                                    className="rounded-[1.25rem] border border-border/75 bg-background/88 p-5 shadow-[0_18px_34px_-30px_rgb(35_24_74_/_0.16)] dark:shadow-[0_18px_34px_-28px_rgb(0_0_0_/_0.42)]"
                                 >
                                     <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
                                         <div className="space-y-2">

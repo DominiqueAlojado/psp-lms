@@ -70,7 +70,7 @@ export function StatCard({
     return (
         <Card
             className={cn(
-                'relative overflow-hidden border-border/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(255,255,255,0.92))]',
+                'relative overflow-hidden border-border/80 bg-[linear-gradient(180deg,color-mix(in_oklab,var(--color-card)_97%,white),color-mix(in_oklab,var(--color-card)_93%,var(--color-accent)))]',
                 'before:absolute before:inset-x-6 before:top-0 before:h-px before:bg-[image:var(--gradient-brand-soft)] before:content-[""]',
                 onClick &&
                     'cursor-pointer transition-[transform,box-shadow,border-color] hover:-translate-y-0.5 hover:border-primary/15 hover:shadow-[0_26px_52px_-36px_rgb(96_44_193_/_0.3)]',

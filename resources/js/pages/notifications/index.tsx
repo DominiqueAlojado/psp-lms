@@ -109,7 +109,7 @@ export default function NotificationsIndex({ summary, notificationFeed }: PagePr
                     <StatCard title="Read" value={summary.read} description="Already reviewed" icon={CheckCircle2} />
                 </div>
 
-                <Card>
+                <Card className="border-border/80 bg-[linear-gradient(180deg,color-mix(in_oklab,var(--color-card)_97%,white),color-mix(in_oklab,var(--color-card)_94%,var(--color-accent)))]">
                     <CardHeader className="pb-4">
                         <CardTitle>Recent Activity</CardTitle>
                     </CardHeader>
@@ -127,8 +127,8 @@ export default function NotificationsIndex({ summary, notificationFeed }: PagePr
                                     key={notification.id}
                                     className={`rounded-[1.25rem] border p-5 ${
                                         notification.is_read
-                                            ? 'border-border/70 bg-background/85'
-                                            : 'border-primary/20 bg-primary/5'
+                                            ? 'border-border/75 bg-background/88'
+                                            : 'border-primary/25 bg-primary/8 shadow-[0_18px_34px_-30px_rgb(96_44_193_/_0.18)] dark:shadow-[0_18px_34px_-28px_rgb(59_27_135_/_0.32)]'
                                     }`}
                                 >
                                     <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">

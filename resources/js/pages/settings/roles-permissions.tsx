@@ -227,7 +227,7 @@ export default function RolesPermissions() {
 
                         {/* Tab 1: Roles */}
                         <TabsContent value="roles" className="space-y-4 pt-4">
-                            <Card className="overflow-hidden border-border/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,255,255,0.94))]">
+                            <Card className="overflow-hidden border-border/80 bg-[linear-gradient(180deg,color-mix(in_oklab,var(--color-card)_97%,white),color-mix(in_oklab,var(--color-card)_94%,var(--color-accent)))]">
                                 <CardHeader className="pb-3">
                                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                                         <div>
@@ -318,7 +318,7 @@ export default function RolesPermissions() {
                             value="permissions"
                             className="space-y-4 pt-4"
                         >
-                            <Card className="overflow-hidden border-border/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,255,255,0.94))]">
+                            <Card className="overflow-hidden border-border/80 bg-[linear-gradient(180deg,color-mix(in_oklab,var(--color-card)_97%,white),color-mix(in_oklab,var(--color-card)_94%,var(--color-accent)))]">
                                 <CardHeader className="pb-3">
                                     <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
                                         <div>
@@ -415,7 +415,7 @@ export default function RolesPermissions() {
 
                         {/* Tab 3: Assign Permissions */}
                         <TabsContent value="assign" className="space-y-4 pt-4">
-                            <Card className="overflow-hidden border-border/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,255,255,0.94))]">
+                            <Card className="overflow-hidden border-border/80 bg-[linear-gradient(180deg,color-mix(in_oklab,var(--color-card)_97%,white),color-mix(in_oklab,var(--color-card)_94%,var(--color-accent)))]">
                                 <CardHeader className="pb-3">
                                     <CardTitle>
                                         Assign Permissions to Roles
