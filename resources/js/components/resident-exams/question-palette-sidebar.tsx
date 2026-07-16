@@ -73,24 +73,26 @@ export const QuestionPaletteSidebar = memo(function QuestionPaletteSidebar({
                                     className={cn(
                                         'flex w-full items-center gap-3 rounded-lg border-2 px-4 py-2.5 text-left transition-all',
                                         current &&
-                                            'border-primary bg-primary/20 ring-2 ring-primary ring-offset-2',
+                                            'border-[var(--exam-current-border)] bg-[var(--exam-current-bg)] ring-2 ring-[var(--exam-current-border)] ring-offset-2',
                                         answered &&
                                             !current &&
-                                            'border-green-500 bg-green-500/20 hover:bg-green-500/30',
+                                            'border-[var(--exam-answered-border)] bg-[var(--exam-answered-bg)] hover:bg-[color-mix(in_oklab,var(--exam-answered-bg)_82%,white)]',
                                         !answered &&
                                             !current &&
-                                            'border-muted-foreground hover:border-primary hover:bg-muted',
+                                            'border-[var(--exam-neutral-border)] bg-[var(--exam-neutral-bg)] hover:border-[var(--exam-current-border)] hover:bg-muted',
                                     )}
                                 >
                                     <span
                                         className={cn(
                                             'flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-sm font-semibold',
                                             current &&
-                                                'bg-primary text-primary-foreground',
+                                                'bg-[var(--exam-current-border)] text-[var(--exam-current-fg)]',
                                             answered &&
                                                 !current &&
-                                                'bg-green-500 text-white',
-                                            !answered && !current && 'bg-muted',
+                                                'bg-[var(--exam-answered-border)] text-[var(--exam-current-fg)]',
+                                            !answered &&
+                                                !current &&
+                                                'bg-muted text-[var(--exam-neutral-fg)]',
                                         )}
                                     >
                                         {index + 1}
@@ -101,7 +103,7 @@ export const QuestionPaletteSidebar = memo(function QuestionPaletteSidebar({
                                                 Item No. {index + 1}
                                             </p>
                                             {marked && (
-                                                <Flag className="h-3.5 w-3.5 fill-orange-500 text-orange-500" />
+                                                <Flag className="h-3.5 w-3.5 fill-[var(--exam-marked-fg)] text-[var(--exam-marked-fg)]" />
                                             )}
                                         </div>
                                         <p className="text-xs text-muted-foreground">

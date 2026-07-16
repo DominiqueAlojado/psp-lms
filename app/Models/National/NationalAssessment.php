@@ -106,32 +106,38 @@ class NationalAssessment extends Model
 
     public function calculateNationalRankings(): void
     {
-        // Get all completed attempts ordered by score
         $attempts = $this->attempts()
-            ->where('status', 'completed')
+            ->whereIn('status', ['completed', 'graded'])
             ->orderByDesc('score')
             ->orderBy('submitted_at')
             ->get();
 
-        // Assign national ranks
+        $totalAttempts = $attempts->count();
+
         foreach ($attempts as $index => $attempt) {
-            $attempt->update(['national_rank' => $index + 1]);
+            $rank = $index + 1;
+            $percentile = $totalAttempts <= 1
+                ? 100
+                : round((($totalAttempts - $rank) / ($totalAttempts - 1)) * 100, 2);
+
+            $attempt->update([
+                'national_rank' => $rank,
+                'percentile' => $percentile,
+            ]);
         }
     }
 
     public function calculateInstitutionRankings(): void
     {
-        // Get all unique organizations
         $organizationIds = $this->attempts()
-            ->where('status', 'completed')
+            ->whereIn('status', ['completed', 'graded'])
             ->distinct()
             ->pluck('organization_id');
 
-        // Calculate rank within each institution
         foreach ($organizationIds as $orgId) {
             $attempts = $this->attempts()
                 ->where('organization_id', $orgId)
-                ->where('status', 'completed')
+                ->whereIn('status', ['completed', 'graded'])
                 ->orderByDesc('score')
                 ->orderBy('submitted_at')
                 ->get();

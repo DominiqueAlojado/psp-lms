@@ -252,6 +252,56 @@ class ResidentExamManagementServiceTest extends TestCase
         $this->assertSame(0.0, (float) $invalidAnswer->fresh()->points_earned);
     }
 
+    public function test_it_computes_national_standing_fields_when_submitting_a_national_attempt(): void
+    {
+        $service = app(ResidentExamManagementService::class);
+
+        [$user, $attempt, $question] = $this->createNationalAttemptFixtureWithQuestion();
+        $choice = $question->choices()->first();
+
+        $peerUser = User::factory()->create([
+            'current_organization_id' => $attempt->organization_id,
+        ]);
+        $peerUser->organizations()->attach($attempt->organization_id, ['joined_at' => now(), 'is_active' => true]);
+
+        NationalAttempt::create([
+            'assessment_id' => $attempt->assessment_id,
+            'user_id' => $peerUser->id,
+            'organization_id' => $attempt->organization_id,
+            'status' => 'completed',
+            'started_at' => now()->subMinutes(30),
+            'submitted_at' => now()->subMinutes(10),
+            'total_points' => 10,
+            'score' => 5,
+        ]);
+
+        \App\Models\National\NationalAnswer::create([
+            'attempt_id' => $attempt->id,
+            'question_id' => $question->id,
+            'answer_data' => ['choice_id' => $choice->id],
+            'answer_change_count' => 1,
+        ]);
+
+        $request = Request::create('/exams/inservice/' . $attempt->id . '/submit', 'POST');
+        $request->setLaravelSession(app('session')->driver());
+        $request->session()->start();
+        $request->session()->setId('resident-national-submit-session');
+        $request->setUserResolver(fn () => $user);
+
+        $attempt->update(['active_session_id' => 'resident-national-submit-session']);
+        $attempt->load(['answers.question.choices', 'assessment']);
+
+        $response = $service->submit($request, 'inservice', $attempt->id);
+
+        $freshAttempt = $attempt->fresh();
+
+        $this->assertSame(200, $response['status']);
+        $this->assertSame('completed', $freshAttempt->status);
+        $this->assertSame(1, $freshAttempt->national_rank);
+        $this->assertSame(1, $freshAttempt->institution_rank);
+        $this->assertSame(100.0, (float) $freshAttempt->percentile);
+    }
+
     public function test_it_normalizes_national_monitoring_rows_and_sets_attempt_foreign_keys(): void
     {
         $service = app(ResidentExamManagementService::class);
@@ -409,5 +459,30 @@ class ResidentExamManagementServiceTest extends TestCase
         ]);
 
         return [$user, $attempt];
+    }
+
+    /**
+     * @return array{0: User, 1: NationalAttempt, 2: \App\Models\National\NationalQuestion}
+     */
+    private function createNationalAttemptFixtureWithQuestion(): array
+    {
+        [$user, $attempt] = $this->createNationalAttemptFixture();
+
+        $question = \App\Models\National\NationalQuestion::create([
+            'assessment_id' => $attempt->assessment_id,
+            'question_type' => 'multiple_choice',
+            'question_text' => 'What is 2 + 2?',
+            'points' => 10,
+            'order' => 1,
+        ]);
+
+        \App\Models\National\NationalQuestionChoice::create([
+            'question_id' => $question->id,
+            'choice_text' => '4',
+            'is_correct' => true,
+            'order' => 1,
+        ]);
+
+        return [$user, $attempt, $question];
     }
 }

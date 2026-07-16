@@ -57,24 +57,24 @@ export const QuestionPaletteLegend = memo(function QuestionPaletteLegend({
                 {/* Status Indicators - Wrapped */}
                 <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                     <div className="flex items-center gap-1.5">
-                        <div className="h-4 w-4 rounded border-2 border-green-500 bg-green-500/20" />
+                        <div className="h-4 w-4 rounded border-2 border-[var(--exam-answered-border)] bg-[var(--exam-answered-bg)]" />
                         <span className="text-xs font-medium">
                             Ans ({answeredCount})
                         </span>
                     </div>
                     <div className="flex items-center gap-1.5">
-                        <div className="h-4 w-4 rounded border-2 border-muted-foreground" />
+                        <div className="h-4 w-4 rounded border-2 border-[var(--exam-neutral-border)] bg-[var(--exam-neutral-bg)]" />
                         <span className="text-xs font-medium">
                             Not ({notAnsweredCount})
                         </span>
                     </div>
                     <div className="flex items-center gap-1.5">
-                        <div className="h-4 w-4 rounded border-2 border-primary bg-primary/20" />
+                        <div className="h-4 w-4 rounded border-2 border-[var(--exam-current-border)] bg-[var(--exam-current-bg)]" />
                         <span className="text-xs font-medium">Current</span>
                     </div>
                     <div className="flex items-center gap-1.5">
-                        <div className="flex h-4 w-4 items-center justify-center rounded border-2 border-orange-500 bg-orange-500/20">
-                            <Flag className="h-2.5 w-2.5 fill-orange-500 text-orange-500" />
+                        <div className="flex h-4 w-4 items-center justify-center rounded border-2 border-[var(--exam-marked-border)] bg-[var(--exam-marked-bg)]">
+                            <Flag className="h-2.5 w-2.5 fill-[var(--exam-marked-fg)] text-[var(--exam-marked-fg)]" />
                         </div>
                         <span className="text-xs font-medium">
                             Mark ({markedCount})
@@ -102,24 +102,24 @@ export const QuestionPaletteLegend = memo(function QuestionPaletteLegend({
                 <div className="flex items-center justify-end">
                     <div className="flex items-center gap-3">
                         <div className="flex items-center gap-2">
-                            <div className="h-5 w-5 rounded border-2 border-green-500 bg-green-500/20" />
+                            <div className="h-5 w-5 rounded border-2 border-[var(--exam-answered-border)] bg-[var(--exam-answered-bg)]" />
                             <span className="text-xs font-medium">
                                 Answered ({answeredCount})
                             </span>
                         </div>
                         <div className="flex items-center gap-2">
-                            <div className="h-5 w-5 rounded border-2 border-muted-foreground" />
+                            <div className="h-5 w-5 rounded border-2 border-[var(--exam-neutral-border)] bg-[var(--exam-neutral-bg)]" />
                             <span className="text-xs font-medium">
                                 Not Answered ({notAnsweredCount})
                             </span>
                         </div>
                         <div className="flex items-center gap-2">
-                            <div className="h-5 w-5 rounded border-2 border-primary bg-primary/20" />
+                            <div className="h-5 w-5 rounded border-2 border-[var(--exam-current-border)] bg-[var(--exam-current-bg)]" />
                             <span className="text-xs font-medium">Current</span>
                         </div>
                         <div className="flex items-center gap-2">
-                            <div className="flex h-5 w-5 items-center justify-center rounded border-2 border-orange-500 bg-orange-500/20">
-                                <Flag className="h-3 w-3 fill-orange-500 text-orange-500" />
+                            <div className="flex h-5 w-5 items-center justify-center rounded border-2 border-[var(--exam-marked-border)] bg-[var(--exam-marked-bg)]">
+                                <Flag className="h-3 w-3 fill-[var(--exam-marked-fg)] text-[var(--exam-marked-fg)]" />
                             </div>
                             <span className="text-xs font-medium">
                                 Marked ({markedCount})

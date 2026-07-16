@@ -77,7 +77,8 @@ export const QuestionDisplay = memo(function QuestionDisplay({
                         size="sm"
                         onClick={() => onToggleMark(question.id)}
                         className={cn(
-                            isMarked && 'bg-orange-500 hover:bg-orange-600',
+                            isMarked &&
+                                'border-[var(--exam-marked-border)] bg-[var(--exam-marked-bg)] text-[var(--exam-marked-fg)] hover:bg-[color-mix(in_oklab,var(--exam-marked-bg)_82%,white)] hover:text-[var(--exam-marked-fg)]',
                         )}
                     >
                         <Flag
@@ -94,7 +95,7 @@ export const QuestionDisplay = memo(function QuestionDisplay({
                 <div className="space-y-4 sm:space-y-6">
                     {/* Question Header */}
                     <div className="flex items-start gap-2 sm:gap-4">
-                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-medium text-primary-foreground sm:h-10 sm:w-10 sm:text-base">
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--exam-current-border)] text-sm font-medium text-[var(--exam-current-fg)] sm:h-10 sm:w-10 sm:text-base">
                             {questionIndex + 1}
                         </span>
                         <div className="min-w-0 flex-1">
@@ -159,7 +160,7 @@ export const QuestionDisplay = memo(function QuestionDisplay({
                                         ? Array.isArray(answer) &&
                                           answer.includes(choice.id)
                                         : answer === choice.id) &&
-                                        'border-primary bg-primary/5',
+                                        'border-[var(--exam-selected-border)] bg-[var(--exam-selected-bg)]',
                                 )}
                             >
                                 <input

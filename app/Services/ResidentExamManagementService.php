@@ -116,6 +116,16 @@ class ResidentExamManagementService
             'active_session_id' => null,
         ]);
 
+        if ($type !== 'institution' && $attempt->assessment) {
+            if ($attempt->assessment->national_ranking_enabled) {
+                $attempt->assessment->calculateNationalRankings();
+            }
+
+            if ($attempt->assessment->institution_comparison_enabled) {
+                $attempt->assessment->calculateInstitutionRankings();
+            }
+        }
+
         return [
             'status' => 200,
             'message' => 'Exam submitted successfully! Score: ' . $attempt->percentage . '%',
