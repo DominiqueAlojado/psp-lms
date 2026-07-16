@@ -1,5 +1,6 @@
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { HelpTooltip } from '@/components/ui/help-tooltip';
 import { Progress } from '@/components/ui/progress';
 import {
     Select,
@@ -298,11 +299,27 @@ export default function MyGrades({
                             </div>
                         </CardHeader>
                         <CardContent className="space-y-4">
-                            <div className="grid gap-4 md:grid-cols-3">
+                            <div
+                                className={`grid gap-4 ${
+                                    comparison.is_national_context
+                                        ? 'md:grid-cols-2'
+                                        : 'md:grid-cols-3'
+                                }`}
+                            >
                                 <div className="rounded-xl border border-border/70 bg-background/80 p-4">
-                                    <p className="text-xs font-semibold tracking-[0.12em] text-muted-foreground uppercase">
-                                        {comparison.metric_label}
-                                    </p>
+                                    <div className="flex items-start justify-between gap-3">
+                                        <p className="text-xs font-semibold tracking-[0.12em] text-muted-foreground uppercase">
+                                            {comparison.metric_label}
+                                        </p>
+                                        <HelpTooltip
+                                            content={
+                                                comparison.comparison_mode === 'selected_exam'
+                                                    ? 'This is your score for the selected exam attempt.'
+                                                    : 'This is your average performance across all completed exams in this view.'
+                                            }
+                                            ariaLabel="Explain selected score"
+                                        />
+                                    </div>
                                     <p className="mt-2 text-2xl font-semibold">
                                         {comparison.resident_average_percentage.toFixed(1)}%
                                     </p>
@@ -314,9 +331,15 @@ export default function MyGrades({
                                 </div>
                                 {!comparison.is_national_context && (
                                     <div className="rounded-xl border border-border/70 bg-background/80 p-4">
-                                        <p className="text-xs font-semibold tracking-[0.12em] text-muted-foreground uppercase">
-                                            {comparison.comparison_group_label}
-                                        </p>
+                                        <div className="flex items-start justify-between gap-3">
+                                            <p className="text-xs font-semibold tracking-[0.12em] text-muted-foreground uppercase">
+                                                {comparison.comparison_group_label}
+                                            </p>
+                                            <HelpTooltip
+                                                content="This shows the average score of residents in your same year level for the current comparison scope."
+                                                ariaLabel="Explain year-level average"
+                                            />
+                                        </div>
                                         <p className="mt-2 text-2xl font-semibold">
                                             {comparison.same_year_level_average_percentage.toFixed(1)}%
                                         </p>
@@ -330,9 +353,15 @@ export default function MyGrades({
                                     </div>
                                 )}
                                 <div className="rounded-xl border border-border/70 bg-background/80 p-4">
-                                    <p className="text-xs font-semibold tracking-[0.12em] text-muted-foreground uppercase">
-                                        Organization Average
-                                    </p>
+                                    <div className="flex items-start justify-between gap-3">
+                                        <p className="text-xs font-semibold tracking-[0.12em] text-muted-foreground uppercase">
+                                            Organization Average
+                                        </p>
+                                        <HelpTooltip
+                                            content="This is the average score across all residents in your organization for the selected exam or overall view."
+                                            ariaLabel="Explain organization average"
+                                        />
+                                    </div>
                                     <p className="mt-2 text-2xl font-semibold">
                                         {comparison.organization_average_percentage.toFixed(1)}%
                                     </p>
@@ -346,12 +375,24 @@ export default function MyGrades({
                                 </div>
                             </div>
 
-                            <div className="grid gap-4 md:grid-cols-2">
+                            <div
+                                className={`grid gap-4 ${
+                                    comparison.is_national_context
+                                        ? 'md:grid-cols-1'
+                                        : 'md:grid-cols-2'
+                                }`}
+                            >
                                 {!comparison.is_national_context && (
                                     <div className="rounded-xl border border-border/70 bg-background/80 p-4">
-                                        <p className="text-sm font-medium">
-                                            Versus {comparison.year_level}
-                                        </p>
+                                        <div className="flex items-start justify-between gap-3">
+                                            <p className="text-sm font-medium">
+                                                Versus {comparison.year_level}
+                                            </p>
+                                            <HelpTooltip
+                                                content="This is the point difference between your score and your year-level cohort average. Positive means you are above the cohort average."
+                                                ariaLabel="Explain year-level gap"
+                                            />
+                                        </div>
                                         <p className="mt-2 text-xl font-semibold">
                                             {comparison.same_year_level_gap >= 0 ? '+' : ''}
                                             {comparison.same_year_level_gap.toFixed(1)} pts
@@ -361,10 +402,16 @@ export default function MyGrades({
                                         </p>
                                     </div>
                                 )}
-                                <div className="rounded-xl border border-border/70 bg-background/80 p-4">
-                                    <p className="text-sm font-medium">
-                                        Versus {comparison.organization_name || 'organization'}
-                                    </p>
+                                <div className="rounded-xl border border-border/70 bg-background/80 p-4 md:max-w-none">
+                                    <div className="flex items-start justify-between gap-3">
+                                        <p className="text-sm font-medium">
+                                            Versus {comparison.organization_name || 'organization'}
+                                        </p>
+                                        <HelpTooltip
+                                            content="This is the point difference between your score and your organization-wide average. Positive means you are above the organization average."
+                                            ariaLabel="Explain organization gap"
+                                        />
+                                    </div>
                                     <p className="mt-2 text-xl font-semibold">
                                         {comparison.organization_gap >= 0 ? '+' : ''}
                                         {comparison.organization_gap.toFixed(1)} pts
@@ -451,9 +498,15 @@ export default function MyGrades({
                             <div className="grid gap-4 md:grid-cols-3">
                                 {nationalStanding.national_ranking_enabled && (
                                     <div className="rounded-xl border border-border/70 bg-background/80 p-4">
-                                        <p className="text-xs font-semibold tracking-[0.12em] text-muted-foreground uppercase">
-                                            National Rank
-                                        </p>
+                                        <div className="flex items-start justify-between gap-3">
+                                            <p className="text-xs font-semibold tracking-[0.12em] text-muted-foreground uppercase">
+                                                National Rank
+                                            </p>
+                                            <HelpTooltip
+                                                content="This is your rank among all residents included in the national exam results, when national ranking is enabled."
+                                                ariaLabel="Explain national rank"
+                                            />
+                                        </div>
                                         <p className="mt-2 text-2xl font-semibold">
                                             {nationalStanding.national_rank ?? 'N/A'}
                                         </p>
@@ -464,9 +517,15 @@ export default function MyGrades({
                                 )}
                                 {nationalStanding.institution_comparison_enabled && (
                                     <div className="rounded-xl border border-border/70 bg-background/80 p-4">
-                                        <p className="text-xs font-semibold tracking-[0.12em] text-muted-foreground uppercase">
-                                            Institution Rank
-                                        </p>
+                                        <div className="flex items-start justify-between gap-3">
+                                            <p className="text-xs font-semibold tracking-[0.12em] text-muted-foreground uppercase">
+                                                Institution Rank
+                                            </p>
+                                            <HelpTooltip
+                                                content="This is your rank within your institution for this exam, when institution comparison is enabled."
+                                                ariaLabel="Explain institution rank"
+                                            />
+                                        </div>
                                         <p className="mt-2 text-2xl font-semibold">
                                             {nationalStanding.institution_rank ?? 'N/A'}
                                         </p>
@@ -477,9 +536,15 @@ export default function MyGrades({
                                 )}
                                 {nationalStanding.national_ranking_enabled && (
                                     <div className="rounded-xl border border-border/70 bg-background/80 p-4">
-                                        <p className="text-xs font-semibold tracking-[0.12em] text-muted-foreground uppercase">
-                                            Percentile
-                                        </p>
+                                        <div className="flex items-start justify-between gap-3">
+                                            <p className="text-xs font-semibold tracking-[0.12em] text-muted-foreground uppercase">
+                                                Percentile
+                                            </p>
+                                            <HelpTooltip
+                                                content="Percentile shows the percentage of national examinees you scored higher than. Reference formula: ((total candidates - rank) / (total candidates - 1)) x 100. A higher percentile means stronger relative performance."
+                                                ariaLabel="Explain percentile"
+                                            />
+                                        </div>
                                         <p className="mt-2 text-2xl font-semibold">
                                             {nationalStanding.percentile !== null
                                                 ? `${Number(nationalStanding.percentile).toFixed(1)}%`
