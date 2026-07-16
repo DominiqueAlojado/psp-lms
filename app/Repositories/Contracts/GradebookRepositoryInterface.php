@@ -11,6 +11,8 @@ interface GradebookRepositoryInterface
 
     public function getCompletedNationalAttemptsForUser(int $userId, bool $withAssessment = false): Collection;
 
+    public function getAllResidents(): Collection;
+
     public function getResidentsForOrganization(int $organizationId): Collection;
 
     public function getResidentsForOrganizations(array $organizationIds): Collection;

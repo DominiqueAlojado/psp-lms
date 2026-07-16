@@ -65,8 +65,44 @@ interface PerformanceTrend {
     percentage: number;
 }
 
+interface Comparison {
+    year_level: string;
+    organization_name: string | null;
+    comparison_group_label: string;
+    resident_average_percentage: number;
+    same_year_level_average_percentage: number;
+    organization_average_percentage: number;
+    same_year_level_gap: number;
+    organization_gap: number;
+    same_year_level_rank: number | null;
+    same_year_level_total: number;
+    organization_rank: number | null;
+    organization_total: number;
+    peer_names_visible: boolean;
+    is_national_context: boolean;
+    year_level_breakdown: Array<{
+        year_level: string;
+        average_percentage: number;
+        total_residents: number;
+        resident_gap: number;
+        top_average_percentage: number;
+    }>;
+}
+
+interface NationalStanding {
+    exam_title: string;
+    exam_year: number;
+    national_ranking_enabled: boolean;
+    institution_comparison_enabled: boolean;
+    national_rank: number | null;
+    institution_rank: number | null;
+    percentile: number | null;
+}
+
 interface Props {
     stats: Stats;
+    comparison: Comparison | null;
+    nationalStanding: NationalStanding | null;
     categoryPerformance: CategoryPerformance[];
     topicPerformance: TopicPerformance[];
     recentExams: RecentExam[];
@@ -75,6 +111,8 @@ interface Props {
 
 export default function MyGrades({
     stats,
+    comparison,
+    nationalStanding,
     categoryPerformance,
     topicPerformance,
     recentExams,
@@ -190,6 +228,203 @@ export default function MyGrades({
                         </CardContent>
                     </Card>
                 </div>
+
+                {comparison && stats.total_exams > 0 && (
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Peer Standing</CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            <div className="grid gap-4 md:grid-cols-3">
+                                <div className="rounded-xl border border-border/70 bg-background/80 p-4">
+                                    <p className="text-xs font-semibold tracking-[0.12em] text-muted-foreground uppercase">
+                                        Your Average
+                                    </p>
+                                    <p className="mt-2 text-2xl font-semibold">
+                                        {comparison.resident_average_percentage.toFixed(1)}%
+                                    </p>
+                                    <p className="text-sm text-muted-foreground">
+                                        Across completed exams
+                                    </p>
+                                </div>
+                                {!comparison.is_national_context && (
+                                    <div className="rounded-xl border border-border/70 bg-background/80 p-4">
+                                        <p className="text-xs font-semibold tracking-[0.12em] text-muted-foreground uppercase">
+                                            {comparison.comparison_group_label}
+                                        </p>
+                                        <p className="mt-2 text-2xl font-semibold">
+                                            {comparison.same_year_level_average_percentage.toFixed(1)}%
+                                        </p>
+                                        <p className="text-sm text-muted-foreground">
+                                            {comparison.same_year_level_rank
+                                                ? `Rank ${comparison.same_year_level_rank} of ${comparison.same_year_level_total}`
+                                                : 'No same-year-level cohort data'}
+                                        </p>
+                                    </div>
+                                )}
+                                <div className="rounded-xl border border-border/70 bg-background/80 p-4">
+                                    <p className="text-xs font-semibold tracking-[0.12em] text-muted-foreground uppercase">
+                                        Organization Average
+                                    </p>
+                                    <p className="mt-2 text-2xl font-semibold">
+                                        {comparison.organization_average_percentage.toFixed(1)}%
+                                    </p>
+                                    <p className="text-sm text-muted-foreground">
+                                        {comparison.organization_rank
+                                            ? `Rank ${comparison.organization_rank} of ${comparison.organization_total}`
+                                            : 'No organization cohort data'}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div className="grid gap-4 md:grid-cols-2">
+                                {!comparison.is_national_context && (
+                                    <div className="rounded-xl border border-border/70 bg-background/80 p-4">
+                                        <p className="text-sm font-medium">
+                                            Versus {comparison.year_level}
+                                        </p>
+                                        <p className="mt-2 text-xl font-semibold">
+                                            {comparison.same_year_level_gap >= 0 ? '+' : ''}
+                                            {comparison.same_year_level_gap.toFixed(1)} pts
+                                        </p>
+                                        <p className="text-sm text-muted-foreground">
+                                            Difference from your year-level average
+                                        </p>
+                                    </div>
+                                )}
+                                <div className="rounded-xl border border-border/70 bg-background/80 p-4">
+                                    <p className="text-sm font-medium">
+                                        Versus {comparison.organization_name || 'organization'}
+                                    </p>
+                                    <p className="mt-2 text-xl font-semibold">
+                                        {comparison.organization_gap >= 0 ? '+' : ''}
+                                        {comparison.organization_gap.toFixed(1)} pts
+                                    </p>
+                                    <p className="text-sm text-muted-foreground">
+                                        Difference from the organization-wide average
+                                    </p>
+                                </div>
+                            </div>
+
+                            {comparison.is_national_context
+                                && comparison.year_level_breakdown.length > 0 && (
+                                <div className="space-y-3 rounded-xl border border-border/70 bg-background/80 p-4">
+                                    <div>
+                                        <p className="text-sm font-medium">
+                                            In-Service Cohort by Year Level
+                                        </p>
+                                        <p className="text-sm text-muted-foreground">
+                                            Compare your average against each year-level group from first year to graduate.
+                                        </p>
+                                    </div>
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead>Year Level</TableHead>
+                                                <TableHead className="text-center">
+                                                    Cohort Avg
+                                                </TableHead>
+                                                <TableHead className="text-center">
+                                                    Residents
+                                                </TableHead>
+                                                <TableHead className="text-center">
+                                                    Gap
+                                                </TableHead>
+                                                <TableHead className="text-center">
+                                                    Top Avg
+                                                </TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {comparison.year_level_breakdown.map((row) => (
+                                                <TableRow key={row.year_level}>
+                                                    <TableCell className="font-medium">
+                                                        {row.year_level}
+                                                    </TableCell>
+                                                    <TableCell className="text-center">
+                                                        {row.average_percentage.toFixed(1)}%
+                                                    </TableCell>
+                                                    <TableCell className="text-center">
+                                                        {row.total_residents}
+                                                    </TableCell>
+                                                    <TableCell className="text-center">
+                                                        {row.resident_gap >= 0 ? '+' : ''}
+                                                        {row.resident_gap.toFixed(1)} pts
+                                                    </TableCell>
+                                                    <TableCell className="text-center">
+                                                        {row.top_average_percentage.toFixed(1)}%
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
+                )}
+
+                {nationalStanding && (
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>National Standing</CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            <div>
+                                <p className="text-sm font-medium">
+                                    {nationalStanding.exam_title}
+                                </p>
+                                <p className="text-sm text-muted-foreground">
+                                    {nationalStanding.exam_year}
+                                </p>
+                            </div>
+
+                            <div className="grid gap-4 md:grid-cols-3">
+                                {nationalStanding.national_ranking_enabled && (
+                                    <div className="rounded-xl border border-border/70 bg-background/80 p-4">
+                                        <p className="text-xs font-semibold tracking-[0.12em] text-muted-foreground uppercase">
+                                            National Rank
+                                        </p>
+                                        <p className="mt-2 text-2xl font-semibold">
+                                            {nationalStanding.national_rank ?? 'N/A'}
+                                        </p>
+                                        <p className="text-sm text-muted-foreground">
+                                            Visible for this exam
+                                        </p>
+                                    </div>
+                                )}
+                                {nationalStanding.institution_comparison_enabled && (
+                                    <div className="rounded-xl border border-border/70 bg-background/80 p-4">
+                                        <p className="text-xs font-semibold tracking-[0.12em] text-muted-foreground uppercase">
+                                            Institution Rank
+                                        </p>
+                                        <p className="mt-2 text-2xl font-semibold">
+                                            {nationalStanding.institution_rank ?? 'N/A'}
+                                        </p>
+                                        <p className="text-sm text-muted-foreground">
+                                            Visible for this exam
+                                        </p>
+                                    </div>
+                                )}
+                                {nationalStanding.national_ranking_enabled && (
+                                    <div className="rounded-xl border border-border/70 bg-background/80 p-4">
+                                        <p className="text-xs font-semibold tracking-[0.12em] text-muted-foreground uppercase">
+                                            Percentile
+                                        </p>
+                                        <p className="mt-2 text-2xl font-semibold">
+                                            {nationalStanding.percentile !== null
+                                                ? `${Number(nationalStanding.percentile).toFixed(1)}%`
+                                                : 'N/A'}
+                                        </p>
+                                        <p className="text-sm text-muted-foreground">
+                                            National percentile
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
+                        </CardContent>
+                    </Card>
+                )}
 
                 {/* Performance by Category */}
                 {categoryPerformance.length > 0 && (

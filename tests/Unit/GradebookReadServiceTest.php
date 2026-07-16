@@ -25,6 +25,7 @@ class GradebookReadServiceTest extends TestCase
         $user = Mockery::mock(User::class)->makePartial();
         $user->id = 55;
         $user->currentOrganization = (object) ['id' => 10, 'type' => 'institution'];
+        $user->setRelation('resident', null);
 
         $institutionAttempts = collect([
             $this->makeAttempt([
@@ -60,6 +61,232 @@ class GradebookReadServiceTest extends TestCase
         $this->assertSame('Pretest', $payload['categoryPerformance'][0]['category']);
         $this->assertSame('Anatomy', $payload['topicPerformance'][0]['topic']);
         $this->assertSame('Quiz 1', $payload['recentExams'][0]['title']);
+        $this->assertNull($payload['comparison']);
+        $this->assertNull($payload['nationalStanding']);
+    }
+
+    public function test_it_builds_resident_safe_comparison_payload_without_peer_names(): void
+    {
+        $organization = new Organization(['id' => 10, 'name' => 'Bataan General Hospital']);
+
+        $user = Mockery::mock(User::class)->makePartial();
+        $user->id = 55;
+        $user->currentOrganization = (object) ['id' => 10, 'type' => 'institution'];
+
+        $resident = new Resident([
+            'id' => 1,
+            'user_id' => 55,
+            'organization_id' => 10,
+            'first_name' => 'John',
+            'last_name' => 'Doe',
+            'year_level' => 'Second Year',
+            'status' => 'active',
+        ]);
+        $resident->setRelation('organization', $organization);
+        $user->setRelation('resident', $resident);
+
+        $peer = new Resident([
+            'id' => 2,
+            'user_id' => 77,
+            'organization_id' => 10,
+            'first_name' => 'Jane',
+            'last_name' => 'Cruz',
+            'year_level' => 'Second Year',
+            'status' => 'active',
+        ]);
+
+        $selfAttempts = collect([
+            $this->makeAttempt([
+                'title' => 'Quiz 1',
+                'category' => 'Pretest',
+                'score' => 8,
+                'total_points' => 10,
+                'percentage' => 80,
+                'passed' => true,
+                'submitted_at' => now()->subDay(),
+            ]),
+        ]);
+        $peerAttempts = collect([
+            $this->makeAttempt([
+                'title' => 'Quiz 2',
+                'category' => 'Posttest',
+                'score' => 9,
+                'total_points' => 10,
+                'percentage' => 90,
+                'passed' => true,
+                'submitted_at' => now()->subDays(2),
+            ]),
+        ]);
+
+        $topicRows = collect();
+
+        $repo = Mockery::mock(GradebookRepositoryInterface::class);
+        $repo->shouldReceive('getCompletedInstitutionAttemptsForUser')->with(55)->times(3)->andReturn($selfAttempts);
+        $repo->shouldReceive('getCompletedInstitutionAttemptsForUser')->with(55, true)->andReturn($selfAttempts);
+        $repo->shouldReceive('getCompletedInstitutionAttemptsForUser')->with(77)->once()->andReturn($peerAttempts);
+        $repo->shouldReceive('getResidentsForOrganization')->once()->with(10)->andReturn(collect([$resident, $peer]));
+        $repo->shouldReceive('getAllResidents')->never();
+        $repo->shouldReceive('getInstitutionTopicPerformanceRows')->once()->with(55)->andReturn($topicRows);
+
+        $service = new GradebookReadService($repo);
+        $payload = $service->myGradesPayload($user);
+
+        $this->assertNotNull($payload['comparison']);
+        $this->assertFalse($payload['comparison']['peer_names_visible']);
+        $this->assertSame('Bataan General Hospital', $payload['comparison']['organization_name']);
+        $this->assertSame('Same Year Level', $payload['comparison']['comparison_group_label']);
+        $this->assertSame(2, $payload['comparison']['same_year_level_total']);
+        $this->assertSame(2, $payload['comparison']['organization_total']);
+        $this->assertArrayNotHasKey('top_organization_residents', $payload['comparison']);
+        $this->assertArrayNotHasKey('top_same_year_level_residents', $payload['comparison']);
+    }
+
+    public function test_it_only_exposes_national_standing_when_assessment_flags_allow_it(): void
+    {
+        $user = Mockery::mock(User::class)->makePartial();
+        $user->id = 55;
+        $user->currentOrganization = (object) ['id' => 99, 'type' => 'national'];
+        $user->setRelation('resident', null);
+
+        $visibleAttempt = $this->makeAttempt([
+            'title' => 'In-Service 2026',
+            'category' => 'In-Service Exam',
+            'score' => 45,
+            'total_points' => 50,
+            'percentage' => 90,
+            'passed' => true,
+            'submitted_at' => now()->subDay(),
+            'exam_year' => 2026,
+            'national_ranking_enabled' => true,
+            'institution_comparison_enabled' => false,
+            'national_rank' => 3,
+            'institution_rank' => 1,
+            'percentile' => 92.75,
+        ]);
+
+        $repo = Mockery::mock(GradebookRepositoryInterface::class);
+        $repo->shouldReceive('getCompletedNationalAttemptsForUser')->with(55)->times(2)->andReturn(collect([$visibleAttempt]));
+        $repo->shouldReceive('getCompletedNationalAttemptsForUser')->with(55, true)->times(2)->andReturn(collect([$visibleAttempt]));
+        $repo->shouldReceive('getNationalTopicPerformanceRows')->once()->with(55)->andReturn(collect());
+
+        $service = new GradebookReadService($repo);
+        $payload = $service->myGradesPayload($user);
+
+        $this->assertNotNull($payload['nationalStanding']);
+        $this->assertTrue($payload['nationalStanding']['national_ranking_enabled']);
+        $this->assertFalse($payload['nationalStanding']['institution_comparison_enabled']);
+        $this->assertSame(3, $payload['nationalStanding']['national_rank']);
+        $this->assertNull($payload['nationalStanding']['institution_rank']);
+        $this->assertSame(92.75, $payload['nationalStanding']['percentile']);
+    }
+
+    public function test_it_builds_year_level_breakdown_for_national_comparison_payload(): void
+    {
+        $organization = new Organization(['id' => 10, 'name' => 'Bataan General Hospital']);
+
+        $user = Mockery::mock(User::class)->makePartial();
+        $user->id = 55;
+        $user->currentOrganization = (object) ['id' => 99, 'type' => 'national'];
+
+        $resident = new Resident([
+            'id' => 1,
+            'user_id' => 55,
+            'organization_id' => 10,
+            'first_name' => 'John',
+            'last_name' => 'Doe',
+            'year_level' => 'Third Year',
+            'status' => 'active',
+        ]);
+        $resident->setRelation('organization', $organization);
+        $user->setRelation('resident', $resident);
+
+        $sameOrganizationPeer = new Resident([
+            'id' => 2,
+            'user_id' => 77,
+            'organization_id' => 10,
+            'first_name' => 'Jane',
+            'last_name' => 'Cruz',
+            'year_level' => 'First Year',
+            'status' => 'active',
+        ]);
+
+        $otherOrganizationPeer = new Resident([
+            'id' => 3,
+            'user_id' => 88,
+            'organization_id' => 20,
+            'first_name' => 'Mark',
+            'last_name' => 'Reyes',
+            'year_level' => 'Fourth Year',
+            'status' => 'active',
+        ]);
+
+        $selfAttempts = collect([
+            $this->makeAttempt([
+                'title' => 'In-Service 2026',
+                'category' => 'In-Service Exam',
+                'score' => 40,
+                'total_points' => 50,
+                'percentage' => 80,
+                'passed' => true,
+                'submitted_at' => now()->subDay(),
+                'exam_year' => 2026,
+                'national_ranking_enabled' => true,
+                'institution_comparison_enabled' => true,
+            ]),
+        ]);
+
+        $sameOrgPeerAttempts = collect([
+            $this->makeAttempt([
+                'title' => 'In-Service 2026',
+                'category' => 'In-Service Exam',
+                'score' => 35,
+                'total_points' => 50,
+                'percentage' => 70,
+                'passed' => true,
+                'submitted_at' => now()->subDays(2),
+                'exam_year' => 2026,
+                'national_ranking_enabled' => true,
+                'institution_comparison_enabled' => true,
+            ]),
+        ]);
+
+        $otherOrgPeerAttempts = collect([
+            $this->makeAttempt([
+                'title' => 'In-Service 2026',
+                'category' => 'In-Service Exam',
+                'score' => 45,
+                'total_points' => 50,
+                'percentage' => 90,
+                'passed' => true,
+                'submitted_at' => now()->subDays(3),
+                'exam_year' => 2026,
+                'national_ranking_enabled' => true,
+                'institution_comparison_enabled' => true,
+            ]),
+        ]);
+
+        $repo = Mockery::mock(GradebookRepositoryInterface::class);
+        $repo->shouldReceive('getCompletedNationalAttemptsForUser')->with(55)->times(4)->andReturn($selfAttempts);
+        $repo->shouldReceive('getCompletedNationalAttemptsForUser')->with(55, true)->times(2)->andReturn($selfAttempts);
+        $repo->shouldReceive('getCompletedNationalAttemptsForUser')->with(77)->times(2)->andReturn($sameOrgPeerAttempts);
+        $repo->shouldReceive('getCompletedNationalAttemptsForUser')->with(88)->once()->andReturn($otherOrgPeerAttempts);
+        $repo->shouldReceive('getAllResidents')->once()->andReturn(collect([$resident, $sameOrganizationPeer, $otherOrganizationPeer]));
+        $repo->shouldReceive('getResidentsForOrganization')->once()->with(10)->andReturn(collect([$resident, $sameOrganizationPeer]));
+        $repo->shouldReceive('getNationalTopicPerformanceRows')->once()->with(55)->andReturn(collect());
+
+        $service = new GradebookReadService($repo);
+        $payload = $service->myGradesPayload($user);
+
+        $this->assertSame('All Year Levels', $payload['comparison']['comparison_group_label']);
+        $this->assertSame(3, $payload['comparison']['same_year_level_total']);
+        $this->assertSame(2, $payload['comparison']['organization_total']);
+        $this->assertCount(3, $payload['comparison']['year_level_breakdown']);
+        $this->assertSame('First Year', $payload['comparison']['year_level_breakdown'][0]['year_level']);
+        $this->assertSame('Third Year', $payload['comparison']['year_level_breakdown'][1]['year_level']);
+        $this->assertSame('Fourth Year', $payload['comparison']['year_level_breakdown'][2]['year_level']);
+        $this->assertSame(70.0, $payload['comparison']['year_level_breakdown'][0]['average_percentage']);
+        $this->assertSame(80.0, $payload['comparison']['year_level_breakdown'][1]['average_percentage']);
+        $this->assertSame(90.0, $payload['comparison']['year_level_breakdown'][2]['average_percentage']);
     }
 
     public function test_it_builds_index_payload_for_organization_residents(): void
@@ -106,12 +333,17 @@ class GradebookReadServiceTest extends TestCase
                     'exam_category' => $data['category'],
                     'passing_score' => 6,
                     'exam_year' => 2026,
+                    'national_ranking_enabled' => $data['national_ranking_enabled'] ?? false,
+                    'institution_comparison_enabled' => $data['institution_comparison_enabled'] ?? false,
                 ];
                 $this->score = $data['score'];
                 $this->total_points = $data['total_points'];
                 $this->percentage = $data['percentage'];
                 $this->submitted_at = $data['submitted_at'];
                 $this->passed = $data['passed'];
+                $this->national_rank = $data['national_rank'] ?? null;
+                $this->institution_rank = $data['institution_rank'] ?? null;
+                $this->percentile = $data['percentile'] ?? null;
             }
 
             public function isPassed(): bool

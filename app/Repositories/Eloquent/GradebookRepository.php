@@ -37,6 +37,15 @@ class GradebookRepository implements GradebookRepositoryInterface
         return $query->orderBy('submitted_at', 'desc')->get();
     }
 
+    public function getAllResidents(): Collection
+    {
+        return Resident::query()
+            ->whereNotNull('user_id')
+            ->with('user')
+            ->orderBy('last_name')
+            ->get();
+    }
+
     public function getResidentsForOrganization(int $organizationId): Collection
     {
         return Resident::query()

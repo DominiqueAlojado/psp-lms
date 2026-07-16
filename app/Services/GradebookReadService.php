@@ -18,9 +18,17 @@ class GradebookReadService
     {
         $currentOrganization = $user->currentOrganization;
         $isNational = $currentOrganization?->type === 'national';
+        $resident = $user->resident?->loadMissing('organization');
+        $nationalAttempts = $isNational
+            ? $this->gradebookRepository->getCompletedNationalAttemptsForUser($user->id, true)
+            : collect();
 
         return [
             'stats' => $this->calculateUserStats($user->id, $isNational),
+            'comparison' => $resident
+                ? $this->buildResidentComparisonPayload($resident, $isNational)
+                : null,
+            'nationalStanding' => $this->buildResidentNationalStandingPayload($nationalAttempts),
             'categoryPerformance' => $isNational ? [] : $this->getCategoryPerformance($user->id),
             'topicPerformance' => $this->getTopicPerformance($user->id, $isNational),
             'recentExams' => $this->getRecentExams($user->id, 10, $isNational),
@@ -387,6 +395,155 @@ class GradebookReadService
                 ])
                 ->values()
                 ->toArray(),
+        ];
+    }
+
+    private function buildResidentComparisonPayload(Resident $resident, bool $isNational = false): array
+    {
+        $organizationCohort = $this->gradebookRepository
+            ->getResidentsForOrganization($resident->organization_id)
+            ->filter(fn ($peer) => $peer->user_id !== null)
+            ->map(function ($peer) use ($isNational) {
+                return [
+                    'resident_id' => $peer->id,
+                    'year_level' => $peer->year_level,
+                    'stats' => $this->calculateUserStats($peer->user_id, $isNational),
+                ];
+            })
+            ->filter(fn (array $peer) => $peer['stats']['total_exams'] > 0)
+            ->values();
+
+        $comparisonCohort = $isNational
+            ? $this->gradebookRepository
+                ->getAllResidents()
+                ->map(function ($peer) {
+                    return [
+                        'resident_id' => $peer->id,
+                        'year_level' => $peer->year_level,
+                        'stats' => $this->calculateUserStats($peer->user_id, true),
+                    ];
+                })
+                ->filter(fn (array $peer) => $peer['stats']['total_exams'] > 0)
+                ->values()
+            : $organizationCohort;
+
+        $residentStats = $comparisonCohort->firstWhere('resident_id', $resident->id)['stats']
+            ?? $this->calculateUserStats($resident->user_id, $isNational);
+        $comparisonGroup = $isNational
+            ? $comparisonCohort
+            : $comparisonCohort->where('year_level', $resident->year_level)->values();
+
+        $organizationLeaderboard = $organizationCohort
+            ->sortByDesc(fn (array $peer) => $peer['stats']['average_percentage'])
+            ->values();
+
+        $comparisonLeaderboard = $comparisonGroup
+            ->sortByDesc(fn (array $peer) => $peer['stats']['average_percentage'])
+            ->values();
+
+        $organizationRank = $organizationLeaderboard->search(fn (array $peer) => $peer['resident_id'] === $resident->id);
+        $comparisonRank = $comparisonLeaderboard->search(fn (array $peer) => $peer['resident_id'] === $resident->id);
+
+        $organizationAverage = $organizationCohort->isNotEmpty()
+            ? round($organizationCohort->avg(fn (array $peer) => $peer['stats']['average_percentage']), 2)
+            : 0;
+
+        $comparisonAverage = $comparisonGroup->isNotEmpty()
+            ? round($comparisonGroup->avg(fn (array $peer) => $peer['stats']['average_percentage']), 2)
+            : 0;
+
+        $yearLevelBreakdown = $isNational
+            ? $this->buildNationalYearLevelBreakdown($comparisonCohort, $residentStats['average_percentage'])
+            : [];
+
+        return [
+            'year_level' => $resident->year_level,
+            'organization_name' => $resident->organization?->name,
+            'comparison_group_label' => $isNational ? 'All Year Levels' : 'Same Year Level',
+            'resident_average_percentage' => round($residentStats['average_percentage'], 2),
+            'same_year_level_average_percentage' => $comparisonAverage,
+            'organization_average_percentage' => $organizationAverage,
+            'same_year_level_gap' => round($residentStats['average_percentage'] - $comparisonAverage, 2),
+            'organization_gap' => round($residentStats['average_percentage'] - $organizationAverage, 2),
+            'same_year_level_rank' => $comparisonRank === false ? null : $comparisonRank + 1,
+            'same_year_level_total' => $comparisonGroup->count(),
+            'organization_rank' => $organizationRank === false ? null : $organizationRank + 1,
+            'organization_total' => $organizationCohort->count(),
+            'peer_names_visible' => false,
+            'is_national_context' => $isNational,
+            'year_level_breakdown' => $yearLevelBreakdown,
+        ];
+    }
+
+    private function buildNationalYearLevelBreakdown(\Illuminate\Support\Collection $comparisonCohort, float $residentAverage): array
+    {
+        $orderedLevels = [
+            'Pre-Resident',
+            'First Year',
+            'Second Year',
+            'Third Year',
+            'Fourth Year',
+            'Graduate',
+        ];
+
+        return collect($orderedLevels)
+            ->map(function (string $yearLevel) use ($comparisonCohort, $residentAverage) {
+                $levelPeers = $comparisonCohort
+                    ->where('year_level', $yearLevel)
+                    ->sortByDesc(fn (array $peer) => $peer['stats']['average_percentage'])
+                    ->values();
+
+                if ($levelPeers->isEmpty()) {
+                    return null;
+                }
+
+                $average = round($levelPeers->avg(fn (array $peer) => $peer['stats']['average_percentage']), 2);
+
+                return [
+                    'year_level' => $yearLevel,
+                    'average_percentage' => $average,
+                    'total_residents' => $levelPeers->count(),
+                    'resident_gap' => round($residentAverage - $average, 2),
+                    'top_average_percentage' => round(
+                        (float) ($levelPeers->first()['stats']['average_percentage'] ?? 0),
+                        2,
+                    ),
+                ];
+            })
+            ->filter()
+            ->values()
+            ->toArray();
+    }
+
+    private function buildResidentNationalStandingPayload(\Illuminate\Support\Collection $nationalAttempts): ?array
+    {
+        $latestComparableAttempt = $nationalAttempts
+            ->filter(fn ($attempt) => $attempt->assessment !== null)
+            ->first(function ($attempt) {
+                return $attempt->assessment->national_ranking_enabled
+                    || $attempt->assessment->institution_comparison_enabled;
+            });
+
+        if (! $latestComparableAttempt) {
+            return null;
+        }
+
+        $assessment = $latestComparableAttempt->assessment;
+
+        return [
+            'exam_title' => $assessment->title,
+            'exam_year' => $assessment->exam_year,
+            'national_ranking_enabled' => (bool) $assessment->national_ranking_enabled,
+            'institution_comparison_enabled' => (bool) $assessment->institution_comparison_enabled,
+            'national_rank' => $assessment->national_ranking_enabled
+                ? $latestComparableAttempt->national_rank
+                : null,
+            'institution_rank' => $assessment->institution_comparison_enabled
+                ? $latestComparableAttempt->institution_rank
+                : null,
+            'percentile' => $assessment->national_ranking_enabled
+                ? $latestComparableAttempt->percentile
+                : null,
         ];
     }
 }
