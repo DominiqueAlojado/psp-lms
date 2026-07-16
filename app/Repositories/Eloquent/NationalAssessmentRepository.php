@@ -51,7 +51,7 @@ class NationalAssessmentRepository implements NationalAssessmentRepositoryInterf
 
     public function loadForEdit(NationalAssessment $assessment): NationalAssessment
     {
-        return $assessment->load(['questions.choices', 'creator:id,name']);
+        return $assessment->load(['questions.choices', 'questions.topicRecord:id,name', 'creator:id,name']);
     }
 
     public function loadForShow(NationalAssessment $assessment): NationalAssessment

@@ -54,6 +54,7 @@ class SaveNationalQuestionAction
         $question->question_type = $validated['question_type'];
         $question->question_text = $validated['question_text'];
         $question->points = $validated['points'];
+        $question->topic_id = $validated['topic_id'] ?? null;
         $question->topic = $this->resolveTopicName($validated);
 
         $imagePath = $this->storeQuestionImage($validated['image'] ?? null);
@@ -79,7 +80,9 @@ class SaveNationalQuestionAction
     private function resolveTopicName(array $validated): ?string
     {
         if (! empty($validated['topic_id'])) {
-            return Topic::find($validated['topic_id'])?->name;
+            return Topic::query()
+                ->whereKey($validated['topic_id'])
+                ->value('name');
         }
 
         return $validated['topic'] ?? null;

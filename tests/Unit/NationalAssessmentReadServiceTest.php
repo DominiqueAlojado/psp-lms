@@ -50,7 +50,7 @@ class NationalAssessmentReadServiceTest extends TestCase
         $this->assertTrue($item['can_view_results']);
     }
 
-    public function test_it_builds_edit_payload_with_topic_lookup(): void
+    public function test_it_builds_edit_payload_from_normalized_topic_reference(): void
     {
         $service = app(NationalAssessmentReadService::class);
         $user = User::factory()->create();
@@ -82,6 +82,7 @@ class NationalAssessmentReadServiceTest extends TestCase
             'question_type' => 'multiple_choice',
             'question_text' => 'Question text',
             'points' => 2,
+            'topic_id' => $topic->id,
             'topic' => $topic->name,
             'image_path' => 'national-questions/example.png',
             'order' => 1,
@@ -97,6 +98,7 @@ class NationalAssessmentReadServiceTest extends TestCase
         $payload = $service->editPayload($assessment);
 
         $this->assertSame('National Edit Exam', $payload['assessment']['title']);
+        $this->assertSame($topic->name, $payload['assessment']['questions'][0]['topic']);
         $this->assertSame($topic->id, $payload['assessment']['questions'][0]['topic_id']);
         $this->assertStringContainsString('national-questions/example.png', $payload['assessment']['questions'][0]['image_url']);
     }

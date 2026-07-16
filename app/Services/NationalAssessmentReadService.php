@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Models\National\NationalAssessment;
-use App\Models\Topic;
 use App\Repositories\Contracts\NationalAssessmentRepositoryInterface;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Storage;
@@ -56,9 +55,6 @@ class NationalAssessmentReadService
     public function editPayload(NationalAssessment $assessment): array
     {
         $assessment = $this->assessmentRepository->loadForEdit($assessment);
-        $topicIdsByName = Topic::query()
-            ->whereIn('name', $assessment->questions->pluck('topic')->filter()->unique()->all())
-            ->pluck('id', 'name');
 
         return [
             'assessment' => [
@@ -82,7 +78,7 @@ class NationalAssessmentReadService
                     'question_text' => $question->question_text,
                     'points' => $question->points,
                     'topic' => $question->topic,
-                    'topic_id' => $question->topic ? $topicIdsByName->get($question->topic) : null,
+                    'topic_id' => $question->topic_id,
                     'order' => $question->order,
                     'image_path' => $question->image_path,
                     'image_url' => $question->image_path ? Storage::url($question->image_path) : null,

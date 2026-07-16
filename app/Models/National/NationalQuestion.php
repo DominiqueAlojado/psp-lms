@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Models\Topic;
 
 class NationalQuestion extends Model
 {
@@ -15,6 +16,7 @@ class NationalQuestion extends Model
     protected $fillable = [
         'assessment_id',
         'question_type',
+        'topic_id',
         'question_text',
         'points',
         'explanation',
@@ -27,6 +29,7 @@ class NationalQuestion extends Model
     protected function casts(): array
     {
         return [
+            'topic_id' => 'integer',
             'points' => 'integer',
             'order' => 'integer',
         ];
@@ -35,6 +38,11 @@ class NationalQuestion extends Model
     public function assessment(): BelongsTo
     {
         return $this->belongsTo(NationalAssessment::class, 'assessment_id');
+    }
+
+    public function topicRecord(): BelongsTo
+    {
+        return $this->belongsTo(Topic::class);
     }
 
     public function choices(): HasMany
