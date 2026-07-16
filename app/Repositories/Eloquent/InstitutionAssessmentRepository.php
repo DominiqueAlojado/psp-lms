@@ -17,7 +17,7 @@ class InstitutionAssessmentRepository implements InstitutionAssessmentRepository
         return InstitutionAssessment::query()
             ->where('organization_id', $organizationId)
             ->where('is_published', $isPublished)
-            ->with(['questions', 'creator:id,name'])
+            ->with(['creator:id,name'])
             ->withCount('questions')
             ->when($filters['search'] ?? null, function (Builder $query, string $search) {
                 $query->where(function (Builder $nestedQuery) use ($search) {

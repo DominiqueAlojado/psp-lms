@@ -80,7 +80,7 @@ class NationalAssessmentRepository implements NationalAssessmentRepositoryInterf
         $direction = $filters['direction'] ?? 'desc';
 
         return NationalAssessment::query()
-            ->with(['questions', 'creator:id,name'])
+            ->with(['creator:id,name'])
             ->withCount('questions')
             ->when($filters['search'] ?? null, function (Builder $query, string $search) {
                 $query->where(function (Builder $nestedQuery) use ($search) {

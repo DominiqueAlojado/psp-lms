@@ -75,6 +75,14 @@ interface ResidentExamRepositoryInterface
 
     public function getPublishedNationalExams(): Collection;
 
+    public function getCompletedInstitutionAttemptSummariesForUser(array $assessmentIds, int $userId): Collection;
+
+    public function getCompletedNationalAttemptSummariesForUser(array $assessmentIds, int $userId): Collection;
+
+    public function getInProgressInstitutionAssessmentIdsForUser(array $assessmentIds, int $userId): array;
+
+    public function getInProgressNationalAssessmentIdsForUser(array $assessmentIds, int $userId): array;
+
     public function hasStartedInProgressInstitutionAttempt(InstitutionAssessment $assessment, int $userId): bool;
 
     public function hasStartedInProgressNationalAttempt(NationalAssessment $assessment, int $userId): bool;

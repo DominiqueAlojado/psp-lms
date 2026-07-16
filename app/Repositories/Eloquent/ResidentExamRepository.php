@@ -255,7 +255,6 @@ class ResidentExamRepository implements ResidentExamRepositoryInterface
         return InstitutionAssessment::query()
             ->where('organization_id', $organizationId)
             ->where('is_published', true)
-            ->with(['questions'])
             ->withCount('questions')
             ->get();
     }
@@ -264,9 +263,74 @@ class ResidentExamRepository implements ResidentExamRepositoryInterface
     {
         return NationalAssessment::query()
             ->where('is_published', true)
-            ->with(['questions'])
             ->withCount('questions')
             ->get();
+    }
+
+    public function getCompletedInstitutionAttemptSummariesForUser(array $assessmentIds, int $userId): Collection
+    {
+        if ($assessmentIds === []) {
+            return collect();
+        }
+
+        return InstitutionAttempt::query()
+            ->selectRaw('assessment_id, COUNT(*) as attempt_count, MAX(score) as best_score, MAX(submitted_at) as last_submitted_at')
+            ->where('user_id', $userId)
+            ->whereIn('assessment_id', $assessmentIds)
+            ->whereIn('status', ['completed', 'graded'])
+            ->groupBy('assessment_id')
+            ->get()
+            ->keyBy('assessment_id');
+    }
+
+    public function getCompletedNationalAttemptSummariesForUser(array $assessmentIds, int $userId): Collection
+    {
+        if ($assessmentIds === []) {
+            return collect();
+        }
+
+        return NationalAttempt::query()
+            ->selectRaw('assessment_id, COUNT(*) as attempt_count, MAX(score) as best_score, MAX(submitted_at) as last_submitted_at')
+            ->where('user_id', $userId)
+            ->whereIn('assessment_id', $assessmentIds)
+            ->whereIn('status', ['completed', 'graded'])
+            ->groupBy('assessment_id')
+            ->get()
+            ->keyBy('assessment_id');
+    }
+
+    public function getInProgressInstitutionAssessmentIdsForUser(array $assessmentIds, int $userId): array
+    {
+        if ($assessmentIds === []) {
+            return [];
+        }
+
+        return InstitutionAttempt::query()
+            ->where('user_id', $userId)
+            ->whereIn('assessment_id', $assessmentIds)
+            ->where('status', 'in_progress')
+            ->whereNotNull('started_at')
+            ->distinct()
+            ->pluck('assessment_id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+    }
+
+    public function getInProgressNationalAssessmentIdsForUser(array $assessmentIds, int $userId): array
+    {
+        if ($assessmentIds === []) {
+            return [];
+        }
+
+        return NationalAttempt::query()
+            ->where('user_id', $userId)
+            ->whereIn('assessment_id', $assessmentIds)
+            ->where('status', 'in_progress')
+            ->whereNotNull('started_at')
+            ->distinct()
+            ->pluck('assessment_id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
     }
 
     public function hasStartedInProgressInstitutionAttempt(InstitutionAssessment $assessment, int $userId): bool

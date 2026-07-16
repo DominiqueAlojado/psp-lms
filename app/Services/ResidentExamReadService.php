@@ -78,8 +78,20 @@ class ResidentExamReadService
             ? collect()
             : $this->residentExamRepository->getPublishedInstitutionExamsForOrganization($organizationId);
 
+        $institutionAttemptSummaries = $this->residentExamRepository->getCompletedInstitutionAttemptSummariesForUser(
+            $institutionExams->pluck('id')->all(),
+            $user->id,
+        );
+        $institutionInProgressIds = array_flip($this->residentExamRepository->getInProgressInstitutionAssessmentIdsForUser(
+            $institutionExams->pluck('id')->all(),
+            $user->id,
+        ));
+
         foreach ($institutionExams as $exam) {
-            $attempts = $this->residentExamRepository->getCompletedInstitutionAttempts($exam, $user->id);
+            $attemptSummary = $institutionAttemptSummaries->get($exam->id);
+            $attemptCount = (int) ($attemptSummary->attempt_count ?? 0);
+            $bestScore = $attemptSummary?->best_score;
+            $lastSubmittedAt = $attemptSummary?->last_submitted_at;
             $examData = [
                 'id' => $exam->id,
                 'title' => $exam->title,
@@ -93,22 +105,34 @@ class ResidentExamReadService
                 'is_available' => $exam->isAvailable(),
                 'available_from' => $exam->available_from?->format('M d, Y h:i A'),
                 'available_until' => $exam->available_until?->format('M d, Y h:i A'),
-                'attempt_count' => $attempts->count(),
+                'attempt_count' => $attemptCount,
                 'max_attempts' => null,
-                'best_score' => $attempts->max('score') ? round(($attempts->max('score') / $exam->total_points) * 100, 2) : null,
-                'last_attempted' => $attempts->sortByDesc('submitted_at')->first()?->submitted_at?->diffForHumans(),
-                'has_in_progress_attempt' => $this->residentExamRepository->hasStartedInProgressInstitutionAttempt($exam, $user->id),
+                'best_score' => $bestScore ? round(($bestScore / $exam->total_points) * 100, 2) : null,
+                'last_attempted' => $lastSubmittedAt ? \Illuminate\Support\Carbon::parse($lastSubmittedAt)->diffForHumans() : null,
+                'has_in_progress_attempt' => isset($institutionInProgressIds[$exam->id]),
             ];
 
-            $this->bucketExam($examData, $availableExams, $upcomingExams, $completedExams, $exam->isAvailable(), $exam->available_from, $attempts->count());
+            $this->bucketExam($examData, $availableExams, $upcomingExams, $completedExams, $exam->isAvailable(), $exam->available_from, $attemptCount);
         }
 
         $nationalExams = $isNational
             ? $this->residentExamRepository->getPublishedNationalExams()
             : collect();
 
+        $nationalAttemptSummaries = $this->residentExamRepository->getCompletedNationalAttemptSummariesForUser(
+            $nationalExams->pluck('id')->all(),
+            $user->id,
+        );
+        $nationalInProgressIds = array_flip($this->residentExamRepository->getInProgressNationalAssessmentIdsForUser(
+            $nationalExams->pluck('id')->all(),
+            $user->id,
+        ));
+
         foreach ($nationalExams as $exam) {
-            $attempts = $this->residentExamRepository->getCompletedNationalAttempts($exam, $user->id);
+            $attemptSummary = $nationalAttemptSummaries->get($exam->id);
+            $attemptCount = (int) ($attemptSummary->attempt_count ?? 0);
+            $bestScore = $attemptSummary?->best_score;
+            $lastSubmittedAt = $attemptSummary?->last_submitted_at;
             $examData = [
                 'id' => $exam->id,
                 'title' => $exam->title,
@@ -121,14 +145,14 @@ class ResidentExamReadService
                 'is_available' => $exam->isAvailable(),
                 'available_from' => $exam->scheduled_date?->format('M d, Y h:i A'),
                 'available_until' => null,
-                'attempt_count' => $attempts->count(),
+                'attempt_count' => $attemptCount,
                 'max_attempts' => null,
-                'best_score' => $attempts->max('score') ? round(($attempts->max('score') / $exam->total_points) * 100, 2) : null,
-                'last_attempted' => $attempts->sortByDesc('submitted_at')->first()?->submitted_at?->diffForHumans(),
-                'has_in_progress_attempt' => $this->residentExamRepository->hasStartedInProgressNationalAttempt($exam, $user->id),
+                'best_score' => $bestScore ? round(($bestScore / $exam->total_points) * 100, 2) : null,
+                'last_attempted' => $lastSubmittedAt ? \Illuminate\Support\Carbon::parse($lastSubmittedAt)->diffForHumans() : null,
+                'has_in_progress_attempt' => isset($nationalInProgressIds[$exam->id]),
             ];
 
-            $this->bucketExam($examData, $availableExams, $upcomingExams, $completedExams, $exam->isAvailable(), $exam->scheduled_date, $attempts->count());
+            $this->bucketExam($examData, $availableExams, $upcomingExams, $completedExams, $exam->isAvailable(), $exam->scheduled_date, $attemptCount);
         }
 
         return [
