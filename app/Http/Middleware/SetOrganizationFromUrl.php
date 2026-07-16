@@ -55,6 +55,7 @@ class SetOrganizationFromUrl
             || ($request->is('assignments*') && in_array($request->method(), ['POST', 'PATCH', 'PUT', 'DELETE']))
             || ($request->is('submissions*') && in_array($request->method(), ['POST', 'PATCH', 'PUT', 'DELETE']))
             || ($request->is('events*') && in_array($request->method(), ['POST', 'PATCH', 'PUT', 'DELETE']))
+            || ($request->is('feedback*') && in_array($request->method(), ['POST', 'PATCH', 'PUT', 'DELETE']))
             || ($request->is('question-bank*') && in_array($request->method(), ['POST', 'PATCH', 'PUT', 'DELETE']))
             || ($request->is('assessments*') && in_array($request->method(), ['POST', 'PATCH', 'PUT', 'DELETE']))
             || ($request->is('institution-exams*') && in_array($request->method(), ['POST', 'PATCH', 'PUT', 'DELETE']))

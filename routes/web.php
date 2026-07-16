@@ -237,10 +237,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('my-grades', [App\Http\Controllers\GradebookController::class, 'myGrades'])
         ->name('gradebook.my-grades');
 
-    // Feedback (design preview module)
-    Route::get('feedback', function () {
-        return Inertia::render('feedback/index');
-    })->name('feedback.index');
+    // Feedback
+    Route::get('feedback', [App\Http\Controllers\FeedbackController::class, 'index'])
+        ->name('feedback.index');
+    Route::post('feedback', [App\Http\Controllers\FeedbackController::class, 'store'])
+        ->name('feedback.store');
 
     // Customer support
     Route::get('support', [App\Http\Controllers\SupportController::class, 'index'])
