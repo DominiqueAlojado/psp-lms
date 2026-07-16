@@ -104,6 +104,53 @@ class SupportTicketFlowTest extends TestCase
         $response->assertInertia(fn ($page) => $page->component('support/manage'));
     }
 
+    public function test_support_queue_can_filter_by_assignee(): void
+    {
+        $this->withoutMiddleware([SetOrganizationFromUrl::class]);
+
+        Permission::findOrCreate('manage-support-tickets', 'web');
+        $organization = $this->createOrganization('alpha-chapter', 'Alpha Chapter');
+        $staff = $this->createUserForOrganization($organization);
+        $assignee = $this->createUserForOrganization($organization);
+        $otherAssignee = $this->createUserForOrganization($organization);
+        $requester = $this->createUserForOrganization($organization);
+        $staff->givePermissionTo('manage-support-tickets');
+
+        SupportTicket::create([
+            'ticket_number' => 'SUP-00021',
+            'organization_id' => $organization->id,
+            'user_id' => $requester->id,
+            'assigned_to_user_id' => $assignee->id,
+            'title' => 'Assigned ticket',
+            'category' => 'bug',
+            'priority' => 'high',
+            'status' => 'open',
+            'details' => 'Should appear for selected assignee.',
+        ]);
+
+        SupportTicket::create([
+            'ticket_number' => 'SUP-00022',
+            'organization_id' => $organization->id,
+            'user_id' => $requester->id,
+            'assigned_to_user_id' => $otherAssignee->id,
+            'title' => 'Different assignee ticket',
+            'category' => 'feature',
+            'priority' => 'medium',
+            'status' => 'open',
+            'details' => 'Should not appear for selected assignee.',
+        ]);
+
+        $response = $this->actingAs($staff)->get('/support/manage?assignee_user_id='.$assignee->id);
+
+        $response->assertOk();
+        $response->assertInertia(fn ($page) => $page
+            ->component('support/manage')
+            ->where('tickets.total', 1)
+            ->where('tickets.data.0.title', 'Assigned ticket')
+            ->where('filters.assignee_user_id', (string) $assignee->id)
+        );
+    }
+
     public function test_user_without_manage_permission_cannot_access_support_queue(): void
     {
         $this->withoutMiddleware([SetOrganizationFromUrl::class]);

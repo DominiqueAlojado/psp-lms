@@ -12,6 +12,44 @@ use Illuminate\Support\Collection;
 
 class SupportTicketRepository implements SupportTicketRepositoryInterface
 {
+    private function applyManagementFilters(Builder $query, array $filters): Builder
+    {
+        return $query
+            ->when($filters['search'] ?? null, function (Builder $builder, string $search) {
+                $builder->where(function (Builder $nestedQuery) use ($search) {
+                    $nestedQuery->where('ticket_number', 'like', "%{$search}%")
+                        ->orWhere('title', 'like', "%{$search}%")
+                        ->orWhere('details', 'like', "%{$search}%")
+                        ->orWhereHas('creator', function (Builder $creatorQuery) use ($search) {
+                            $creatorQuery->where('name', 'like', "%{$search}%")
+                                ->orWhere('email', 'like', "%{$search}%");
+                        })
+                        ->orWhereHas('assignee', function (Builder $assigneeQuery) use ($search) {
+                            $assigneeQuery->where('name', 'like', "%{$search}%")
+                                ->orWhere('email', 'like', "%{$search}%");
+                        });
+                });
+            })
+            ->when($filters['status'] ?? null, function (Builder $builder, string $status) {
+                $builder->where('status', $status);
+            })
+            ->when($filters['priority'] ?? null, function (Builder $builder, string $priority) {
+                $builder->where('priority', $priority);
+            })
+            ->when($filters['category'] ?? null, function (Builder $builder, string $category) {
+                $builder->where('category', $category);
+            })
+            ->when($filters['assignee_user_id'] ?? null, function (Builder $builder, string|int $assigneeUserId) {
+                if ($assigneeUserId === 'unassigned') {
+                    $builder->whereNull('assigned_to_user_id');
+
+                    return;
+                }
+
+                $builder->where('assigned_to_user_id', (int) $assigneeUserId);
+            });
+    }
+
     public function paginateForUser(int $userId, int $organizationId, array $filters, int $perPage = 10): LengthAwarePaginator
     {
         return SupportTicket::query()
@@ -50,33 +88,13 @@ class SupportTicketRepository implements SupportTicketRepositoryInterface
 
     public function paginateForManagement(int $organizationId, array $filters, int $perPage = 15): LengthAwarePaginator
     {
-        return SupportTicket::query()
+        $query = SupportTicket::query()
             ->with([
                 'organization:id,name',
                 'creator:id,name,email',
                 'assignee:id,name,email',
             ])
             ->where('organization_id', $organizationId)
-            ->when($filters['search'] ?? null, function (Builder $query, string $search) {
-                $query->where(function (Builder $nestedQuery) use ($search) {
-                    $nestedQuery->where('ticket_number', 'like', "%{$search}%")
-                        ->orWhere('title', 'like', "%{$search}%")
-                        ->orWhere('details', 'like', "%{$search}%")
-                        ->orWhereHas('creator', function (Builder $creatorQuery) use ($search) {
-                            $creatorQuery->where('name', 'like', "%{$search}%")
-                                ->orWhere('email', 'like', "%{$search}%");
-                        });
-                });
-            })
-            ->when($filters['status'] ?? null, function (Builder $query, string $status) {
-                $query->where('status', $status);
-            })
-            ->when($filters['priority'] ?? null, function (Builder $query, string $priority) {
-                $query->where('priority', $priority);
-            })
-            ->when($filters['category'] ?? null, function (Builder $query, string $category) {
-                $query->where('category', $category);
-            })
             ->orderByRaw("
                 CASE status
                     WHEN 'open' THEN 1
@@ -86,39 +104,22 @@ class SupportTicketRepository implements SupportTicketRepositoryInterface
                 END
             ")
             ->orderByDesc('updated_at')
+            ;
+
+        return $this->applyManagementFilters($query, $filters)
             ->paginate($perPage)
             ->withQueryString();
     }
 
     public function paginateForManagementAcrossOrganizations(array $organizationIds, array $filters, int $perPage = 15): LengthAwarePaginator
     {
-        return SupportTicket::query()
+        $query = SupportTicket::query()
             ->with([
                 'organization:id,name',
                 'creator:id,name,email',
                 'assignee:id,name,email',
             ])
             ->whereIn('organization_id', $organizationIds)
-            ->when($filters['search'] ?? null, function (Builder $query, string $search) {
-                $query->where(function (Builder $nestedQuery) use ($search) {
-                    $nestedQuery->where('ticket_number', 'like', "%{$search}%")
-                        ->orWhere('title', 'like', "%{$search}%")
-                        ->orWhere('details', 'like', "%{$search}%")
-                        ->orWhereHas('creator', function (Builder $creatorQuery) use ($search) {
-                            $creatorQuery->where('name', 'like', "%{$search}%")
-                                ->orWhere('email', 'like', "%{$search}%");
-                        });
-                });
-            })
-            ->when($filters['status'] ?? null, function (Builder $query, string $status) {
-                $query->where('status', $status);
-            })
-            ->when($filters['priority'] ?? null, function (Builder $query, string $priority) {
-                $query->where('priority', $priority);
-            })
-            ->when($filters['category'] ?? null, function (Builder $query, string $category) {
-                $query->where('category', $category);
-            })
             ->orderByRaw("
                 CASE status
                     WHEN 'open' THEN 1
@@ -128,6 +129,9 @@ class SupportTicketRepository implements SupportTicketRepositoryInterface
                 END
             ")
             ->orderByDesc('updated_at')
+            ;
+
+        return $this->applyManagementFilters($query, $filters)
             ->paginate($perPage)
             ->withQueryString();
     }
@@ -162,20 +166,10 @@ class SupportTicketRepository implements SupportTicketRepositoryInterface
 
     public function getManagementSummary(int $organizationId, array $filters): array
     {
-        $query = SupportTicket::query()
-            ->where('organization_id', $organizationId)
-            ->when($filters['search'] ?? null, function (Builder $builder, string $search) {
-                $builder->where(function (Builder $nestedQuery) use ($search) {
-                    $nestedQuery->where('ticket_number', 'like', "%{$search}%")
-                        ->orWhere('title', 'like', "%{$search}%");
-                });
-            })
-            ->when($filters['priority'] ?? null, function (Builder $builder, string $priority) {
-                $builder->where('priority', $priority);
-            })
-            ->when($filters['category'] ?? null, function (Builder $builder, string $category) {
-                $builder->where('category', $category);
-            });
+        $query = $this->applyManagementFilters(
+            SupportTicket::query()->where('organization_id', $organizationId),
+            collect($filters)->except('status')->all(),
+        );
 
         return [
             'total' => (clone $query)->count(),
@@ -187,20 +181,10 @@ class SupportTicketRepository implements SupportTicketRepositoryInterface
 
     public function getManagementSummaryAcrossOrganizations(array $organizationIds, array $filters): array
     {
-        $query = SupportTicket::query()
-            ->whereIn('organization_id', $organizationIds)
-            ->when($filters['search'] ?? null, function (Builder $builder, string $search) {
-                $builder->where(function (Builder $nestedQuery) use ($search) {
-                    $nestedQuery->where('ticket_number', 'like', "%{$search}%")
-                        ->orWhere('title', 'like', "%{$search}%");
-                });
-            })
-            ->when($filters['priority'] ?? null, function (Builder $builder, string $priority) {
-                $builder->where('priority', $priority);
-            })
-            ->when($filters['category'] ?? null, function (Builder $builder, string $category) {
-                $builder->where('category', $category);
-            });
+        $query = $this->applyManagementFilters(
+            SupportTicket::query()->whereIn('organization_id', $organizationIds),
+            collect($filters)->except('status')->all(),
+        );
 
         return [
             'total' => (clone $query)->count(),
@@ -246,6 +230,19 @@ class SupportTicketRepository implements SupportTicketRepositoryInterface
             })
             ->orderBy('name')
             ->get(['id', 'name', 'email']);
+    }
+
+    public function getAssignableStaffAcrossOrganizations(array $organizationIds): Collection
+    {
+        return User::query()
+            ->whereIn('current_organization_id', $organizationIds)
+            ->whereDoesntHave('roles', function (Builder $query) {
+                $query->where('name', 'Resident');
+            })
+            ->orderBy('name')
+            ->get(['id', 'name', 'email'])
+            ->unique('id')
+            ->values();
     }
 
     public function getCategories(): array

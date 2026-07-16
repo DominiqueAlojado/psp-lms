@@ -71,6 +71,14 @@ class SupportReadService
                 'categories' => $this->options($this->supportTicketRepository->getCategories()),
                 'priorities' => $this->options($this->supportTicketRepository->getPriorities()),
                 'statuses' => $this->options($this->supportTicketRepository->getStatuses()),
+                'assignees' => $this->supportTicketRepository
+                    ->getAssignableStaffAcrossOrganizations($organizationIds)
+                    ->map(fn ($staff) => [
+                        'value' => (string) $staff->id,
+                        'label' => $staff->name,
+                    ])
+                    ->values()
+                    ->all(),
                 'isAllOrganizationsContext' => true,
             ];
         }
@@ -87,6 +95,14 @@ class SupportReadService
             'categories' => $this->options($this->supportTicketRepository->getCategories()),
             'priorities' => $this->options($this->supportTicketRepository->getPriorities()),
             'statuses' => $this->options($this->supportTicketRepository->getStatuses()),
+            'assignees' => $this->supportTicketRepository
+                ->getAssignableStaff($organizationId)
+                ->map(fn ($staff) => [
+                    'value' => (string) $staff->id,
+                    'label' => $staff->name,
+                ])
+                ->values()
+                ->all(),
             'isAllOrganizationsContext' => false,
         ];
     }

@@ -36,6 +36,8 @@ interface SupportTicketRepositoryInterface
 
     public function getAssignableStaff(int $organizationId): Collection;
 
+    public function getAssignableStaffAcrossOrganizations(array $organizationIds): Collection;
+
     public function getCategories(): array;
 
     public function getPriorities(): array;

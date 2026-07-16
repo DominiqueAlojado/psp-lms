@@ -69,11 +69,13 @@ interface PageProps {
     categories: Option[];
     priorities: Option[];
     statuses: Option[];
+    assignees: Option[];
     filters: {
         search?: string;
         status?: string;
         priority?: string;
         category?: string;
+        assignee_user_id?: string;
     };
     isAllOrganizationsContext: boolean;
 }
@@ -126,6 +128,7 @@ export default function SupportManage({
     categories,
     priorities,
     statuses,
+    assignees,
     filters,
     isAllOrganizationsContext,
 }: PageProps) {
@@ -135,6 +138,9 @@ export default function SupportManage({
     const [status, setStatus] = useState(filters.status || 'all');
     const [priority, setPriority] = useState(filters.priority || 'all');
     const [category, setCategory] = useState(filters.category || 'all');
+    const [assigneeUserId, setAssigneeUserId] = useState(
+        filters.assignee_user_id || 'all',
+    );
 
     const applyFilters = () => {
         router.get(
@@ -144,10 +150,32 @@ export default function SupportManage({
                 status: status === 'all' ? undefined : status,
                 priority: priority === 'all' ? undefined : priority,
                 category: category === 'all' ? undefined : category,
+                assignee_user_id:
+                    assigneeUserId === 'all' ? undefined : assigneeUserId,
             },
             { preserveState: true, preserveScroll: true },
         );
     };
+
+    const resetFilters = () => {
+        setSearch('');
+        setStatus('all');
+        setPriority('all');
+        setCategory('all');
+        setAssigneeUserId('all');
+
+        router.get(preserveOrgParam('/support/manage', currentOrgSlug), {}, {
+            preserveState: true,
+            preserveScroll: true,
+        });
+    };
+
+    const hasActiveFilters =
+        search.trim() !== '' ||
+        status !== 'all' ||
+        priority !== 'all' ||
+        category !== 'all' ||
+        assigneeUserId !== 'all';
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -189,7 +217,7 @@ export default function SupportManage({
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                        <div className="grid gap-3 lg:grid-cols-[minmax(0,1.5fr)_180px_180px_220px_auto]">
+                        <div className="grid gap-3 xl:grid-cols-[minmax(0,1.6fr)_180px_180px_220px_220px_auto_auto]">
                             <div className="relative">
                                 <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                                 <Input
@@ -243,8 +271,60 @@ export default function SupportManage({
                                     ))}
                                 </SelectContent>
                             </Select>
+                            <Select
+                                value={assigneeUserId}
+                                onValueChange={setAssigneeUserId}
+                            >
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Assignee" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">All Assignees</SelectItem>
+                                    <SelectItem value="unassigned">
+                                        Unassigned
+                                    </SelectItem>
+                                    {assignees.map((item) => (
+                                        <SelectItem key={item.value} value={item.value}>
+                                            {item.label}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
                             <Button onClick={applyFilters}>Apply</Button>
+                            <Button variant="outline" onClick={resetFilters}>
+                                Reset
+                            </Button>
                         </div>
+
+                        {hasActiveFilters && (
+                            <div className="flex flex-wrap gap-2">
+                                {search.trim() !== '' && (
+                                    <Badge variant="outline">Search: {search}</Badge>
+                                )}
+                                {status !== 'all' && (
+                                    <Badge variant="outline">Status: {status.replace('_', ' ')}</Badge>
+                                )}
+                                {priority !== 'all' && (
+                                    <Badge variant="outline">Priority: {priority}</Badge>
+                                )}
+                                {category !== 'all' && (
+                                    <Badge variant="outline">
+                                        Category: {category.replace('_', ' ')}
+                                    </Badge>
+                                )}
+                                {assigneeUserId !== 'all' && (
+                                    <Badge variant="outline">
+                                        Assignee:{' '}
+                                        {assigneeUserId === 'unassigned'
+                                            ? 'Unassigned'
+                                            : assignees.find(
+                                                  (item) =>
+                                                      item.value === assigneeUserId,
+                                              )?.label || assigneeUserId}
+                                    </Badge>
+                                )}
+                            </div>
+                        )}
                     </CardContent>
                 </Card>
 
@@ -294,6 +374,11 @@ export default function SupportManage({
                                                 {ticket.module_name && (
                                                     <span>
                                                         Module: {ticket.module_name}
+                                                    </span>
+                                                )}
+                                                {ticket.organization_name && (
+                                                    <span>
+                                                        Organization: {ticket.organization_name}
                                                     </span>
                                                 )}
                                                 <span>Updated {ticket.updated_at_human}</span>
@@ -348,6 +433,10 @@ export default function SupportManage({
                                                         category === 'all'
                                                             ? undefined
                                                             : category,
+                                                    assignee_user_id:
+                                                        assigneeUserId === 'all'
+                                                            ? undefined
+                                                            : assigneeUserId,
                                                     page: pageNumber,
                                                 },
                                                 {

@@ -15,7 +15,7 @@ import AppLayout from '@/layouts/app-layout';
 import { preserveOrgParam } from '@/lib/utils';
 import { type BreadcrumbItem, type SharedData } from '@/types';
 import { Head, Link, useForm, usePage } from '@inertiajs/react';
-import { MessageSquareText, Send } from 'lucide-react';
+import { MessageSquareText, Plus, Send, Smile } from 'lucide-react';
 
 interface Option {
     value: string;
@@ -111,6 +111,17 @@ function priorityBadge(priority: string) {
         default:
             return <Badge variant="outline">Low</Badge>;
     }
+}
+
+function initials(name: string | null) {
+    if (!name) return 'SU';
+
+    return name
+        .split(' ')
+        .map((part) => part[0])
+        .join('')
+        .slice(0, 2)
+        .toUpperCase();
 }
 
 export default function SupportShow({
@@ -275,62 +286,137 @@ export default function SupportShow({
                                         </p>
                                     </div>
                                 ) : (
-                                    messages.map((message) => (
-                                        <div
-                                            key={message.id}
-                                            className={`rounded-[1.25rem] border p-4 ${
-                                                message.is_current_user
-                                                    ? 'border-primary/20 bg-primary/5'
-                                                    : 'border-border/70 bg-background/85'
-                                            }`}
-                                        >
-                                            <div className="flex flex-wrap items-center justify-between gap-2">
-                                                <div>
-                                                    <p className="font-medium text-foreground">
-                                                        {message.user.name || 'System'}
-                                                    </p>
-                                                    <p className="text-xs text-muted-foreground">
-                                                        {message.user.email}
-                                                    </p>
+                                    <div className="space-y-5 rounded-[1.75rem] border border-border/70 bg-[linear-gradient(180deg,rgba(250,250,255,0.98),rgba(255,255,255,0.95))] p-4 md:p-5">
+                                        {messages.map((message) => (
+                                            <div
+                                                key={message.id}
+                                                className="space-y-2"
+                                            >
+                                                <div className="flex justify-center">
+                                                    <span className="rounded-full bg-muted px-3 py-1 text-[0.68rem] font-medium tracking-[0.03em] text-muted-foreground">
+                                                        {message.created_at_human}
+                                                    </span>
                                                 </div>
-                                                <p className="text-xs text-muted-foreground">
-                                                    {message.created_at_human}
-                                                </p>
+
+                                                <div
+                                                    className={`flex items-end gap-3 ${
+                                                        message.is_current_user
+                                                            ? 'justify-end'
+                                                            : 'justify-start'
+                                                    }`}
+                                                >
+                                                    {!message.is_current_user && (
+                                                        <div className="flex size-9 shrink-0 items-center justify-center rounded-full border border-border/70 bg-background text-[0.72rem] font-semibold text-foreground shadow-sm">
+                                                            {initials(
+                                                                message.user.name,
+                                                            )}
+                                                        </div>
+                                                    )}
+
+                                                    <div
+                                                        className={`flex max-w-[78%] flex-col space-y-1 ${
+                                                            message.is_current_user
+                                                                ? 'items-end text-right'
+                                                                : ''
+                                                        }`}
+                                                    >
+                                                        <div
+                                                            className={`inline-flex w-fit max-w-full rounded-[1.5rem] px-4 py-3 text-sm leading-7 shadow-sm ${
+                                                                message.is_current_user
+                                                                    ? 'rounded-br-md bg-[linear-gradient(135deg,#2563eb,#1d4ed8)] text-white shadow-[0_20px_36px_-24px_rgb(37_99_235_/_0.6)]'
+                                                                    : 'rounded-bl-md border border-border/70 bg-white text-foreground'
+                                                            }`}
+                                                        >
+                                                            <span className="break-words text-left">
+                                                                {message.message}
+                                                            </span>
+                                                        </div>
+                                                        <div
+                                                            className={`px-1 text-[0.72rem] text-muted-foreground ${
+                                                                message.is_current_user
+                                                                    ? 'text-right'
+                                                                    : ''
+                                                            }`}
+                                                        >
+                                                            <span className="font-medium text-foreground">
+                                                                {message.user.name ||
+                                                                    'System'}
+                                                            </span>
+                                                            {message.user.email ? (
+                                                                <span>
+                                                                    {' '}
+                                                                    ·{' '}
+                                                                    {
+                                                                        message.user.email
+                                                                    }
+                                                                </span>
+                                                            ) : null}
+                                                        </div>
+                                                    </div>
+
+                                                    {message.is_current_user && (
+                                                        <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[linear-gradient(135deg,#7c3aed,#a855f7)] text-[0.72rem] font-semibold text-white shadow-[0_18px_34px_-24px_rgb(124_58_237_/_0.6)]">
+                                                            {initials(
+                                                                message.user.name,
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                </div>
                                             </div>
-                                            <p className="mt-3 text-sm leading-7 text-foreground">
-                                                {message.message}
-                                            </p>
-                                        </div>
-                                    ))
+                                        ))}
+                                    </div>
                                 )}
 
-                                <div className="space-y-3 rounded-[1.25rem] border border-border/70 bg-background/85 p-4">
+                                <div className="space-y-3 rounded-[1.5rem] border border-border/70 bg-background/95 p-4 shadow-sm">
                                     <Label className="text-[0.7rem] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
                                         Add reply
                                     </Label>
-                                    <Textarea
-                                        className="min-h-32"
-                                        value={replyForm.data.message}
-                                        onChange={(event) =>
-                                            replyForm.setData(
-                                                'message',
-                                                event.target.value,
-                                            )
-                                        }
-                                        placeholder="Add more context, status updates, or next steps."
-                                    />
+                                    <div className="rounded-[1.5rem] border border-border/70 bg-muted/35 p-3">
+                                        <Textarea
+                                            className="min-h-28 border-0 bg-transparent px-2 py-1 shadow-none focus-visible:ring-0"
+                                            value={replyForm.data.message}
+                                            onChange={(event) =>
+                                                replyForm.setData(
+                                                    'message',
+                                                    event.target.value,
+                                                )
+                                            }
+                                            placeholder="Add more context, status updates, or next steps."
+                                        />
+                                        <div className="mt-3 flex items-center justify-between gap-3">
+                                            <div className="flex items-center gap-2">
+                                                <Button
+                                                    type="button"
+                                                    size="icon"
+                                                    variant="outline"
+                                                    className="size-9 rounded-full"
+                                                >
+                                                    <Plus className="h-4 w-4" />
+                                                </Button>
+                                                <Button
+                                                    type="button"
+                                                    size="icon"
+                                                    variant="outline"
+                                                    className="size-9 rounded-full"
+                                                >
+                                                    <Smile className="h-4 w-4" />
+                                                </Button>
+                                            </div>
+                                            <Button
+                                                onClick={reply}
+                                                disabled={replyForm.processing}
+                                                className="border-transparent bg-[linear-gradient(135deg,#7c3aed,#c026d3)] text-white shadow-[0_18px_36px_-22px_rgb(124_58_237_/_0.58)] hover:brightness-[1.03]"
+                                            >
+                                                <Send className="mr-2 h-4 w-4" />
+                                                Send Reply
+                                            </Button>
+                                        </div>
+                                    </div>
                                     {replyForm.errors.message && (
                                         <p className="text-sm text-destructive">
                                             {replyForm.errors.message}
                                         </p>
                                     )}
-                                    <Button
-                                        onClick={reply}
-                                        disabled={replyForm.processing}
-                                    >
-                                        <Send className="mr-2 h-4 w-4" />
-                                        Send Reply
-                                    </Button>
                                 </div>
                             </CardContent>
                         </Card>

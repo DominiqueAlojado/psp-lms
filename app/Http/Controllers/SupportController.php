@@ -52,7 +52,7 @@ class SupportController extends Controller
     {
         $payload = $this->supportReadService->managePayload(
             $request->user(),
-            $request->only(['search', 'status', 'priority', 'category'])
+            $request->only(['search', 'status', 'priority', 'category', 'assignee_user_id'])
         );
 
         return Inertia::render('support/manage', [
@@ -61,7 +61,8 @@ class SupportController extends Controller
             'categories' => $payload['categories'],
             'priorities' => $payload['priorities'],
             'statuses' => $payload['statuses'],
-            'filters' => $request->only(['search', 'status', 'priority', 'category']),
+            'assignees' => $payload['assignees'],
+            'filters' => $request->only(['search', 'status', 'priority', 'category', 'assignee_user_id']),
             'isAllOrganizationsContext' => $payload['isAllOrganizationsContext'],
         ]);
     }
