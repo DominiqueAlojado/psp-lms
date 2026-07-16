@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Repositories\Contracts\StaffRepositoryInterface;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Collection;
 use Spatie\Permission\Models\Role;
 
@@ -32,6 +33,7 @@ class StaffRepository implements StaffRepositoryInterface
                 });
             })
             ->with(['roles', 'currentOrganization'])
+            ->withCount('organizations')
             ->when($filters['search'] ?? null, function (Builder $query, string $search) {
                 $query->where(function (Builder $nestedQuery) use ($search) {
                     $nestedQuery->where('name', 'like', "%{$search}%")
@@ -53,25 +55,33 @@ class StaffRepository implements StaffRepositoryInterface
 
     public function getRoleStats(array $userOrganizationIds, bool $isSystemAdmin): Collection
     {
-        return Role::query()
+        $baseRoles = Role::query()
             ->where('name', '!=', 'Resident')
-            ->get()
-            ->map(function (Role $role) use ($userOrganizationIds, $isSystemAdmin) {
-                $query = User::query()->whereHas('roles', function (Builder $roleQuery) use ($role) {
-                    $roleQuery->where('name', $role->name);
+            ->orderBy('name')
+            ->pluck('name');
+
+        $counts = DB::table('roles')
+            ->join('model_has_roles', 'roles.id', '=', 'model_has_roles.role_id')
+            ->join('users', function ($join) {
+                $join->on('users.id', '=', 'model_has_roles.model_id')
+                    ->where('model_has_roles.model_type', '=', User::class);
+            })
+            ->when(! $isSystemAdmin, function ($query) use ($userOrganizationIds) {
+                $query->join('organization_user', function ($join) use ($userOrganizationIds) {
+                    $join->on('organization_user.user_id', '=', 'users.id')
+                        ->whereIn('organization_user.organization_id', $userOrganizationIds)
+                        ->where('organization_user.is_active', true);
                 });
+            })
+            ->where('roles.name', '!=', 'Resident')
+            ->groupBy('roles.name')
+            ->select('roles.name', DB::raw('COUNT(DISTINCT users.id) as aggregate_count'))
+            ->pluck('aggregate_count', 'roles.name');
 
-                if (! $isSystemAdmin) {
-                    $query->whereHas('organizations', function (Builder $organizationQuery) use ($userOrganizationIds) {
-                        $organizationQuery->whereIn('organizations.id', $userOrganizationIds);
-                    });
-                }
-
-                return [
-                    'role' => $role->name,
-                    'count' => $query->count(),
-                ];
-            });
+        return $baseRoles->map(fn (string $roleName) => [
+            'role' => $roleName,
+            'count' => (int) ($counts[$roleName] ?? 0),
+        ]);
     }
 
     public function getSelectableRoles(User $user, bool $isSystemAdmin): Collection

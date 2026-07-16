@@ -59,7 +59,7 @@ class StaffReadService
                 'roles' => $user->roles->pluck('name')->toArray(),
                 'primary_role' => $user->roles->first()?->name ?? 'N/A',
                 'current_organization' => $user->currentOrganization?->name ?? 'N/A',
-                'organizations_count' => $user->organizations()->count(),
+                'organizations_count' => (int) ($user->organizations_count ?? 0),
                 'created_at' => $user->created_at->format('Y-m-d'),
                 'updated_at' => $user->updated_at->diffForHumans(),
             ]);
