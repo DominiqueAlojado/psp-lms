@@ -8,6 +8,8 @@ use App\Repositories\Contracts\GradebookRepositoryInterface;
 
 class GradebookReadService
 {
+    private const ALL_ORGANIZATIONS_SLUG = 'all-organizations';
+
     public function __construct(
         private readonly GradebookRepositoryInterface $gradebookRepository,
     ) {}
@@ -28,6 +30,32 @@ class GradebookReadService
 
     public function indexPayload(User $user): array
     {
+        if (data_get($user->currentOrganization, 'slug') === self::ALL_ORGANIZATIONS_SLUG) {
+            $organizationIds = $user->organizations()
+                ->wherePivot('organization_user.is_active', true)
+                ->pluck('organizations.id')
+                ->all();
+
+            if ($organizationIds === []) {
+                abort(403, 'No organization selected.');
+            }
+
+            $residents = $this->gradebookRepository
+                ->getResidentsForOrganizations($organizationIds)
+                ->map(fn ($resident) => [
+                    'id' => $resident->id,
+                    'name' => $resident->full_name,
+                    'year_level' => $resident->year_level,
+                    'status' => $resident->status,
+                    'organization_name' => $resident->organization?->name,
+                    'stats' => $this->calculateUserStats($resident->user_id),
+                ]);
+
+            return [
+                'residents' => $residents,
+            ];
+        }
+
         $organizationId = $user->currentOrganization?->id;
 
         if (! $organizationId) {
@@ -52,8 +80,12 @@ class GradebookReadService
     public function showPayload(User $user, Resident $resident): array
     {
         $organizationId = $user->currentOrganization?->id;
+        $isAllOrganizationsContext = data_get($user->currentOrganization, 'slug') === self::ALL_ORGANIZATIONS_SLUG;
+        $allowedOrganizationIds = $isAllOrganizationsContext
+            ? $user->organizations()->wherePivot('organization_user.is_active', true)->pluck('organizations.id')->all()
+            : [$organizationId];
 
-        if ($resident->organization_id !== $organizationId) {
+        if (! in_array($resident->organization_id, array_filter($allowedOrganizationIds), true)) {
             abort(403, 'You do not have access to this resident.');
         }
 

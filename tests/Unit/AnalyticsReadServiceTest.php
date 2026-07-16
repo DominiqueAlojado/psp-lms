@@ -411,4 +411,41 @@ class AnalyticsReadServiceTest extends TestCase
         $this->assertSame(50.0, $payload['trends']['periods'][0]['pass_rate']);
         $this->assertSame(100.0, $payload['trends']['periods'][1]['pass_rate']);
     }
+
+    public function test_it_builds_exam_filters_for_all_organizations_context(): void
+    {
+        $user = Mockery::mock(User::class)->makePartial();
+        $user->current_organization_id = 10;
+        $user->currentOrganization = (object) [
+            'id' => 0,
+            'type' => 'all',
+            'slug' => 'all-organizations',
+        ];
+        $user->shouldReceive('hasPermissionTo')->with('view-all-assessment-reports')->andReturn(true);
+
+        $repo = Mockery::mock(AnalyticsRepositoryInterface::class);
+        $repo->shouldReceive('getPublishedInstitutionExams')->once()->with(10, true)->andReturn(collect([
+            (object) ['id' => 7, 'title' => 'Institution Exam', 'exam_category' => 'Mock Exam'],
+        ]));
+        $repo->shouldReceive('getPublishedNationalExams')->once()->andReturn(collect([
+            (object) ['id' => 3, 'title' => 'National Exam', 'category' => 'In-Service'],
+        ]));
+        $repo->shouldReceive('getActiveInstitutionOrganizations')->once()->andReturn(collect([
+            (object) ['id' => 10, 'name' => 'Alpha Hospital'],
+        ]));
+        $repo->shouldNotReceive('findInstitutionAssessmentForAnalytics');
+        $repo->shouldNotReceive('findNationalAssessmentForAnalytics');
+
+        $service = new AnalyticsReadService($repo);
+        $request = Request::create('/analytics/exam-analytics', 'GET', ['exam' => 'all']);
+        $request->setUserResolver(fn () => $user);
+
+        $payload = $service->examAnalyticsPayload($request);
+
+        $this->assertCount(2, $payload['exams']);
+        $this->assertSame('institution', $payload['exams'][0]['type']);
+        $this->assertSame('national', $payload['exams'][1]['type']);
+        $this->assertCount(1, $payload['organizations']);
+        $this->assertNull($payload['analytics']);
+    }
 }

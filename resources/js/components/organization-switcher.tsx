@@ -21,7 +21,14 @@ import { useMemo, useState } from 'react';
 
 const ALL_ORGANIZATIONS_SLUG = 'all-organizations';
 const ALL_ORGANIZATIONS_SUPPORTED_PATHS = [
+    /^\/activities$/,
     /^\/support(?:\/.*)?$/,
+    /^\/assessment-reports(?:\/.*)?$/,
+    /^\/analytics\/exam-analytics$/,
+    /^\/analytics\/item-analysis$/,
+    /^\/analytics\/topic-performance$/,
+    /^\/analytics\/category-performance$/,
+    /^\/analytics\/trends$/,
     /^\/notifications(?:\/.*)?$/,
 ];
 

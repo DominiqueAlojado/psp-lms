@@ -20,8 +20,8 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
-import { BreadcrumbItem } from '@/types';
-import { Head, router } from '@inertiajs/react';
+import { BreadcrumbItem, type SharedData } from '@/types';
+import { Head, router, usePage } from '@inertiajs/react';
 import { Activity, CalendarRange, Filter, Search, ShieldCheck, Users } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
@@ -89,6 +89,8 @@ export default function ActivitiesIndex({
     filters,
     modules,
 }: PageProps) {
+    const { auth } = usePage<SharedData>().props;
+    const currentOrgSlug = auth.currentOrganization?.slug;
     const [search, setSearch] = useState(filters.search || '');
     const [module, setModule] = useState(filters.module || '');
     const [dateFrom, setDateFrom] = useState(filters.date_from || '');
@@ -107,6 +109,7 @@ export default function ActivitiesIndex({
                 module: module || undefined,
                 date_from: dateFrom || undefined,
                 date_to: dateTo || undefined,
+                org: currentOrgSlug || undefined,
             },
             { preserveState: true, preserveScroll: true },
         );
@@ -117,7 +120,7 @@ export default function ActivitiesIndex({
         setModule('');
         setDateFrom('');
         setDateTo('');
-        router.get('/activities', {}, { preserveState: true, preserveScroll: true });
+        router.get('/activities', { org: currentOrgSlug || undefined }, { preserveState: true, preserveScroll: true });
     };
 
     const actionBadgeVariant = (action: string) => {
@@ -439,6 +442,7 @@ export default function ActivitiesIndex({
                                                         {
                                                             ...filters,
                                                             page,
+                                                            org: currentOrgSlug || undefined,
                                                         },
                                                         {
                                                             preserveState: true,

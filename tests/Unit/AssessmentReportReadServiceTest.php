@@ -139,6 +139,61 @@ class AssessmentReportReadServiceTest extends TestCase
         Carbon::setTestNow();
     }
 
+    public function test_it_builds_by_resident_payload_for_all_organizations_context(): void
+    {
+        $user = Mockery::mock(User::class)->makePartial();
+        $user->current_organization_id = 10;
+        $user->currentOrganization = (object) [
+            'id' => 0,
+            'type' => 'all',
+            'slug' => 'all-organizations',
+        ];
+        $user->shouldReceive('hasPermissionTo')->with('view-all-assessment-reports')->andReturn(true);
+
+        $repo = Mockery::mock(AssessmentReportRepositoryInterface::class);
+        $repo->shouldReceive('getCompletedInstitutionAttemptsForReport')
+            ->once()
+            ->andReturn(collect([
+                $this->makeAttempt([
+                    'id' => 5,
+                    'type' => 'institution',
+                    'exam_category' => 'Quiz',
+                    'submitted_at' => Carbon::parse('2026-06-22 10:00:00'),
+                ]),
+            ]));
+        $repo->shouldReceive('getCompletedNationalAttemptsForReport')
+            ->once()
+            ->andReturn(collect([
+                $this->makeAttempt([
+                    'id' => 6,
+                    'type' => 'national',
+                    'exam_category' => 'In-Service',
+                    'submitted_at' => Carbon::parse('2026-06-23 08:00:00'),
+                ]),
+            ]));
+        $repo->shouldReceive('getOrganizations')->once()->andReturn(collect([
+            (object) ['id' => 10, 'name' => 'Alpha Hospital'],
+        ]));
+        $repo->shouldReceive('getPublishedInstitutionExamOptions')
+            ->once()
+            ->andReturn(collect([(object) ['id' => 3, 'title' => 'Foundations']]));
+        $repo->shouldReceive('getPublishedNationalExamOptions')
+            ->once()
+            ->andReturn(collect([(object) ['id' => 4, 'title' => 'National Boards']]));
+
+        $service = new AssessmentReportReadService($repo);
+        $request = Request::create('/assessment-reports/by-resident', 'GET');
+        $request->setUserResolver(fn () => $user);
+
+        $payload = $service->byResidentPayload($request);
+
+        $this->assertTrue($payload['isSystemAdmin']);
+        $this->assertCount(2, $payload['attempts']['data']);
+        $this->assertCount(2, $payload['exams']);
+        $this->assertSame('Foundations', $payload['exams'][0]['title']);
+        $this->assertSame('National Boards', $payload['exams'][1]['title']);
+    }
+
     private function makeAttempt(array $attributes): object
     {
         $submittedAt = $attributes['submitted_at'];

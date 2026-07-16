@@ -1,4 +1,5 @@
 import HeadingSmall from '@/components/heading-small';
+import { preserveOrgParam } from '@/lib/utils';
 import { StatCard } from '@/components/stat-card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -21,8 +22,8 @@ import {
 } from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
 import AssessmentReportsLayout from '@/layouts/assessment-reports/assessment-reports-layout';
-import { type BreadcrumbItem } from '@/types';
-import { Head, Link } from '@inertiajs/react';
+import { type BreadcrumbItem, type SharedData } from '@/types';
+import { Head, Link, usePage } from '@inertiajs/react';
 import { Award, ExternalLink, Eye, Search, TrendingUp, Users } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
@@ -59,6 +60,7 @@ interface Props {
 }
 
 export default function ByPerformanceReport({ residents }: Props) {
+    const { auth } = usePage<SharedData>().props;
     const [search, setSearch] = useState('');
     const [selectedResident, setSelectedResident] = useState<Resident | null>(
         null,
@@ -365,7 +367,10 @@ export default function ByPerformanceReport({ residents }: Props) {
 
                                     <Button className="w-full" asChild>
                                         <Link
-                                            href={`/assessment-reports/resident/${selectedResident.id}`}
+                                            href={preserveOrgParam(
+                                                `/assessment-reports/resident/${selectedResident.id}`,
+                                                auth.currentOrganization?.slug,
+                                            )}
                                         >
                                             <ExternalLink className="mr-2 size-4" />
                                             View Full Report

@@ -46,6 +46,15 @@ class GradebookRepository implements GradebookRepositoryInterface
             ->get();
     }
 
+    public function getResidentsForOrganizations(array $organizationIds): Collection
+    {
+        return Resident::query()
+            ->whereIn('organization_id', $organizationIds)
+            ->with(['user', 'organization'])
+            ->orderBy('last_name')
+            ->get();
+    }
+
     public function getInstitutionTopicPerformanceRows(int $userId): Collection
     {
         return DB::table('institution_answers as a')

@@ -28,7 +28,7 @@ import {
 } from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
 import AssessmentReportsLayout from '@/layouts/assessment-reports/assessment-reports-layout';
-import { type BreadcrumbItem } from '@/types';
+import { type BreadcrumbItem, type SharedData } from '@/types';
 import { Head, router, usePage } from '@inertiajs/react';
 import {
     Activity,
@@ -146,6 +146,8 @@ export default function LiveExamMonitor() {
         isSystemAdmin,
         lastUpdate,
     } = usePage<PageProps>().props;
+    const { auth } = usePage<SharedData>().props;
+    const currentOrgSlug = auth.currentOrganization?.slug;
 
     const [examFilter, setExamFilter] = useState(
         filters.exam?.toString() || '',
@@ -271,6 +273,7 @@ export default function LiveExamMonitor() {
                 exam: examFilter || undefined,
                 organization: organizationFilter || undefined,
                 activity_status: activityStatusFilter || undefined,
+                org: currentOrgSlug || undefined,
             },
             { preserveState: true, preserveScroll: true },
         );
@@ -282,7 +285,7 @@ export default function LiveExamMonitor() {
         setActivityStatusFilter('');
         router.get(
             '/assessment-reports/live-monitor',
-            {},
+            { org: currentOrgSlug || undefined },
             { preserveState: true },
         );
     };

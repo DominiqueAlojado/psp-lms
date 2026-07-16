@@ -11,8 +11,16 @@ class SetOrganizationFromUrl
 {
     private const ALL_ORGANIZATIONS_SLUG = 'all-organizations';
     private const ALL_ORGANIZATIONS_ALLOWED_PATTERNS = [
+        'activities',
         'support',
         'support/*',
+        'assessment-reports',
+        'assessment-reports/*',
+        'analytics/exam-analytics',
+        'analytics/item-analysis',
+        'analytics/topic-performance',
+        'analytics/category-performance',
+        'analytics/trends',
         'notifications',
         'notifications/*',
     ];

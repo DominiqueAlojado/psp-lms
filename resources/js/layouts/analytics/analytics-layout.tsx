@@ -7,9 +7,9 @@ import {
     TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { usePermissions } from '@/hooks/use-permissions';
-import { cn, isSameUrl, resolveUrl } from '@/lib/utils';
-import { type NavItem } from '@/types';
-import { Link } from '@inertiajs/react';
+import { cn, isSameUrl, preserveOrgParam, resolveUrl } from '@/lib/utils';
+import { type NavItem, type SharedData } from '@/types';
+import { Link, usePage } from '@inertiajs/react';
 import {
     BarChart3,
     ChartColumnBig,
@@ -57,6 +57,7 @@ const sidebarNavItems: NavItem[] = [
 
 export default function AnalyticsLayout({ children }: PropsWithChildren) {
     const { hasPermission } = usePermissions();
+    const { auth } = usePage<SharedData>().props;
     const [isCollapsed, setIsCollapsed] = useState(false);
 
     // When server-side rendering, we only render the layout on the client...
@@ -104,7 +105,12 @@ export default function AnalyticsLayout({ children }: PropsWithChildren) {
                                             },
                                         )}
                                     >
-                                        <Link href={item.href}>
+                                        <Link
+                                            href={preserveOrgParam(
+                                                item.href,
+                                                auth.currentOrganization?.slug,
+                                            )}
+                                        >
                                             {item.icon && (
                                                 <item.icon className="h-4 w-4 shrink-0" />
                                             )}

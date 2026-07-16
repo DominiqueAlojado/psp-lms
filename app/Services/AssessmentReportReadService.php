@@ -9,6 +9,8 @@ use Illuminate\Support\Collection;
 
 class AssessmentReportReadService
 {
+    private const ALL_ORGANIZATIONS_SLUG = 'all-organizations';
+
     public function __construct(
         private readonly AssessmentReportRepositoryInterface $assessmentReportRepository,
     ) {}
@@ -20,6 +22,7 @@ class AssessmentReportReadService
         $canViewAllOrganizations = $user->hasPermissionTo('view-all-assessment-reports');
         $currentOrg = $user->currentOrganization;
         $orgType = $currentOrg?->type ? strtolower($currentOrg->type) : null;
+        $isAllOrganizationsContext = data_get($currentOrg, 'slug') === self::ALL_ORGANIZATIONS_SLUG;
 
         [$examId, $examType, $isInstitutionExam, $isNationalExam] = $this->parseExamFilter($request->input('exam'));
 
@@ -34,7 +37,7 @@ class AssessmentReportReadService
 
         $institutionAttempts = collect();
         $shouldShowInstitutionAttempts = (! $request->filled('exam') || $isInstitutionExam)
-            && ($orgType === 'institution' || ($canViewAllOrganizations && ! $orgType));
+            && ($orgType === 'institution' || $isAllOrganizationsContext || ($canViewAllOrganizations && ! $orgType));
 
         if ($shouldShowInstitutionAttempts) {
             $institutionAttempts = $this->assessmentReportRepository
@@ -62,7 +65,7 @@ class AssessmentReportReadService
 
         $nationalAttempts = collect();
         $shouldShowNationalAttempts = (! $request->filled('exam') || $isNationalExam)
-            && (($orgType && in_array($orgType, ['national', 'inservice'])) || ($canViewAllOrganizations && ! $orgType));
+            && (($orgType && in_array($orgType, ['national', 'inservice'])) || $isAllOrganizationsContext || ($canViewAllOrganizations && ! $orgType));
 
         if ($shouldShowNationalAttempts) {
             $nationalAttempts = $this->assessmentReportRepository

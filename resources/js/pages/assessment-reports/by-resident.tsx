@@ -102,6 +102,7 @@ export default function ByResidentReport() {
         usePage<PageProps>().props;
     const { auth } = usePage<SharedData>().props;
     const currentOrganization = auth.currentOrganization;
+    const currentOrgSlug = currentOrganization?.slug;
 
     const [search, setSearch] = useState(filters.search || '');
     const [examFilter, setExamFilter] = useState(
@@ -152,6 +153,7 @@ export default function ByResidentReport() {
                 status: statusFilter || undefined,
                 date_from: dateFrom || undefined,
                 date_to: dateTo || undefined,
+                org: currentOrgSlug || undefined,
             },
             { preserveState: true, preserveScroll: true },
         );
@@ -166,7 +168,7 @@ export default function ByResidentReport() {
         setDateTo('');
         router.get(
             '/assessment-reports/by-resident',
-            {},
+            { org: currentOrgSlug || undefined },
             { preserveState: true },
         );
     };
@@ -550,6 +552,7 @@ export default function ByResidentReport() {
                                                     ...filters,
                                                     page:
                                                         attempts.current_page - 1,
+                                                    org: currentOrgSlug || undefined,
                                                 },
                                                 {
                                                     preserveState: true,
@@ -607,6 +610,7 @@ export default function ByResidentReport() {
                                                                 {
                                                                     ...filters,
                                                                     page,
+                                                                    org: currentOrgSlug || undefined,
                                                                 },
                                                                 {
                                                                     preserveState: true,
@@ -634,6 +638,7 @@ export default function ByResidentReport() {
                                                     ...filters,
                                                     page:
                                                         attempts.current_page + 1,
+                                                    org: currentOrgSlug || undefined,
                                                 },
                                                 {
                                                     preserveState: true,

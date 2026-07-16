@@ -20,7 +20,7 @@ import {
 } from '@/components/ui/table';
 import AnalyticsLayout from '@/layouts/analytics/analytics-layout';
 import AppLayout from '@/layouts/app-layout';
-import { type BreadcrumbItem } from '@/types';
+import { type BreadcrumbItem, type SharedData } from '@/types';
 import { Head, router, usePage } from '@inertiajs/react';
 import {
     BarChart3,
@@ -94,6 +94,8 @@ function getRateBadgeVariant(rate: number) {
 
 export default function CategoryPerformance() {
     const { categoryPerformance, filters } = usePage<PageProps>().props;
+    const { auth } = usePage<SharedData>().props;
+    const currentOrgSlug = auth.currentOrganization?.slug;
 
     const [dateFrom, setDateFrom] = useState(filters.date_from || '');
     const [dateTo, setDateTo] = useState(filters.date_to || '');
@@ -104,6 +106,7 @@ export default function CategoryPerformance() {
             {
                 date_from: dateFrom || undefined,
                 date_to: dateTo || undefined,
+                org: currentOrgSlug || undefined,
             },
             { preserveState: true, preserveScroll: true },
         );
@@ -112,7 +115,7 @@ export default function CategoryPerformance() {
     const clearFilters = () => {
         setDateFrom('');
         setDateTo('');
-        router.get('/analytics/category-performance', {}, { preserveState: true });
+        router.get('/analytics/category-performance', { org: currentOrgSlug || undefined }, { preserveState: true });
     };
 
     const hasActiveFilters = filters.date_from || filters.date_to;

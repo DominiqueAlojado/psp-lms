@@ -9,4 +9,8 @@ interface ActivityRepositoryInterface
     public function paginateForOrganization(int $organizationId, ?string $organizationType, array $filters, int $perPage = 20): LengthAwarePaginator;
 
     public function getSummaryForOrganization(int $organizationId, ?string $organizationType, array $filters): array;
+
+    public function paginateForOrganizations(array $organizationIds, bool $includeNational, array $filters, int $perPage = 20): LengthAwarePaginator;
+
+    public function getSummaryForOrganizations(array $organizationIds, bool $includeNational, array $filters): array;
 }

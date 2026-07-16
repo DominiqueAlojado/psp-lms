@@ -22,7 +22,7 @@ import {
 } from '@/components/ui/table';
 import AnalyticsLayout from '@/layouts/analytics/analytics-layout';
 import AppLayout from '@/layouts/app-layout';
-import { type BreadcrumbItem } from '@/types';
+import { type BreadcrumbItem, type SharedData } from '@/types';
 import { Head, router, usePage } from '@inertiajs/react';
 import { BarChart3, CheckCircle2, TrendingUp, Users, X } from 'lucide-react';
 import { useState } from 'react';
@@ -99,6 +99,8 @@ interface PageProps {
 
 export default function ExamAnalytics() {
     const { exams, analytics, filters } = usePage<PageProps>().props;
+    const { auth } = usePage<SharedData>().props;
+    const currentOrgSlug = auth.currentOrganization?.slug;
 
     const [examFilter, setExamFilter] = useState(
         filters.exam?.toString() || '',
@@ -113,6 +115,7 @@ export default function ExamAnalytics() {
                 exam: examFilter || undefined,
                 date_from: dateFrom || undefined,
                 date_to: dateTo || undefined,
+                org: currentOrgSlug || undefined,
             },
             { preserveState: true, preserveScroll: true },
         );
@@ -122,7 +125,7 @@ export default function ExamAnalytics() {
         setExamFilter('');
         setDateFrom('');
         setDateTo('');
-        router.get('/analytics/exam-analytics', {}, { preserveState: true });
+        router.get('/analytics/exam-analytics', { org: currentOrgSlug || undefined }, { preserveState: true });
     };
 
     const hasActiveFilters =

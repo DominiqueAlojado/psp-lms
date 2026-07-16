@@ -22,7 +22,7 @@ import {
 } from '@/components/ui/table';
 import AnalyticsLayout from '@/layouts/analytics/analytics-layout';
 import AppLayout from '@/layouts/app-layout';
-import { type BreadcrumbItem } from '@/types';
+import { type BreadcrumbItem, type SharedData } from '@/types';
 import { Head, router, usePage } from '@inertiajs/react';
 import {
     BarChart3,
@@ -96,6 +96,8 @@ function getSuccessBadgeVariant(rate: number) {
 
 export default function TopicPerformance() {
     const { exams, topicPerformance, filters } = usePage<PageProps>().props;
+    const { auth } = usePage<SharedData>().props;
+    const currentOrgSlug = auth.currentOrganization?.slug;
 
     const [examFilter, setExamFilter] = useState(
         filters.exam?.toString() || '',
@@ -110,6 +112,7 @@ export default function TopicPerformance() {
                 exam: examFilter || undefined,
                 date_from: dateFrom || undefined,
                 date_to: dateTo || undefined,
+                org: currentOrgSlug || undefined,
             },
             { preserveState: true, preserveScroll: true },
         );
@@ -119,7 +122,7 @@ export default function TopicPerformance() {
         setExamFilter('');
         setDateFrom('');
         setDateTo('');
-        router.get('/analytics/topic-performance', {}, { preserveState: true });
+        router.get('/analytics/topic-performance', { org: currentOrgSlug || undefined }, { preserveState: true });
     };
 
     const hasActiveFilters =

@@ -1,4 +1,5 @@
 import HeadingSmall from '@/components/heading-small';
+import { preserveOrgParam } from '@/lib/utils';
 import { StatCard } from '@/components/stat-card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -15,8 +16,8 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import AppLayout from '@/layouts/app-layout';
 import AssessmentReportsLayout from '@/layouts/assessment-reports/assessment-reports-layout';
-import { type BreadcrumbItem } from '@/types';
-import { Head, Link } from '@inertiajs/react';
+import { type BreadcrumbItem, type SharedData } from '@/types';
+import { Head, Link, usePage } from '@inertiajs/react';
 import {
     ArrowLeft,
     Award,
@@ -117,6 +118,7 @@ export default function ResidentDetailReport({
     institutionAttempts,
     nationalAttempts,
 }: Props) {
+    const { auth } = usePage<SharedData>().props;
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={`${resident.name} - Performance Report`} />
@@ -125,7 +127,12 @@ export default function ResidentDetailReport({
                 <div className="space-y-6 p-6">
                     <div className="space-y-4">
                         <Button variant="ghost" size="sm" asChild>
-                            <Link href="/assessment-reports/by-performance">
+                            <Link
+                                href={preserveOrgParam(
+                                    '/assessment-reports/by-performance',
+                                    auth.currentOrganization?.slug,
+                                )}
+                            >
                                 <ArrowLeft className="mr-2 size-4" />
                                 Back
                             </Link>

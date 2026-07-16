@@ -22,7 +22,7 @@ import {
 } from '@/components/ui/table';
 import AnalyticsLayout from '@/layouts/analytics/analytics-layout';
 import AppLayout from '@/layouts/app-layout';
-import { type BreadcrumbItem } from '@/types';
+import { type BreadcrumbItem, type SharedData } from '@/types';
 import { Head, router, usePage } from '@inertiajs/react';
 import {
     BarChart3,
@@ -98,6 +98,8 @@ interface PageProps {
 
 export default function ItemAnalysis() {
     const { exams, itemAnalysis, filters } = usePage<PageProps>().props;
+    const { auth } = usePage<SharedData>().props;
+    const currentOrgSlug = auth.currentOrganization?.slug;
 
     const [examFilter, setExamFilter] = useState(
         filters.exam?.toString() || '',
@@ -113,6 +115,7 @@ export default function ItemAnalysis() {
                 exam: examFilter || undefined,
                 date_from: dateFrom || undefined,
                 date_to: dateTo || undefined,
+                org: currentOrgSlug || undefined,
             },
             { preserveState: true, preserveScroll: true },
         );
@@ -122,7 +125,7 @@ export default function ItemAnalysis() {
         setExamFilter('');
         setDateFrom('');
         setDateTo('');
-        router.get('/analytics/item-analysis', {}, { preserveState: true });
+        router.get('/analytics/item-analysis', { org: currentOrgSlug || undefined }, { preserveState: true });
     };
 
     const hasActiveFilters =

@@ -2,9 +2,9 @@ import Heading from '@/components/heading';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { usePermissions } from '@/hooks/use-permissions';
-import { cn, isSameUrl, resolveUrl } from '@/lib/utils';
-import { type NavItem } from '@/types';
-import { Link } from '@inertiajs/react';
+import { cn, isSameUrl, preserveOrgParam, resolveUrl } from '@/lib/utils';
+import { type NavItem, type SharedData } from '@/types';
+import { Link, usePage } from '@inertiajs/react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { type PropsWithChildren, useState } from 'react';
 
@@ -30,6 +30,7 @@ export default function AssessmentReportsLayout({
     children,
 }: PropsWithChildren) {
     const { hasPermission } = usePermissions();
+    const { auth } = usePage<SharedData>().props;
     const [isCollapsed, setIsCollapsed] = useState(false);
 
     // When server-side rendering, we only render the layout on the client...
@@ -81,7 +82,12 @@ export default function AssessmentReportsLayout({
                                         ),
                                     })}
                                 >
-                                    <Link href={item.href}>
+                                    <Link
+                                        href={preserveOrgParam(
+                                            item.href,
+                                            auth.currentOrganization?.slug,
+                                        )}
+                                    >
                                         {item.icon && (
                                             <item.icon className="h-4 w-4" />
                                         )}
@@ -116,4 +122,3 @@ export default function AssessmentReportsLayout({
         </div>
     );
 }
-

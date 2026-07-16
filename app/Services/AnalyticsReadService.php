@@ -11,6 +11,8 @@ use Illuminate\Support\Collection;
 
 class AnalyticsReadService
 {
+    private const ALL_ORGANIZATIONS_SLUG = 'all-organizations';
+
     public function __construct(
         private readonly AnalyticsRepositoryInterface $analyticsRepository,
     ) {}
@@ -22,9 +24,10 @@ class AnalyticsReadService
         $organizationId = $user->current_organization_id;
         $canViewAllOrganizations = $user->hasPermissionTo('view-all-assessment-reports');
         $isNational = $currentOrganization?->type === 'national';
+        $isAllOrganizationsContext = data_get($currentOrganization, 'slug') === self::ALL_ORGANIZATIONS_SLUG;
         $examFilter = $this->normalizeExamFilter($request->input('exam'));
 
-        [$exams, $organizations] = $this->baseFilterData($organizationId, $canViewAllOrganizations, $isNational);
+        [$exams, $organizations] = $this->baseFilterData($organizationId, $canViewAllOrganizations, $isNational, $isAllOrganizationsContext);
 
         $analytics = null;
         if ($examFilter !== null) {
@@ -56,9 +59,10 @@ class AnalyticsReadService
         $organizationId = $user->current_organization_id;
         $canViewAllOrganizations = $user->hasPermissionTo('view-all-assessment-reports');
         $isNational = $currentOrganization?->type === 'national';
+        $isAllOrganizationsContext = data_get($currentOrganization, 'slug') === self::ALL_ORGANIZATIONS_SLUG;
         $examFilter = $this->normalizeExamFilter($request->input('exam'));
 
-        [$exams, $organizations] = $this->baseFilterData($organizationId, $canViewAllOrganizations, $isNational);
+        [$exams, $organizations] = $this->baseFilterData($organizationId, $canViewAllOrganizations, $isNational, $isAllOrganizationsContext);
 
         $itemAnalysis = null;
         if ($examFilter !== null) {
@@ -90,9 +94,10 @@ class AnalyticsReadService
         $organizationId = $user->current_organization_id;
         $canViewAllOrganizations = $user->hasPermissionTo('view-all-assessment-reports');
         $isNational = $currentOrganization?->type === 'national';
+        $isAllOrganizationsContext = data_get($currentOrganization, 'slug') === self::ALL_ORGANIZATIONS_SLUG;
         $examFilter = $this->normalizeExamFilter($request->input('exam'));
 
-        [$exams, $organizations] = $this->baseFilterData($organizationId, $canViewAllOrganizations, $isNational);
+        [$exams, $organizations] = $this->baseFilterData($organizationId, $canViewAllOrganizations, $isNational, $isAllOrganizationsContext);
 
         return [
             'exams' => $exams,
@@ -120,8 +125,9 @@ class AnalyticsReadService
         $organizationId = $user->current_organization_id;
         $canViewAllOrganizations = $user->hasPermissionTo('view-all-assessment-reports');
         $isNational = $currentOrganization?->type === 'national';
+        $isAllOrganizationsContext = data_get($currentOrganization, 'slug') === self::ALL_ORGANIZATIONS_SLUG;
 
-        [$exams, $organizations] = $this->baseFilterData($organizationId, $canViewAllOrganizations, $isNational);
+        [$exams, $organizations] = $this->baseFilterData($organizationId, $canViewAllOrganizations, $isNational, $isAllOrganizationsContext);
 
         return [
             'exams' => $exams,
@@ -147,9 +153,10 @@ class AnalyticsReadService
         $organizationId = $user->current_organization_id;
         $canViewAllOrganizations = $user->hasPermissionTo('view-all-assessment-reports');
         $isNational = $currentOrganization?->type === 'national';
+        $isAllOrganizationsContext = data_get($currentOrganization, 'slug') === self::ALL_ORGANIZATIONS_SLUG;
         $examFilter = $this->normalizeExamFilter($request->input('exam'));
 
-        [$exams, $organizations] = $this->baseFilterData($organizationId, $canViewAllOrganizations, $isNational);
+        [$exams, $organizations] = $this->baseFilterData($organizationId, $canViewAllOrganizations, $isNational, $isAllOrganizationsContext);
 
         return [
             'exams' => $exams,
@@ -220,12 +227,15 @@ class AnalyticsReadService
         ];
     }
 
-    private function baseFilterData(?int $organizationId, bool $canViewAllOrganizations, bool $isNational): array
+    private function baseFilterData(?int $organizationId, bool $canViewAllOrganizations, bool $isNational, bool $isAllOrganizationsContext = false): array
     {
         $institutionExams = collect();
         $nationalExams = collect();
 
-        if ($isNational) {
+        if ($isAllOrganizationsContext) {
+            $institutionExams = $this->analyticsRepository->getPublishedInstitutionExams($organizationId, true);
+            $nationalExams = $this->analyticsRepository->getPublishedNationalExams();
+        } elseif ($isNational) {
             $nationalExams = $this->analyticsRepository->getPublishedNationalExams();
         } else {
             $institutionExams = $this->analyticsRepository->getPublishedInstitutionExams($organizationId, $canViewAllOrganizations);
@@ -249,7 +259,7 @@ class AnalyticsReadService
             ]);
         }
 
-        $organizations = $canViewAllOrganizations
+        $organizations = ($canViewAllOrganizations || $isAllOrganizationsContext)
             ? $this->analyticsRepository->getActiveInstitutionOrganizations()
             : collect();
 

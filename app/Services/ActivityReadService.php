@@ -17,6 +17,8 @@ use App\Repositories\Contracts\ActivityRepositoryInterface;
 
 class ActivityReadService
 {
+    private const ALL_ORGANIZATIONS_SLUG = 'all-organizations';
+
     public function __construct(
         private readonly ActivityRepositoryInterface $activityRepository,
     ) {}
@@ -24,6 +26,46 @@ class ActivityReadService
     public function indexPayload(User $user, array $filters): array
     {
         $organization = $user->currentOrganization;
+        $isAllOrganizationsContext = data_get($organization, 'slug') === self::ALL_ORGANIZATIONS_SLUG;
+
+        if ($isAllOrganizationsContext) {
+            $organizationIds = $user->organizations()
+                ->wherePivot('organization_user.is_active', true)
+                ->pluck('organizations.id')
+                ->all();
+
+            abort_if($organizationIds === [], 403, 'No accessible organizations found.');
+
+            return [
+                'activities' => $this->activityRepository
+                    ->paginateForOrganizations($organizationIds, $user->hasAnyRole(['System Admin', 'BOP']), $filters)
+                    ->through(fn ($activity) => [
+                        'id' => $activity->id,
+                        'description' => $activity->description,
+                        'module' => $activity->log_name,
+                        'module_label' => $this->moduleLabel($activity->log_name),
+                        'action' => $this->detectAction($activity->description),
+                        'subject_label' => $this->subjectLabel($activity->subject, $activity->properties['attributes'] ?? []),
+                        'subject_type' => $activity->subject_type ? class_basename($activity->subject_type) : null,
+                        'organization_name' => $this->organizationName($activity->subject),
+                        'actor' => $activity->causer ? [
+                            'name' => $activity->causer->name,
+                            'email' => $activity->causer->email,
+                        ] : null,
+                        'changes' => $this->formatChanges($activity->properties['attributes'] ?? [], $activity->properties['old'] ?? []),
+                        'created_at' => $activity->created_at->toIso8601String(),
+                        'created_at_human' => $activity->created_at->diffForHumans(),
+                    ]),
+                'summary' => $this->activityRepository->getSummaryForOrganizations(
+                    $organizationIds,
+                    $user->hasAnyRole(['System Admin', 'BOP']),
+                    $filters
+                ),
+                'filters' => $filters,
+                'modules' => $this->modules(),
+            ];
+        }
+
         $organizationId = $organization?->id;
 
         abort_if($organizationId === null, 403, 'No active organization selected.');

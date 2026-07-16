@@ -13,6 +13,8 @@ interface GradebookRepositoryInterface
 
     public function getResidentsForOrganization(int $organizationId): Collection;
 
+    public function getResidentsForOrganizations(array $organizationIds): Collection;
+
     public function getInstitutionTopicPerformanceRows(int $userId): Collection;
 
     public function getNationalTopicPerformanceRows(int $userId): Collection;
