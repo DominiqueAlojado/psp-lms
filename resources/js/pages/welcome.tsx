@@ -233,17 +233,17 @@ export default function Welcome({
                         ))}
                     </section>
 
-                    <section className="rounded-3xl border border-border bg-foreground p-8 text-background shadow-lg">
+                    <section className="rounded-3xl border border-border bg-[linear-gradient(135deg,color-mix(in_oklab,var(--color-card)_98%,white),color-mix(in_oklab,var(--color-card)_94%,var(--color-accent)))] p-8 text-foreground shadow-[0_24px_60px_-36px_rgb(35_24_74_/_0.18)] dark:bg-[linear-gradient(135deg,color-mix(in_oklab,var(--color-card)_96%,var(--color-primary)_4%),color-mix(in_oklab,var(--color-card)_92%,black))] dark:shadow-[0_24px_60px_-36px_rgb(0_0_0_/_0.5)]">
                         <div className="flex flex-col gap-8 lg:flex-row lg:justify-between">
                             <div className="space-y-3">
-                                <p className="text-sm tracking-[0.35em] text-background/70 uppercase">
+                                <p className="text-sm tracking-[0.35em] text-muted-foreground uppercase">
                                     Integrated Workflow
                                 </p>
                                 <h2 className="text-3xl font-semibold">
                                     One lifecycle for institution exams, LMS
                                     delivery, and national in-service cycles.
                                 </h2>
-                                <p className="text-background/80">
+                                <p className="text-muted-foreground">
                                     Build assets once, reuse across
                                     organizations, and surface insights the
                                     moment attempts finish.
@@ -253,16 +253,16 @@ export default function Welcome({
                                 {workflow.map((step, index) => (
                                     <div
                                         key={step.title}
-                                        className="flex items-center gap-4 rounded-2xl border border-background/20 bg-background/10 p-4"
+                                        className="flex items-center gap-4 rounded-2xl border border-border/70 bg-background/72 p-4 shadow-[0_16px_32px_-28px_rgb(35_24_74_/_0.16)] backdrop-blur-sm dark:bg-background/16 dark:shadow-[0_16px_32px_-28px_rgb(0_0_0_/_0.45)]"
                                     >
-                                        <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-background/30 text-lg font-semibold">
+                                        <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-primary/20 bg-primary/8 text-lg font-semibold text-primary">
                                             {index + 1}
                                         </span>
                                         <div>
                                             <p className="font-medium">
                                                 {step.title}
                                             </p>
-                                            <p className="text-background/80">
+                                            <p className="text-muted-foreground">
                                                 {step.description}
                                             </p>
                                         </div>
@@ -270,16 +270,16 @@ export default function Welcome({
                                 ))}
                             </div>
                         </div>
-                        <div className="mt-8 flex flex-wrap items-center gap-3 text-xs tracking-[0.35em] text-background/70 uppercase">
-                            <span className="inline-flex items-center gap-2 rounded-full border border-background/20 px-4 py-1">
+                        <div className="mt-8 flex flex-wrap items-center gap-3 text-xs tracking-[0.35em] text-muted-foreground uppercase">
+                            <span className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-background/72 px-4 py-1 text-foreground dark:bg-background/16">
                                 <ClipboardList className="h-4 w-4" />
                                 Institution Exams
                             </span>
-                            <span className="inline-flex items-center gap-2 rounded-full border border-background/20 px-4 py-1">
+                            <span className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-background/72 px-4 py-1 text-foreground dark:bg-background/16">
                                 <GraduationCap className="h-4 w-4" />
                                 LMS Delivery
                             </span>
-                            <span className="inline-flex items-center gap-2 rounded-full border border-background/20 px-4 py-1">
+                            <span className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-background/72 px-4 py-1 text-foreground dark:bg-background/16">
                                 <ShieldCheck className="h-4 w-4" />
                                 In-Service Drills
                             </span>

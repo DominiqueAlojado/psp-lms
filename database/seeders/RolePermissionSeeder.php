@@ -148,7 +148,7 @@ class RolePermissionSeeder extends Seeder
             'view-institution-exams',
             'view-assessment-results',
             'export-assessment-results',
-            'view-assessment-reports',
+            'view-all-assessment-reports',
 
             // Cases
             'view-cases',

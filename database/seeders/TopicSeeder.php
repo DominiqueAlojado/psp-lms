@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\Topic;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Str;
 
 class TopicSeeder extends Seeder
 {
@@ -59,12 +60,17 @@ class TopicSeeder extends Seeder
         ];
 
         foreach ($globalTopics as $topic) {
-            Topic::create([
-                'name' => $topic['name'],
-                'description' => $topic['description'],
-                'organization_id' => null,
-                'is_global' => true,
-            ]);
+            Topic::updateOrCreate(
+                [
+                    'slug' => Str::slug($topic['name']),
+                    'organization_id' => null,
+                    'is_global' => true,
+                ],
+                [
+                    'name' => $topic['name'],
+                    'description' => $topic['description'],
+                ]
+            );
         }
     }
 }

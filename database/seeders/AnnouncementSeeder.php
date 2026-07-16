@@ -49,27 +49,31 @@ class AnnouncementSeeder extends Seeder
         ];
 
         foreach ($systemAnnouncements as $data) {
-            Announcement::create([
-                'organization_id' => null,
-                'created_by' => $creator->id,
-                'title' => $data['title'],
-                'content' => $data['content'],
-                'scope' => $data['scope'],
-                'priority' => $data['priority'],
-                'is_published' => true,
-                'is_pinned' => $data['is_pinned'] ?? false,
-                'expires_at' => $data['expires_at'] ?? null,
-            ]);
+            Announcement::updateOrCreate(
+                [
+                    'organization_id' => null,
+                    'scope' => $data['scope'],
+                    'title' => $data['title'],
+                ],
+                [
+                    'created_by' => $creator->id,
+                    'content' => $data['content'],
+                    'priority' => $data['priority'],
+                    'is_published' => true,
+                    'is_pinned' => $data['is_pinned'] ?? false,
+                    'expires_at' => $data['expires_at'] ?? null,
+                ]
+            );
         }
 
         // Organization-specific announcements
         $organizationAnnouncements = [
             [
-                'title' => 'New Rotation Schedule for PGY-2 Residents',
-                'content' => '<p>The rotation schedule for PGY-2 residents has been updated for the upcoming quarter.</p><p>Please check your individual schedules in the system and coordinate with your respective departments.</p><p><strong>Key Changes:</strong></p><ul><li>Surgery rotation extended by 2 weeks</li><li>Pediatrics rotation moved to January</li><li>Elective periods adjusted</li></ul>',
+                'title' => 'New Rotation Schedule for Second Year Residents',
+                'content' => '<p>The rotation schedule for second year residents has been updated for the upcoming quarter.</p><p>Please check your individual schedules in the system and coordinate with your respective departments.</p><p><strong>Key Changes:</strong></p><ul><li>Surgery rotation extended by 2 weeks</li><li>Pediatrics rotation moved to January</li><li>Elective periods adjusted</li></ul>',
                 'priority' => 'urgent',
                 'is_pinned' => true,
-                'target_year_levels' => ['PGY-2'],
+                'target_year_levels' => ['Second Year'],
             ],
             [
                 'title' => 'Grand Rounds: COVID-19 Management Update',
@@ -90,18 +94,22 @@ class AnnouncementSeeder extends Seeder
         ];
 
         foreach ($organizationAnnouncements as $data) {
-            Announcement::create([
-                'organization_id' => $organization->id,
-                'created_by' => $creator->id,
-                'title' => $data['title'],
-                'content' => $data['content'],
-                'scope' => 'organization',
-                'priority' => $data['priority'],
-                'is_published' => true,
-                'is_pinned' => $data['is_pinned'] ?? false,
-                'target_year_levels' => $data['target_year_levels'] ?? null,
-                'expires_at' => $data['expires_at'] ?? null,
-            ]);
+            Announcement::updateOrCreate(
+                [
+                    'organization_id' => $organization->id,
+                    'scope' => 'organization',
+                    'title' => $data['title'],
+                ],
+                [
+                    'created_by' => $creator->id,
+                    'content' => $data['content'],
+                    'priority' => $data['priority'],
+                    'is_published' => true,
+                    'is_pinned' => $data['is_pinned'] ?? false,
+                    'target_year_levels' => $data['target_year_levels'] ?? null,
+                    'expires_at' => $data['expires_at'] ?? null,
+                ]
+            );
         }
 
         $totalCount = count($systemAnnouncements) + count($organizationAnnouncements);

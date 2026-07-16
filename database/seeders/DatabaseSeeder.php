@@ -38,6 +38,9 @@ class DatabaseSeeder extends Seeder
             InstitutionExamCompletedAttemptsSeeder::class, // Create completed institution exam attempts for Bataan
             AnnouncementSeeder::class,   // Create sample announcements
             LearningResourceSeeder::class, // Create sample learning resources
+            EventSeeder::class,          // Create sample events and registrations
+            AssignmentSeeder::class,     // Create sample assignments and submissions
+            SupportTicketSeeder::class,  // Create sample support tickets and messages
         ]);
 
         // User::factory(10)->create();
