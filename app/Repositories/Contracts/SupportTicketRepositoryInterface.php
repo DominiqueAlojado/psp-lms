@@ -20,7 +20,7 @@ interface SupportTicketRepositoryInterface
 
     public function getUserSummary(int $userId, int $organizationId): array;
 
-    public function getUserSummaryAcrossOrganizations(int $userId, array $organizationIds): array;
+    public function getUserSummaryAcrossOrganizations(int $userId, array $organizationIds, array $filters = []): array;
 
     public function getManagementSummary(int $organizationId, array $filters): array;
 

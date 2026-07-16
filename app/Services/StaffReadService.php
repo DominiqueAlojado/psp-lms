@@ -8,6 +8,8 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
 class StaffReadService
 {
+    private const ALL_ORGANIZATIONS_SLUG = 'all-organizations';
+
     public function __construct(
         private readonly StaffRepositoryInterface $staffRepository,
     ) {}
@@ -16,13 +18,16 @@ class StaffReadService
     {
         $staffRoleNames = $this->staffRepository->getStaffRoleNames();
         $userOrganizationIds = $user->organizations()->pluck('organizations.id')->toArray();
-        $isSystemAdmin = $user->hasRole('System Admin');
+        $canManageAllOrganizations = $user->hasAnyRole(['System Admin', 'BOP']);
+        $isAllOrganizationsContext = $this->isAllOrganizationsContext($user);
+        $currentOrganizationId = $isAllOrganizationsContext ? null : $user->current_organization_id;
 
         return [
-            'staff' => $this->list($filters, $staffRoleNames, $userOrganizationIds, $isSystemAdmin),
-            'roleStats' => $this->staffRepository->getRoleStats($userOrganizationIds, $isSystemAdmin),
-            'roles' => $this->staffRepository->getSelectableRoles($user, $isSystemAdmin),
-            'organizations' => $this->staffRepository->getSelectableOrganizations($user, $isSystemAdmin),
+            'staff' => $this->list($filters, $staffRoleNames, $userOrganizationIds, $isAllOrganizationsContext, $currentOrganizationId),
+            'roleStats' => $this->staffRepository->getRoleStats($userOrganizationIds, $isAllOrganizationsContext, $currentOrganizationId),
+            'roles' => $this->staffRepository->getSelectableRoles($user, $canManageAllOrganizations),
+            'organizations' => $this->staffRepository->getSelectableOrganizations($user, $canManageAllOrganizations),
+            'isAllOrganizationsContext' => $isAllOrganizationsContext,
         ];
     }
 
@@ -47,10 +52,10 @@ class StaffReadService
         ];
     }
 
-    private function list(array $filters, array $staffRoleNames, array $userOrganizationIds, bool $isSystemAdmin): LengthAwarePaginator
+    private function list(array $filters, array $staffRoleNames, array $userOrganizationIds, bool $isAllOrganizationsContext, ?int $currentOrganizationId = null): LengthAwarePaginator
     {
         return $this->staffRepository
-            ->paginate($filters, $staffRoleNames, $userOrganizationIds, $isSystemAdmin)
+            ->paginate($filters, $staffRoleNames, $userOrganizationIds, $isAllOrganizationsContext, $currentOrganizationId)
             ->through(fn ($user) => [
                 'id' => $user->id,
                 'uuid' => $user->uuid,
@@ -63,5 +68,11 @@ class StaffReadService
                 'created_at' => $user->created_at->format('Y-m-d'),
                 'updated_at' => $user->updated_at->toIso8601String(),
             ]);
+    }
+
+    private function isAllOrganizationsContext(User $user): bool
+    {
+        return $user->hasAnyRole(['System Admin', 'BOP'])
+            && request()->query('org') === self::ALL_ORGANIZATIONS_SLUG;
     }
 }

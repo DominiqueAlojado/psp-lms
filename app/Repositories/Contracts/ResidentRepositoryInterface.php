@@ -5,11 +5,12 @@ namespace App\Repositories\Contracts;
 use App\Models\Organization;
 use App\Models\Resident;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 
 interface ResidentRepositoryInterface
 {
-    public function paginate(array $filters, int $perPage = 15): LengthAwarePaginator;
+    public function paginate(array $filters, ?int $organizationId = null, int $perPage = 15): LengthAwarePaginator;
 
     public function getOrganizations(): Collection;
 
@@ -17,9 +18,9 @@ interface ResidentRepositoryInterface
 
     public function getActiveOrganizationsExcluding(array $excludedIds): Collection;
 
-    public function getYearLevelStats(): array;
+    public function getYearLevelStats(?int $organizationId = null): array;
 
-    public function getDistinctCourses(): Collection;
+    public function getDistinctCourses(?int $organizationId = null): Collection;
 
     public function create(array $attributes): Resident;
 
@@ -30,4 +31,6 @@ interface ResidentRepositoryInterface
     public function findOrganizationById(int $organizationId): ?Organization;
 
     public function findForOrganization(int $organizationId, int $residentId): Resident;
+
+    public function scopeToOrganization(Builder $query, ?int $organizationId = null): Builder;
 }

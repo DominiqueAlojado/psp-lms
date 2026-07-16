@@ -14,6 +14,7 @@ import {
     TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { usePermissions } from '@/hooks/use-permissions';
+import { preserveOrgParam } from '@/lib/utils';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, router, usePage } from '@inertiajs/react';
@@ -75,12 +76,27 @@ interface PageProps {
     roleStats: RoleStat[];
     roles: Role[];
     organizations: Organization[];
+    isAllOrganizationsContext: boolean;
+    auth: {
+        currentOrganization?: {
+            slug?: string | null;
+        } | null;
+    };
 }
 
 export default function StaffIndex() {
-    const { staff, filters, roleStats, roles, organizations } =
+    const {
+        staff,
+        filters,
+        roleStats,
+        roles,
+        organizations,
+        isAllOrganizationsContext,
+        auth,
+    } =
         usePage<PageProps>().props;
     const { hasPermission } = usePermissions();
+    const currentOrgSlug = auth.currentOrganization?.slug;
 
     const [createOpen, setCreateOpen] = useState(false);
     const [editingStaff, setEditingStaff] = useState<Staff | null>(null);
@@ -100,7 +116,7 @@ export default function StaffIndex() {
 
     const handleSearch = useCallback(() => {
         router.get(
-            '/staff',
+            preserveOrgParam('/staff', currentOrgSlug),
             {
                 search: searchQuery || undefined,
                 role: roleFilter || undefined,
@@ -111,13 +127,17 @@ export default function StaffIndex() {
                 preserveScroll: true,
             },
         );
-    }, [searchQuery, roleFilter, orgFilter]);
+    }, [searchQuery, roleFilter, orgFilter, currentOrgSlug]);
 
     const handleClearFilters = () => {
         setSearchQuery('');
         setRoleFilter('');
         setOrgFilter('');
-        router.get('/staff', {}, { preserveState: true, preserveScroll: true });
+        router.get(
+            preserveOrgParam('/staff', currentOrgSlug),
+            {},
+            { preserveState: true, preserveScroll: true },
+        );
     };
 
     const hasActiveFilters = searchQuery || roleFilter || orgFilter;
@@ -134,8 +154,9 @@ export default function StaffIndex() {
                             Staff Management
                         </HeadingSmall>
                         <p className="text-sm text-muted-foreground">
-                            Manage administrative staff, training officers, and
-                            system administrators
+                            {isAllOrganizationsContext
+                                ? 'Manage administrative staff across all organizations'
+                                : 'Manage administrative staff in the current organization'}
                         </p>
                     </div>
                     <TooltipProvider>
@@ -211,18 +232,20 @@ export default function StaffIndex() {
                                 </option>
                             ))}
                         </select>
-                        <select
-                            value={orgFilter}
-                            onChange={(e) => setOrgFilter(e.target.value)}
-                            className="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-                        >
-                            <option value="">All Organizations</option>
-                            {sortedOrganizations.map((org) => (
-                                <option key={org.id} value={org.id}>
-                                    {org.name}
-                                </option>
-                            ))}
-                        </select>
+                        {isAllOrganizationsContext && (
+                            <select
+                                value={orgFilter}
+                                onChange={(e) => setOrgFilter(e.target.value)}
+                                className="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                            >
+                                <option value="">All Organizations</option>
+                                {sortedOrganizations.map((org) => (
+                                    <option key={org.id} value={org.id}>
+                                        {org.name}
+                                    </option>
+                                ))}
+                            </select>
+                        )}
                         <Button onClick={handleSearch}>Search</Button>
                         {hasActiveFilters && (
                             <Button

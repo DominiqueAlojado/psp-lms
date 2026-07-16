@@ -75,8 +75,10 @@ interface PageProps {
     categories: Option[];
     priorities: Option[];
     statuses: Option[];
+    organizations: Option[];
     filters: {
         status?: string;
+        organization_id?: string;
     };
     canManage: boolean;
     isAllOrganizationsContext: boolean;
@@ -132,6 +134,7 @@ export default function SupportIndex({
     categories,
     priorities,
     statuses,
+    organizations,
     filters,
     canManage,
     isAllOrganizationsContext,
@@ -141,6 +144,9 @@ export default function SupportIndex({
     const page = usePage<SharedData>();
     const currentOrgSlug = page.props.auth.currentOrganization?.slug;
     const [statusFilter, setStatusFilter] = useState(filters.status || 'all');
+    const [organizationFilter, setOrganizationFilter] = useState(
+        filters.organization_id || 'all',
+    );
     const form = useForm({
         title: '',
         category: categories[0]?.value ?? 'bug',
@@ -150,13 +156,18 @@ export default function SupportIndex({
         details: '',
     });
 
-    const applyFilter = (value: string) => {
+    const applyFilter = (value: string, nextOrganization?: string) => {
+        const resolvedOrganization = nextOrganization ?? organizationFilter;
         setStatusFilter(value);
 
         router.get(
             preserveOrgParam('/support', currentOrgSlug),
             {
                 status: value === 'all' ? undefined : value,
+                organization_id:
+                    resolvedOrganization === 'all'
+                        ? undefined
+                        : resolvedOrganization,
             },
             { preserveState: true, preserveScroll: true },
         );
@@ -289,28 +300,60 @@ export default function SupportIndex({
                                 <CardTitle>
                                     {showsManagedTickets ? 'Organization Tickets' : 'Your Tickets'}
                                 </CardTitle>
-                                <div className="w-full max-w-[220px]">
-                                    <Select
-                                        value={statusFilter}
-                                        onValueChange={applyFilter}
-                                    >
-                                        <SelectTrigger>
-                                            <SelectValue placeholder="All Statuses" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="all">
-                                                All Statuses
-                                            </SelectItem>
-                                            {statuses.map((status) => (
-                                                <SelectItem
-                                                    key={status.value}
-                                                    value={status.value}
-                                                >
-                                                    {status.label}
+                                <div className="flex w-full flex-col gap-3 sm:flex-row sm:justify-end">
+                                    {isAllOrganizationsContext && canManage && (
+                                        <div className="w-full sm:max-w-[240px]">
+                                            <Select
+                                                value={organizationFilter}
+                                                onValueChange={(value) => {
+                                                    setOrganizationFilter(value);
+                                                    applyFilter(statusFilter, value);
+                                                }}
+                                            >
+                                                <SelectTrigger>
+                                                    <SelectValue placeholder="All Organizations" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="all">
+                                                        All Organizations
+                                                    </SelectItem>
+                                                    {organizations.map((organization) => (
+                                                        <SelectItem
+                                                            key={organization.value}
+                                                            value={organization.value}
+                                                        >
+                                                            {organization.label}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                    )}
+                                    <div className="w-full sm:max-w-[220px]">
+                                        <Select
+                                            value={statusFilter}
+                                            onValueChange={(value) =>
+                                                applyFilter(value)
+                                            }
+                                        >
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="All Statuses" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="all">
+                                                    All Statuses
                                                 </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
+                                                {statuses.map((status) => (
+                                                    <SelectItem
+                                                        key={status.value}
+                                                        value={status.value}
+                                                    >
+                                                        {status.label}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
                                 </div>
                             </CardHeader>
                             <CardContent className="space-y-4">
@@ -427,6 +470,11 @@ export default function SupportIndex({
                                                                 'all'
                                                                     ? undefined
                                                                     : statusFilter,
+                                                            organization_id:
+                                                                organizationFilter ===
+                                                                'all'
+                                                                    ? undefined
+                                                                    : organizationFilter,
                                                             page: pageNumber,
                                                         },
                                                         {

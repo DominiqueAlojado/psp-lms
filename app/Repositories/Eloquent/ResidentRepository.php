@@ -11,15 +11,15 @@ use Illuminate\Support\Collection;
 
 class ResidentRepository implements ResidentRepositoryInterface
 {
-    public function paginate(array $filters, int $perPage = 15): LengthAwarePaginator
+    public function paginate(array $filters, ?int $organizationId = null, int $perPage = 15): LengthAwarePaginator
     {
-        return Resident::query()
+        return $this->scopeToOrganization(Resident::query(), $organizationId)
             ->with(['organization', 'user.organizations'])
             ->when($filters['search'] ?? null, function (Builder $query, string $search) {
                 $query->search($search);
             })
-            ->when($filters['organization_id'] ?? null, function (Builder $query, $organizationId) {
-                $query->where('organization_id', $organizationId);
+            ->when($filters['organization_id'] ?? null, function (Builder $query, $filterOrganizationId) {
+                $query->where('organization_id', $filterOrganizationId);
             })
             ->when($filters['year_level'] ?? null, function (Builder $query, string $yearLevel) {
                 $query->where('year_level', $yearLevel);
@@ -64,18 +64,18 @@ class ResidentRepository implements ResidentRepositoryInterface
             ->get(['id', 'name', 'slug', 'type']);
     }
 
-    public function getYearLevelStats(): array
+    public function getYearLevelStats(?int $organizationId = null): array
     {
-        return Resident::query()
+        return $this->scopeToOrganization(Resident::query(), $organizationId)
             ->selectRaw('year_level, COUNT(*) as count')
             ->groupBy('year_level')
             ->pluck('count', 'year_level')
             ->toArray();
     }
 
-    public function getDistinctCourses(): Collection
+    public function getDistinctCourses(?int $organizationId = null): Collection
     {
-        return Resident::query()
+        return $this->scopeToOrganization(Resident::query(), $organizationId)
             ->distinct()
             ->pluck('course')
             ->filter()
@@ -107,5 +107,13 @@ class ResidentRepository implements ResidentRepositoryInterface
         return Resident::query()
             ->where('organization_id', $organizationId)
             ->findOrFail($residentId);
+    }
+
+    public function scopeToOrganization(Builder $query, ?int $organizationId = null): Builder
+    {
+        return $query->when(
+            $organizationId !== null,
+            fn (Builder $builder) => $builder->where('organization_id', $organizationId),
+        );
     }
 }

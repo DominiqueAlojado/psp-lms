@@ -31,6 +31,7 @@ interface Props {
     yearLevels: string[];
     statuses: string[];
     courses: string[];
+    showOrganizationFilter?: boolean;
 }
 
 export function ResidentFilters({
@@ -46,6 +47,7 @@ export function ResidentFilters({
     yearLevels,
     statuses,
     courses,
+    showOrganizationFilter = false,
 }: Props) {
     const hasActiveFilters = Object.keys(filters).some(
         (key) => filters[key as keyof typeof filters],
@@ -104,28 +106,30 @@ export function ResidentFilters({
                 {showFilters && (
                     <div className="grid grid-cols-1 gap-4 border-t border-border/70 pt-5 md:grid-cols-2 xl:grid-cols-4">
                         {/* Organization Filter */}
-                        <div className="space-y-2">
-                            <label className="block text-xs font-semibold tracking-[0.12em] text-muted-foreground uppercase">
-                                Organization
-                            </label>
-                            <select
-                                className={filterSelectClassName}
-                                value={localFilters.organization_id || ''}
-                                onChange={(e) =>
-                                    updateFilter(
-                                        'organization_id',
-                                        e.target.value || undefined,
-                                    )
-                                }
-                            >
-                                <option value="">All Organizations</option>
-                                {organizations.map((org) => (
-                                    <option key={org.id} value={org.id}>
-                                        {org.name}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
+                        {showOrganizationFilter && (
+                            <div className="space-y-2">
+                                <label className="block text-xs font-semibold tracking-[0.12em] text-muted-foreground uppercase">
+                                    Organization
+                                </label>
+                                <select
+                                    className={filterSelectClassName}
+                                    value={localFilters.organization_id || ''}
+                                    onChange={(e) =>
+                                        updateFilter(
+                                            'organization_id',
+                                            e.target.value || undefined,
+                                        )
+                                    }
+                                >
+                                    <option value="">All Organizations</option>
+                                    {organizations.map((org) => (
+                                        <option key={org.id} value={org.id}>
+                                            {org.name}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                        )}
 
                         {/* Year Level Filter */}
                         <div className="space-y-2">
@@ -214,7 +218,7 @@ export function ResidentFilters({
                                 />
                             </Badge>
                         )}
-                        {filters.organization_id && (
+                        {showOrganizationFilter && filters.organization_id && (
                             <Badge variant="secondary" className="gap-1.5">
                                 Org:{' '}
                                 {

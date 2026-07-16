@@ -43,6 +43,7 @@ class StaffController extends Controller
             'roleStats' => $payload['roleStats'],
             'roles' => $payload['roles'],
             'organizations' => $payload['organizations'],
+            'isAllOrganizationsContext' => $payload['isAllOrganizationsContext'],
         ]);
     }
 

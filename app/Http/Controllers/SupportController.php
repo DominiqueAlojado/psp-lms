@@ -24,7 +24,7 @@ class SupportController extends Controller
     {
         $payload = $this->supportReadService->indexPayload(
             $request->user(),
-            $request->only(['status'])
+            $request->only(['status', 'organization_id'])
         );
 
         return Inertia::render('support/index', [
@@ -33,7 +33,8 @@ class SupportController extends Controller
             'categories' => $payload['categories'],
             'priorities' => $payload['priorities'],
             'statuses' => $payload['statuses'],
-            'filters' => $request->only(['status']),
+            'organizations' => $payload['organizations'],
+            'filters' => $request->only(['status', 'organization_id']),
             'canManage' => $payload['canManage'],
             'isAllOrganizationsContext' => $payload['isAllOrganizationsContext'],
             'canCreateTicket' => $payload['canCreateTicket'],

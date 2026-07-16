@@ -21,15 +21,25 @@ class StaffRepository implements StaffRepositoryInterface
             ->toArray();
     }
 
-    public function paginate(array $filters, array $staffRoleNames, array $userOrganizationIds, bool $isSystemAdmin, int $perPage = 15): LengthAwarePaginator
+    public function paginate(array $filters, array $staffRoleNames, array $userOrganizationIds, bool $isAllOrganizationsContext, ?int $currentOrganizationId = null, int $perPage = 15): LengthAwarePaginator
     {
         return User::query()
             ->whereHas('roles', function (Builder $query) use ($staffRoleNames) {
                 $query->whereIn('name', $staffRoleNames);
             })
-            ->when(! $isSystemAdmin, function (Builder $query) use ($userOrganizationIds) {
+            ->when(
+                ! $isAllOrganizationsContext && $currentOrganizationId !== null,
+                function (Builder $query) use ($currentOrganizationId) {
+                    $query->whereHas('organizations', function (Builder $organizationQuery) use ($currentOrganizationId) {
+                        $organizationQuery->where('organizations.id', $currentOrganizationId)
+                            ->where('organization_user.is_active', true);
+                    });
+                }
+            )
+            ->when($isAllOrganizationsContext, function (Builder $query) use ($userOrganizationIds) {
                 $query->whereHas('organizations', function (Builder $organizationQuery) use ($userOrganizationIds) {
-                    $organizationQuery->whereIn('organizations.id', $userOrganizationIds);
+                    $organizationQuery->whereIn('organizations.id', $userOrganizationIds)
+                        ->where('organization_user.is_active', true);
                 });
             })
             ->with(['roles', 'currentOrganization'])
@@ -53,7 +63,7 @@ class StaffRepository implements StaffRepositoryInterface
             ->withQueryString();
     }
 
-    public function getRoleStats(array $userOrganizationIds, bool $isSystemAdmin): Collection
+    public function getRoleStats(array $userOrganizationIds, bool $isAllOrganizationsContext, ?int $currentOrganizationId = null): Collection
     {
         $baseRoles = Role::query()
             ->where('name', '!=', 'Resident')
@@ -66,7 +76,17 @@ class StaffRepository implements StaffRepositoryInterface
                 $join->on('users.id', '=', 'model_has_roles.model_id')
                     ->where('model_has_roles.model_type', '=', User::class);
             })
-            ->when(! $isSystemAdmin, function ($query) use ($userOrganizationIds) {
+            ->when(
+                ! $isAllOrganizationsContext && $currentOrganizationId !== null,
+                function ($query) use ($currentOrganizationId) {
+                    $query->join('organization_user', function ($join) use ($currentOrganizationId) {
+                        $join->on('organization_user.user_id', '=', 'users.id')
+                            ->where('organization_user.organization_id', $currentOrganizationId)
+                            ->where('organization_user.is_active', true);
+                    });
+                }
+            )
+            ->when($isAllOrganizationsContext, function ($query) use ($userOrganizationIds) {
                 $query->join('organization_user', function ($join) use ($userOrganizationIds) {
                     $join->on('organization_user.user_id', '=', 'users.id')
                         ->whereIn('organization_user.organization_id', $userOrganizationIds)
@@ -84,19 +104,19 @@ class StaffRepository implements StaffRepositoryInterface
         ]);
     }
 
-    public function getSelectableRoles(User $user, bool $isSystemAdmin): Collection
+    public function getSelectableRoles(User $user, bool $canManageAllOrganizations): Collection
     {
         return Role::query()
             ->where('name', '!=', 'Resident')
-            ->when(! $isSystemAdmin, function (Builder $query) {
+            ->when(! $canManageAllOrganizations, function (Builder $query) {
                 $query->whereNotIn('name', ['System Admin', 'Admin']);
             })
             ->get(['id', 'name']);
     }
 
-    public function getSelectableOrganizations(User $user, bool $isSystemAdmin): Collection
+    public function getSelectableOrganizations(User $user, bool $canManageAllOrganizations): Collection
     {
-        if ($isSystemAdmin) {
+        if ($canManageAllOrganizations) {
             return Organization::query()
                 ->where('is_active', true)
                 ->get(['id', 'name']);

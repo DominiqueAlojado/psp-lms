@@ -39,6 +39,9 @@ class SupportTicketRepository implements SupportTicketRepositoryInterface
             ->when($filters['category'] ?? null, function (Builder $builder, string $category) {
                 $builder->where('category', $category);
             })
+            ->when($filters['organization_id'] ?? null, function (Builder $builder, string|int $organizationId) {
+                $builder->where('organization_id', (int) $organizationId);
+            })
             ->when($filters['assignee_user_id'] ?? null, function (Builder $builder, string|int $assigneeUserId) {
                 if ($assigneeUserId === 'unassigned') {
                     $builder->whereNull('assigned_to_user_id');
@@ -78,6 +81,9 @@ class SupportTicketRepository implements SupportTicketRepositoryInterface
             ])
             ->where('user_id', $userId)
             ->whereIn('organization_id', $organizationIds)
+            ->when($filters['organization_id'] ?? null, function (Builder $query, string|int $organizationId) {
+                $query->where('organization_id', (int) $organizationId);
+            })
             ->when($filters['status'] ?? null, function (Builder $query, string $status) {
                 $query->where('status', $status);
             })
@@ -150,11 +156,14 @@ class SupportTicketRepository implements SupportTicketRepositoryInterface
         ];
     }
 
-    public function getUserSummaryAcrossOrganizations(int $userId, array $organizationIds): array
+    public function getUserSummaryAcrossOrganizations(int $userId, array $organizationIds, array $filters = []): array
     {
         $query = SupportTicket::query()
             ->where('user_id', $userId)
-            ->whereIn('organization_id', $organizationIds);
+            ->whereIn('organization_id', $organizationIds)
+            ->when($filters['organization_id'] ?? null, function (Builder $builder, string|int $organizationId) {
+                $builder->where('organization_id', (int) $organizationId);
+            });
 
         return [
             'total' => (clone $query)->count(),

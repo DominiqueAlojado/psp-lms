@@ -6,6 +6,7 @@ use App\Models\SupportTicket;
 use App\Models\User;
 use App\Repositories\Contracts\SupportTicketRepositoryInterface;
 use App\Services\ActivityLog\SupportTicketActivityLogService;
+use Illuminate\Support\Collection;
 
 class SupportReadService
 {
@@ -19,9 +20,10 @@ class SupportReadService
 
     public function indexPayload(User $user, array $filters): array
     {
+        $canManage = $this->supportManagementService->canManage($user);
+
         if ($this->isAllOrganizationsContext($user)) {
             $organizationIds = $this->organizationIdsForAllContext($user);
-            $canManage = $this->supportManagementService->canManage($user);
 
             return [
                 'tickets' => ($canManage
@@ -30,10 +32,11 @@ class SupportReadService
                     ->through(fn (SupportTicket $ticket) => $this->ticketListItem($ticket)),
                 'summary' => $canManage
                     ? $this->supportTicketRepository->getManagementSummaryAcrossOrganizations($organizationIds, $filters)
-                    : $this->supportTicketRepository->getUserSummaryAcrossOrganizations($user->id, $organizationIds),
+                    : $this->supportTicketRepository->getUserSummaryAcrossOrganizations($user->id, $organizationIds, $filters),
                 'categories' => $this->options($this->supportTicketRepository->getCategories()),
                 'priorities' => $this->options($this->supportTicketRepository->getPriorities()),
                 'statuses' => $this->options($this->supportTicketRepository->getStatuses()),
+                'organizations' => $this->organizationOptions($user),
                 'canManage' => $canManage,
                 'isAllOrganizationsContext' => true,
                 'canCreateTicket' => false,
@@ -43,6 +46,23 @@ class SupportReadService
 
         abort_if($user->current_organization_id === null, 403, 'No active organization selected.');
 
+        if ($canManage) {
+            return [
+                'tickets' => $this->supportTicketRepository
+                    ->paginateForManagement($user->current_organization_id, $filters)
+                    ->through(fn (SupportTicket $ticket) => $this->ticketListItem($ticket)),
+                'summary' => $this->supportTicketRepository->getManagementSummary($user->current_organization_id, $filters),
+                'categories' => $this->options($this->supportTicketRepository->getCategories()),
+                'priorities' => $this->options($this->supportTicketRepository->getPriorities()),
+                'statuses' => $this->options($this->supportTicketRepository->getStatuses()),
+                'organizations' => [],
+                'canManage' => true,
+                'isAllOrganizationsContext' => false,
+                'canCreateTicket' => true,
+                'showsManagedTickets' => true,
+            ];
+        }
+
         return [
             'tickets' => $this->supportTicketRepository
                 ->paginateForUser($user->id, $user->current_organization_id, $filters)
@@ -51,7 +71,8 @@ class SupportReadService
             'categories' => $this->options($this->supportTicketRepository->getCategories()),
             'priorities' => $this->options($this->supportTicketRepository->getPriorities()),
             'statuses' => $this->options($this->supportTicketRepository->getStatuses()),
-            'canManage' => $this->supportManagementService->canManage($user),
+            'organizations' => [],
+            'canManage' => false,
             'isAllOrganizationsContext' => false,
             'canCreateTicket' => true,
             'showsManagedTickets' => false,
@@ -213,5 +234,18 @@ class SupportReadService
             ->wherePivot('is_active', true)
             ->pluck('organizations.id')
             ->all();
+    }
+
+    private function organizationOptions(User $user): Collection
+    {
+        return $user->organizations()
+            ->wherePivot('is_active', true)
+            ->orderBy('organizations.name')
+            ->get(['organizations.id', 'organizations.name'])
+            ->map(fn ($organization) => [
+                'value' => (string) $organization->id,
+                'label' => $organization->name,
+            ])
+            ->values();
     }
 }

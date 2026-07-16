@@ -3,22 +3,30 @@
 namespace App\Services;
 
 use App\Models\Resident;
+use App\Models\User;
 use App\Repositories\Contracts\ResidentRepositoryInterface;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Collection;
 
 class ResidentReadService
 {
+    private const ALL_ORGANIZATIONS_SLUG = 'all-organizations';
+
     public function __construct(
         private readonly ResidentRepositoryInterface $residentRepository,
     ) {}
 
-    public function indexPayload(array $filters): array
+    public function indexPayload(array $filters, User $user): array
     {
+        $isAllOrganizationsContext = $this->includeAllOrganizations($user);
+        $organizationId = $isAllOrganizationsContext ? null : $user->current_organization_id;
+
         return [
-            'residents' => $this->list($filters),
-            'organizations' => $this->residentRepository->getOrganizations(),
-            'yearLevelStats' => $this->residentRepository->getYearLevelStats(),
-            'courses' => $this->residentRepository->getDistinctCourses(),
+            'residents' => $this->list($filters, $organizationId),
+            'organizations' => $this->organizationOptions($user),
+            'yearLevelStats' => $this->residentRepository->getYearLevelStats($organizationId),
+            'courses' => $this->residentRepository->getDistinctCourses($organizationId),
+            'isAllOrganizationsContext' => $isAllOrganizationsContext,
         ];
     }
 
@@ -100,10 +108,10 @@ class ResidentReadService
         ];
     }
 
-    private function list(array $filters): LengthAwarePaginator
+    private function list(array $filters, ?int $organizationId = null): LengthAwarePaginator
     {
         return $this->residentRepository
-            ->paginate($filters)
+            ->paginate($filters, $organizationId)
             ->through(fn ($resident) => [
                 'id' => $resident->id,
                 'uuid' => $resident->uuid,
@@ -126,5 +134,23 @@ class ResidentReadService
                     'slug' => $resident->organization->slug,
                 ],
             ]);
+    }
+
+    private function includeAllOrganizations(User $user): bool
+    {
+        return request()->query('org') === self::ALL_ORGANIZATIONS_SLUG
+            && $user->hasAnyRole(['System Admin', 'BOP']);
+    }
+
+    private function organizationOptions(User $user): Collection
+    {
+        if ($this->includeAllOrganizations($user)) {
+            return $this->residentRepository->getOrganizations();
+        }
+
+        return $user->organizations()
+            ->select('organizations.id', 'organizations.name', 'organizations.slug')
+            ->orderBy('organizations.name')
+            ->get();
     }
 }

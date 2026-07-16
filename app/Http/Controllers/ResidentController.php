@@ -38,7 +38,8 @@ class ResidentController extends Controller
     public function index(Request $request): Response
     {
         $payload = $this->residentReadService->indexPayload(
-            $request->only(['search', 'organization_id', 'year_level', 'status', 'course', 'sort', 'direction'])
+            $request->only(['search', 'organization_id', 'year_level', 'status', 'course', 'sort', 'direction']),
+            $request->user()
         );
 
         return Inertia::render('residents/index', [
@@ -49,6 +50,7 @@ class ResidentController extends Controller
             'statuses' => ['active', 'inactive'],
             'courses' => $payload['courses'],
             'yearLevelStats' => $payload['yearLevelStats'],
+            'isAllOrganizationsContext' => $payload['isAllOrganizationsContext'],
         ]);
     }
 

@@ -106,6 +106,7 @@ interface Props {
     statuses: string[];
     courses: string[];
     yearLevelStats: Record<string, number>;
+    isAllOrganizationsContext: boolean;
 }
 
 export default function ResidentsIndex({
@@ -116,6 +117,7 @@ export default function ResidentsIndex({
     statuses,
     courses,
     yearLevelStats,
+    isAllOrganizationsContext,
 }: Props) {
     const { hasPermission } = usePermissions();
     const [search, setSearch] = useState(filters.search || '');
@@ -236,7 +238,11 @@ export default function ResidentsIndex({
                 <div className="flex items-center justify-between">
                     <HeadingSmall
                         title="Residents"
-                        description="Search and manage all residents across organizations"
+                        description={
+                            isAllOrganizationsContext
+                                ? 'Search and manage residents across all organizations'
+                                : 'Search and manage residents in the current organization'
+                        }
                     />
                     <div className="flex gap-2">
                         <ExportButton
@@ -326,6 +332,7 @@ export default function ResidentsIndex({
                     yearLevels={yearLevels}
                     statuses={statuses}
                     courses={courses}
+                    showOrganizationFilter={isAllOrganizationsContext}
                 />
 
                 {/* Table */}
