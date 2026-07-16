@@ -11,6 +11,8 @@ use Illuminate\Support\Collection;
 
 class AssignmentReadService
 {
+    private const ALL_ORGANIZATIONS_SLUG = 'all-organizations';
+
     public function __construct(
         private readonly AssignmentRepositoryInterface $assignmentRepository,
         private readonly SubmissionRepositoryInterface $submissionRepository,
@@ -19,23 +21,29 @@ class AssignmentReadService
     public function indexPayload(User $user): array
     {
         $organization = $user->currentOrganization;
+        $includeAllOrganizations = $this->includeAllOrganizations($user);
 
-        if (! $organization) {
+        if (! $organization && ! $includeAllOrganizations) {
             abort(403, 'No organization selected.');
         }
 
-        if ($organization->type === 'national') {
+        if (! $includeAllOrganizations && $organization->type === 'national') {
             return [
                 'assignments' => [],
                 'isNationalOrg' => true,
+                'isAllOrganizationsContext' => false,
             ];
         }
 
         return [
             'assignments' => $this->mapAssignmentsForManagement(
-                $this->assignmentRepository->getForOrganization($organization->id)
+                $this->assignmentRepository->getForOrganization(
+                    $user->current_organization_id,
+                    $includeAllOrganizations
+                )
             ),
             'isNationalOrg' => false,
+            'isAllOrganizationsContext' => $includeAllOrganizations,
         ];
     }
 
@@ -133,16 +141,28 @@ class AssignmentReadService
 
     public function canAccessAssignment(User $user, Assignment $assignment): bool
     {
+        if ($this->includeAllOrganizations($user) && $user->hasAnyRole(['System Admin', 'BOP'])) {
+            return true;
+        }
+
         return $assignment->organization_id === $user->currentOrganization?->id;
     }
 
     public function canAccessSubmission(User $user, Submission $submission): bool
     {
+        if ($this->includeAllOrganizations($user) && $user->hasAnyRole(['System Admin', 'BOP'])) {
+            return true;
+        }
+
         return $submission->organization_id === $user->currentOrganization?->id;
     }
 
     public function canAccessSubmissionFile(User $user, \App\Models\SubmissionFile $file): bool
     {
+        if ($this->includeAllOrganizations($user) && $user->hasAnyRole(['System Admin', 'BOP'])) {
+            return true;
+        }
+
         return $file->submission->organization_id === $user->currentOrganization?->id;
     }
 
@@ -170,8 +190,15 @@ class AssignmentReadService
             'submissions_count' => $assignment->submissions()->whereIn('status', ['submitted', 'graded'])->count(),
             'graded_count' => $assignment->submissions()->where('status', 'graded')->count(),
             'created_by' => $assignment->creator->name,
+            'organization_name' => $assignment->organization?->name,
             'created_at' => $assignment->created_at->format('Y-m-d'),
         ]);
+    }
+
+    private function includeAllOrganizations(User $user): bool
+    {
+        return request()->query('org') === self::ALL_ORGANIZATIONS_SLUG
+            && $user->hasAnyRole(['System Admin', 'BOP']);
     }
 
     private function mapEditableAssignment(Assignment $assignment): array

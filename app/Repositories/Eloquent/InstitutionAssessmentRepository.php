@@ -9,15 +9,20 @@ use Illuminate\Database\Eloquent\Builder;
 
 class InstitutionAssessmentRepository implements InstitutionAssessmentRepositoryInterface
 {
-    public function paginateByPublication(int $organizationId, bool $isPublished, array $filters, int $perPage = 15): LengthAwarePaginator
+    public function paginateByPublication(?int $organizationId, bool $isPublished, array $filters, int $perPage = 15, bool $includeAllOrganizations = false): LengthAwarePaginator
     {
         $sort = $filters['sort'] ?? 'created_at';
         $direction = $filters['direction'] ?? 'desc';
 
         return InstitutionAssessment::query()
-            ->where('organization_id', $organizationId)
+            ->when($includeAllOrganizations, function (Builder $query) {
+                $query->whereNotNull('organization_id');
+            })
+            ->when(! $includeAllOrganizations, function (Builder $query) use ($organizationId) {
+                $query->where('organization_id', $organizationId);
+            })
             ->where('is_published', $isPublished)
-            ->with(['creator:id,name'])
+            ->with(['creator:id,name', 'organization:id,name'])
             ->withCount('questions')
             ->when($filters['search'] ?? null, function (Builder $query, string $search) {
                 $query->where(function (Builder $nestedQuery) use ($search) {

@@ -17,6 +17,7 @@ import {
     TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { usePermissions } from '@/hooks/use-permissions';
+import { preserveOrgParam } from '@/lib/utils';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, router, usePage } from '@inertiajs/react';
@@ -35,6 +36,27 @@ interface Organization {
     id: number;
     name: string;
     slug: string;
+    type?: string;
+    pivot?: {
+        joined_at: string;
+        is_active: boolean;
+    };
+    membership?: {
+        started_at: string | null;
+        ended_at: string | null;
+        is_primary: boolean;
+    };
+}
+
+interface OrganizationHistoryItem {
+    id: number;
+    organization: Organization;
+    started_at: string | null;
+    ended_at: string | null;
+    is_primary: boolean;
+    is_active: boolean;
+    year_level: string | null;
+    status: string | null;
 }
 
 interface Resident {
@@ -103,9 +125,9 @@ export default function ResidentsIndex({
         null,
     );
     const [viewOrganizations, setViewOrganizations] = useState<{
-        current: any[];
-        available: any[];
-        history: any[];
+        current: Organization[];
+        available: Organization[];
+        history: OrganizationHistoryItem[];
     }>({ current: [], available: [], history: [] });
     const [editingResident, setEditingResident] = useState<Resident | null>(
         null,
@@ -120,14 +142,15 @@ export default function ResidentsIndex({
     const [viewingLogsResident, setViewingLogsResident] = useState<Resident | null>(
         null,
     );
-    const { errors } = usePage<{ errors: Record<string, string> }>().props;
+    const page = usePage<{ auth: { currentOrganization?: { slug?: string | null } } }>();
+    const currentOrgSlug = page.props.auth.currentOrganization?.slug;
 
     const applyFilters = useCallback((newFilters: typeof filters) => {
-        router.get('/residents', newFilters, {
+        router.get(preserveOrgParam('/residents', currentOrgSlug), newFilters, {
             preserveState: true,
             preserveScroll: true,
         });
-    }, []);
+    }, [currentOrgSlug]);
 
     // Debounced search
     useEffect(() => {
@@ -150,7 +173,7 @@ export default function ResidentsIndex({
         setSearch('');
         setLocalFilters({});
         router.get(
-            '/residents',
+            preserveOrgParam('/residents', currentOrgSlug),
             {},
             {
                 preserveState: true,
@@ -161,7 +184,9 @@ export default function ResidentsIndex({
 
     const fetchResidentOrganizations = async (residentId: number) => {
         try {
-            const response = await fetch(`/residents/${residentId}`);
+            const response = await fetch(
+                preserveOrgParam(`/residents/${residentId}`, currentOrgSlug) as string,
+            );
             const data = await response.json();
 
             setViewOrganizations({
@@ -188,7 +213,9 @@ export default function ResidentsIndex({
 
     const confirmDelete = () => {
         if (!deletingResident) return;
-        router.delete(`/residents/${deletingResident.id}`, {
+        router.delete(
+            preserveOrgParam(`/residents/${deletingResident.id}`, currentOrgSlug),
+            {
             preserveScroll: true,
             onSuccess: () => {
                 toast.success('Resident deleted successfully');
@@ -197,7 +224,8 @@ export default function ResidentsIndex({
                 toast.error('Failed to delete resident');
             },
             onFinish: () => setDeletingResident(null),
-        });
+            },
+        );
     };
 
     return (

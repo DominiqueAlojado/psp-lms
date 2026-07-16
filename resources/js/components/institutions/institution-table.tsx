@@ -16,7 +16,7 @@ import {
     TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { usePermissions } from '@/hooks/use-permissions';
-import { formatRelativeTime } from '@/lib/utils';
+import { formatRelativeTime, preserveOrgParam } from '@/lib/utils';
 import { router } from '@inertiajs/react';
 import { Edit, FileText, Trash2, Users } from 'lucide-react';
 
@@ -51,6 +51,7 @@ interface PaginatedInstitutions {
 interface Props {
     institutions: PaginatedInstitutions;
     filters: Record<string, string | undefined>;
+    currentOrgSlug?: string | null;
     onEdit: (institution: Institution) => void;
     onDelete: (institution: Institution) => void;
     onViewLogs: (institution: Institution) => void;
@@ -59,6 +60,7 @@ interface Props {
 export function InstitutionTable({
     institutions,
     filters,
+    currentOrgSlug,
     onEdit,
     onDelete,
     onViewLogs,
@@ -292,7 +294,7 @@ export function InstitutionTable({
                                             const page =
                                                 url.searchParams.get('page');
                                             router.get(
-                                                '/institutions',
+                                                preserveOrgParam('/institutions', currentOrgSlug),
                                                 { ...filters, page },
                                                 {
                                                     preserveState: true,

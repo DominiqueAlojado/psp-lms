@@ -112,8 +112,7 @@ class InstitutionExamController extends Controller
      */
     public function edit(InstitutionAssessment $assessment): Response
     {
-        // Verify user has access to this assessment
-        if ($assessment->organization_id !== auth()->user()->current_organization_id) {
+        if (! $this->readService->canAccess(auth()->user(), $assessment)) {
             abort(403, 'You do not have access to this assessment.');
         }
 
@@ -125,8 +124,7 @@ class InstitutionExamController extends Controller
      */
     public function show(InstitutionAssessment $assessment): Response
     {
-        // Verify user has access to this assessment
-        if ($assessment->organization_id !== auth()->user()->current_organization_id) {
+        if (! $this->readService->canAccess(auth()->user(), $assessment)) {
             abort(403, 'You do not have access to this assessment.');
         }
 
@@ -138,8 +136,7 @@ class InstitutionExamController extends Controller
      */
     public function update(UpdateInstitutionAssessmentRequest $request, InstitutionAssessment $assessment): RedirectResponse
     {
-        // Verify user has access
-        if ($assessment->organization_id !== $request->user()->current_organization_id) {
+        if (! $this->readService->canAccess($request->user(), $assessment)) {
             abort(403, 'You do not have access to this assessment.');
         }
 
@@ -153,8 +150,7 @@ class InstitutionExamController extends Controller
      */
     public function destroy(InstitutionAssessment $assessment): RedirectResponse
     {
-        // Verify user has access
-        if ($assessment->organization_id !== auth()->user()->current_organization_id) {
+        if (! $this->readService->canAccess(auth()->user(), $assessment)) {
             abort(403, 'You do not have access to this assessment.');
         }
 
@@ -174,7 +170,7 @@ class InstitutionExamController extends Controller
      */
     public function duplicate(DuplicateInstitutionAssessmentRequest $request, InstitutionAssessment $assessment): RedirectResponse
     {
-        if ($assessment->organization_id !== $request->user()->current_organization_id) {
+        if (! $this->readService->canAccess($request->user(), $assessment)) {
             abort(403, 'You do not have access to this assessment.');
         }
 
@@ -194,8 +190,7 @@ class InstitutionExamController extends Controller
      */
     public function storeQuestions(StoreInstitutionAssessmentQuestionsRequest $request, InstitutionAssessment $assessment): RedirectResponse
     {
-        // Verify user has access
-        if ($assessment->organization_id !== $request->user()->current_organization_id) {
+        if (! $this->readService->canAccess($request->user(), $assessment)) {
             abort(403, 'You do not have access to this assessment.');
         }
 
@@ -209,8 +204,7 @@ class InstitutionExamController extends Controller
      */
     public function saveOneQuestion(SaveInstitutionAssessmentQuestionRequest $request, InstitutionAssessment $assessment): RedirectResponse
     {
-        // Verify user has access
-        if ($assessment->organization_id !== $request->user()->current_organization_id) {
+        if (! $this->readService->canAccess($request->user(), $assessment)) {
             abort(403, 'You do not have access to this assessment.');
         }
 
@@ -240,8 +234,7 @@ class InstitutionExamController extends Controller
      */
     public function deleteQuestion(Request $request, InstitutionAssessment $assessment, InstitutionQuestion $question): RedirectResponse
     {
-        // Verify user has access
-        if ($assessment->organization_id !== $request->user()->current_organization_id) {
+        if (! $this->readService->canAccess($request->user(), $assessment)) {
             abort(403, 'You do not have access to this assessment.');
         }
 
@@ -260,7 +253,7 @@ class InstitutionExamController extends Controller
      */
     public function bulkDeleteQuestions(BulkDeleteInstitutionQuestionsRequest $request, InstitutionAssessment $assessment): RedirectResponse
     {
-        if ($assessment->organization_id !== $request->user()->current_organization_id) {
+        if (! $this->readService->canAccess($request->user(), $assessment)) {
             abort(403, 'You do not have access to this assessment.');
         }
 
@@ -295,8 +288,7 @@ class InstitutionExamController extends Controller
      */
     public function importQuestions(ImportInstitutionAssessmentQuestionsRequest $request, InstitutionAssessment $assessment): RedirectResponse
     {
-        // Verify user has access
-        if ($assessment->organization_id !== $request->user()->current_organization_id) {
+        if (! $this->readService->canAccess($request->user(), $assessment)) {
             abort(403, 'You do not have access to this assessment.');
         }
 
@@ -318,8 +310,7 @@ class InstitutionExamController extends Controller
      */
     public function addFromBank(AddInstitutionQuestionsFromBankRequest $request, InstitutionAssessment $assessment): RedirectResponse
     {
-        // Verify user has access
-        if ($assessment->organization_id !== $request->user()->current_organization_id) {
+        if (! $this->readService->canAccess($request->user(), $assessment)) {
             abort(403, 'You do not have access to this assessment.');
         }
 

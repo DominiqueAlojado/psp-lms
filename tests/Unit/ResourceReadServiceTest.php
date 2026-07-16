@@ -151,4 +151,56 @@ class ResourceReadServiceTest extends TestCase
         $this->assertFalse($item['is_published']);
         $this->assertTrue($payload['categories']->contains('Videos'));
     }
+
+    public function test_all_organizations_context_includes_other_organization_resources_for_system_admin(): void
+    {
+        $service = app(ResourceReadService::class);
+
+        $organization = Organization::create([
+            'name' => 'Alpha Chapter',
+            'slug' => 'alpha-chapter',
+            'type' => 'chapter',
+            'is_active' => true,
+        ]);
+        $otherOrganization = Organization::create([
+            'name' => 'Beta Chapter',
+            'slug' => 'beta-chapter',
+            'type' => 'chapter',
+            'is_active' => true,
+        ]);
+
+        $user = User::factory()->create([
+            'current_organization_id' => $organization->id,
+        ]);
+        \Spatie\Permission\Models\Role::create([
+            'name' => 'System Admin',
+            'guard_name' => 'web',
+        ]);
+        $user->assignRole('System Admin');
+
+        $uploader = User::factory()->create();
+
+        LearningResource::create([
+            'organization_id' => $otherOrganization->id,
+            'uploaded_by' => $uploader->id,
+            'title' => 'Other Org Guide',
+            'description' => 'Visible in aggregate view',
+            'category' => 'Guides',
+            'scope' => 'organization',
+            'file_path' => 'resources/other-guide.pdf',
+            'file_name' => 'other-guide.pdf',
+            'file_type' => 'pdf',
+            'file_size' => 1024,
+            'target_year_levels' => ['First Year'],
+            'is_published' => true,
+            'download_count' => 2,
+        ]);
+
+        request()->query->set('org', 'all-organizations');
+
+        $payload = $service->indexPayload($user, []);
+        $titles = collect($payload['resources']->items())->pluck('title');
+
+        $this->assertTrue($titles->contains('Other Org Guide'));
+    }
 }

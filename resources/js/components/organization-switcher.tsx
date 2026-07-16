@@ -20,16 +20,18 @@ import { Building2, Check, ChevronsUpDown, Search } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 const ALL_ORGANIZATIONS_SLUG = 'all-organizations';
-const ALL_ORGANIZATIONS_SUPPORTED_PATHS = [
-    /^\/activities$/,
-    /^\/support(?:\/.*)?$/,
-    /^\/assessment-reports(?:\/.*)?$/,
-    /^\/analytics\/exam-analytics$/,
-    /^\/analytics\/item-analysis$/,
-    /^\/analytics\/topic-performance$/,
-    /^\/analytics\/category-performance$/,
-    /^\/analytics\/trends$/,
-    /^\/notifications(?:\/.*)?$/,
+const ALL_ORGANIZATIONS_BLOCKED_PATHS = [
+    /^\/settings(?:\/.*)?$/,
+    /^\/resident-exams(?:\/.*)?$/,
+    /^\/my-grades$/,
+    /^\/my-assignments$/,
+    /^\/exams\/.+$/,
+    /^\/submissions\/.+$/,
+    /^\/question-bank(?:\/.*)?$/,
+    /^\/in-service(?:\/.*)?$/,
+    /^\/inservice-exams(?:\/.*)?$/,
+    /^\/assignments\/create$/,
+    /^\/institution-exams\/create$/,
 ];
 
 interface OrganizationSwitcherProps {
@@ -93,12 +95,12 @@ export function OrganizationSwitcher({
         if (organizationSlug === ALL_ORGANIZATIONS_SLUG) {
             const currentUrl = new URL(window.location.href);
             const supportsAllOrganizationsPath =
-                ALL_ORGANIZATIONS_SUPPORTED_PATHS.some((pattern) =>
+                !ALL_ORGANIZATIONS_BLOCKED_PATHS.some((pattern) =>
                     pattern.test(currentUrl.pathname),
                 );
 
             if (!supportsAllOrganizationsPath) {
-                router.get('/support', { org: ALL_ORGANIZATIONS_SLUG }, {
+                router.get('/dashboard', { org: ALL_ORGANIZATIONS_SLUG }, {
                     preserveScroll: true,
                     preserveState: false,
                 });

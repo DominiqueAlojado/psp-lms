@@ -8,7 +8,7 @@ use Illuminate\Support\Collection;
 
 interface AssignmentRepositoryInterface
 {
-    public function getForOrganization(int $organizationId): Collection;
+    public function getForOrganization(?int $organizationId, bool $includeAllOrganizations = false): Collection;
 
     public function create(array $attributes): Assignment;
 

@@ -7,9 +7,9 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
 interface AnnouncementRepositoryInterface
 {
-    public function paginateVisibleToOrganization(int $organizationId, array $filters, int $perPage = 20): LengthAwarePaginator;
+    public function paginateVisibleToOrganization(?int $organizationId, array $filters, int $perPage = 20, bool $includeAllOrganizations = false): LengthAwarePaginator;
 
-    public function paginateForManagement(int $organizationId, bool $canCreateSystem, array $filters, int $perPage = 20): LengthAwarePaginator;
+    public function paginateForManagement(?int $organizationId, bool $canCreateSystem, array $filters, int $perPage = 20, bool $includeAllOrganizations = false): LengthAwarePaginator;
 
     public function create(array $attributes): Announcement;
 

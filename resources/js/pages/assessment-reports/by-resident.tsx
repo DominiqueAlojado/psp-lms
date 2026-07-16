@@ -20,6 +20,7 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
+import { preserveOrgParam } from '@/lib/utils';
 import AppLayout from '@/layouts/app-layout';
 import AssessmentReportsLayout from '@/layouts/assessment-reports/assessment-reports-layout';
 import { type BreadcrumbItem, type SharedData } from '@/types';
@@ -142,7 +143,7 @@ export default function ByResidentReport() {
 
     const handleSearch = () => {
         router.get(
-            '/assessment-reports/by-resident',
+            preserveOrgParam('/assessment-reports/by-resident', currentOrgSlug),
             {
                 search: search || undefined,
                 exam:
@@ -153,7 +154,6 @@ export default function ByResidentReport() {
                 status: statusFilter || undefined,
                 date_from: dateFrom || undefined,
                 date_to: dateTo || undefined,
-                org: currentOrgSlug || undefined,
             },
             { preserveState: true, preserveScroll: true },
         );
@@ -167,8 +167,8 @@ export default function ByResidentReport() {
         setDateFrom('');
         setDateTo('');
         router.get(
-            '/assessment-reports/by-resident',
-            { org: currentOrgSlug || undefined },
+            preserveOrgParam('/assessment-reports/by-resident', currentOrgSlug),
+            {},
             { preserveState: true },
         );
     };
@@ -547,12 +547,11 @@ export default function ByResidentReport() {
                                         disabled={attempts.current_page === 1}
                                         onClick={() => {
                                             router.get(
-                                                '/assessment-reports/by-resident',
+                                                preserveOrgParam('/assessment-reports/by-resident', currentOrgSlug),
                                                 {
                                                     ...filters,
                                                     page:
                                                         attempts.current_page - 1,
-                                                    org: currentOrgSlug || undefined,
                                                 },
                                                 {
                                                     preserveState: true,
@@ -606,11 +605,10 @@ export default function ByResidentReport() {
                                                         size="sm"
                                                         onClick={() => {
                                                             router.get(
-                                                                '/assessment-reports/by-resident',
+                                                                preserveOrgParam('/assessment-reports/by-resident', currentOrgSlug),
                                                                 {
                                                                     ...filters,
                                                                     page,
-                                                                    org: currentOrgSlug || undefined,
                                                                 },
                                                                 {
                                                                     preserveState: true,
@@ -633,12 +631,11 @@ export default function ByResidentReport() {
                                         }
                                         onClick={() => {
                                             router.get(
-                                                '/assessment-reports/by-resident',
+                                                preserveOrgParam('/assessment-reports/by-resident', currentOrgSlug),
                                                 {
                                                     ...filters,
                                                     page:
                                                         attempts.current_page + 1,
-                                                    org: currentOrgSlug || undefined,
                                                 },
                                                 {
                                                     preserveState: true,

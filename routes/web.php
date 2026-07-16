@@ -304,7 +304,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('submission-files.download');
 
     // Assessment Reports (Staff Only - residents use "My Exams" to see their own results)
-    Route::redirect('assessment-reports', '/assessment-reports/by-resident')->name('assessment-reports');
+    Route::get('assessment-reports', function (\Illuminate\Http\Request $request) {
+        $query = $request->query();
+        $target = '/assessment-reports/by-resident';
+
+        return ! empty($query)
+            ? redirect($target.'?'.http_build_query($query))
+            : redirect($target);
+    })->name('assessment-reports');
     Route::get('assessment-reports/by-resident', [App\Http\Controllers\AssessmentReportController::class, 'byResident'])
         ->middleware('permission:view-assessment-reports')
         ->name('assessment-reports.by-resident'); // Individual exam attempts

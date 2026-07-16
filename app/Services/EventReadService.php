@@ -11,6 +11,8 @@ use Spatie\Permission\Exceptions\PermissionDoesNotExist;
 
 class EventReadService
 {
+    private const ALL_ORGANIZATIONS_SLUG = 'all-organizations';
+
     public function __construct(
         private readonly EventRepositoryInterface $eventRepository,
         private readonly EventRegistrationRepositoryInterface $eventRegistrationRepository,
@@ -19,7 +21,12 @@ class EventReadService
 
     public function indexPayload(User $user, array $filters): array
     {
-        $events = $this->eventRepository->paginatePublished($user->current_organization_id, $filters);
+        $includeAllOrganizations = $this->includeAllOrganizations($user);
+        $events = $this->eventRepository->paginatePublished(
+            $user->current_organization_id,
+            $filters,
+            includeAllOrganizations: $includeAllOrganizations
+        );
         $events = $this->eventRepository->attachUserRegistrations($events, $user);
 
         return [
@@ -90,6 +97,10 @@ class EventReadService
 
     public function canManageEvent(User $user, Event $event): bool
     {
+        if ($this->includeAllOrganizations($user) && $user->hasAnyRole(['System Admin', 'BOP'])) {
+            return true;
+        }
+
         if ($event->scope === 'system') {
             try {
                 return $user->hasPermissionTo('create-system-announcements')
@@ -105,6 +116,10 @@ class EventReadService
 
     public function canViewEvent(User $user, Event $event): bool
     {
+        if ($this->includeAllOrganizations($user) && $user->hasAnyRole(['System Admin', 'BOP'])) {
+            return true;
+        }
+
         if ($event->scope === 'system') {
             return true;
         }
@@ -115,5 +130,11 @@ class EventReadService
     public function canManageRegistration(User $user, Event $event, \App\Models\EventRegistration $registration): bool
     {
         return $this->canManageEvent($user, $event) && $registration->event_id === $event->id;
+    }
+
+    private function includeAllOrganizations(User $user): bool
+    {
+        return request()->query('org') === self::ALL_ORGANIZATIONS_SLUG
+            && $user->hasAnyRole(['System Admin', 'BOP']);
     }
 }

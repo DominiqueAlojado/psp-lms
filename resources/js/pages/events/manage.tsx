@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { preserveOrgParam } from '@/lib/utils';
 import {
     Select,
     SelectContent,
@@ -18,7 +19,7 @@ import {
 } from '@/components/ui/select';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import { format, parseISO } from 'date-fns';
 import {
     Calendar,
@@ -76,6 +77,10 @@ export default function ManageEvents({
     filters,
     canCreateSystem = false,
 }: PageProps) {
+    const page = usePage<{
+        auth: { currentOrganization?: { slug?: string | null } };
+    }>();
+    const currentOrgSlug = page.props.auth.currentOrganization?.slug;
     const [searchQuery, setSearchQuery] = useState(filters.search || '');
     const [createSheetOpen, setCreateSheetOpen] = useState(false);
     const [editSheetOpen, setEditSheetOpen] = useState(false);
@@ -90,7 +95,7 @@ export default function ManageEvents({
     const handleSearch = (e: React.FormEvent) => {
         e.preventDefault();
         router.get(
-            '/events/manage',
+            preserveOrgParam('/events/manage', currentOrgSlug),
             { ...filters, search: searchQuery },
             { preserveState: true, preserveScroll: true },
         );
@@ -98,7 +103,7 @@ export default function ManageEvents({
 
     const handleStatusChange = (value: string) => {
         router.get(
-            '/events/manage',
+            preserveOrgParam('/events/manage', currentOrgSlug),
             { ...filters, status: value },
             { preserveState: true, preserveScroll: true },
         );
@@ -106,7 +111,7 @@ export default function ManageEvents({
 
     const handleScopeChange = (value: string) => {
         router.get(
-            '/events/manage',
+            preserveOrgParam('/events/manage', currentOrgSlug),
             { ...filters, scope: value },
             { preserveState: true, preserveScroll: true },
         );
@@ -119,7 +124,7 @@ export default function ManageEvents({
 
     const handleDeleteConfirm = () => {
         if (eventToDelete) {
-            router.delete(`/events/${eventToDelete.id}`, {
+            router.delete(preserveOrgParam(`/events/${eventToDelete.id}`, currentOrgSlug), {
                 preserveScroll: true,
                 onSuccess: () => {
                     setDeleteDialogOpen(false);
@@ -205,7 +210,7 @@ export default function ManageEvents({
                     />
                 </div>
 
-                <Card className="overflow-hidden border-primary/10 bg-[linear-gradient(135deg,rgba(248,244,255,0.98),rgba(255,255,255,0.94))]">
+                <Card className="overflow-hidden border-primary/10 bg-[linear-gradient(135deg,color-mix(in_oklab,var(--color-card)_96%,var(--color-primary)_4%),color-mix(in_oklab,var(--color-card)_92%,black))] shadow-[0_24px_60px_-36px_rgb(0_0_0_/_0.5)]">
                     <CardContent className="flex flex-col gap-4 p-6 lg:flex-row lg:items-center lg:justify-between">
                         <div className="space-y-1">
                             <p className="text-[0.7rem] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
@@ -219,10 +224,10 @@ export default function ManageEvents({
                             </p>
                         </div>
                         <div className="flex flex-wrap gap-2">
-                            <Badge variant="secondary">
+                            <Badge className="border-transparent bg-primary/14 text-primary">
                                 {events.total} total events
                             </Badge>
-                            <Badge variant="outline">
+                            <Badge className="border-border/70 bg-background/80 text-foreground">
                                 {filters.search || filters.status || filters.scope ? 'Filtered results' : 'Full list'}
                             </Badge>
                         </div>
@@ -321,14 +326,14 @@ export default function ManageEvents({
                             {events.data.map((event) => (
                                 <Card
                                     key={event.id}
-                                    className="overflow-hidden border-border/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,255,255,0.94))]"
+                                    className="overflow-hidden border-border/80 bg-[linear-gradient(180deg,color-mix(in_oklab,var(--color-card)_98%,white),color-mix(in_oklab,var(--color-card)_94%,var(--color-accent)))] shadow-[0_18px_36px_-30px_rgb(0_0_0_/_0.42)] transition-[transform,border-color,box-shadow] hover:-translate-y-0.5 hover:border-primary/15 hover:shadow-[0_24px_42px_-30px_rgb(96_44_193_/_0.2)]"
                                 >
                                     <CardContent className="flex flex-col gap-4 pt-6 sm:flex-row sm:items-center sm:justify-between">
                                         <div className="flex-1 space-y-2">
                                             <div className="flex flex-wrap items-center gap-2">
                                                 <Badge
                                                     variant="outline"
-                                                    className="capitalize"
+                                                    className="border-border/70 bg-background/88 capitalize text-foreground"
                                                 >
                                                     {event.event_category.replace(
                                                         '-',
@@ -336,17 +341,17 @@ export default function ManageEvents({
                                                     )}
                                                 </Badge>
                                                 <Badge
-                                                    variant={
+                                                    className={
                                                         event.is_published
-                                                            ? 'default'
-                                                            : 'secondary'
+                                                            ? 'border-transparent bg-success-soft text-success'
+                                                            : 'border-transparent bg-muted text-muted-foreground'
                                                     }
                                                 >
                                                     {event.is_published
                                                         ? 'Published'
                                                         : 'Draft'}
                                                 </Badge>
-                                                <Badge variant="outline">
+                                                <Badge className="border-border/70 bg-background/88 text-foreground">
                                                     {event.scope === 'system'
                                                         ? 'All Organizations'
                                                         : 'Organization Only'}
@@ -384,7 +389,7 @@ export default function ManageEvents({
                                                 size="sm"
                                             >
                                                 <Link
-                                                    href={`/events/${event.id}`}
+                                                    href={preserveOrgParam(`/events/${event.id}`, currentOrgSlug)}
                                                 >
                                                     <Eye className="mr-2 h-4 w-4" />
                                                     View
@@ -396,7 +401,7 @@ export default function ManageEvents({
                                                 size="sm"
                                             >
                                                 <Link
-                                                    href={`/events/${event.id}/attendees`}
+                                                    href={preserveOrgParam(`/events/${event.id}/attendees`, currentOrgSlug)}
                                                 >
                                                     <Users className="mr-2 h-4 w-4" />
                                                     Attendees
@@ -455,7 +460,7 @@ export default function ManageEvents({
                                         size="sm"
                                         onClick={() =>
                                             router.get(
-                                                '/events/manage',
+                                                preserveOrgParam('/events/manage', currentOrgSlug),
                                                 { ...filters, page },
                                                 {
                                                     preserveState: true,
@@ -494,6 +499,7 @@ export default function ManageEvents({
                             id: viewingLogsEvent.id,
                             title: viewingLogsEvent.title,
                         }}
+                        currentOrgSlug={currentOrgSlug}
                     />
                 )}
                 <DeleteConfirmationDialog

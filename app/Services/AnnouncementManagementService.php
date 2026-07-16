@@ -8,9 +8,12 @@ use App\Actions\Announcements\MarkAnnouncementViewedAction;
 use App\Actions\Announcements\UpdateAnnouncementAction;
 use App\Models\Announcement;
 use App\Models\User;
+use Spatie\Permission\Exceptions\PermissionDoesNotExist;
 
 class AnnouncementManagementService
 {
+    private const ALL_ORGANIZATIONS_SLUG = 'all-organizations';
+
     public function __construct(
         private readonly CreateAnnouncementAction $createAnnouncementAction,
         private readonly UpdateAnnouncementAction $updateAnnouncementAction,
@@ -46,7 +49,12 @@ class AnnouncementManagementService
 
     public function canCreateSystem(User $user): bool
     {
-        return $user->hasPermissionTo('create-system-announcements');
+        try {
+            return $user->hasPermissionTo('create-system-announcements')
+                || $user->hasAnyRole(['System Admin', 'BOP']);
+        } catch (PermissionDoesNotExist) {
+            return $user->hasAnyRole(['System Admin', 'BOP']);
+        }
     }
 
     public function canManageAnnouncement(User $user, Announcement $announcement): bool
@@ -64,6 +72,10 @@ class AnnouncementManagementService
 
     public function canViewAnnouncement(User $user, Announcement $announcement): bool
     {
+        if ($this->includeAllOrganizations($user) && $user->hasAnyRole(['System Admin', 'BOP'])) {
+            return true;
+        }
+
         if ($announcement->scope === 'system') {
             return true;
         }
@@ -85,5 +97,11 @@ class AnnouncementManagementService
             'target_year_levels' => $validated['target_year_levels'] ?? null,
             'expires_at' => $validated['expires_at'] ?? null,
         ];
+    }
+
+    private function includeAllOrganizations(User $user): bool
+    {
+        return request()->query('org') === self::ALL_ORGANIZATIONS_SLUG
+            && $user->hasAnyRole(['System Admin', 'BOP']);
     }
 }

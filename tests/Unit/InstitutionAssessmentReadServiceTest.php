@@ -9,6 +9,7 @@ use App\Models\Organization;
 use App\Models\User;
 use App\Services\InstitutionAssessmentReadService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 class InstitutionAssessmentReadServiceTest extends TestCase
@@ -174,6 +175,68 @@ class InstitutionAssessmentReadServiceTest extends TestCase
         $this->assertSame('Visible question', $payload['assessment']['questions'][0]['question_text']);
         $this->assertSame('Visible explanation', $payload['assessment']['questions'][0]['explanation']);
         $this->assertTrue($payload['assessment']['questions'][0]['choices'][0]['is_correct']);
+    }
+
+    public function test_all_organizations_context_includes_other_organization_assessments_for_system_admin(): void
+    {
+        $service = app(InstitutionAssessmentReadService::class);
+
+        [$organization, $user] = $this->makeOrganizationAndUser('institution');
+
+        $otherOrganization = Organization::factory()->create([
+            'name' => 'Other Institution',
+            'slug' => 'other-institution',
+            'type' => 'institution',
+        ]);
+
+        $user->organizations()->attach($organization->id, [
+            'joined_at' => now(),
+            'is_active' => true,
+        ]);
+        $user->organizations()->attach($otherOrganization->id, [
+            'joined_at' => now(),
+            'is_active' => true,
+        ]);
+
+        Role::create([
+            'name' => 'System Admin',
+            'guard_name' => 'web',
+        ]);
+        $user->assignRole('System Admin');
+
+        $assessment = InstitutionAssessment::create([
+            'organization_id' => $otherOrganization->id,
+            'title' => 'Cross Org Assessment',
+            'description' => 'Assessment description',
+            'exam_category' => 'Quiz',
+            'duration_minutes' => 45,
+            'total_points' => 20,
+            'passing_score' => 12,
+            'randomize_questions' => false,
+            'randomize_choices' => false,
+            'show_results_immediately' => true,
+            'allow_review' => true,
+            'is_published' => true,
+            'available_from' => now()->subHour(),
+            'available_until' => now()->addHour(),
+            'created_by' => $user->id,
+        ]);
+
+        $assessment->questions()->create([
+            'question_type' => 'multiple_choice',
+            'question_text' => 'Question 1',
+            'points' => 5,
+            'order' => 1,
+        ]);
+
+        request()->query->set('org', 'all-organizations');
+
+        $result = $service->listForPublication($user, true, []);
+        $item = $result->items()[0];
+
+        $this->assertSame('Cross Org Assessment', $item['title']);
+        $this->assertSame('Other Institution', $item['organization_name']);
+        $this->assertTrue($service->canAccess($user, $assessment));
     }
 
     private function makeOrganizationAndUser(string $type): array

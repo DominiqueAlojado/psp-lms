@@ -7,7 +7,7 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
 interface InstitutionAssessmentRepositoryInterface
 {
-    public function paginateByPublication(int $organizationId, bool $isPublished, array $filters, int $perPage = 15): LengthAwarePaginator;
+    public function paginateByPublication(?int $organizationId, bool $isPublished, array $filters, int $perPage = 15, bool $includeAllOrganizations = false): LengthAwarePaginator;
 
     public function create(array $attributes): InstitutionAssessment;
 

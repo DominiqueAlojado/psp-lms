@@ -26,6 +26,7 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
+import { preserveOrgParam } from '@/lib/utils';
 import AppLayout from '@/layouts/app-layout';
 import AssessmentReportsLayout from '@/layouts/assessment-reports/assessment-reports-layout';
 import { type BreadcrumbItem, type SharedData } from '@/types';
@@ -268,12 +269,11 @@ export default function LiveExamMonitor() {
 
     const handleFilter = () => {
         router.get(
-            '/assessment-reports/live-monitor',
+            preserveOrgParam('/assessment-reports/live-monitor', currentOrgSlug),
             {
                 exam: examFilter || undefined,
                 organization: organizationFilter || undefined,
                 activity_status: activityStatusFilter || undefined,
-                org: currentOrgSlug || undefined,
             },
             { preserveState: true, preserveScroll: true },
         );
@@ -284,8 +284,8 @@ export default function LiveExamMonitor() {
         setOrganizationFilter('');
         setActivityStatusFilter('');
         router.get(
-            '/assessment-reports/live-monitor',
-            { org: currentOrgSlug || undefined },
+            preserveOrgParam('/assessment-reports/live-monitor', currentOrgSlug),
+            {},
             { preserveState: true },
         );
     };

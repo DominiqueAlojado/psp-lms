@@ -10,12 +10,17 @@ use Illuminate\Database\Eloquent\Builder;
 
 class EventRepository implements EventRepositoryInterface
 {
-    public function paginatePublished(int $organizationId, array $filters, int $perPage = 12): LengthAwarePaginator
+    public function paginatePublished(?int $organizationId, array $filters, int $perPage = 12, bool $includeAllOrganizations = false): LengthAwarePaginator
     {
         return Event::query()
             ->with(['creator:id,name', 'organization:id,name'])
             ->published()
-            ->forOrganization($organizationId)
+            ->when($includeAllOrganizations, function (Builder $query) {
+                $query->whereIn('scope', ['organization', 'system']);
+            })
+            ->when(! $includeAllOrganizations, function (Builder $query) use ($organizationId) {
+                $query->forOrganization($organizationId);
+            })
             ->when($filters['category'] ?? null, function (Builder $query, string $category) {
                 $query->where('event_category', $category);
             })

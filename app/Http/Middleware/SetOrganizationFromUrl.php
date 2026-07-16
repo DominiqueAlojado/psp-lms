@@ -10,19 +10,23 @@ use Symfony\Component\HttpFoundation\Response;
 class SetOrganizationFromUrl
 {
     private const ALL_ORGANIZATIONS_SLUG = 'all-organizations';
-    private const ALL_ORGANIZATIONS_ALLOWED_PATTERNS = [
-        'activities',
-        'support',
-        'support/*',
-        'assessment-reports',
-        'assessment-reports/*',
-        'analytics/exam-analytics',
-        'analytics/item-analysis',
-        'analytics/topic-performance',
-        'analytics/category-performance',
-        'analytics/trends',
-        'notifications',
-        'notifications/*',
+    private const ALL_ORGANIZATIONS_BLOCKED_PATTERNS = [
+        'settings',
+        'settings/*',
+        'resident-exams',
+        'resident-exams/*',
+        'my-grades',
+        'my-assignments',
+        'exams/*',
+        'submissions/*',
+        'question-bank',
+        'question-bank/*',
+        'in-service',
+        'in-service/*',
+        'inservice-exams',
+        'inservice-exams/*',
+        'assignments/create',
+        'institution-exams/create',
     ];
 
     /**
@@ -38,7 +42,7 @@ class SetOrganizationFromUrl
             return $next($request);
         }
 
-        // Skip organization switch routes, logout, settings, residents, institutions, staff, resources, announcements, assignments, events, question bank, and exam form submissions
+        // Skip organization switch routes and state-changing requests that should not be auto-redirected.
         if (
             $request->is('organization/*/switch')
             || $request->is('logout')
@@ -66,10 +70,8 @@ class SetOrganizationFromUrl
 
         if ($orgSlug === self::ALL_ORGANIZATIONS_SLUG) {
             if ($user->hasAnyRole(['System Admin', 'BOP'])) {
-                foreach (self::ALL_ORGANIZATIONS_ALLOWED_PATTERNS as $pattern) {
-                    if ($request->is($pattern)) {
-                        return $next($request);
-                    }
+                if ($this->supportsAllOrganizationsContext($request)) {
+                    return $next($request);
                 }
 
                 if ($user->currentOrganization) {
@@ -114,5 +116,20 @@ class SetOrganizationFromUrl
         }
 
         return $next($request);
+    }
+
+    private function supportsAllOrganizationsContext(Request $request): bool
+    {
+        if (! in_array($request->method(), ['GET', 'HEAD'], true)) {
+            return false;
+        }
+
+        foreach (self::ALL_ORGANIZATIONS_BLOCKED_PATTERNS as $pattern) {
+            if ($request->is($pattern)) {
+                return false;
+            }
+        }
+
+        return true;
     }
 }

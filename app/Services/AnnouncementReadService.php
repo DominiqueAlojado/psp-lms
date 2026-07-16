@@ -5,34 +5,45 @@ namespace App\Services;
 use App\Models\User;
 use App\Repositories\Contracts\AnnouncementRepositoryInterface;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Spatie\Permission\Exceptions\PermissionDoesNotExist;
 
 class AnnouncementReadService
 {
+    private const ALL_ORGANIZATIONS_SLUG = 'all-organizations';
+
     public function __construct(
         private readonly AnnouncementRepositoryInterface $announcementRepository,
     ) {}
 
     public function indexPayload(User $user, array $filters): array
     {
+        $includeAllOrganizations = $this->includeAllOrganizations($user);
+
         return [
-            'announcements' => $this->visibleAnnouncements($user->current_organization_id, $filters),
+            'announcements' => $this->visibleAnnouncements($user->current_organization_id, $filters, $includeAllOrganizations),
         ];
     }
 
     public function managePayload(User $user, array $filters): array
     {
-        $canCreateSystem = $user->hasPermissionTo('create-system-announcements');
+        try {
+            $canCreateSystem = $user->hasPermissionTo('create-system-announcements')
+                || $user->hasAnyRole(['System Admin', 'BOP']);
+        } catch (PermissionDoesNotExist) {
+            $canCreateSystem = $user->hasAnyRole(['System Admin', 'BOP']);
+        }
+        $includeAllOrganizations = $this->includeAllOrganizations($user);
 
         return [
-            'announcements' => $this->manageableAnnouncements($user->current_organization_id, $canCreateSystem, $filters),
+            'announcements' => $this->manageableAnnouncements($user->current_organization_id, $canCreateSystem, $filters, $includeAllOrganizations),
             'canCreateSystem' => $canCreateSystem,
         ];
     }
 
-    private function visibleAnnouncements(int $organizationId, array $filters): LengthAwarePaginator
+    private function visibleAnnouncements(?int $organizationId, array $filters, bool $includeAllOrganizations): LengthAwarePaginator
     {
         return $this->announcementRepository
-            ->paginateVisibleToOrganization($organizationId, $filters)
+            ->paginateVisibleToOrganization($organizationId, $filters, includeAllOrganizations: $includeAllOrganizations)
             ->through(fn ($announcement) => [
                 'id' => $announcement->id,
                 'title' => $announcement->title,
@@ -49,10 +60,10 @@ class AnnouncementReadService
             ]);
     }
 
-    private function manageableAnnouncements(int $organizationId, bool $canCreateSystem, array $filters): LengthAwarePaginator
+    private function manageableAnnouncements(?int $organizationId, bool $canCreateSystem, array $filters, bool $includeAllOrganizations): LengthAwarePaginator
     {
         return $this->announcementRepository
-            ->paginateForManagement($organizationId, $canCreateSystem, $filters)
+            ->paginateForManagement($organizationId, $canCreateSystem, $filters, includeAllOrganizations: $includeAllOrganizations)
             ->through(fn ($announcement) => [
                 'id' => $announcement->id,
                 'title' => $announcement->title,
@@ -69,5 +80,11 @@ class AnnouncementReadService
                 'updated_at' => $announcement->updated_at->diffForHumans(),
                 'views_count' => $announcement->views_count,
             ]);
+    }
+
+    private function includeAllOrganizations(User $user): bool
+    {
+        return request()->query('org') === self::ALL_ORGANIZATIONS_SLUG
+            && $user->hasAnyRole(['System Admin', 'BOP']);
     }
 }

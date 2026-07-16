@@ -5,11 +5,19 @@ use App\Http\Controllers\Settings\PasswordController;
 use App\Http\Controllers\Settings\ProfileController;
 use App\Http\Controllers\Settings\RolesPermissionsController;
 use App\Http\Controllers\Settings\TwoFactorAuthenticationController;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
 Route::middleware('auth')->group(function () {
-    Route::redirect('settings', '/settings/profile');
+    Route::get('settings', function (Request $request) {
+        $query = $request->query();
+        $target = '/settings/profile';
+
+        return ! empty($query)
+            ? redirect($target.'?'.http_build_query($query))
+            : redirect($target);
+    });
 
     Route::get('settings/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('settings/profile', [ProfileController::class, 'update'])->name('profile.update');

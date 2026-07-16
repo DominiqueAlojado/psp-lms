@@ -9,10 +9,15 @@ use Illuminate\Support\Collection;
 
 class AssignmentRepository implements AssignmentRepositoryInterface
 {
-    public function getForOrganization(int $organizationId): Collection
+    public function getForOrganization(?int $organizationId, bool $includeAllOrganizations = false): Collection
     {
         return Assignment::with(['creator', 'submissions'])
-            ->where('organization_id', $organizationId)
+            ->when($includeAllOrganizations, function ($query) {
+                $query->whereNotNull('organization_id');
+            })
+            ->when(! $includeAllOrganizations, function ($query) use ($organizationId) {
+                $query->where('organization_id', $organizationId);
+            })
             ->orderBy('created_at', 'desc')
             ->get();
     }

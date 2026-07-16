@@ -2,7 +2,7 @@ import Heading from '@/components/heading';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { usePermissions } from '@/hooks/use-permissions';
-import { cn, isSameUrl, resolveUrl } from '@/lib/utils';
+import { cn, isSameUrl, preserveOrgParam, resolveUrl } from '@/lib/utils';
 import { edit as editAppearance } from '@/routes/appearance';
 import organization from '@/routes/organization';
 import { edit } from '@/routes/profile';
@@ -106,7 +106,12 @@ export default function SettingsLayout({ children }: PropsWithChildren) {
                                     ),
                                 })}
                             >
-                                <Link href={item.href}>
+                                <Link
+                                    href={preserveOrgParam(
+                                        item.href,
+                                        auth.currentOrganization?.slug,
+                                    )}
+                                >
                                     {item.icon && (
                                         <item.icon className="h-4 w-4" />
                                     )}

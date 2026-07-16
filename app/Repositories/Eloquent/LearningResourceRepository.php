@@ -10,9 +10,9 @@ use Illuminate\Support\Collection;
 
 class LearningResourceRepository implements LearningResourceRepositoryInterface
 {
-    public function paginatePublishedByOrganization(int $organizationId, array $filters, int $perPage = 20): LengthAwarePaginator
+    public function paginatePublishedByOrganization(?int $organizationId, array $filters, int $perPage = 20, bool $includeAllOrganizations = false): LengthAwarePaginator
     {
-        return $this->baseVisibleQuery($organizationId)
+        return $this->baseVisibleQuery($organizationId, $includeAllOrganizations)
             ->where('is_published', true)
             ->with('uploader:id,name')
             ->when($filters['search'] ?? null, function (Builder $query, string $search) {
@@ -26,11 +26,14 @@ class LearningResourceRepository implements LearningResourceRepositoryInterface
             ->withQueryString();
     }
 
-    public function paginateForManagementByOrganization(int $organizationId, bool $canManageSystem, array $filters, int $perPage = 20): LengthAwarePaginator
+    public function paginateForManagementByOrganization(?int $organizationId, bool $canManageSystem, array $filters, int $perPage = 20, bool $includeAllOrganizations = false): LengthAwarePaginator
     {
         return LearningResource::query()
             ->with('uploader:id,name', 'organization:id,name')
-            ->when(! $canManageSystem, function (Builder $query) use ($organizationId) {
+            ->when($includeAllOrganizations && $canManageSystem, function (Builder $query) {
+                $query->whereIn('scope', ['organization', 'system']);
+            })
+            ->when(! ($includeAllOrganizations && $canManageSystem), function (Builder $query) use ($organizationId) {
                 $this->applyOrganizationScope($query, $organizationId);
             })
             ->when($filters['search'] ?? null, function (Builder $query, string $search) {
@@ -50,9 +53,9 @@ class LearningResourceRepository implements LearningResourceRepositoryInterface
             ->withQueryString();
     }
 
-    public function getPublishedCategoriesByOrganization(int $organizationId): Collection
+    public function getPublishedCategoriesByOrganization(?int $organizationId, bool $includeAllOrganizations = false): Collection
     {
-        return $this->baseVisibleQuery($organizationId)
+        return $this->baseVisibleQuery($organizationId, $includeAllOrganizations)
             ->where('is_published', true)
             ->distinct()
             ->pluck('category')
@@ -61,9 +64,9 @@ class LearningResourceRepository implements LearningResourceRepositoryInterface
             ->values();
     }
 
-    public function getCategoriesByOrganization(int $organizationId): Collection
+    public function getCategoriesByOrganization(?int $organizationId, bool $includeAllOrganizations = false): Collection
     {
-        return $this->baseVisibleQuery($organizationId)
+        return $this->baseVisibleQuery($organizationId, $includeAllOrganizations)
             ->distinct()
             ->pluck('category')
             ->filter()
@@ -91,16 +94,22 @@ class LearningResourceRepository implements LearningResourceRepositoryInterface
         $resource->incrementDownloadCount();
     }
 
-    private function baseVisibleQuery(int $organizationId): Builder
+    private function baseVisibleQuery(?int $organizationId, bool $includeAllOrganizations = false): Builder
     {
         return LearningResource::query()
             ->with('organization:id,name')
-            ->where(function (Builder $query) use ($organizationId) {
+            ->where(function (Builder $query) use ($organizationId, $includeAllOrganizations) {
+                if ($includeAllOrganizations) {
+                    $query->whereIn('scope', ['organization', 'system']);
+
+                    return;
+                }
+
                 $this->applyOrganizationScope($query, $organizationId);
             });
     }
 
-    private function applyOrganizationScope(Builder $query, int $organizationId): void
+    private function applyOrganizationScope(Builder $query, ?int $organizationId): void
     {
         $query->where(function (Builder $nestedQuery) use ($organizationId) {
             $nestedQuery->where(function (Builder $organizationQuery) use ($organizationId) {

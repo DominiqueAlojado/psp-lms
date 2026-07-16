@@ -9,11 +9,16 @@ use Illuminate\Database\Eloquent\Builder;
 
 class AnnouncementRepository implements AnnouncementRepositoryInterface
 {
-    public function paginateVisibleToOrganization(int $organizationId, array $filters, int $perPage = 20): LengthAwarePaginator
+    public function paginateVisibleToOrganization(?int $organizationId, array $filters, int $perPage = 20, bool $includeAllOrganizations = false): LengthAwarePaginator
     {
         return Announcement::query()
             ->with('creator:id,name', 'organization:id,name')
-            ->visibleTo($organizationId)
+            ->when($includeAllOrganizations, function (Builder $query) {
+                $query->whereIn('scope', ['organization', 'system']);
+            })
+            ->when(! $includeAllOrganizations, function (Builder $query) use ($organizationId) {
+                $query->visibleTo($organizationId);
+            })
             ->active()
             ->when($filters['priority'] ?? null, function (Builder $query, string $priority) {
                 $query->where('priority', $priority);
@@ -25,11 +30,14 @@ class AnnouncementRepository implements AnnouncementRepositoryInterface
             ->withQueryString();
     }
 
-    public function paginateForManagement(int $organizationId, bool $canCreateSystem, array $filters, int $perPage = 20): LengthAwarePaginator
+    public function paginateForManagement(?int $organizationId, bool $canCreateSystem, array $filters, int $perPage = 20, bool $includeAllOrganizations = false): LengthAwarePaginator
     {
         return Announcement::query()
             ->with('creator:id,name', 'organization:id,name')
-            ->when($canCreateSystem, function (Builder $query) use ($organizationId) {
+            ->when($includeAllOrganizations && $canCreateSystem, function (Builder $query) {
+                $query->whereIn('scope', ['organization', 'system']);
+            })
+            ->when($canCreateSystem && ! $includeAllOrganizations, function (Builder $query) use ($organizationId) {
                 $query->visibleTo($organizationId);
             })
             ->when(! $canCreateSystem, function (Builder $query) use ($organizationId) {

@@ -9,15 +9,19 @@ use Spatie\Permission\Exceptions\PermissionDoesNotExist;
 
 class ResourceReadService
 {
+    private const ALL_ORGANIZATIONS_SLUG = 'all-organizations';
+
     public function __construct(
         private readonly LearningResourceRepositoryInterface $learningResourceRepository,
     ) {}
 
     public function indexPayload(User $user, array $filters): array
     {
+        $includeAllOrganizations = $this->includeAllOrganizations($user);
+
         return [
-            'resources' => $this->publishedResources($user->current_organization_id, $filters),
-            'categories' => $this->learningResourceRepository->getPublishedCategoriesByOrganization($user->current_organization_id),
+            'resources' => $this->publishedResources($user->current_organization_id, $filters, $includeAllOrganizations),
+            'categories' => $this->learningResourceRepository->getPublishedCategoriesByOrganization($user->current_organization_id, $includeAllOrganizations),
         ];
     }
 
@@ -30,17 +34,19 @@ class ResourceReadService
             $canCreateSystem = $user->hasAnyRole(['System Admin', 'BOP']);
         }
 
+        $includeAllOrganizations = $this->includeAllOrganizations($user);
+
         return [
-            'resources' => $this->manageableResources($user->current_organization_id, $canCreateSystem, $filters),
-            'categories' => $this->learningResourceRepository->getCategoriesByOrganization($user->current_organization_id),
+            'resources' => $this->manageableResources($user->current_organization_id, $canCreateSystem, $filters, $includeAllOrganizations),
+            'categories' => $this->learningResourceRepository->getCategoriesByOrganization($user->current_organization_id, $includeAllOrganizations),
             'canCreateSystem' => $canCreateSystem,
         ];
     }
 
-    private function publishedResources(int $organizationId, array $filters): LengthAwarePaginator
+    private function publishedResources(?int $organizationId, array $filters, bool $includeAllOrganizations): LengthAwarePaginator
     {
         return $this->learningResourceRepository
-            ->paginatePublishedByOrganization($organizationId, $filters)
+            ->paginatePublishedByOrganization($organizationId, $filters, includeAllOrganizations: $includeAllOrganizations)
             ->through(fn ($resource) => [
                 'id' => $resource->id,
                 'title' => $resource->title,
@@ -57,10 +63,10 @@ class ResourceReadService
             ]);
     }
 
-    private function manageableResources(int $organizationId, bool $canCreateSystem, array $filters): LengthAwarePaginator
+    private function manageableResources(?int $organizationId, bool $canCreateSystem, array $filters, bool $includeAllOrganizations): LengthAwarePaginator
     {
         return $this->learningResourceRepository
-            ->paginateForManagementByOrganization($organizationId, $canCreateSystem, $filters)
+            ->paginateForManagementByOrganization($organizationId, $canCreateSystem, $filters, includeAllOrganizations: $includeAllOrganizations)
             ->through(fn ($resource) => [
                 'id' => $resource->id,
                 'title' => $resource->title,
@@ -79,5 +85,11 @@ class ResourceReadService
                 'created_at' => $resource->created_at->format('M d, Y'),
                 'updated_at' => $resource->updated_at->diffForHumans(),
             ]);
+    }
+
+    private function includeAllOrganizations(User $user): bool
+    {
+        return request()->query('org') === self::ALL_ORGANIZATIONS_SLUG
+            && $user->hasAnyRole(['System Admin', 'BOP']);
     }
 }

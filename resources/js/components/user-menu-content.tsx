@@ -6,9 +6,10 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { UserInfo } from '@/components/user-info';
 import { useMobileNavigation } from '@/hooks/use-mobile-navigation';
+import { preserveOrgParam } from '@/lib/utils';
 import { edit } from '@/routes/profile';
-import { type User } from '@/types';
-import { Link, router } from '@inertiajs/react';
+import { type SharedData, type User } from '@/types';
+import { Link, router, usePage } from '@inertiajs/react';
 import { LogOut, Settings } from 'lucide-react';
 
 interface UserMenuContentProps {
@@ -19,6 +20,7 @@ const LOGOUT_PATH = '/logout';
 
 export function UserMenuContent({ user }: UserMenuContentProps) {
     const cleanup = useMobileNavigation();
+    const { auth } = usePage<SharedData>().props;
 
     const handleLogout = () => {
         cleanup();
@@ -26,7 +28,7 @@ export function UserMenuContent({ user }: UserMenuContentProps) {
             onSuccess: () => {
                 // Inertia will handle the redirect via Inertia::location
             },
-            onError: (errors) => {
+            onError: () => {
                 // If logout fails (e.g., CSRF token expired), force redirect to login
                 // This handles the case where the session has already expired
                 window.location.href = '/login';
@@ -54,7 +56,7 @@ export function UserMenuContent({ user }: UserMenuContentProps) {
                 <DropdownMenuItem asChild>
                     <Link
                         className="block w-full"
-                        href={edit()}
+                        href={preserveOrgParam(edit(), auth.currentOrganization?.slug)}
                         as="button"
                         prefetch
                         onClick={cleanup}

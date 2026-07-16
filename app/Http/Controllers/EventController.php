@@ -21,6 +21,21 @@ class EventController extends Controller
 {
     use LogsActivity;
 
+    private function redirectWithOrg(Request $request, string $routeName): \Illuminate\Http\RedirectResponse
+    {
+        $target = route($routeName);
+        $query = array_filter(
+            $request->only(['org']),
+            fn ($value) => $value !== null && $value !== ''
+        );
+
+        if (! empty($query)) {
+            $target .= '?'.http_build_query($query);
+        }
+
+        return redirect($target);
+    }
+
     public function __construct(
         protected EventActivityLogService $activityLogService,
         protected EventReadService $eventReadService,
@@ -83,7 +98,7 @@ class EventController extends Controller
         // Log event creation
         $this->activityLogService->logEventCreated($event);
 
-        return redirect()->route('events.manage')
+        return $this->redirectWithOrg($request, 'events.manage')
             ->with('success', 'Event created successfully!');
     }
 
@@ -160,7 +175,7 @@ class EventController extends Controller
 
         $this->eventManagementService->delete($event);
 
-        return redirect()->route('events.manage')
+        return $this->redirectWithOrg($request, 'events.manage')
             ->with('success', 'Event deleted successfully.');
     }
 

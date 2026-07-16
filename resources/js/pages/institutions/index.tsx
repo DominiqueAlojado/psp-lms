@@ -15,6 +15,7 @@ import {
     TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { usePermissions } from '@/hooks/use-permissions';
+import { preserveOrgParam } from '@/lib/utils';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, router, usePage } from '@inertiajs/react';
@@ -90,14 +91,17 @@ export default function InstitutionsIndex({
     const [addingInstitution, setAddingInstitution] = useState(false);
     const [deletingInstitution, setDeletingInstitution] =
         useState<Institution | null>(null);
-    const { errors } = usePage<{ errors: Record<string, string> }>().props;
+    const page = usePage<{
+        auth: { currentOrganization?: { slug?: string | null } };
+    }>();
+    const currentOrgSlug = page.props.auth.currentOrganization?.slug;
 
     const applyFilters = useCallback((newFilters: typeof filters) => {
-        router.get('/institutions', newFilters, {
+        router.get(preserveOrgParam('/institutions', currentOrgSlug), newFilters, {
             preserveState: true,
             preserveScroll: true,
         });
-    }, []);
+    }, [currentOrgSlug]);
 
     // Debounced search
     useEffect(() => {
@@ -120,7 +124,7 @@ export default function InstitutionsIndex({
         setSearch('');
         setLocalFilters({});
         router.get(
-            '/institutions',
+            preserveOrgParam('/institutions', currentOrgSlug),
             {},
             {
                 preserveState: true,
@@ -131,7 +135,9 @@ export default function InstitutionsIndex({
 
     const confirmDelete = () => {
         if (!deletingInstitution) return;
-        router.delete(`/institutions/${deletingInstitution.id}`, {
+        router.delete(
+            preserveOrgParam(`/institutions/${deletingInstitution.id}`, currentOrgSlug),
+            {
             preserveScroll: true,
             onSuccess: () => {
                 toast.success('Institution deleted successfully');
@@ -144,7 +150,8 @@ export default function InstitutionsIndex({
                 }
             },
             onFinish: () => setDeletingInstitution(null),
-        });
+            },
+        );
     };
 
     const hasActiveFilters = search || localFilters.type || localFilters.status;
@@ -274,6 +281,7 @@ export default function InstitutionsIndex({
                 <InstitutionTable
                     institutions={institutions}
                     filters={filters}
+                    currentOrgSlug={currentOrgSlug}
                     onEdit={setEditingInstitution}
                     onDelete={setDeletingInstitution}
                     onViewLogs={(institution) =>
@@ -314,6 +322,7 @@ export default function InstitutionsIndex({
             {/* Institution Logs Sheet */}
             <InstitutionLogsSheet
                 institution={viewingLogsInstitution}
+                currentOrgSlug={currentOrgSlug}
                 open={!!viewingLogsInstitution}
                 onOpenChange={(open) =>
                     !open && setViewingLogsInstitution(null)

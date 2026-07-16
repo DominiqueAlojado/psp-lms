@@ -14,6 +14,8 @@ use Spatie\Permission\Exceptions\PermissionDoesNotExist;
 
 class ResourceManagementService
 {
+    private const ALL_ORGANIZATIONS_SLUG = 'all-organizations';
+
     public function __construct(
         private readonly CreateLearningResourceAction $createLearningResourceAction,
         private readonly UpdateLearningResourceAction $updateLearningResourceAction,
@@ -66,6 +68,10 @@ class ResourceManagementService
 
     public function canAccess(User $user, LearningResource $resource): bool
     {
+        if ($this->includeAllOrganizations($user) && $user->hasAnyRole(['System Admin', 'BOP'])) {
+            return true;
+        }
+
         if ($resource->scope === 'system') {
             return true;
         }
@@ -85,10 +91,20 @@ class ResourceManagementService
 
     public function canManageResource(User $user, LearningResource $resource): bool
     {
+        if ($this->includeAllOrganizations($user) && $user->hasAnyRole(['System Admin', 'BOP'])) {
+            return true;
+        }
+
         if ($resource->scope === 'system') {
             return $this->canCreateSystem($user);
         }
 
         return $resource->organization_id === $user->current_organization_id;
+    }
+
+    private function includeAllOrganizations(User $user): bool
+    {
+        return request()->query('org') === self::ALL_ORGANIZATIONS_SLUG
+            && $user->hasAnyRole(['System Admin', 'BOP']);
     }
 }

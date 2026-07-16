@@ -10,6 +10,7 @@ use App\Models\SubmissionFile;
 use App\Models\User;
 use App\Services\AssignmentReadService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 class AssignmentReadServiceTest extends TestCase
@@ -119,5 +120,70 @@ class AssignmentReadServiceTest extends TestCase
 
         $this->assertSame('Journal Review', $payload['assignments']->first()['title']);
         $this->assertNotNull($payload['assignments']->first()['submission']);
+    }
+
+    public function test_all_organizations_context_includes_other_organization_assignments_for_system_admin(): void
+    {
+        $service = app(AssignmentReadService::class);
+
+        $organization = Organization::create([
+            'name' => 'Alpha Chapter',
+            'slug' => 'alpha-chapter',
+            'type' => 'chapter',
+            'is_active' => true,
+        ]);
+        $otherOrganization = Organization::create([
+            'name' => 'Beta Chapter',
+            'slug' => 'beta-chapter',
+            'type' => 'chapter',
+            'is_active' => true,
+        ]);
+
+        $user = User::factory()->create([
+            'current_organization_id' => $organization->id,
+        ]);
+        $user->organizations()->attach($organization->id, [
+            'joined_at' => now(),
+            'is_active' => true,
+        ]);
+        $user->organizations()->attach($otherOrganization->id, [
+            'joined_at' => now(),
+            'is_active' => true,
+        ]);
+
+        Role::create([
+            'name' => 'System Admin',
+            'guard_name' => 'web',
+        ]);
+        $user->assignRole('System Admin');
+
+        $creator = User::factory()->create();
+
+        Assignment::create([
+            'organization_id' => $otherOrganization->id,
+            'title' => 'Cross Org Assignment',
+            'description' => 'Desc',
+            'instructions' => 'Instructions',
+            'assignment_type' => 'case_report',
+            'target_year_levels' => ['First Year'],
+            'max_score' => 100,
+            'due_date' => now()->addDay(),
+            'allow_late_submission' => false,
+            'late_penalty_percent' => 0,
+            'allow_resubmission' => false,
+            'max_submissions' => 1,
+            'allowed_file_types' => ['pdf'],
+            'max_file_size_mb' => 10,
+            'max_files' => 1,
+            'is_published' => true,
+            'created_by' => $creator->id,
+        ]);
+
+        request()->query->set('org', 'all-organizations');
+
+        $payload = $service->indexPayload($user);
+
+        $this->assertTrue($payload['isAllOrganizationsContext']);
+        $this->assertSame('Cross Org Assignment', $payload['assignments']->first()['title']);
     }
 }

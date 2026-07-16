@@ -1,4 +1,5 @@
 import { Button } from '@/components/ui/button';
+import { preserveOrgParam } from '@/lib/utils';
 import {
     Sheet,
     SheetContent,
@@ -43,7 +44,13 @@ export function EditEventSheet({ open, onClose, event }: Props) {
     const { errors: serverErrors, canCreateSystem } = usePage<{
         errors: Record<string, string>;
         canCreateSystem?: boolean;
+        auth: { currentOrganization?: { slug?: string | null } };
     }>().props;
+    const currentOrgSlug = usePage<{
+        errors: Record<string, string>;
+        canCreateSystem?: boolean;
+        auth: { currentOrganization?: { slug?: string | null } };
+    }>().props.auth.currentOrganization?.slug;
     const [data, setData] = useState<{
         title: string;
         scope: 'organization' | 'system';
@@ -150,7 +157,7 @@ export function EditEventSheet({ open, onClose, event }: Props) {
         // Add _method for PATCH request when using FormData
         formData.append('_method', 'PATCH');
 
-        router.post(`/events/${event.id}`, formData, {
+        router.post(preserveOrgParam(`/events/${event.id}`, currentOrgSlug), formData, {
             preserveScroll: true,
             forceFormData: true,
             onSuccess: () => {

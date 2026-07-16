@@ -1,4 +1,5 @@
 import { Button } from '@/components/ui/button';
+import { preserveOrgParam } from '@/lib/utils';
 import {
     Sheet,
     SheetContent,
@@ -20,7 +21,13 @@ export function CreateEventSheet({ open, onClose }: Props) {
     const { errors: serverErrors, canCreateSystem } = usePage<{
         errors: Record<string, string>;
         canCreateSystem?: boolean;
+        auth: { currentOrganization?: { slug?: string | null } };
     }>().props;
+    const currentOrgSlug = usePage<{
+        errors: Record<string, string>;
+        canCreateSystem?: boolean;
+        auth: { currentOrganization?: { slug?: string | null } };
+    }>().props.auth.currentOrganization?.slug;
     const [data, setData] = useState<{
         title: string;
         scope: 'organization' | 'system';
@@ -106,7 +113,7 @@ export function CreateEventSheet({ open, onClose }: Props) {
             }
         });
 
-        router.post('/events', formData, {
+        router.post(preserveOrgParam('/events', currentOrgSlug), formData, {
             preserveScroll: true,
             forceFormData: true,
             onSuccess: () => {

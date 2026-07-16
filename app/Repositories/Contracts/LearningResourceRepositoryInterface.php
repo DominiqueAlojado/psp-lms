@@ -8,13 +8,13 @@ use Illuminate\Support\Collection;
 
 interface LearningResourceRepositoryInterface
 {
-    public function paginatePublishedByOrganization(int $organizationId, array $filters, int $perPage = 20): LengthAwarePaginator;
+    public function paginatePublishedByOrganization(?int $organizationId, array $filters, int $perPage = 20, bool $includeAllOrganizations = false): LengthAwarePaginator;
 
-    public function paginateForManagementByOrganization(int $organizationId, bool $canManageSystem, array $filters, int $perPage = 20): LengthAwarePaginator;
+    public function paginateForManagementByOrganization(?int $organizationId, bool $canManageSystem, array $filters, int $perPage = 20, bool $includeAllOrganizations = false): LengthAwarePaginator;
 
-    public function getPublishedCategoriesByOrganization(int $organizationId): Collection;
+    public function getPublishedCategoriesByOrganization(?int $organizationId, bool $includeAllOrganizations = false): Collection;
 
-    public function getCategoriesByOrganization(int $organizationId): Collection;
+    public function getCategoriesByOrganization(?int $organizationId, bool $includeAllOrganizations = false): Collection;
 
     public function create(array $attributes): LearningResource;
 

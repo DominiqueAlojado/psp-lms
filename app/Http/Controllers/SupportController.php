@@ -45,7 +45,14 @@ class SupportController extends Controller
     {
         $this->supportManagementService->create($request->user(), $request->validated());
 
-        return redirect('/support')->with('success', 'Support ticket submitted successfully.');
+        $query = $request->only(['org']);
+        $target = '/support';
+
+        if (! empty(array_filter($query, fn ($value) => $value !== null && $value !== ''))) {
+            $target .= '?'.http_build_query($query);
+        }
+
+        return redirect($target)->with('success', 'Support ticket submitted successfully.');
     }
 
     public function manage(Request $request): Response

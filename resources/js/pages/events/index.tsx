@@ -18,10 +18,11 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { preserveOrgParam } from '@/lib/utils';
 import AppLayout from '@/layouts/app-layout';
-import { type BreadcrumbItem } from '@/types';
+import { type BreadcrumbItem, type SharedData } from '@/types';
 import { usePermissions } from '@/hooks/use-permissions';
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import {
     Calendar,
     Clock,
@@ -115,15 +116,17 @@ const eventTypeIcons = {
 };
 
 const registrationStatusColors = {
-    pending: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
-    approved: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
-    confirmed: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
-    cancelled: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
-    waitlisted: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300',
+    pending: 'border-transparent bg-warning-soft text-warning',
+    approved: 'border-transparent bg-success-soft text-success',
+    confirmed: 'border-transparent bg-success-soft text-success',
+    cancelled: 'border-transparent bg-destructive/12 text-destructive',
+    waitlisted: 'border-transparent bg-muted text-muted-foreground',
 };
 
 export default function EventsIndex({ events, filters }: PageProps) {
     const { hasPermission } = usePermissions();
+    const { auth } = usePage<SharedData>().props;
+    const currentOrgSlug = auth.currentOrganization?.slug;
     const canManage = hasPermission('view-events');
     const [searchQuery, setSearchQuery] = useState(filters.search || '');
     const freeEventsCount = events.data.filter((event) => event.is_free).length;
@@ -137,7 +140,7 @@ export default function EventsIndex({ events, filters }: PageProps) {
     const handleSearch = (e: React.FormEvent) => {
         e.preventDefault();
         router.get(
-            '/events',
+            preserveOrgParam('/events', currentOrgSlug),
             { ...filters, search: searchQuery },
             { preserveState: true, preserveScroll: true }
         );
@@ -145,7 +148,7 @@ export default function EventsIndex({ events, filters }: PageProps) {
 
     const handleFilterChange = (key: string, value: string) => {
         router.get(
-            '/events',
+            preserveOrgParam('/events', currentOrgSlug),
             { ...filters, [key]: value },
             { preserveState: true, preserveScroll: true }
         );
@@ -153,7 +156,11 @@ export default function EventsIndex({ events, filters }: PageProps) {
 
     const clearFilters = () => {
         setSearchQuery('');
-        router.get('/events', {}, { preserveState: true, preserveScroll: true });
+        router.get(
+            preserveOrgParam('/events', currentOrgSlug),
+            {},
+            { preserveState: true, preserveScroll: true }
+        );
     };
 
     const formatDate = (dateString: string) => {
@@ -176,13 +183,13 @@ export default function EventsIndex({ events, filters }: PageProps) {
                     />
                     <div className="flex flex-wrap gap-2">
                         <Button asChild variant="outline">
-                            <Link href="/events/my-registrations">
+                            <Link href={preserveOrgParam('/events/my-registrations', currentOrgSlug)}>
                                 My Registrations
                             </Link>
                         </Button>
                         {canManage && (
                             <Button asChild>
-                                <Link href="/events/manage">
+                                <Link href={preserveOrgParam('/events/manage', currentOrgSlug)}>
                                     <Settings className="mr-2 h-4 w-4" />
                                     Manage Events
                                 </Link>
@@ -222,7 +229,7 @@ export default function EventsIndex({ events, filters }: PageProps) {
                     />
                 </div>
 
-                <Card className="overflow-hidden border-primary/10 bg-[linear-gradient(135deg,rgba(248,244,255,0.98),rgba(255,255,255,0.94))]">
+                <Card className="overflow-hidden border-primary/10 bg-[linear-gradient(135deg,color-mix(in_oklab,var(--color-card)_96%,var(--color-primary)_4%),color-mix(in_oklab,var(--color-card)_92%,black))] shadow-[0_24px_60px_-36px_rgb(0_0_0_/_0.5)]">
                     <CardContent className="flex flex-col gap-4 p-6 lg:flex-row lg:items-center lg:justify-between">
                         <div className="space-y-1">
                             <p className="text-[0.7rem] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
@@ -236,10 +243,10 @@ export default function EventsIndex({ events, filters }: PageProps) {
                             </p>
                         </div>
                         <div className="flex flex-wrap gap-2">
-                            <Badge variant="secondary">
+                            <Badge className="border-transparent bg-primary/14 text-primary">
                                 {events.total} total events
                             </Badge>
-                            <Badge variant="outline">
+                            <Badge className="border-border/70 bg-background/80 text-foreground">
                                 {filters.search || filters.category || filters.type || filters.filter ? 'Filtered feed' : 'All events'}
                             </Badge>
                         </div>
@@ -336,7 +343,10 @@ export default function EventsIndex({ events, filters }: PageProps) {
                                 const registrationStatus = event.user_registration?.registration_status;
 
                                 return (
-                                    <Card key={event.id} className="flex flex-col overflow-hidden">
+                                    <Card
+                                        key={event.id}
+                                        className="flex flex-col overflow-hidden border-border/80 bg-[linear-gradient(180deg,color-mix(in_oklab,var(--color-card)_98%,white),color-mix(in_oklab,var(--color-card)_94%,var(--color-accent)))] shadow-[0_18px_36px_-30px_rgb(0_0_0_/_0.42)] transition-[transform,border-color,box-shadow] hover:-translate-y-0.5 hover:border-primary/15 hover:shadow-[0_24px_42px_-30px_rgb(96_44_193_/_0.2)]"
+                                    >
                                         {event.image_path && (
                                             <div className="aspect-video w-full overflow-hidden">
                                                 <img
@@ -348,7 +358,7 @@ export default function EventsIndex({ events, filters }: PageProps) {
                                         )}
                                         <CardHeader>
                                             <div className="mb-2 flex items-start justify-between gap-2">
-                                                <Badge variant="outline" className="capitalize">
+                                                <Badge variant="outline" className="border-border/70 bg-background/88 capitalize text-foreground">
                                                     {event.event_category.replace('-', ' ')}
                                                 </Badge>
                                                 <div className="flex items-center gap-1 text-sm text-muted-foreground">
@@ -375,8 +385,10 @@ export default function EventsIndex({ events, filters }: PageProps) {
                                                     </div>
                                                 )}
                                                 {event.is_free && (
-                                                    <div className="flex items-center gap-2 font-medium text-green-600 dark:text-green-400">
-                                                        <span>Free Event</span>
+                                                    <div className="flex items-center gap-2">
+                                                        <Badge className="border-transparent bg-success-soft text-success">
+                                                            Free Event
+                                                        </Badge>
                                                     </div>
                                                 )}
                                                 {event.location && (
@@ -402,7 +414,7 @@ export default function EventsIndex({ events, filters }: PageProps) {
                                         </CardContent>
                                         <CardFooter>
                                             <Button asChild className="w-full">
-                                                <Link href={`/events/${event.id}`}>
+                                                <Link href={preserveOrgParam(`/events/${event.id}`, currentOrgSlug)}>
                                                     View Details
                                                 </Link>
                                             </Button>
@@ -421,7 +433,7 @@ export default function EventsIndex({ events, filters }: PageProps) {
                                         size="sm"
                                         onClick={() =>
                                             router.get(
-                                                '/events',
+                                                preserveOrgParam('/events', currentOrgSlug),
                                                 { ...filters, page },
                                                 { preserveState: true, preserveScroll: true }
                                             )

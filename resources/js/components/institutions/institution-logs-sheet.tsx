@@ -5,12 +5,14 @@ interface InstitutionLogsSheetProps {
         id: number;
         name: string;
     } | null;
+    currentOrgSlug?: string | null;
     open: boolean;
     onOpenChange: (open: boolean) => void;
 }
 
 export function InstitutionLogsSheet({
     institution,
+    currentOrgSlug,
     open,
     onOpenChange,
 }: InstitutionLogsSheetProps) {
@@ -19,7 +21,7 @@ export function InstitutionLogsSheet({
     return (
         <ActivityLogsSheet
             entity={institution}
-            fetchUrl={`/institutions/${institution.id}/logs`}
+            fetchUrl={`/institutions/${institution.id}/logs${currentOrgSlug ? `?org=${encodeURIComponent(currentOrgSlug)}` : ''}`}
             title="Activity Logs"
             description={`Activity history for ${institution.name}`}
             open={open}

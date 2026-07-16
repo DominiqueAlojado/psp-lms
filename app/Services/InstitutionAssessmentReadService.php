@@ -10,6 +10,8 @@ use Illuminate\Support\Facades\Storage;
 
 class InstitutionAssessmentReadService
 {
+    private const ALL_ORGANIZATIONS_SLUG = 'all-organizations';
+
     public function __construct(
         private readonly InstitutionAssessmentRepositoryInterface $assessmentRepository,
     ) {}
@@ -21,13 +23,25 @@ class InstitutionAssessmentReadService
 
     public function listForPublication(User $user, bool $isPublished, array $filters): LengthAwarePaginator
     {
+        $includeAllOrganizations = $this->includeAllOrganizations($user);
+
         return $this->assessmentRepository
             ->paginateByPublication(
                 $user->current_organization_id,
                 $isPublished,
                 $filters,
+                includeAllOrganizations: $includeAllOrganizations,
             )
             ->through(fn (InstitutionAssessment $assessment) => $this->toListItem($assessment));
+    }
+
+    public function canAccess(User $user, InstitutionAssessment $assessment): bool
+    {
+        if ($this->includeAllOrganizations($user) && $user->hasAnyRole(['System Admin', 'BOP'])) {
+            return true;
+        }
+
+        return $assessment->organization_id === $user->current_organization_id;
     }
 
     public function editPayload(InstitutionAssessment $assessment): array
@@ -124,8 +138,15 @@ class InstitutionAssessmentReadService
             'available_from' => $assessment->available_from?->format('Y-m-d H:i'),
             'available_until' => $assessment->available_until?->format('Y-m-d H:i'),
             'created_by' => $assessment->creator->name,
+            'organization_name' => $assessment->organization?->name,
             'created_at' => $assessment->created_at->format('Y-m-d'),
             'updated_at' => $assessment->updated_at->toIso8601String(),
         ];
+    }
+
+    private function includeAllOrganizations(User $user): bool
+    {
+        return request()->query('org') === self::ALL_ORGANIZATIONS_SLUG
+            && $user->hasAnyRole(['System Admin', 'BOP']);
     }
 }

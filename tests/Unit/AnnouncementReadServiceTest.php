@@ -151,4 +151,49 @@ class AnnouncementReadServiceTest extends TestCase
         $this->assertTrue($titles->contains('Current org notice'));
         $this->assertFalse($titles->contains('Other org notice'));
     }
+
+    public function test_all_organizations_context_includes_other_organization_announcements_for_system_admin(): void
+    {
+        $service = app(AnnouncementReadService::class);
+
+        $organization = Organization::create([
+            'name' => 'Beta Chapter',
+            'slug' => 'beta-chapter',
+            'type' => 'chapter',
+            'is_active' => true,
+        ]);
+        $otherOrganization = Organization::create([
+            'name' => 'Gamma Chapter',
+            'slug' => 'gamma-chapter',
+            'type' => 'chapter',
+            'is_active' => true,
+        ]);
+        $user = User::factory()->create([
+            'current_organization_id' => $organization->id,
+        ]);
+        \Spatie\Permission\Models\Role::create([
+            'name' => 'System Admin',
+            'guard_name' => 'web',
+        ]);
+        $user->assignRole('System Admin');
+
+        Announcement::create([
+            'organization_id' => $otherOrganization->id,
+            'created_by' => $user->id,
+            'title' => 'Other org notice',
+            'content' => 'Announcement body',
+            'scope' => 'organization',
+            'priority' => 'normal',
+            'is_published' => true,
+            'is_pinned' => false,
+            'views_count' => 0,
+        ]);
+
+        request()->query->set('org', 'all-organizations');
+
+        $payload = $service->indexPayload($user, []);
+        $titles = collect($payload['announcements']->items())->pluck('title');
+
+        $this->assertTrue($titles->contains('Other org notice'));
+    }
 }
