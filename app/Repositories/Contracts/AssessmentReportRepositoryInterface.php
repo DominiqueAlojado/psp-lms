@@ -22,9 +22,15 @@ interface AssessmentReportRepositoryInterface
 
     public function getLiveInstitutionAttempts(array $filters, ?int $organizationId, bool $canViewAllOrganizations): Collection;
 
+    public function getLiveNationalAttempts(array $filters, ?int $organizationId, bool $canViewAllOrganizations): Collection;
+
     public function getSessionChangesForInstitutionAttempt(int $attemptId): Collection;
 
+    public function getSessionChangesForNationalAttempt(int $attemptId): Collection;
+
     public function getIdlePeriodsForInstitutionAttempt(int $attemptId): Collection;
+
+    public function getIdlePeriodsForNationalAttempt(int $attemptId): Collection;
 
     public function getActiveWebSessionsForUsers(array $userIds): Collection;
 }

@@ -88,6 +88,7 @@ interface ActiveSession {
     resident_email: string;
     exam_title: string;
     exam_category: string | null;
+    exam_scope: 'institution' | 'national';
     organization_name: string;
     started_at: string;
     time_elapsed: string;
@@ -120,14 +121,15 @@ interface Organization {
 }
 
 interface Exam {
-    id: number;
+    id: string;
     title: string;
+    scope?: 'institution' | 'national';
 }
 
 interface PageProps {
     activeSessions: ActiveSession[];
     filters: {
-        exam?: number;
+        exam?: string;
         organization?: number;
         activity_status?: string;
     };
@@ -607,13 +609,24 @@ export default function LiveExamMonitor() {
                                                                     session.exam_title
                                                                 }
                                                             </div>
-                                                            {session.exam_category && (
-                                                                <div className="text-xs text-muted-foreground">
-                                                                    {
-                                                                        session.exam_category
-                                                                    }
-                                                                </div>
-                                                            )}
+                                                            <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                                                                {session.exam_category && (
+                                                                    <div className="text-xs text-muted-foreground">
+                                                                        {
+                                                                            session.exam_category
+                                                                        }
+                                                                    </div>
+                                                                )}
+                                                                <Badge
+                                                                    variant="outline"
+                                                                    className="text-[10px] uppercase"
+                                                                >
+                                                                    {session.exam_scope ===
+                                                                    'national'
+                                                                        ? 'In-Service'
+                                                                        : 'Institution'}
+                                                                </Badge>
+                                                            </div>
                                                         </div>
                                                     </TableCell>
                                                     <TableCell>

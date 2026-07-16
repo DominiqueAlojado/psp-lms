@@ -138,6 +138,44 @@ class AssessmentReportRepository implements AssessmentReportRepositoryInterface
         return $query->orderBy('started_at', 'desc')->get();
     }
 
+    public function getLiveNationalAttempts(array $filters, ?int $organizationId, bool $canViewAllOrganizations): Collection
+    {
+        $query = NationalAttempt::query()
+            ->with([
+                'user:id,name,email',
+                'assessment:id,title,category',
+                'organization:id,name',
+            ])
+            ->where('status', 'in_progress');
+
+        if (! $canViewAllOrganizations && $organizationId) {
+            $query->where('organization_id', $organizationId);
+        }
+
+        if (($filters['exam_type'] ?? null) === 'national' && ! empty($filters['exam_id'])) {
+            $query->where('assessment_id', $filters['exam_id']);
+        }
+
+        if (! empty($filters['organization']) && $canViewAllOrganizations) {
+            $query->where('organization_id', $filters['organization']);
+        }
+
+        if (! empty($filters['activity_status'])) {
+            if ($filters['activity_status'] === 'idle') {
+                $query->where('last_activity_at', '<', now()->subMinutes(2));
+            } elseif ($filters['activity_status'] === 'suspicious') {
+                $query->where(function (Builder $builder) {
+                    $builder->where('ip_changes_count', '>', 0)
+                        ->orWhere('browser_changes_count', '>', 0);
+                });
+            } elseif ($filters['activity_status'] === 'active') {
+                $query->where('last_activity_at', '>=', now()->subMinutes(2));
+            }
+        }
+
+        return $query->orderBy('started_at', 'desc')->get();
+    }
+
     public function getSessionChangesForInstitutionAttempt(int $attemptId): Collection
     {
         return ExamSessionChange::query()
@@ -146,10 +184,26 @@ class AssessmentReportRepository implements AssessmentReportRepositoryInterface
             ->get();
     }
 
+    public function getSessionChangesForNationalAttempt(int $attemptId): Collection
+    {
+        return ExamSessionChange::query()
+            ->where('national_attempt_id', $attemptId)
+            ->orderBy('detected_at', 'asc')
+            ->get();
+    }
+
     public function getIdlePeriodsForInstitutionAttempt(int $attemptId): Collection
     {
         return ExamIdlePeriod::query()
             ->where('institution_attempt_id', $attemptId)
+            ->orderBy('started_at', 'asc')
+            ->get();
+    }
+
+    public function getIdlePeriodsForNationalAttempt(int $attemptId): Collection
+    {
+        return ExamIdlePeriod::query()
+            ->where('national_attempt_id', $attemptId)
             ->orderBy('started_at', 'asc')
             ->get();
     }

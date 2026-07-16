@@ -88,6 +88,7 @@ class AssessmentReportReadServiceTest extends TestCase
 
         $repo = Mockery::mock(AssessmentReportRepositoryInterface::class);
         $repo->shouldReceive('getLiveInstitutionAttempts')->once()->andReturn(collect([$attempt]));
+        $repo->shouldReceive('getLiveNationalAttempts')->never();
         $repo->shouldReceive('getActiveWebSessionsForUsers')->once()->andReturn(collect([
             77 => collect([
                 (object) [
@@ -115,6 +116,7 @@ class AssessmentReportReadServiceTest extends TestCase
                 'detected_at' => Carbon::parse('2026-06-22 11:50:00'),
             ],
         ]));
+        $repo->shouldReceive('getSessionChangesForNationalAttempt')->never();
         $repo->shouldReceive('getIdlePeriodsForInstitutionAttempt')->once()->andReturn(collect([
             (object) [
                 'started_at' => Carbon::parse('2026-06-22 11:40:00'),
@@ -122,7 +124,9 @@ class AssessmentReportReadServiceTest extends TestCase
                 'duration_seconds' => 120,
             ],
         ]));
+        $repo->shouldReceive('getIdlePeriodsForNationalAttempt')->never();
         $repo->shouldReceive('getPublishedInstitutionExamOptions')->once()->andReturn(collect());
+        $repo->shouldReceive('getPublishedNationalExamOptions')->once()->andReturn(collect());
 
         $service = new AssessmentReportReadService($repo);
         $request = Request::create('/assessment-reports/live-monitor', 'GET');
@@ -139,14 +143,101 @@ class AssessmentReportReadServiceTest extends TestCase
         Carbon::setTestNow();
     }
 
+    public function test_it_builds_live_monitor_payload_for_all_organizations_with_institution_and_national_attempts(): void
+    {
+        Carbon::setTestNow('2026-06-22 12:00:00');
+
+        $user = Mockery::mock(User::class)->makePartial();
+        $user->current_organization_id = 10;
+        $user->currentOrganization = (object) [
+            'id' => 10,
+            'type' => 'institution',
+            'slug' => 'alpha-hospital',
+        ];
+        $user->shouldReceive('hasPermissionTo')->with('view-all-assessment-reports')->andReturn(true);
+
+        $institutionAttempt = (object) [
+            'id' => 9,
+            'user_id' => 77,
+            'user' => (object) ['name' => 'Resident User', 'email' => 'resident@example.com'],
+            'assessment' => (object) ['title' => 'General Nursing', 'exam_category' => 'Midterm'],
+            'organization' => (object) ['name' => 'Alpha Hospital'],
+            'started_at' => Carbon::parse('2026-06-22 11:30:00'),
+            'last_activity_at' => Carbon::parse('2026-06-22 11:56:00'),
+            'ip_address' => '10.0.0.1',
+            'browser_metadata' => ['browser' => 'Chrome', 'device' => 'Desktop'],
+            'connection_type' => 'wifi',
+            'connection_speed' => 20.45,
+            'total_idle_time' => 0,
+            'idle_periods_count' => 0,
+            'active_session_id' => 'session-12345678',
+        ];
+
+        $nationalAttempt = (object) [
+            'id' => 12,
+            'user_id' => 88,
+            'user' => (object) ['name' => 'National Resident', 'email' => 'national@example.com'],
+            'assessment' => (object) ['title' => 'In-Service Boards', 'category' => 'In-Service'],
+            'organization' => (object) ['name' => 'Beta Medical Center'],
+            'started_at' => Carbon::parse('2026-06-22 11:45:00'),
+            'last_activity_at' => Carbon::parse('2026-06-22 11:59:00'),
+            'ip_address' => '10.0.0.5',
+            'browser_metadata' => ['browser' => 'Edge', 'device' => 'Laptop'],
+            'connection_type' => 'ethernet',
+            'connection_speed' => 35.2,
+            'total_idle_time' => 0,
+            'idle_periods_count' => 0,
+            'active_session_id' => 'session-22223333',
+        ];
+
+        $repo = Mockery::mock(AssessmentReportRepositoryInterface::class);
+        $repo->shouldReceive('getLiveInstitutionAttempts')->once()->andReturn(collect([$institutionAttempt]));
+        $repo->shouldReceive('getLiveNationalAttempts')->once()->andReturn(collect([$nationalAttempt]));
+        $repo->shouldReceive('getActiveWebSessionsForUsers')->once()->andReturn(collect([
+            77 => collect(),
+            88 => collect(),
+        ]));
+        $repo->shouldReceive('getSessionChangesForInstitutionAttempt')->once()->andReturn(collect());
+        $repo->shouldReceive('getSessionChangesForNationalAttempt')->once()->andReturn(collect());
+        $repo->shouldReceive('getIdlePeriodsForInstitutionAttempt')->once()->andReturn(collect());
+        $repo->shouldReceive('getIdlePeriodsForNationalAttempt')->once()->andReturn(collect());
+        $repo->shouldReceive('getOrganizations')->once()->andReturn(collect([
+            (object) ['id' => 10, 'name' => 'Alpha Hospital'],
+            (object) ['id' => 11, 'name' => 'Beta Medical Center'],
+        ]));
+        $repo->shouldReceive('getPublishedInstitutionExamOptions')->once()->andReturn(collect([
+            (object) ['id' => 3, 'title' => 'Foundations'],
+        ]));
+        $repo->shouldReceive('getPublishedNationalExamOptions')->once()->andReturn(collect([
+            (object) ['id' => 4, 'title' => 'National Boards'],
+        ]));
+
+        $service = new AssessmentReportReadService($repo);
+        $request = Request::create('/assessment-reports/live-monitor?org=all-organizations', 'GET');
+        $request->setUserResolver(fn () => $user);
+
+        $payload = $service->liveMonitorPayload($request);
+
+        $this->assertCount(2, $payload['activeSessions']);
+        $this->assertSame('National Resident', $payload['activeSessions'][0]['resident_name']);
+        $this->assertSame('national', $payload['activeSessions'][0]['exam_scope']);
+        $this->assertSame('Beta Medical Center', $payload['activeSessions'][0]['organization_name']);
+        $this->assertSame('Resident User', $payload['activeSessions'][1]['resident_name']);
+        $this->assertCount(2, $payload['exams']);
+        $this->assertSame('institution_3', $payload['exams'][0]['id']);
+        $this->assertSame('national_4', $payload['exams'][1]['id']);
+
+        Carbon::setTestNow();
+    }
+
     public function test_it_builds_by_resident_payload_for_all_organizations_context(): void
     {
         $user = Mockery::mock(User::class)->makePartial();
         $user->current_organization_id = 10;
         $user->currentOrganization = (object) [
-            'id' => 0,
-            'type' => 'all',
-            'slug' => 'all-organizations',
+            'id' => 10,
+            'type' => 'institution',
+            'slug' => 'alpha-hospital',
         ];
         $user->shouldReceive('hasPermissionTo')->with('view-all-assessment-reports')->andReturn(true);
 
@@ -182,7 +273,7 @@ class AssessmentReportReadServiceTest extends TestCase
             ->andReturn(collect([(object) ['id' => 4, 'title' => 'National Boards']]));
 
         $service = new AssessmentReportReadService($repo);
-        $request = Request::create('/assessment-reports/by-resident', 'GET');
+        $request = Request::create('/assessment-reports/by-resident?org=all-organizations', 'GET');
         $request->setUserResolver(fn () => $user);
 
         $payload = $service->byResidentPayload($request);

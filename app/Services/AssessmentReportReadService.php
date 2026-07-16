@@ -20,7 +20,7 @@ class AssessmentReportReadService
         $user = $request->user();
         $organizationId = $user->current_organization_id;
         $canViewAllOrganizations = $user->hasPermissionTo('view-all-assessment-reports');
-        $currentOrg = $user->currentOrganization;
+        $currentOrg = $this->resolveReportOrganizationContext($request);
         $orgType = $currentOrg?->type ? strtolower($currentOrg->type) : null;
         $isAllOrganizationsContext = data_get($currentOrg, 'slug') === self::ALL_ORGANIZATIONS_SLUG;
 
@@ -168,17 +168,54 @@ class AssessmentReportReadService
         $user = $request->user();
         $organizationId = $user->current_organization_id;
         $canViewAllOrganizations = $user->hasPermissionTo('view-all-assessment-reports');
+        $currentOrg = $this->resolveReportOrganizationContext($request);
+        $orgType = $currentOrg?->type ? strtolower($currentOrg->type) : null;
+        $isAllOrganizationsContext = data_get($currentOrg, 'slug') === self::ALL_ORGANIZATIONS_SLUG;
 
-        $activeSessions = $this->assessmentReportRepository
-            ->getLiveInstitutionAttempts($request->only(['exam', 'organization', 'activity_status']), $organizationId, $canViewAllOrganizations);
+        [$examId, $examType, $isInstitutionExam, $isNationalExam] = $this->parseExamFilter($request->input('exam'));
+
+        $filters = array_merge(
+            $request->only(['organization', 'activity_status']),
+            [
+                'exam_id' => $examId,
+                'exam_type' => $examType,
+            ]
+        );
+
+        $institutionSessions = collect();
+        $shouldShowInstitutionSessions = (! $request->filled('exam') || $isInstitutionExam)
+            && ($orgType === 'institution' || $isAllOrganizationsContext || ($canViewAllOrganizations && ! $orgType));
+
+        if ($shouldShowInstitutionSessions) {
+            $institutionSessions = $this->assessmentReportRepository
+                ->getLiveInstitutionAttempts($filters, $organizationId, $canViewAllOrganizations)
+                ->map(fn ($attempt) => $this->mapLiveAttempt($attempt, 'institution'));
+        }
+
+        $nationalSessions = collect();
+        $shouldShowNationalSessions = (! $request->filled('exam') || $isNationalExam)
+            && (($orgType && in_array($orgType, ['national', 'inservice'])) || $isAllOrganizationsContext || ($canViewAllOrganizations && ! $orgType));
+
+        if ($shouldShowNationalSessions) {
+            $nationalSessions = $this->assessmentReportRepository
+                ->getLiveNationalAttempts($filters, $organizationId, $canViewAllOrganizations)
+                ->map(fn ($attempt) => $this->mapLiveAttempt($attempt, 'national'));
+        }
+
+        $activeSessions = $institutionSessions
+            ->concat($nationalSessions)
+            ->sortByDesc('started_at_sort')
+            ->values();
 
         $webSessionsByUser = $this->assessmentReportRepository
             ->getActiveWebSessionsForUsers($activeSessions->pluck('user_id')->all());
 
         $activeSessions = $activeSessions
-            ->map(function ($attempt) use ($webSessionsByUser) {
-                $webSessions = collect($webSessionsByUser->get($attempt->user_id, collect()));
-                $sessionChanges = $this->assessmentReportRepository->getSessionChangesForInstitutionAttempt($attempt->id);
+            ->map(function (array $attempt) use ($webSessionsByUser) {
+                $webSessions = collect($webSessionsByUser->get($attempt['user_id'], collect()));
+                $sessionChanges = $attempt['type'] === 'national'
+                    ? $this->assessmentReportRepository->getSessionChangesForNationalAttempt($attempt['id'])
+                    : $this->assessmentReportRepository->getSessionChangesForInstitutionAttempt($attempt['id']);
 
                 $browserChanges = $sessionChanges
                     ->whereIn('change_type', ['browser', 'both'])
@@ -202,8 +239,9 @@ class AssessmentReportReadService
                     ])
                     ->values();
 
-                $idlePeriods = $this->assessmentReportRepository
-                    ->getIdlePeriodsForInstitutionAttempt($attempt->id)
+                $idlePeriods = ($attempt['type'] === 'national'
+                    ? $this->assessmentReportRepository->getIdlePeriodsForNationalAttempt($attempt['id'])
+                    : $this->assessmentReportRepository->getIdlePeriodsForInstitutionAttempt($attempt['id']))
                     ->map(fn ($period) => [
                         'started_at' => $period->started_at->format('M d, h:i A'),
                         'ended_at' => $period->ended_at->format('M d, h:i A'),
@@ -225,37 +263,38 @@ class AssessmentReportReadService
                     ];
                 })->values();
 
-                $lockSessionIsActive = $attempt->active_session_id
-                    ? $activeAccountSessions->contains(fn ($session) => $session['id'] === $attempt->active_session_id)
+                $lockSessionIsActive = $attempt['active_session_id']
+                    ? $activeAccountSessions->contains(fn ($session) => $session['id'] === $attempt['active_session_id'])
                     : false;
 
                 return [
-                    'id' => $attempt->id,
-                    'resident_name' => $attempt->user->name,
-                    'resident_email' => $attempt->user->email,
-                    'exam_title' => $attempt->assessment->title,
-                    'exam_category' => $attempt->assessment->exam_category,
-                    'organization_name' => $attempt->organization->name,
-                    'started_at' => $attempt->started_at?->format('M d, Y h:i A'),
-                    'time_elapsed' => $attempt->started_at?->diffInMinutes(now()) . ' mins',
-                    'last_activity' => $attempt->last_activity_at
-                        ? $attempt->last_activity_at->diffForHumans()
+                    'id' => $attempt['id'],
+                    'resident_name' => $attempt['resident_name'],
+                    'resident_email' => $attempt['resident_email'],
+                    'exam_title' => $attempt['exam_title'],
+                    'exam_category' => $attempt['exam_category'],
+                    'exam_scope' => $attempt['type'],
+                    'organization_name' => $attempt['organization_name'],
+                    'started_at' => $attempt['started_at_label'],
+                    'time_elapsed' => $attempt['time_elapsed'],
+                    'last_activity' => $attempt['last_activity_at']
+                        ? $attempt['last_activity_at']->diffForHumans()
                         : 'No activity yet',
-                    'is_idle' => $attempt->last_activity_at && $attempt->last_activity_at < now()->subMinutes(2),
-                    'ip_address' => $attempt->ip_address,
-                    'browser' => $attempt->browser_metadata['browser'] ?? 'Unknown',
-                    'device' => $attempt->browser_metadata['device'] ?? 'Unknown',
-                    'connection' => $attempt->connection_type,
-                    'speed' => $attempt->connection_speed ? round($attempt->connection_speed, 1) . ' Mbps' : 'N/A',
+                    'is_idle' => $attempt['last_activity_at'] && $attempt['last_activity_at'] < now()->subMinutes(2),
+                    'ip_address' => $attempt['ip_address'],
+                    'browser' => $attempt['browser'],
+                    'device' => $attempt['device'],
+                    'connection' => $attempt['connection_type'],
+                    'speed' => $attempt['speed'],
                     'ip_changes' => $ipChanges->count(),
                     'ip_change_details' => $ipChanges,
                     'browser_changes' => $browserChanges->count(),
                     'browser_change_details' => $browserChanges,
-                    'idle_time' => gmdate('H:i:s', $attempt->total_idle_time),
-                    'idle_periods' => $attempt->idle_periods_count,
+                    'idle_time' => gmdate('H:i:s', $attempt['total_idle_time']),
+                    'idle_periods' => $attempt['idle_periods_count'],
                     'idle_period_details' => $idlePeriods,
-                    'locked_session_id' => $attempt->active_session_id,
-                    'locked_session_short_id' => $attempt->active_session_id ? substr($attempt->active_session_id, 0, 8) : null,
+                    'locked_session_id' => $attempt['active_session_id'],
+                    'locked_session_short_id' => $attempt['active_session_id'] ? substr($attempt['active_session_id'], 0, 8) : null,
                     'lock_session_is_active' => $lockSessionIsActive,
                     'active_account_sessions_count' => $activeAccountSessions->count(),
                     'active_account_sessions' => $activeAccountSessions,
@@ -268,17 +307,81 @@ class AssessmentReportReadService
             ? $this->assessmentReportRepository->getOrganizations()
             : collect();
 
-        $exams = $this->assessmentReportRepository
-            ->getPublishedInstitutionExamOptions($organizationId, $canViewAllOrganizations);
+        $institutionExams = $this->assessmentReportRepository
+            ->getPublishedInstitutionExamOptions($organizationId, $canViewAllOrganizations)
+            ->map(fn ($exam) => ['id' => 'institution_' . $exam->id, 'title' => $exam->title, 'scope' => 'institution']);
+
+        $nationalExams = $this->assessmentReportRepository
+            ->getPublishedNationalExamOptions()
+            ->map(fn ($exam) => ['id' => 'national_' . $exam->id, 'title' => $exam->title, 'scope' => 'national']);
+
+        $exams = collect();
+        if ($orgType === 'institution') {
+            $exams = $institutionExams;
+        } elseif (in_array($orgType, ['national', 'inservice'])) {
+            $exams = $nationalExams;
+        } else {
+            $exams = $institutionExams->concat($nationalExams);
+        }
 
         return [
             'activeSessions' => $activeSessions,
             'filters' => $request->only(['exam', 'organization', 'activity_status']),
             'organizations' => $organizations,
-            'exams' => $exams,
+            'exams' => $exams->sortBy('title')->values(),
             'isSystemAdmin' => $canViewAllOrganizations,
             'lastUpdate' => now()->format('h:i:s A'),
         ];
+    }
+
+    private function mapLiveAttempt(object $attempt, string $type): array
+    {
+        $examCategory = $type === 'national'
+            ? ($attempt->assessment->category ?? null)
+            : ($attempt->assessment->exam_category ?? null);
+
+        return [
+            'id' => $attempt->id,
+            'type' => $type,
+            'user_id' => $attempt->user_id,
+            'resident_name' => $attempt->user->name,
+            'resident_email' => $attempt->user->email,
+            'exam_title' => $attempt->assessment->title,
+            'exam_category' => $examCategory,
+            'organization_name' => $attempt->organization->name,
+            'started_at_sort' => $attempt->started_at,
+            'started_at_label' => $attempt->started_at?->format('M d, Y h:i A'),
+            'time_elapsed' => $attempt->started_at?->diffInMinutes(now()) . ' mins',
+            'last_activity_at' => $attempt->last_activity_at,
+            'ip_address' => $attempt->ip_address,
+            'browser' => $attempt->browser_metadata['browser'] ?? 'Unknown',
+            'device' => $attempt->browser_metadata['device'] ?? 'Unknown',
+            'connection_type' => $attempt->connection_type,
+            'speed' => $attempt->connection_speed ? round($attempt->connection_speed, 1) . ' Mbps' : 'N/A',
+            'total_idle_time' => $attempt->total_idle_time,
+            'idle_periods_count' => $attempt->idle_periods_count,
+            'active_session_id' => $attempt->active_session_id,
+        ];
+    }
+
+    private function resolveReportOrganizationContext(Request $request): object|null
+    {
+        $user = $request->user();
+
+        if (
+            $user
+            && $user->hasPermissionTo('view-all-assessment-reports')
+            && $request->query('org') === self::ALL_ORGANIZATIONS_SLUG
+        ) {
+            return (object) [
+                'id' => 0,
+                'name' => 'All Organizations',
+                'slug' => self::ALL_ORGANIZATIONS_SLUG,
+                'type' => 'all',
+            ];
+        }
+
+        return $user?->currentOrganization;
     }
 
     private function parseExamFilter(?string $examFilter): array
