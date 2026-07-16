@@ -19,16 +19,28 @@ class GradebookReadService
         $currentOrganization = $user->currentOrganization;
         $isNational = $currentOrganization?->type === 'national';
         $resident = $user->resident?->loadMissing('organization');
+        $selectedAssessmentId = $this->selectedAssessmentId();
         $nationalAttempts = $isNational
             ? $this->gradebookRepository->getCompletedNationalAttemptsForUser($user->id, true)
             : collect();
+        $institutionAttempts = $isNational
+            ? collect()
+            : $this->gradebookRepository->getCompletedInstitutionAttemptsForUser($user->id, true);
+        $comparisonAttempts = $isNational ? $nationalAttempts : $institutionAttempts;
 
         return [
             'stats' => $this->calculateUserStats($user->id, $isNational),
             'comparison' => $resident
-                ? $this->buildResidentComparisonPayload($resident, $isNational)
+                ? $this->buildResidentComparisonPayload(
+                    $resident,
+                    $isNational,
+                    $selectedAssessmentId,
+                    $comparisonAttempts,
+                )
                 : null,
-            'nationalStanding' => $this->buildResidentNationalStandingPayload($nationalAttempts),
+            'comparisonExamOptions' => $this->buildComparisonExamOptions($comparisonAttempts),
+            'selectedComparisonExamId' => $selectedAssessmentId ? (string) $selectedAssessmentId : 'overall',
+            'nationalStanding' => $this->buildResidentNationalStandingPayload($nationalAttempts, $selectedAssessmentId),
             'categoryPerformance' => $isNational ? [] : $this->getCategoryPerformance($user->id),
             'topicPerformance' => $this->getTopicPerformance($user->id, $isNational),
             'recentExams' => $this->getRecentExams($user->id, 10, $isNational),
@@ -398,37 +410,60 @@ class GradebookReadService
         ];
     }
 
-    private function buildResidentComparisonPayload(Resident $resident, bool $isNational = false): array
+    private function buildResidentComparisonPayload(
+        Resident $resident,
+        bool $isNational = false,
+        ?int $selectedAssessmentId = null,
+        ?\Illuminate\Support\Collection $residentAttempts = null,
+    ): array
     {
-        $organizationCohort = $this->gradebookRepository
+        $organizationResidents = $this->gradebookRepository
             ->getResidentsForOrganization($resident->organization_id)
             ->filter(fn ($peer) => $peer->user_id !== null)
-            ->map(function ($peer) use ($isNational) {
-                return [
-                    'resident_id' => $peer->id,
-                    'year_level' => $peer->year_level,
-                    'stats' => $this->calculateUserStats($peer->user_id, $isNational),
-                ];
-            })
-            ->filter(fn (array $peer) => $peer['stats']['total_exams'] > 0)
             ->values();
 
-        $comparisonCohort = $isNational
-            ? $this->gradebookRepository
-                ->getAllResidents()
-                ->map(function ($peer) {
-                    return [
-                        'resident_id' => $peer->id,
-                        'year_level' => $peer->year_level,
-                        'stats' => $this->calculateUserStats($peer->user_id, true),
-                    ];
-                })
-                ->filter(fn (array $peer) => $peer['stats']['total_exams'] > 0)
+        $organizationCohort = $selectedAssessmentId
+            ? $organizationResidents
+                ->map(fn ($peer) => $this->buildSelectedAssessmentPeerMetric($peer, $selectedAssessmentId, $isNational))
+                ->filter()
                 ->values()
-            : $organizationCohort;
+            : $organizationResidents
+                ->map(fn ($peer) => $this->buildAggregatePeerMetric($peer, $isNational))
+                ->filter()
+                ->values();
 
-        $residentStats = $comparisonCohort->firstWhere('resident_id', $resident->id)['stats']
-            ?? $this->calculateUserStats($resident->user_id, $isNational);
+        $comparisonResidents = $isNational
+            ? $this->gradebookRepository->getAllResidents()->filter(fn ($peer) => $peer->user_id !== null)->values()
+            : $organizationResidents;
+
+        $comparisonCohort = $selectedAssessmentId
+            ? ($isNational
+                ? $comparisonResidents
+                    ->map(fn ($peer) => $this->buildSelectedAssessmentPeerMetric($peer, $selectedAssessmentId, true))
+                    ->filter()
+                    ->values()
+                : $organizationCohort)
+            : ($isNational
+                ? $comparisonResidents
+                    ->map(fn ($peer) => $this->buildAggregatePeerMetric($peer, true))
+                    ->filter()
+                    ->values()
+                : $organizationCohort);
+
+        $residentMetric = $selectedAssessmentId
+            ? $this->buildSelectedAssessmentResidentMetric(
+                $resident,
+                $selectedAssessmentId,
+                $isNational,
+                $residentAttempts,
+            )
+            : null;
+
+        $residentStats = $selectedAssessmentId
+            ? $residentMetric
+            : ($comparisonCohort->firstWhere('resident_id', $resident->id)['stats']
+                ?? $this->calculateUserStats($resident->user_id, $isNational));
+
         $comparisonGroup = $isNational
             ? $comparisonCohort
             : $comparisonCohort->where('year_level', $resident->year_level)->values();
@@ -456,10 +491,17 @@ class GradebookReadService
             ? $this->buildNationalYearLevelBreakdown($comparisonCohort, $residentStats['average_percentage'])
             : [];
 
+        $selectedAssessmentTitle = $selectedAssessmentId
+            ? $this->resolveAssessmentTitle($residentMetric['attempt'] ?? null)
+            : null;
+
         return [
             'year_level' => $resident->year_level,
             'organization_name' => $resident->organization?->name,
             'comparison_group_label' => $isNational ? 'All Year Levels' : 'Same Year Level',
+            'comparison_mode' => $selectedAssessmentId ? 'selected_exam' : 'overall',
+            'selected_exam_title' => $selectedAssessmentTitle,
+            'metric_label' => $selectedAssessmentId ? 'Selected Exam Score' : 'Average Score',
             'resident_average_percentage' => round($residentStats['average_percentage'], 2),
             'same_year_level_average_percentage' => $comparisonAverage,
             'organization_average_percentage' => $organizationAverage,
@@ -478,7 +520,6 @@ class GradebookReadService
     private function buildNationalYearLevelBreakdown(\Illuminate\Support\Collection $comparisonCohort, float $residentAverage): array
     {
         $orderedLevels = [
-            'Pre-Resident',
             'First Year',
             'Second Year',
             'Third Year',
@@ -515,10 +556,16 @@ class GradebookReadService
             ->toArray();
     }
 
-    private function buildResidentNationalStandingPayload(\Illuminate\Support\Collection $nationalAttempts): ?array
+    private function buildResidentNationalStandingPayload(\Illuminate\Support\Collection $nationalAttempts, ?int $selectedAssessmentId = null): ?array
     {
         $latestComparableAttempt = $nationalAttempts
             ->filter(fn ($attempt) => $attempt->assessment !== null)
+            ->when(
+                $selectedAssessmentId !== null,
+                fn ($attempts) => $attempts->filter(
+                    fn ($attempt) => (int) ($attempt->assessment_id ?? $attempt->assessment?->id) === $selectedAssessmentId
+                )
+            )
             ->first(function ($attempt) {
                 return $attempt->assessment->national_ranking_enabled
                     || $attempt->assessment->institution_comparison_enabled;
@@ -545,5 +592,115 @@ class GradebookReadService
                 ? $latestComparableAttempt->percentile
                 : null,
         ];
+    }
+
+    private function buildComparisonExamOptions(\Illuminate\Support\Collection $attempts): array
+    {
+        return $attempts
+            ->filter(fn ($attempt) => $attempt->assessment !== null)
+            ->unique(fn ($attempt) => (int) ($attempt->assessment_id ?? $attempt->assessment?->id))
+            ->map(function ($attempt) {
+                $assessmentId = (int) ($attempt->assessment_id ?? $attempt->assessment?->id);
+
+                return [
+                    'value' => (string) $assessmentId,
+                    'label' => $this->resolveAssessmentTitle($attempt),
+                    'submitted_at' => $attempt->submitted_at?->format('M d, Y'),
+                ];
+            })
+            ->values()
+            ->toArray();
+    }
+
+    private function selectedAssessmentId(): ?int
+    {
+        $selected = request()->query('exam');
+
+        if ($selected === null || $selected === '' || $selected === 'overall') {
+            return null;
+        }
+
+        return is_numeric($selected) ? (int) $selected : null;
+    }
+
+    private function buildAggregatePeerMetric(Resident $peer, bool $isNational): ?array
+    {
+        $stats = $this->calculateUserStats($peer->user_id, $isNational);
+
+        if (($stats['total_exams'] ?? 0) === 0) {
+            return null;
+        }
+
+        return [
+            'resident_id' => $peer->id,
+            'year_level' => $peer->year_level,
+            'stats' => $stats,
+        ];
+    }
+
+    private function buildSelectedAssessmentPeerMetric(Resident $peer, int $assessmentId, bool $isNational): ?array
+    {
+        $attempt = $this->findResidentAssessmentAttempt($peer->user_id, $assessmentId, $isNational);
+
+        if (! $attempt) {
+            return null;
+        }
+
+        return [
+            'resident_id' => $peer->id,
+            'year_level' => $peer->year_level,
+            'stats' => [
+                'average_percentage' => round((float) $attempt->percentage, 2),
+                'total_exams' => 1,
+            ],
+        ];
+    }
+
+    private function buildSelectedAssessmentResidentMetric(
+        Resident $resident,
+        int $assessmentId,
+        bool $isNational,
+        ?\Illuminate\Support\Collection $residentAttempts = null,
+    ): array {
+        $attempt = $this->findResidentAssessmentAttempt(
+            $resident->user_id,
+            $assessmentId,
+            $isNational,
+            $residentAttempts,
+        );
+
+        if (! $attempt) {
+            return $this->calculateUserStats($resident->user_id, $isNational);
+        }
+
+        return [
+            'average_percentage' => round((float) $attempt->percentage, 2),
+            'total_exams' => 1,
+            'attempt' => $attempt,
+        ];
+    }
+
+    private function findResidentAssessmentAttempt(
+        int $userId,
+        int $assessmentId,
+        bool $isNational,
+        ?\Illuminate\Support\Collection $attempts = null,
+    ): ?object {
+        $attempts ??= $isNational
+            ? $this->gradebookRepository->getCompletedNationalAttemptsForUser($userId, true)
+            : $this->gradebookRepository->getCompletedInstitutionAttemptsForUser($userId, true);
+
+        return $attempts->first(
+            fn ($attempt) => (int) ($attempt->assessment_id ?? $attempt->assessment?->id) === $assessmentId
+        );
+    }
+
+    private function resolveAssessmentTitle(?object $attempt): ?string
+    {
+        if (! $attempt) {
+            return null;
+        }
+
+        return $attempt->assessment?->title ?? null;
     }
 }

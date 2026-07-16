@@ -2,6 +2,13 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
+import {
     Table,
     TableBody,
     TableCell,
@@ -9,8 +16,9 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
+import { preserveOrgParam } from '@/lib/utils';
 import AppLayout from '@/layouts/app-layout';
-import { Head } from '@inertiajs/react';
+import { Head, router, usePage } from '@inertiajs/react';
 import {
     Award,
     CheckCircle2,
@@ -69,6 +77,9 @@ interface Comparison {
     year_level: string;
     organization_name: string | null;
     comparison_group_label: string;
+    comparison_mode: 'overall' | 'selected_exam';
+    selected_exam_title: string | null;
+    metric_label: string;
     resident_average_percentage: number;
     same_year_level_average_percentage: number;
     organization_average_percentage: number;
@@ -102,6 +113,12 @@ interface NationalStanding {
 interface Props {
     stats: Stats;
     comparison: Comparison | null;
+    comparisonExamOptions: Array<{
+        value: string;
+        label: string;
+        submitted_at: string | null;
+    }>;
+    selectedComparisonExamId: string;
     nationalStanding: NationalStanding | null;
     categoryPerformance: CategoryPerformance[];
     topicPerformance: TopicPerformance[];
@@ -112,11 +129,15 @@ interface Props {
 export default function MyGrades({
     stats,
     comparison,
+    comparisonExamOptions,
+    selectedComparisonExamId,
     nationalStanding,
     categoryPerformance,
     topicPerformance,
     recentExams,
 }: Props) {
+    const page = usePage<{ auth: { currentOrganization?: { slug?: string | null } } }>();
+    const currentOrgSlug = page.props.auth.currentOrganization?.slug;
     const getAccuracyBadgeClassName = (accuracy: number) => {
         if (accuracy >= 80) {
             return 'border-transparent bg-success-soft text-success';
@@ -139,6 +160,19 @@ export default function MyGrades({
         }
 
         return '[&>[data-slot=progress-indicator]]:bg-rose-500';
+    };
+
+    const applyComparisonExam = (value: string) => {
+        router.get(
+            preserveOrgParam('/my-grades', currentOrgSlug),
+            {
+                exam: value === 'overall' ? undefined : value,
+            },
+            {
+                preserveState: true,
+                preserveScroll: true,
+            },
+        );
     };
 
     return (
@@ -231,20 +265,51 @@ export default function MyGrades({
 
                 {comparison && stats.total_exams > 0 && (
                     <Card>
-                        <CardHeader>
-                            <CardTitle>Peer Standing</CardTitle>
+                        <CardHeader className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                            <div>
+                                <CardTitle>Peer Standing</CardTitle>
+                                {comparison.comparison_mode === 'selected_exam'
+                                    && comparison.selected_exam_title && (
+                                    <p className="mt-1 text-sm text-muted-foreground">
+                                        Showing comparison for {comparison.selected_exam_title}
+                                    </p>
+                                )}
+                            </div>
+                            <div className="w-full lg:max-w-sm">
+                                <Select
+                                    value={selectedComparisonExamId}
+                                    onValueChange={applyComparisonExam}
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select comparison scope" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="overall">
+                                            Overall performance
+                                        </SelectItem>
+                                        {comparisonExamOptions.map((option) => (
+                                            <SelectItem key={option.value} value={option.value}>
+                                                {option.label}
+                                                {option.submitted_at ? ` (${option.submitted_at})` : ''}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
                         </CardHeader>
                         <CardContent className="space-y-4">
                             <div className="grid gap-4 md:grid-cols-3">
                                 <div className="rounded-xl border border-border/70 bg-background/80 p-4">
                                     <p className="text-xs font-semibold tracking-[0.12em] text-muted-foreground uppercase">
-                                        Your Average
+                                        {comparison.metric_label}
                                     </p>
                                     <p className="mt-2 text-2xl font-semibold">
                                         {comparison.resident_average_percentage.toFixed(1)}%
                                     </p>
                                     <p className="text-sm text-muted-foreground">
-                                        Across completed exams
+                                        {comparison.comparison_mode === 'selected_exam'
+                                            ? 'Your score for the selected exam'
+                                            : 'Across completed exams'}
                                     </p>
                                 </div>
                                 {!comparison.is_national_context && (
@@ -258,7 +323,9 @@ export default function MyGrades({
                                         <p className="text-sm text-muted-foreground">
                                             {comparison.same_year_level_rank
                                                 ? `Rank ${comparison.same_year_level_rank} of ${comparison.same_year_level_total}`
-                                                : 'No same-year-level cohort data'}
+                                                : comparison.comparison_mode === 'selected_exam'
+                                                  ? 'No same-year-level results for this exam'
+                                                  : 'No same-year-level cohort data'}
                                         </p>
                                     </div>
                                 )}
@@ -272,7 +339,9 @@ export default function MyGrades({
                                     <p className="text-sm text-muted-foreground">
                                         {comparison.organization_rank
                                             ? `Rank ${comparison.organization_rank} of ${comparison.organization_total}`
-                                            : 'No organization cohort data'}
+                                            : comparison.comparison_mode === 'selected_exam'
+                                              ? 'No organization results for this exam'
+                                              : 'No organization cohort data'}
                                     </p>
                                 </div>
                             </div>

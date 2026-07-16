@@ -7,7 +7,6 @@ use App\Models\Resident;
 use App\Models\User;
 use App\Repositories\Contracts\GradebookRepositoryInterface;
 use App\Services\GradebookReadService;
-use Illuminate\Support\Collection;
 use Mockery;
 use Tests\TestCase;
 
@@ -15,6 +14,7 @@ class GradebookReadServiceTest extends TestCase
 {
     protected function tearDown(): void
     {
+        request()->query->remove('exam');
         Mockery::close();
 
         parent::tearDown();
@@ -63,6 +63,8 @@ class GradebookReadServiceTest extends TestCase
         $this->assertSame('Quiz 1', $payload['recentExams'][0]['title']);
         $this->assertNull($payload['comparison']);
         $this->assertNull($payload['nationalStanding']);
+        $this->assertSame('overall', $payload['selectedComparisonExamId']);
+        $this->assertCount(1, $payload['comparisonExamOptions']);
     }
 
     public function test_it_builds_resident_safe_comparison_payload_without_peer_names(): void
@@ -135,10 +137,126 @@ class GradebookReadServiceTest extends TestCase
         $this->assertFalse($payload['comparison']['peer_names_visible']);
         $this->assertSame('Bataan General Hospital', $payload['comparison']['organization_name']);
         $this->assertSame('Same Year Level', $payload['comparison']['comparison_group_label']);
+        $this->assertSame('overall', $payload['comparison']['comparison_mode']);
+        $this->assertSame('Average Score', $payload['comparison']['metric_label']);
         $this->assertSame(2, $payload['comparison']['same_year_level_total']);
         $this->assertSame(2, $payload['comparison']['organization_total']);
         $this->assertArrayNotHasKey('top_organization_residents', $payload['comparison']);
         $this->assertArrayNotHasKey('top_same_year_level_residents', $payload['comparison']);
+    }
+
+    public function test_it_builds_selected_exam_comparison_payload_for_institution_user(): void
+    {
+        request()->query->set('exam', '501');
+
+        $organization = new Organization(['id' => 10, 'name' => 'Bataan General Hospital']);
+
+        $user = Mockery::mock(User::class)->makePartial();
+        $user->id = 55;
+        $user->currentOrganization = (object) ['id' => 10, 'type' => 'institution'];
+
+        $resident = new Resident([
+            'id' => 1,
+            'user_id' => 55,
+            'organization_id' => 10,
+            'first_name' => 'John',
+            'last_name' => 'Doe',
+            'year_level' => 'Second Year',
+            'status' => 'active',
+        ]);
+        $resident->setRelation('organization', $organization);
+        $user->setRelation('resident', $resident);
+
+        $sameLevelPeer = new Resident([
+            'id' => 2,
+            'user_id' => 77,
+            'organization_id' => 10,
+            'first_name' => 'Jane',
+            'last_name' => 'Cruz',
+            'year_level' => 'Second Year',
+            'status' => 'active',
+        ]);
+
+        $otherLevelPeer = new Resident([
+            'id' => 3,
+            'user_id' => 88,
+            'organization_id' => 10,
+            'first_name' => 'Mark',
+            'last_name' => 'Reyes',
+            'year_level' => 'Third Year',
+            'status' => 'active',
+        ]);
+
+        $selfAttempts = collect([
+            $this->makeAttempt([
+                'assessment_id' => 501,
+                'title' => 'Selected Quiz',
+                'category' => 'Pretest',
+                'score' => 8,
+                'total_points' => 10,
+                'percentage' => 80,
+                'passed' => true,
+                'submitted_at' => now()->subDay(),
+            ]),
+            $this->makeAttempt([
+                'assessment_id' => 777,
+                'title' => 'Other Quiz',
+                'category' => 'Posttest',
+                'score' => 9,
+                'total_points' => 10,
+                'percentage' => 90,
+                'passed' => true,
+                'submitted_at' => now()->subDays(3),
+            ]),
+        ]);
+
+        $sameLevelPeerAttempts = collect([
+            $this->makeAttempt([
+                'assessment_id' => 501,
+                'title' => 'Selected Quiz',
+                'category' => 'Pretest',
+                'score' => 6,
+                'total_points' => 10,
+                'percentage' => 60,
+                'passed' => true,
+                'submitted_at' => now()->subDays(2),
+            ]),
+        ]);
+
+        $otherLevelPeerAttempts = collect([
+            $this->makeAttempt([
+                'assessment_id' => 501,
+                'title' => 'Selected Quiz',
+                'category' => 'Pretest',
+                'score' => 9,
+                'total_points' => 10,
+                'percentage' => 90,
+                'passed' => true,
+                'submitted_at' => now()->subDays(4),
+            ]),
+        ]);
+
+        $repo = Mockery::mock(GradebookRepositoryInterface::class);
+        $repo->shouldReceive('getCompletedInstitutionAttemptsForUser')->with(55)->times(2)->andReturn($selfAttempts);
+        $repo->shouldReceive('getCompletedInstitutionAttemptsForUser')->with(55, true)->times(4)->andReturn($selfAttempts);
+        $repo->shouldReceive('getCompletedInstitutionAttemptsForUser')->with(77, true)->once()->andReturn($sameLevelPeerAttempts);
+        $repo->shouldReceive('getCompletedInstitutionAttemptsForUser')->with(88, true)->once()->andReturn($otherLevelPeerAttempts);
+        $repo->shouldReceive('getResidentsForOrganization')->once()->with(10)->andReturn(collect([$resident, $sameLevelPeer, $otherLevelPeer]));
+        $repo->shouldReceive('getInstitutionTopicPerformanceRows')->once()->with(55)->andReturn(collect());
+        $repo->shouldReceive('getAllResidents')->never();
+
+        $service = new GradebookReadService($repo);
+        $payload = $service->myGradesPayload($user);
+
+        $this->assertSame('501', $payload['selectedComparisonExamId']);
+        $this->assertSame('selected_exam', $payload['comparison']['comparison_mode']);
+        $this->assertSame('Selected Quiz', $payload['comparison']['selected_exam_title']);
+        $this->assertSame('Selected Exam Score', $payload['comparison']['metric_label']);
+        $this->assertSame(80.0, $payload['comparison']['resident_average_percentage']);
+        $this->assertSame(70.0, $payload['comparison']['same_year_level_average_percentage']);
+        $this->assertSame(2, $payload['comparison']['same_year_level_total']);
+        $this->assertSame(3, $payload['comparison']['organization_total']);
+        $this->assertCount(2, $payload['comparisonExamOptions']);
     }
 
     public function test_it_only_exposes_national_standing_when_assessment_flags_allow_it(): void
@@ -278,6 +396,7 @@ class GradebookReadServiceTest extends TestCase
         $payload = $service->myGradesPayload($user);
 
         $this->assertSame('All Year Levels', $payload['comparison']['comparison_group_label']);
+        $this->assertSame('overall', $payload['comparison']['comparison_mode']);
         $this->assertSame(3, $payload['comparison']['same_year_level_total']);
         $this->assertSame(2, $payload['comparison']['organization_total']);
         $this->assertCount(3, $payload['comparison']['year_level_breakdown']);
@@ -329,6 +448,7 @@ class GradebookReadServiceTest extends TestCase
             public function __construct(array $data)
             {
                 $this->assessment = (object) [
+                    'id' => $data['assessment_id'] ?? 100,
                     'title' => $data['title'],
                     'exam_category' => $data['category'],
                     'passing_score' => 6,
@@ -336,6 +456,7 @@ class GradebookReadServiceTest extends TestCase
                     'national_ranking_enabled' => $data['national_ranking_enabled'] ?? false,
                     'institution_comparison_enabled' => $data['institution_comparison_enabled'] ?? false,
                 ];
+                $this->assessment_id = $data['assessment_id'] ?? 100;
                 $this->score = $data['score'];
                 $this->total_points = $data['total_points'];
                 $this->percentage = $data['percentage'];
