@@ -194,9 +194,15 @@ export default function MyGrades({
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">
-                                Total Exams
-                            </CardTitle>
+                            <div className="flex items-center gap-2">
+                                <CardTitle className="text-sm font-medium">
+                                    Total Exams
+                                </CardTitle>
+                                <HelpTooltip
+                                    content="The total number of graded exams included in your current grade summary, across institution and national exams."
+                                    ariaLabel="Explain total exams"
+                                />
+                            </div>
                             <Award className="size-4 text-muted-foreground" />
                         </CardHeader>
                         <CardContent>
@@ -212,9 +218,15 @@ export default function MyGrades({
 
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">
-                                Average Score
-                            </CardTitle>
+                            <div className="flex items-center gap-2">
+                                <CardTitle className="text-sm font-medium">
+                                    Average Score
+                                </CardTitle>
+                                <HelpTooltip
+                                    content="Your average percentage score across all completed exams in this view."
+                                    ariaLabel="Explain average score"
+                                />
+                            </div>
                             <TrendingUp className="size-4 text-muted-foreground" />
                         </CardHeader>
                         <CardContent>
@@ -229,9 +241,15 @@ export default function MyGrades({
 
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">
-                                Pass Rate
-                            </CardTitle>
+                            <div className="flex items-center gap-2">
+                                <CardTitle className="text-sm font-medium">
+                                    Pass Rate
+                                </CardTitle>
+                                <HelpTooltip
+                                    content="The percentage of your completed exams that met or exceeded the passing score."
+                                    ariaLabel="Explain pass rate"
+                                />
+                            </div>
                             <CheckCircle2 className="size-4 text-muted-foreground" />
                         </CardHeader>
                         <CardContent>
@@ -247,9 +265,15 @@ export default function MyGrades({
 
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">
-                                Score Range
-                            </CardTitle>
+                            <div className="flex items-center gap-2">
+                                <CardTitle className="text-sm font-medium">
+                                    Score Range
+                                </CardTitle>
+                                <HelpTooltip
+                                    content="This shows your lowest and highest percentage scores among the exams included in this summary."
+                                    ariaLabel="Explain score range"
+                                />
+                            </div>
                             <TrendingDown className="size-4 text-muted-foreground" />
                         </CardHeader>
                         <CardContent>
@@ -426,9 +450,15 @@ export default function MyGrades({
                                 && comparison.year_level_breakdown.length > 0 && (
                                 <div className="space-y-3 rounded-xl border border-border/70 bg-background/80 p-4">
                                     <div>
-                                        <p className="text-sm font-medium">
-                                            In-Service Cohort by Year Level
-                                        </p>
+                                        <div className="flex items-start justify-between gap-3">
+                                            <p className="text-sm font-medium">
+                                                In-Service Cohort by Year Level
+                                            </p>
+                                            <HelpTooltip
+                                                content="This table compares your score context against each year-level cohort in the in-service exam view."
+                                                ariaLabel="Explain in-service cohort table"
+                                            />
+                                        </div>
                                         <p className="text-sm text-muted-foreground">
                                             Compare your average against each year-level group from first year to graduate.
                                         </p>
@@ -436,18 +466,50 @@ export default function MyGrades({
                                     <Table>
                                         <TableHeader>
                                             <TableRow>
-                                                <TableHead>Year Level</TableHead>
-                                                <TableHead className="text-center">
-                                                    Cohort Avg
+                                                <TableHead>
+                                                    <div className="flex items-center gap-2">
+                                                        <span>Year Level</span>
+                                                        <HelpTooltip
+                                                            content="The resident training level represented by the cohort row."
+                                                            ariaLabel="Explain year level"
+                                                        />
+                                                    </div>
                                                 </TableHead>
                                                 <TableHead className="text-center">
-                                                    Residents
+                                                    <div className="flex items-center justify-center gap-2">
+                                                        <span>Cohort Avg</span>
+                                                        <HelpTooltip
+                                                            content="The average score of residents in that year level."
+                                                            ariaLabel="Explain cohort average"
+                                                        />
+                                                    </div>
                                                 </TableHead>
                                                 <TableHead className="text-center">
-                                                    Gap
+                                                    <div className="flex items-center justify-center gap-2">
+                                                        <span>Residents</span>
+                                                        <HelpTooltip
+                                                            content="The number of residents included in that year-level cohort."
+                                                            ariaLabel="Explain resident count"
+                                                        />
+                                                    </div>
                                                 </TableHead>
                                                 <TableHead className="text-center">
-                                                    Top Avg
+                                                    <div className="flex items-center justify-center gap-2">
+                                                        <span>Gap</span>
+                                                        <HelpTooltip
+                                                            content="The point difference between your score and that cohort's average. Positive means you are above that cohort average."
+                                                            ariaLabel="Explain cohort gap"
+                                                        />
+                                                    </div>
+                                                </TableHead>
+                                                <TableHead className="text-center">
+                                                    <div className="flex items-center justify-center gap-2">
+                                                        <span>Top Avg</span>
+                                                        <HelpTooltip
+                                                            content="The highest average score recorded within that year-level cohort."
+                                                            ariaLabel="Explain top average"
+                                                        />
+                                                    </div>
                                                 </TableHead>
                                             </TableRow>
                                         </TableHeader>
