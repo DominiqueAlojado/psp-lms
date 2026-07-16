@@ -45,7 +45,7 @@ class ResidentController extends Controller
             'residents' => $payload['residents'],
             'organizations' => $payload['organizations'],
             'filters' => $request->only(['search', 'organization_id', 'year_level', 'status', 'course']),
-            'yearLevels' => ['Pre Resident', 'First Year', 'Second Year', 'Third Year', 'Fourth Year', 'Graduate'],
+            'yearLevels' => ['Pre-Resident', 'First Year', 'Second Year', 'Third Year', 'Fourth Year', 'Graduate'],
             'statuses' => ['active', 'inactive'],
             'courses' => $payload['courses'],
             'yearLevelStats' => $payload['yearLevelStats'],

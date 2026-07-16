@@ -8,7 +8,7 @@ use Illuminate\Validation\Rule;
 class UpdateResidentRequest extends FormRequest
 {
     private const YEAR_LEVELS = [
-        'Pre Resident',
+        'Pre-Resident',
         'First Year',
         'Second Year',
         'Third Year',

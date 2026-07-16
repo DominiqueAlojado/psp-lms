@@ -21,7 +21,7 @@ class CreateNewUser implements CreatesNewUsers
      * @var array<int, string>
      */
     public const YEAR_LEVELS = [
-        'Pre Resident',
+        'Pre-Resident',
         'First Year',
         'Second Year',
         'Third Year',
