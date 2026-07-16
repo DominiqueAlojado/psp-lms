@@ -14,10 +14,10 @@ const buttonVariants = cva(
         destructive:
           "bg-destructive text-white shadow-[0_10px_24px_-14px_color-mix(in_oklab,var(--color-destructive)_60%,transparent)] hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40",
         outline:
-          "border border-input/90 bg-background text-foreground shadow-[0_1px_2px_rgb(27_31_59_/_0.04)] hover:border-primary/25 hover:bg-accent/80 hover:text-accent-foreground",
+          "border border-input/90 bg-background/90 text-foreground shadow-[0_1px_2px_rgb(27_31_59_/_0.04)] hover:border-primary/30 hover:bg-accent/85 hover:text-accent-foreground dark:shadow-[0_12px_24px_-22px_rgb(0_0_0_/_0.7)]",
         secondary:
-          "bg-secondary text-secondary-foreground shadow-[0_1px_2px_rgb(27_31_59_/_0.04)] hover:bg-secondary/75",
-        ghost: "text-muted-foreground hover:bg-accent/80 hover:text-foreground",
+          "bg-secondary text-secondary-foreground shadow-[0_1px_2px_rgb(27_31_59_/_0.04)] hover:bg-secondary/88 dark:shadow-[0_12px_24px_-22px_rgb(0_0_0_/_0.55)]",
+        ghost: "text-muted-foreground hover:bg-accent/85 hover:text-foreground",
         link: "text-primary underline-offset-4 hover:underline",
       },
       size: {

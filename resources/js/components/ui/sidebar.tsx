@@ -239,7 +239,7 @@ function Sidebar({
       >
         <div
           data-sidebar="sidebar"
-          className="bg-sidebar/92 supports-[backdrop-filter]:bg-sidebar/82 group-data-[variant=floating]:border-sidebar-border/80 flex h-full w-full flex-col border border-sidebar-border/70 backdrop-blur-xl group-data-[variant=floating]:rounded-[1.5rem] group-data-[variant=floating]:shadow-[0_24px_50px_-30px_rgb(35_24_74_/_0.28)]"
+          className="bg-sidebar/96 supports-[backdrop-filter]:bg-sidebar/88 group-data-[variant=floating]:border-sidebar-border/85 flex h-full w-full flex-col border border-sidebar-border/80 backdrop-blur-xl group-data-[variant=floating]:rounded-[1.5rem] group-data-[variant=floating]:shadow-[0_30px_60px_-36px_rgb(10_8_26_/_0.7)]"
         >
           {children}
         </div>
@@ -304,8 +304,8 @@ function SidebarInset({ className, ...props }: React.ComponentProps<"main">) {
     <main
       data-slot="sidebar-inset"
       className={cn(
-        "bg-background/88 relative flex max-w-full min-h-svh flex-1 flex-col backdrop-blur-md",
-        "peer-data-[variant=inset]:min-h-[calc(100svh-(--spacing(4)))] md:peer-data-[variant=inset]:m-3 md:peer-data-[variant=inset]:ml-0 md:peer-data-[variant=inset]:rounded-[1.75rem] md:peer-data-[variant=inset]:border md:peer-data-[variant=inset]:border-border/70 md:peer-data-[variant=inset]:shadow-[0_26px_60px_-36px_rgb(35_24_74_/_0.2)] md:peer-data-[variant=inset]:peer-data-[state=collapsed]:ml-0",
+        "bg-background/92 relative flex max-w-full min-h-svh flex-1 flex-col backdrop-blur-md",
+        "peer-data-[variant=inset]:min-h-[calc(100svh-(--spacing(4)))] md:peer-data-[variant=inset]:m-3 md:peer-data-[variant=inset]:ml-0 md:peer-data-[variant=inset]:rounded-[1.75rem] md:peer-data-[variant=inset]:border md:peer-data-[variant=inset]:border-border/85 md:peer-data-[variant=inset]:shadow-[0_32px_70px_-42px_rgb(8_7_21_/_0.72)] md:peer-data-[variant=inset]:peer-data-[state=collapsed]:ml-0",
         className
       )}
       {...props}

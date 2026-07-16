@@ -66,7 +66,9 @@ class SupportTicketNotification extends Notification
 
     public function via(object $notifiable): array
     {
-        return ['database'];
+        return filled($notifiable->email)
+            ? ['database', 'mail']
+            : ['database'];
     }
 
     public function toArray(object $notifiable): array
@@ -97,9 +99,14 @@ class SupportTicketNotification extends Notification
 
     public function toMail(object $notifiable): MailMessage
     {
+        $payload = $this->toArray($notifiable);
+
         return (new MailMessage)
             ->subject($this->title)
+            ->greeting(sprintf('Hello %s,', $notifiable->name ?? 'there'))
             ->line($this->message)
-            ->action('Open Ticket', $this->toArray($notifiable)['url']);
+            ->line(sprintf('Ticket: %s', $payload['ticket_number']))
+            ->line(sprintf('Status: %s', str($payload['ticket_status'])->replace('_', ' ')->title()))
+            ->action('Open Ticket', url($payload['url']));
     }
 }

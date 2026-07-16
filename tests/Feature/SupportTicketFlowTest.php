@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Notifications\SupportTicketNotification;
 use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Notification;
 use Spatie\Permission\Models\Permission;
 use Tests\TestCase;
 
@@ -272,6 +273,7 @@ class SupportTicketFlowTest extends TestCase
             ValidateCsrfToken::class,
             SetOrganizationFromUrl::class,
         ]);
+        Notification::fake();
 
         Permission::findOrCreate('manage-support-tickets', 'web');
 
@@ -291,11 +293,15 @@ class SupportTicketFlowTest extends TestCase
             'details' => 'Analytics page keeps failing to load.',
         ])->assertRedirect('/support');
 
-        $manager->refresh();
-        $otherManager->refresh();
-
-        $this->assertSame(1, $manager->notifications()->count());
-        $this->assertSame(0, $otherManager->notifications()->count());
+        Notification::assertSentTo(
+            $manager,
+            SupportTicketNotification::class,
+            function (SupportTicketNotification $notification, array $channels) {
+                return in_array('database', $channels, true)
+                    && in_array('mail', $channels, true);
+            }
+        );
+        Notification::assertNotSentTo($otherManager, SupportTicketNotification::class);
     }
 
     public function test_system_admin_receives_ticket_notification_even_if_current_org_differs(): void
@@ -304,6 +310,7 @@ class SupportTicketFlowTest extends TestCase
             ValidateCsrfToken::class,
             SetOrganizationFromUrl::class,
         ]);
+        Notification::fake();
 
         $organization = $this->createOrganization('alpha-chapter', 'Alpha Chapter');
         $differentOrganization = $this->createOrganization('beta-chapter', 'Beta Chapter');
@@ -331,10 +338,18 @@ class SupportTicketFlowTest extends TestCase
             'details' => 'This should still notify the system admin.',
         ])->assertRedirect('/support');
 
-        $systemAdmin->refresh();
-
-        $this->assertSame(1, $systemAdmin->notifications()->count());
-        $this->assertSame('support.ticket.created', $systemAdmin->notifications()->latest()->first()->data['event']);
+        Notification::assertSentTo(
+            $systemAdmin,
+            SupportTicketNotification::class,
+            function (SupportTicketNotification $notification, array $channels) {
+                return in_array('database', $channels, true)
+                    && in_array('mail', $channels, true)
+                    && $notification->toArray(new class {
+                        public string $name = 'System Admin';
+                        public string $email = 'admin@example.com';
+                    })['event'] === 'support.ticket.created';
+            }
+        );
     }
 
     public function test_manager_reply_notifies_ticket_creator(): void
@@ -343,6 +358,7 @@ class SupportTicketFlowTest extends TestCase
             ValidateCsrfToken::class,
             SetOrganizationFromUrl::class,
         ]);
+        Notification::fake();
 
         Permission::findOrCreate('manage-support-tickets', 'web');
 
@@ -366,10 +382,18 @@ class SupportTicketFlowTest extends TestCase
             'message' => 'We are checking the exam session logs now.',
         ])->assertRedirect();
 
-        $user->refresh();
-
-        $this->assertSame(1, $user->notifications()->count());
-        $this->assertSame('support.ticket.replied', $user->notifications()->latest()->first()->data['event']);
+        Notification::assertSentTo(
+            $user,
+            SupportTicketNotification::class,
+            function (SupportTicketNotification $notification, array $channels) {
+                return in_array('database', $channels, true)
+                    && in_array('mail', $channels, true)
+                    && $notification->toArray(new class {
+                        public string $name = 'User';
+                        public string $email = 'user@example.com';
+                    })['event'] === 'support.ticket.replied';
+            }
+        );
     }
 
     public function test_resolving_ticket_notifies_creator(): void
@@ -378,6 +402,7 @@ class SupportTicketFlowTest extends TestCase
             ValidateCsrfToken::class,
             SetOrganizationFromUrl::class,
         ]);
+        Notification::fake();
 
         Permission::findOrCreate('manage-support-tickets', 'web');
 
@@ -403,10 +428,18 @@ class SupportTicketFlowTest extends TestCase
             'assigned_to_user_id' => null,
         ])->assertRedirect();
 
-        $user->refresh();
-
-        $this->assertSame(1, $user->notifications()->count());
-        $this->assertSame('support.ticket.resolved', $user->notifications()->latest()->first()->data['event']);
+        Notification::assertSentTo(
+            $user,
+            SupportTicketNotification::class,
+            function (SupportTicketNotification $notification, array $channels) {
+                return in_array('database', $channels, true)
+                    && in_array('mail', $channels, true)
+                    && $notification->toArray(new class {
+                        public string $name = 'User';
+                        public string $email = 'user@example.com';
+                    })['event'] === 'support.ticket.resolved';
+            }
+        );
     }
 
     public function test_assigning_ticket_notifies_assignee(): void
@@ -415,6 +448,7 @@ class SupportTicketFlowTest extends TestCase
             ValidateCsrfToken::class,
             SetOrganizationFromUrl::class,
         ]);
+        Notification::fake();
 
         Permission::findOrCreate('manage-support-tickets', 'web');
 
@@ -441,10 +475,18 @@ class SupportTicketFlowTest extends TestCase
             'assigned_to_user_id' => $assignee->id,
         ])->assertRedirect();
 
-        $assignee->refresh();
-
-        $this->assertSame(1, $assignee->notifications()->count());
-        $this->assertSame('support.ticket.assigned', $assignee->notifications()->latest()->first()->data['event']);
+        Notification::assertSentTo(
+            $assignee,
+            SupportTicketNotification::class,
+            function (SupportTicketNotification $notification, array $channels) {
+                return in_array('database', $channels, true)
+                    && in_array('mail', $channels, true)
+                    && $notification->toArray(new class {
+                        public string $name = 'Assignee';
+                        public string $email = 'assignee@example.com';
+                    })['event'] === 'support.ticket.assigned';
+            }
+        );
     }
 
     public function test_user_can_mark_notification_as_read(): void
