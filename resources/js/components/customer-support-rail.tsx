@@ -7,6 +7,14 @@ import { LifeBuoy } from 'lucide-react';
 export function CustomerSupportRail() {
     const page = usePage<SharedData>();
     const currentOrgSlug = page.props.auth.currentOrganization?.slug;
+    const isInServiceExamTakePage =
+        /^\/exams\/inservice\/[^/]+\/take(?:\?|$)/.test(page.url);
+    const isInstitutionExamTakePage =
+        /^\/exams\/institution\/[^/]+\/take(?:\?|$)/.test(page.url);
+
+    if (isInServiceExamTakePage || isInstitutionExamTakePage) {
+        return null;
+    }
 
     return (
         <div className="pointer-events-none fixed right-0 top-1/2 z-40 -translate-y-1/2 pr-3">
