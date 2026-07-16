@@ -564,7 +564,7 @@ export default function ItemAnalysis() {
 
                     {/* No Results Message */}
                     {!itemAnalysis && examFilter && (
-                        <Card className="overflow-hidden border-border/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,255,255,0.94))]">
+                        <Card className="overflow-hidden border-border/80 bg-[linear-gradient(180deg,color-mix(in_oklab,var(--color-card)_97%,white),color-mix(in_oklab,var(--color-card)_94%,var(--color-accent)))]">
                             <CardContent className="py-8 text-center">
                                 <p className="text-muted-foreground">
                                     Select an exam and click "Analyze" to view

@@ -365,7 +365,7 @@ export default function TopicPerformance() {
                                 </Card>
                             </div>
 
-                            <Card className="overflow-hidden border-border/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,255,255,0.94))]">
+                            <Card className="overflow-hidden border-border/80 bg-[linear-gradient(180deg,color-mix(in_oklab,var(--color-card)_97%,white),color-mix(in_oklab,var(--color-card)_94%,var(--color-accent)))]">
                                 <CardHeader className="pb-3">
                                     <CardTitle>Topic Results</CardTitle>
                                 </CardHeader>
@@ -422,7 +422,7 @@ export default function TopicPerformance() {
                             </Card>
                         </div>
                     ) : (
-                        <Card className="overflow-hidden border-border/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,255,255,0.94))]">
+                        <Card className="overflow-hidden border-border/80 bg-[linear-gradient(180deg,color-mix(in_oklab,var(--color-card)_97%,white),color-mix(in_oklab,var(--color-card)_94%,var(--color-accent)))]">
                             <CardContent className="flex min-h-56 flex-col items-center justify-center gap-3 py-8 text-center">
                                 <CircleAlert className="h-8 w-8 text-muted-foreground" />
                                 <div className="space-y-1">

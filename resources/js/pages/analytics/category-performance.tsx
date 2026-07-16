@@ -266,7 +266,7 @@ export default function CategoryPerformance() {
                             </Card>
 
                             <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-                                <Card className="overflow-hidden border-border/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,255,255,0.94))]">
+                                <Card className="overflow-hidden border-border/80 bg-[linear-gradient(180deg,color-mix(in_oklab,var(--color-card)_97%,white),color-mix(in_oklab,var(--color-card)_94%,var(--color-accent)))]">
                                     <CardHeader className="pb-3">
                                         <CardTitle>Pass Rate by Category</CardTitle>
                                     </CardHeader>
@@ -322,7 +322,7 @@ export default function CategoryPerformance() {
                                     </CardContent>
                                 </Card>
 
-                                <Card className="overflow-hidden border-border/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,255,255,0.94))]">
+                                <Card className="overflow-hidden border-border/80 bg-[linear-gradient(180deg,color-mix(in_oklab,var(--color-card)_97%,white),color-mix(in_oklab,var(--color-card)_94%,var(--color-accent)))]">
                                     <CardHeader className="pb-3">
                                         <CardTitle>Attempt Volume by Category</CardTitle>
                                     </CardHeader>
@@ -371,7 +371,7 @@ export default function CategoryPerformance() {
                             </div>
 
                             <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-                                <Card className="overflow-hidden border-border/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,255,255,0.94))]">
+                                <Card className="overflow-hidden border-border/80 bg-[linear-gradient(180deg,color-mix(in_oklab,var(--color-card)_97%,white),color-mix(in_oklab,var(--color-card)_94%,var(--color-accent)))]">
                                     <CardHeader className="pb-3">
                                         <CardTitle>Best Performing Categories</CardTitle>
                                     </CardHeader>
@@ -408,7 +408,7 @@ export default function CategoryPerformance() {
                                     </CardContent>
                                 </Card>
 
-                                <Card className="overflow-hidden border-border/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,255,255,0.94))]">
+                                <Card className="overflow-hidden border-border/80 bg-[linear-gradient(180deg,color-mix(in_oklab,var(--color-card)_97%,white),color-mix(in_oklab,var(--color-card)_94%,var(--color-accent)))]">
                                     <CardHeader className="pb-3">
                                         <CardTitle>Needs Attention</CardTitle>
                                     </CardHeader>
@@ -451,7 +451,7 @@ export default function CategoryPerformance() {
                                 </Card>
                             </div>
 
-                            <Card className="overflow-hidden border-border/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,255,255,0.94))]">
+                            <Card className="overflow-hidden border-border/80 bg-[linear-gradient(180deg,color-mix(in_oklab,var(--color-card)_97%,white),color-mix(in_oklab,var(--color-card)_94%,var(--color-accent)))]">
                                 <CardHeader className="pb-3">
                                     <CardTitle>Category Results</CardTitle>
                                 </CardHeader>
@@ -512,7 +512,7 @@ export default function CategoryPerformance() {
                             </Card>
                         </div>
                     ) : (
-                        <Card className="overflow-hidden border-border/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,255,255,0.94))]">
+                        <Card className="overflow-hidden border-border/80 bg-[linear-gradient(180deg,color-mix(in_oklab,var(--color-card)_97%,white),color-mix(in_oklab,var(--color-card)_94%,var(--color-accent)))]">
                             <CardContent className="flex min-h-56 flex-col items-center justify-center gap-3 py-8 text-center">
                                 <CircleAlert className="h-8 w-8 text-muted-foreground" />
                                 <div className="space-y-1">
