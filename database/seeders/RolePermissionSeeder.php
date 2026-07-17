@@ -66,6 +66,35 @@ class RolePermissionSeeder extends Seeder
             'grade-assessments',
             'view-assessment-results',
             'export-assessment-results',
+            'view-assessment-reports',
+            'view-all-assessment-reports',
+
+            // Assignments
+            'view-assignments',
+            'create-assignments',
+            'edit-assignments',
+            'delete-assignments',
+            'grade-assignments',
+            'view-all-submissions',
+
+            // Events
+            'view-events',
+            'create-events',
+            'edit-events',
+            'delete-events',
+
+            // Support / notifications / activity
+            'manage-support-tickets',
+            'view-support-tickets',
+            'create-support-tickets',
+            'edit-support-tickets',
+            'delete-support-tickets',
+            'view-feedback',
+            'create-feedback',
+            'view-all-feedback',
+            'delete-feedback',
+            'view-notifications',
+            'view-activity-logs',
 
             // Cases
             'view-cases',
@@ -102,6 +131,7 @@ class RolePermissionSeeder extends Seeder
             // Announcements
             'view-announcements',
             'create-announcements',
+            'create-system-announcements',
             'edit-announcements',
             'delete-announcements',
             'send-notifications',
@@ -148,7 +178,32 @@ class RolePermissionSeeder extends Seeder
             'view-institution-exams',
             'view-assessment-results',
             'export-assessment-results',
+            'view-assessment-reports',
             'view-all-assessment-reports',
+
+            // Assignments
+            'view-assignments',
+            'create-assignments',
+            'edit-assignments',
+            'delete-assignments',
+            'grade-assignments',
+            'view-all-submissions',
+
+            // Events
+            'view-events',
+            'create-events',
+            'edit-events',
+            'delete-events',
+
+            // Support / notifications / activity
+            'manage-support-tickets',
+            'view-support-tickets',
+            'edit-support-tickets',
+            'view-feedback',
+            'create-feedback',
+            'view-all-feedback',
+            'view-notifications',
+            'view-activity-logs',
 
             // Cases
             'view-cases',
@@ -199,6 +254,7 @@ class RolePermissionSeeder extends Seeder
             'view-inservice-exams',
             'view-institution-exams',
             'view-assessment-results',
+            'view-assessment-reports',
 
             // Case review is important for BOP
             'view-cases',
@@ -214,8 +270,24 @@ class RolePermissionSeeder extends Seeder
             'view-reports',
             'view-analytics',
             'view-organization-analytics',
+            'view-all-assessment-reports',
+
+            // Assignments / events / support visibility
+            'view-assignments',
+            'grade-assignments',
+            'view-all-submissions',
+            'view-events',
+            'manage-support-tickets',
+            'view-support-tickets',
+            'edit-support-tickets',
+            'view-feedback',
+            'create-feedback',
+            'view-all-feedback',
+            'view-notifications',
+            'view-activity-logs',
 
             'view-announcements',
+            'create-system-announcements',
 
             // Logbook review
             'view-logbook',
@@ -234,6 +306,9 @@ class RolePermissionSeeder extends Seeder
             // Resident experience
             'view-resident-grades',
             'view-resident-assignments',
+            'view-feedback',
+            'create-feedback',
+            'view-notifications',
 
             // Materials
             'view-materials',
@@ -253,6 +328,10 @@ class RolePermissionSeeder extends Seeder
 
             // Announcements
             'view-announcements',
+
+            // Support
+            'view-support-tickets',
+            'create-support-tickets',
 
             // Logbook
             'view-logbook', // Own logbook

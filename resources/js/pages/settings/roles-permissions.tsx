@@ -65,19 +65,26 @@ interface Permission {
     id: number;
     name: string;
     guard_name: string;
-    category: string;
+    module: string;
+    display_order: number;
+}
+
+interface PermissionModule {
+    name: string;
+    permissions_count: number;
     display_order: number;
 }
 
 interface Props {
     roles: Role[];
     permissions: Permission[];
+    modules: PermissionModule[];
     groupedPermissions: Record<string, Permission[]>;
     errors?: Record<string, string>;
 }
 
 export default function RolesPermissions() {
-    const { roles, permissions, groupedPermissions, errors = {} } =
+    const { roles, permissions, modules, groupedPermissions, errors = {} } =
         usePage<Props>().props;
     const [editingRole, setEditingRole] = useState<Role | null>(null);
     const [addingRole, setAddingRole] = useState(false);
@@ -99,6 +106,12 @@ export default function RolesPermissions() {
         id: number;
         name: string;
     } | null>(null);
+    const [addingModule, setAddingModule] = useState(false);
+    const [editingModule, setEditingModule] =
+        useState<PermissionModule | null>(null);
+    const [deletingModule, setDeletingModule] = useState<string | null>(
+        null,
+    );
 
     const filteredPermissions = useMemo(
         () =>
@@ -116,12 +129,12 @@ export default function RolesPermissions() {
             return groupedPermissions;
         }
         const result: Record<string, Permission[]> = {};
-        for (const [category, perms] of Object.entries(groupedPermissions)) {
+        for (const [moduleName, perms] of Object.entries(groupedPermissions)) {
             const filtered = perms.filter((p) =>
                 p.name.toLowerCase().includes(query),
             );
             if (filtered.length > 0) {
-                result[category] = filtered;
+                result[moduleName] = filtered;
             }
         }
         return result;
@@ -140,6 +153,15 @@ export default function RolesPermissions() {
         router.delete(`/settings/permissions/${deletingPermission.id}`, {
             preserveScroll: true,
             onFinish: () => setDeletingPermission(null),
+        });
+    };
+
+    const confirmDeleteModule = () => {
+        if (!deletingModule) return;
+        router.delete('/settings/permission-modules', {
+            data: { name: deletingModule },
+            preserveScroll: true,
+            onFinish: () => setDeletingModule(null),
         });
     };
 
@@ -202,9 +224,9 @@ export default function RolesPermissions() {
                             iconColor="text-primary"
                         />
                         <StatCard
-                            title="Categories"
-                            value={Object.keys(groupedPermissions).length}
-                            description="Permission groups currently organized in settings"
+                            title="Modules"
+                            value={modules.length}
+                            description="Permission modules currently organized in settings"
                             icon={Plus}
                             iconColor="text-primary"
                         />
@@ -212,7 +234,7 @@ export default function RolesPermissions() {
 
                     <Tabs defaultValue="roles" className="w-full">
                         <div className="overflow-x-auto pb-1">
-                            <TabsList className="grid min-w-[32rem] grid-cols-3 lg:w-fit lg:min-w-[34rem]">
+                            <TabsList className="grid min-w-[42rem] grid-cols-4 lg:w-fit lg:min-w-[46rem]">
                                 <TabsTrigger value="roles">
                                     Roles ({roles.length})
                                 </TabsTrigger>
@@ -221,6 +243,9 @@ export default function RolesPermissions() {
                                 </TabsTrigger>
                                 <TabsTrigger value="assign">
                                     Assign Permissions
+                                </TabsTrigger>
+                                <TabsTrigger value="categories">
+                                    Modules ({modules.length})
                                 </TabsTrigger>
                             </TabsList>
                         </div>
@@ -454,6 +479,93 @@ export default function RolesPermissions() {
                                 </CardContent>
                             </Card>
                         </TabsContent>
+
+                        <TabsContent
+                            value="categories"
+                            className="space-y-4 pt-4"
+                        >
+                            <Card className="overflow-hidden border-border/80 bg-[linear-gradient(180deg,color-mix(in_oklab,var(--color-card)_97%,white),color-mix(in_oklab,var(--color-card)_94%,var(--color-accent)))]">
+                                <CardHeader className="pb-3">
+                                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                        <div>
+                                            <CardTitle>
+                                                Permission Modules
+                                            </CardTitle>
+                                            <CardDescription>
+                                                Add, rename, or retire permission modules without changing the broader permission system.
+                                            </CardDescription>
+                                        </div>
+                                        <Button
+                                            onClick={() => setAddingModule(true)}
+                                        >
+                                            <Plus className="mr-2 h-4 w-4" />
+                                            Add Module
+                                        </Button>
+                                    </div>
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="overflow-x-auto">
+                                        <Table>
+                                            <TableHeader>
+                                                <TableRow>
+                                                    <TableHead>
+                                                        Module Name
+                                                    </TableHead>
+                                                    <TableHead>
+                                                        Permissions
+                                                    </TableHead>
+                                                    <TableHead>
+                                                        Actions
+                                                    </TableHead>
+                                                </TableRow>
+                                            </TableHeader>
+                                            <TableBody>
+                                                {modules.map((module) => (
+                                                    <TableRow key={module.name}>
+                                                        <TableCell className="font-medium">
+                                                            {module.name}
+                                                        </TableCell>
+                                                        <TableCell>
+                                                            <Badge variant="secondary">
+                                                                {
+                                                                    module.permissions_count
+                                                                }{' '}
+                                                                permissions
+                                                            </Badge>
+                                                        </TableCell>
+                                                        <TableCell>
+                                                            <div className="flex gap-2">
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    onClick={() =>
+                                                                        setEditingModule(module)
+                                                                    }
+                                                                >
+                                                                    <Edit className="h-4 w-4" />
+                                                                </Button>
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    disabled={
+                                                                        module.name === 'Other'
+                                                                    }
+                                                                    onClick={() =>
+                                                                        setDeletingModule(module.name)
+                                                                    }
+                                                                >
+                                                                    <Trash2 className="h-4 w-4 text-destructive" />
+                                                                </Button>
+                                                            </div>
+                                                        </TableCell>
+                                                    </TableRow>
+                                                ))}
+                                            </TableBody>
+                                        </Table>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        </TabsContent>
                     </Tabs>
                 </div>
 
@@ -643,8 +755,9 @@ export default function RolesPermissions() {
                                 }}
                             >
                                 {(() => {
-                                    const categories =
-                                        Object.keys(groupedPermissions);
+                                    const moduleNames = modules.map(
+                                        (module) => module.name,
+                                    );
                                     return (
                                         <div className="space-y-6">
                                             {Object.keys(errors).length > 0 && (
@@ -672,24 +785,24 @@ export default function RolesPermissions() {
                                             </div>
 
                                             <div className="space-y-2">
-                                                <Label htmlFor="permission_category">
-                                                    Category
+                                                <Label htmlFor="permission_module">
+                                                    Permission Module
                                                 </Label>
                                                 <select
-                                                    id="permission_category"
-                                                    name="category"
+                                                    id="permission_module"
+                                                    name="module"
                                                     className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
                                                     required
                                                 >
                                                     <option value="">
-                                                        Select category...
+                                                        Select module...
                                                     </option>
-                                                    {categories.map((cat) => (
+                                                    {moduleNames.map((moduleName) => (
                                                         <option
-                                                            key={cat}
-                                                            value={cat}
+                                                            key={moduleName}
+                                                            value={moduleName}
                                                         >
-                                                            {cat}
+                                                            {moduleName}
                                                         </option>
                                                     ))}
                                                 </select>
@@ -752,8 +865,15 @@ export default function RolesPermissions() {
                                     }}
                                 >
                                     {(() => {
-                                        const categories =
-                                            Object.keys(groupedPermissions);
+                                        const moduleNames = Array.from(
+                                            new Set([
+                                                ...modules.map(
+                                                    (module) =>
+                                                        module.name,
+                                                ),
+                                                editingPermission.module,
+                                            ]),
+                                        );
                                         return (
                                             <div className="space-y-6">
                                                 {Object.keys(errors).length >
@@ -780,28 +900,28 @@ export default function RolesPermissions() {
                                                 </div>
 
                                                 <div className="space-y-2">
-                                                    <Label htmlFor="edit_permission_category">
-                                                        Category
+                                                    <Label htmlFor="edit_permission_module">
+                                                        Permission Module
                                                     </Label>
                                                     <select
-                                                        id="edit_permission_category"
-                                                        name="category"
+                                                        id="edit_permission_module"
+                                                        name="module"
                                                         defaultValue={
-                                                            editingPermission.category
+                                                            editingPermission.module
                                                         }
                                                         className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
                                                         required
                                                     >
                                                         <option value="">
-                                                            Select category...
+                                                            Select module...
                                                         </option>
-                                                        {categories.map(
-                                                            (cat) => (
+                                                        {moduleNames.map(
+                                                            (moduleName) => (
                                                                 <option
-                                                                    key={cat}
-                                                                    value={cat}
+                                                                    key={moduleName}
+                                                                    value={moduleName}
                                                                 >
-                                                                    {cat}
+                                                                    {moduleName}
                                                                 </option>
                                                             ),
                                                         )}
@@ -829,6 +949,152 @@ export default function RolesPermissions() {
                                     })()}
                                 </form>
                             )}
+                        </div>
+                    </SheetContent>
+                </Sheet>
+
+                <Sheet
+                    open={!!editingModule}
+                    onOpenChange={(open) => !open && setEditingModule(null)}
+                >
+                    <SheetContent className="p-0 sm:max-w-[500px]">
+                        <div className="p-6">
+                            <SheetHeader className="pb-6">
+                                <SheetTitle>Edit Permission Module</SheetTitle>
+                                <SheetDescription>
+                                    Renaming a permission module updates all permissions currently using it.
+                                </SheetDescription>
+                            </SheetHeader>
+
+                            {editingModule && (
+                                <form
+                                    onSubmit={(e) => {
+                                        e.preventDefault();
+                                        const formData = new FormData(
+                                            e.currentTarget,
+                                        );
+                                        router.patch(
+                                            '/settings/permission-modules',
+                                            Object.fromEntries(formData),
+                                            {
+                                                preserveScroll: true,
+                                                onSuccess: () =>
+                                                    setEditingModule(null),
+                                            },
+                                        );
+                                    }}
+                                >
+                                    <div className="space-y-6">
+                                        {Object.keys(errors).length > 0 && (
+                                            <AlertError
+                                                errors={Object.values(errors)}
+                                            />
+                                        )}
+
+                                        <input
+                                            type="hidden"
+                                            name="current_name"
+                                            value={editingModule.name}
+                                        />
+
+                                        <div className="space-y-2">
+                                            <Label htmlFor="edit_category_name">
+                                                Module Name
+                                            </Label>
+                                            <Input
+                                                id="edit_category_name"
+                                                name="name"
+                                                defaultValue={
+                                                    editingModule.name
+                                                }
+                                                required
+                                            />
+                                        </div>
+
+                                        <div className="flex justify-end gap-3 border-t pt-4">
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                onClick={() =>
+                                                    setEditingModule(null)
+                                                }
+                                            >
+                                                Cancel
+                                            </Button>
+                                            <Button type="submit">
+                                                Save Changes
+                                            </Button>
+                                        </div>
+                                    </div>
+                                </form>
+                            )}
+                        </div>
+                    </SheetContent>
+                </Sheet>
+
+                <Sheet
+                    open={addingModule}
+                    onOpenChange={setAddingModule}
+                >
+                    <SheetContent className="p-0 sm:max-w-[500px]">
+                        <div className="p-6">
+                            <SheetHeader className="pb-6">
+                                <SheetTitle>Add Permission Module</SheetTitle>
+                                <SheetDescription>
+                                    Create a permission module so it can be selected before any permission is assigned to it.
+                                </SheetDescription>
+                            </SheetHeader>
+
+                            <form
+                                onSubmit={(e) => {
+                                    e.preventDefault();
+                                    const formData = new FormData(
+                                        e.currentTarget,
+                                    );
+                                    router.post(
+                                        '/settings/permission-modules',
+                                        Object.fromEntries(formData),
+                                        {
+                                            preserveScroll: true,
+                                            onSuccess: () =>
+                                                setAddingModule(false),
+                                        },
+                                    );
+                                }}
+                            >
+                                <div className="space-y-6">
+                                    {Object.keys(errors).length > 0 && (
+                                        <AlertError
+                                            errors={Object.values(errors)}
+                                        />
+                                    )}
+
+                                    <div className="space-y-2">
+                                        <Label htmlFor="new_category_name">
+                                            Module Name
+                                        </Label>
+                                        <Input
+                                            id="new_category_name"
+                                            name="name"
+                                            placeholder="e.g., Compliance"
+                                            required
+                                        />
+                                    </div>
+
+                                    <div className="flex justify-end gap-3 border-t pt-4">
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            onClick={() => setAddingModule(false)}
+                                        >
+                                            Cancel
+                                        </Button>
+                                        <Button type="submit">
+                                            Create Module
+                                        </Button>
+                                    </div>
+                                </div>
+                            </form>
                         </div>
                     </SheetContent>
                 </Sheet>
@@ -960,35 +1226,34 @@ export default function RolesPermissions() {
                                             filteredGroupedPermissions,
                                         ).map(
                                             ([
-                                                category,
-                                                categoryPermissions,
+                                                moduleName,
+                                                modulePermissions,
                                             ]) => {
                                                 if (
-                                                    categoryPermissions.length ===
+                                                    modulePermissions.length ===
                                                     0
                                                 )
                                                     return null;
 
-                                                // Check if all in this category are selected
-                                                const allCategorySelected =
-                                                    categoryPermissions.every(
+                                                const allModuleSelected =
+                                                    modulePermissions.every(
                                                         (p) =>
                                                             selectedPermissions.includes(
                                                                 p.id,
                                                             ),
                                                     );
 
-                                                const toggleCategory = () => {
-                                                    const categoryIds =
-                                                        categoryPermissions.map(
+                                                const toggleModule = () => {
+                                                    const moduleIds =
+                                                        modulePermissions.map(
                                                             (p) => p.id,
                                                         );
-                                                    if (allCategorySelected) {
+                                                    if (allModuleSelected) {
                                                         setSelectedPermissions(
                                                             (prev) =>
                                                                 prev.filter(
                                                                     (id) =>
-                                                                        !categoryIds.includes(
+                                                                        !moduleIds.includes(
                                                                             id,
                                                                         ),
                                                                 ),
@@ -998,7 +1263,7 @@ export default function RolesPermissions() {
                                                             (prev) => [
                                                                 ...new Set([
                                                                     ...prev,
-                                                                    ...categoryIds,
+                                                                    ...moduleIds,
                                                                 ]),
                                                             ],
                                                         );
@@ -1007,35 +1272,33 @@ export default function RolesPermissions() {
 
                                                 return (
                                                     <div
-                                                        key={category}
+                                                        key={moduleName}
                                                         className="space-y-2"
                                                     >
-                                                        {/* Category Header */}
                                                         <div className="flex items-center space-x-2 border-b py-2">
                                                             <Checkbox
-                                                                id={`category-${category}`}
+                                                                id={`module-${moduleName}`}
                                                                 checked={
-                                                                    allCategorySelected
+                                                                    allModuleSelected
                                                                 }
                                                                 onCheckedChange={
-                                                                    toggleCategory
+                                                                    toggleModule
                                                                 }
                                                             />
                                                             <Label
-                                                                htmlFor={`category-${category}`}
+                                                                htmlFor={`module-${moduleName}`}
                                                                 className="flex-1 cursor-pointer text-sm font-semibold"
                                                             >
-                                                                {category} (
+                                                                {moduleName} (
                                                                 {
-                                                                    categoryPermissions.length
+                                                                    modulePermissions.length
                                                                 }
                                                                 )
                                                             </Label>
                                                         </div>
 
-                                                        {/* Permissions in Category */}
                                                         <div className="ml-6 space-y-1">
-                                                            {categoryPermissions.map(
+                                                            {modulePermissions.map(
                                                                 (
                                                                     permission,
                                                                 ) => (
@@ -1143,6 +1406,33 @@ export default function RolesPermissions() {
                             <AlertDialogCancel>Cancel</AlertDialogCancel>
                             <AlertDialogAction
                                 onClick={confirmDeletePermission}
+                                className="bg-destructive text-white hover:bg-destructive/90"
+                            >
+                                <Trash2 className="h-4" />
+                                Delete
+                            </AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
+
+                <AlertDialog
+                    open={!!deletingModule}
+                    onOpenChange={(open) => !open && setDeletingModule(null)}
+                >
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>
+                                Delete permission module?
+                            </AlertDialogTitle>
+                            <AlertDialogDescription>
+                                Permissions in module "{deletingModule}" will
+                                be moved to "Other".
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                                onClick={confirmDeleteModule}
                                 className="bg-destructive text-white hover:bg-destructive/90"
                             >
                                 <Trash2 className="h-4" />

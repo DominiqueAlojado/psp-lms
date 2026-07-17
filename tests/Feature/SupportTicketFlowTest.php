@@ -26,6 +26,7 @@ class SupportTicketFlowTest extends TestCase
 
         $organization = $this->createOrganization('alpha-chapter', 'Alpha Chapter');
         $user = $this->createUserForOrganization($organization);
+        $this->grantSupportRequesterPermissions($user);
 
         $response = $this->actingAs($user)
             ->from(route('support.index'))
@@ -59,6 +60,7 @@ class SupportTicketFlowTest extends TestCase
 
         $organization = $this->createOrganization('alpha-chapter', 'Alpha Chapter');
         $user = $this->createUserForOrganization($organization);
+        $this->grantSupportRequesterPermissions($user);
 
         $this->actingAs($user)->post(route('support.store'), [
             'title' => 'Activity log check',
@@ -88,6 +90,7 @@ class SupportTicketFlowTest extends TestCase
         $organization = $this->createOrganization('alpha-chapter', 'Alpha Chapter');
         $otherOrganization = $this->createOrganization('beta-chapter', 'Beta Chapter');
         $user = $this->createUserForOrganization($organization);
+        $this->grantSupportRequesterPermissions($user);
 
         SupportTicket::create([
             'ticket_number' => 'SUP-00001',
@@ -125,10 +128,9 @@ class SupportTicketFlowTest extends TestCase
     {
         $this->withoutMiddleware([SetOrganizationFromUrl::class]);
 
-        Permission::findOrCreate('manage-support-tickets', 'web');
         $organization = $this->createOrganization('alpha-chapter', 'Alpha Chapter');
         $staff = $this->createUserForOrganization($organization);
-        $staff->givePermissionTo('manage-support-tickets');
+        $this->grantSupportManagerPermissions($staff);
 
         $response = $this->actingAs($staff)->get(route('support.manage'));
 
@@ -140,13 +142,13 @@ class SupportTicketFlowTest extends TestCase
     {
         $this->withoutMiddleware([SetOrganizationFromUrl::class]);
 
-        Permission::findOrCreate('manage-support-tickets', 'web');
         $organization = $this->createOrganization('alpha-chapter', 'Alpha Chapter');
         $staff = $this->createUserForOrganization($organization);
         $assignee = $this->createUserForOrganization($organization);
         $otherAssignee = $this->createUserForOrganization($organization);
         $requester = $this->createUserForOrganization($organization);
-        $staff->givePermissionTo('manage-support-tickets');
+        $this->grantSupportManagerPermissions($staff);
+        $this->grantSupportRequesterPermissions($requester);
 
         SupportTicket::create([
             'ticket_number' => 'SUP-00021',
@@ -187,9 +189,9 @@ class SupportTicketFlowTest extends TestCase
     {
         $this->withoutMiddleware([SetOrganizationFromUrl::class]);
 
-        Permission::findOrCreate('manage-support-tickets', 'web');
         $organization = $this->createOrganization('alpha-chapter', 'Alpha Chapter');
         $user = $this->createUserForOrganization($organization);
+        $this->grantSupportRequesterPermissions($user);
 
         $response = $this->actingAs($user)->get(route('support.manage'));
 
@@ -206,6 +208,7 @@ class SupportTicketFlowTest extends TestCase
         $organization = $this->createOrganization('alpha-chapter', 'Alpha Chapter');
         $otherOrganization = $this->createOrganization('beta-chapter', 'Beta Chapter');
         $user = $this->createUserForOrganization($organization);
+        $this->grantSupportRequesterPermissions($user);
 
         $ticket = SupportTicket::create([
             'ticket_number' => 'SUP-00077',
@@ -236,6 +239,7 @@ class SupportTicketFlowTest extends TestCase
 
         $organization = $this->createOrganization('alpha-chapter', 'Alpha Chapter');
         $user = $this->createUserForOrganization($organization);
+        $this->grantSupportRequesterPermissions($user);
 
         $ticket = SupportTicket::create([
             'ticket_number' => 'SUP-00101',
@@ -275,16 +279,15 @@ class SupportTicketFlowTest extends TestCase
         ]);
         Notification::fake();
 
-        Permission::findOrCreate('manage-support-tickets', 'web');
-
         $organization = $this->createOrganization('alpha-chapter', 'Alpha Chapter');
         $otherOrganization = $this->createOrganization('beta-chapter', 'Beta Chapter');
         $user = $this->createUserForOrganization($organization);
         $manager = $this->createUserForOrganization($organization);
         $otherManager = $this->createUserForOrganization($otherOrganization);
 
-        $manager->givePermissionTo('manage-support-tickets');
-        $otherManager->givePermissionTo('manage-support-tickets');
+        $this->grantSupportRequesterPermissions($user);
+        $this->grantSupportManagerPermissions($manager);
+        $this->grantSupportManagerPermissions($otherManager);
 
         $this->actingAs($user)->post(route('support.store'), [
             'title' => 'Unable to open analytics',
@@ -315,6 +318,7 @@ class SupportTicketFlowTest extends TestCase
         $organization = $this->createOrganization('alpha-chapter', 'Alpha Chapter');
         $differentOrganization = $this->createOrganization('beta-chapter', 'Beta Chapter');
         $resident = $this->createUserForOrganization($organization);
+        $this->grantSupportRequesterPermissions($resident);
 
         $systemAdmin = User::factory()->create([
             'current_organization_id' => $differentOrganization->id,
@@ -330,6 +334,7 @@ class SupportTicketFlowTest extends TestCase
 
         $systemAdminRole = \Spatie\Permission\Models\Role::findOrCreate('System Admin', 'web');
         $systemAdmin->assignRole($systemAdminRole);
+        $this->grantSupportManagerPermissions($systemAdmin);
 
         $this->actingAs($resident)->post(route('support.store'), [
             'title' => 'Resident support request',
@@ -360,12 +365,11 @@ class SupportTicketFlowTest extends TestCase
         ]);
         Notification::fake();
 
-        Permission::findOrCreate('manage-support-tickets', 'web');
-
         $organization = $this->createOrganization('alpha-chapter', 'Alpha Chapter');
         $user = $this->createUserForOrganization($organization);
         $manager = $this->createUserForOrganization($organization);
-        $manager->givePermissionTo('manage-support-tickets');
+        $this->grantSupportRequesterPermissions($user);
+        $this->grantSupportManagerPermissions($manager);
 
         $ticket = SupportTicket::create([
             'ticket_number' => 'SUP-00111',
@@ -404,12 +408,11 @@ class SupportTicketFlowTest extends TestCase
         ]);
         Notification::fake();
 
-        Permission::findOrCreate('manage-support-tickets', 'web');
-
         $organization = $this->createOrganization('alpha-chapter', 'Alpha Chapter');
         $user = $this->createUserForOrganization($organization);
         $manager = $this->createUserForOrganization($organization);
-        $manager->givePermissionTo('manage-support-tickets');
+        $this->grantSupportRequesterPermissions($user);
+        $this->grantSupportManagerPermissions($manager);
 
         $ticket = SupportTicket::create([
             'ticket_number' => 'SUP-00112',
@@ -450,13 +453,12 @@ class SupportTicketFlowTest extends TestCase
         ]);
         Notification::fake();
 
-        Permission::findOrCreate('manage-support-tickets', 'web');
-
         $organization = $this->createOrganization('alpha-chapter', 'Alpha Chapter');
         $user = $this->createUserForOrganization($organization);
         $manager = $this->createUserForOrganization($organization);
         $assignee = $this->createUserForOrganization($organization);
-        $manager->givePermissionTo('manage-support-tickets');
+        $this->grantSupportRequesterPermissions($user);
+        $this->grantSupportManagerPermissions($manager);
 
         $ticket = SupportTicket::create([
             'ticket_number' => 'SUP-00113',
@@ -495,6 +497,7 @@ class SupportTicketFlowTest extends TestCase
 
         $organization = $this->createOrganization('alpha-chapter', 'Alpha Chapter');
         $user = $this->createUserForOrganization($organization);
+        $this->grantNotificationPermission($user);
         $ticket = SupportTicket::create([
             'ticket_number' => 'SUP-00114',
             'organization_id' => $organization->id,
@@ -521,6 +524,7 @@ class SupportTicketFlowTest extends TestCase
 
         $organization = $this->createOrganization('alpha-chapter', 'Alpha Chapter');
         $user = $this->createUserForOrganization($organization);
+        $this->grantNotificationPermission($user);
         $ticket = SupportTicket::create([
             'ticket_number' => 'SUP-00115',
             'organization_id' => $organization->id,
@@ -555,8 +559,10 @@ class SupportTicketFlowTest extends TestCase
         $systemAdmin->organizations()->attach($alpha->id, ['joined_at' => now(), 'is_active' => true]);
         $systemAdmin->organizations()->attach($beta->id, ['joined_at' => now(), 'is_active' => true]);
         $systemAdmin->assignRole(\Spatie\Permission\Models\Role::findOrCreate('System Admin', 'web'));
+        $this->grantSupportManagerPermissions($systemAdmin);
 
         $resident = $this->createUserForOrganization($alpha);
+        $this->grantSupportRequesterPermissions($resident);
 
         SupportTicket::create([
             'ticket_number' => 'SUP-20101',
@@ -603,6 +609,7 @@ class SupportTicketFlowTest extends TestCase
         ]);
         $systemAdmin->organizations()->attach($organization->id, ['joined_at' => now(), 'is_active' => true]);
         $systemAdmin->assignRole(\Spatie\Permission\Models\Role::findOrCreate('System Admin', 'web'));
+        $this->grantSupportManagerPermissions($systemAdmin);
 
         $response = $this->actingAs($systemAdmin)->post('/support?org=all-organizations', [
             'title' => 'Blocked ticket',
@@ -612,6 +619,29 @@ class SupportTicketFlowTest extends TestCase
         ]);
 
         $response->assertStatus(422);
+    }
+
+    public function test_support_routes_require_permissions(): void
+    {
+        $this->withoutMiddleware([
+            ValidateCsrfToken::class,
+            SetOrganizationFromUrl::class,
+        ]);
+
+        $organization = $this->createOrganization('gamma-chapter', 'Gamma Chapter');
+        $user = $this->createUserForOrganization($organization);
+
+        $this->actingAs($user)->get(route('support.index'))->assertForbidden();
+
+        Permission::findOrCreate('view-support-tickets', 'web');
+        $user->givePermissionTo('view-support-tickets');
+
+        $this->actingAs($user)->post(route('support.store'), [
+            'title' => 'Blocked create',
+            'category' => 'bug',
+            'priority' => 'low',
+            'details' => 'Should require create-support-tickets.',
+        ])->assertForbidden();
     }
 
     private function createOrganization(string $slug, string $name): Organization
@@ -636,5 +666,35 @@ class SupportTicketFlowTest extends TestCase
         ]);
 
         return $user;
+    }
+
+    private function grantSupportRequesterPermissions(User $user): void
+    {
+        Permission::findOrCreate('view-support-tickets', 'web');
+        Permission::findOrCreate('create-support-tickets', 'web');
+
+        $user->givePermissionTo([
+            'view-support-tickets',
+            'create-support-tickets',
+        ]);
+    }
+
+    private function grantSupportManagerPermissions(User $user): void
+    {
+        Permission::findOrCreate('manage-support-tickets', 'web');
+        Permission::findOrCreate('edit-support-tickets', 'web');
+
+        $this->grantSupportRequesterPermissions($user);
+
+        $user->givePermissionTo([
+            'manage-support-tickets',
+            'edit-support-tickets',
+        ]);
+    }
+
+    private function grantNotificationPermission(User $user): void
+    {
+        Permission::findOrCreate('view-notifications', 'web');
+        $user->givePermissionTo('view-notifications');
     }
 }

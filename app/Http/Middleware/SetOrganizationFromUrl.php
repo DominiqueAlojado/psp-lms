@@ -68,10 +68,13 @@ class SetOrganizationFromUrl
         }
 
         $orgSlug = $request->query('org');
+        $supportsAllOrganizations = $user->hasAnyRole(['System Admin', 'BOP']);
 
         if ($orgSlug === self::ALL_ORGANIZATIONS_SLUG) {
-            if ($user->hasAnyRole(['System Admin', 'BOP'])) {
+            if ($supportsAllOrganizations) {
                 if ($this->supportsAllOrganizationsContext($request)) {
+                    setPermissionsTeamId(null);
+
                     return $next($request);
                 }
 
@@ -86,6 +89,13 @@ class SetOrganizationFromUrl
             }
 
             $orgSlug = null;
+        }
+
+        if (! $orgSlug && $supportsAllOrganizations && $this->supportsAllOrganizationsContext($request)) {
+            $queryParams = $request->query();
+            $queryParams['org'] = self::ALL_ORGANIZATIONS_SLUG;
+
+            return redirect($request->path().'?'.http_build_query($queryParams));
         }
 
         // If org parameter is in URL

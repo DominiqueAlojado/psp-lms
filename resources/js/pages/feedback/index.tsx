@@ -8,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { preserveOrgParam } from '@/lib/utils';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem, type SharedData } from '@/types';
-import { Head, useForm, usePage } from '@inertiajs/react';
+import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import {
     BookOpenText,
     CircleHelp,
@@ -92,6 +92,7 @@ interface PageProps {
         recommendation_rate: number;
     };
     canCreateFeedback: boolean;
+    canManageFeedback: boolean;
     isAllOrganizationsContext: boolean;
 }
 
@@ -122,6 +123,7 @@ export default function FeedbackIndex({
     entries,
     summary,
     canCreateFeedback,
+    canManageFeedback,
     isAllOrganizationsContext,
 }: PageProps) {
     const page = usePage<SharedData>();
@@ -176,10 +178,24 @@ export default function FeedbackIndex({
             <Head title="Feedback" />
 
             <div className="flex h-full flex-1 flex-col gap-6 overflow-x-auto rounded-xl p-6">
-                <HeadingSmall
-                    title="Share Your Feedback"
-                    description="Rate your experience, leave suggestions, and help improve the resident learning workflow."
-                />
+                <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                    <HeadingSmall
+                        title="Share Your Feedback"
+                        description="Rate your experience, leave suggestions, and help improve the resident learning workflow."
+                    />
+                    {canManageFeedback && (
+                        <Button asChild variant="outline">
+                            <Link
+                                href={preserveOrgParam(
+                                    '/feedback/manage',
+                                    currentOrgSlug,
+                                )}
+                            >
+                                Manage Feedback
+                            </Link>
+                        </Button>
+                    )}
+                </div>
 
                 <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                     <StatCard

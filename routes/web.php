@@ -41,10 +41,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('activities.index');
 
     Route::get('notifications', [App\Http\Controllers\NotificationController::class, 'index'])
+        ->middleware('permission:view-notifications')
         ->name('notifications.index');
     Route::post('notifications/read-all', [App\Http\Controllers\NotificationController::class, 'markAllAsRead'])
+        ->middleware('permission:view-notifications')
         ->name('notifications.read-all');
     Route::post('notifications/{notification}/read', [App\Http\Controllers\NotificationController::class, 'markAsRead'])
+        ->middleware('permission:view-notifications')
         ->name('notifications.read');
 
     // Resident Exams (for residents to view and take exams)
@@ -239,22 +242,36 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Feedback
     Route::get('feedback', [App\Http\Controllers\FeedbackController::class, 'index'])
+        ->middleware('permission:view-feedback')
         ->name('feedback.index');
+    Route::get('feedback/manage', [App\Http\Controllers\FeedbackController::class, 'manage'])
+        ->middleware('permission:view-all-feedback')
+        ->name('feedback.manage');
     Route::post('feedback', [App\Http\Controllers\FeedbackController::class, 'store'])
+        ->middleware('permission:create-feedback')
         ->name('feedback.store');
+    Route::delete('feedback/{feedbackEntry}', [App\Http\Controllers\FeedbackController::class, 'destroy'])
+        ->middleware('permission:delete-feedback')
+        ->name('feedback.destroy');
 
     // Customer support
     Route::get('support', [App\Http\Controllers\SupportController::class, 'index'])
+        ->middleware('permission:view-support-tickets')
         ->name('support.index');
     Route::post('support', [App\Http\Controllers\SupportController::class, 'store'])
+        ->middleware('permission:create-support-tickets')
         ->name('support.store');
     Route::get('support/manage', [App\Http\Controllers\SupportController::class, 'manage'])
+        ->middleware('permission:manage-support-tickets')
         ->name('support.manage');
     Route::get('support/{ticket}', [App\Http\Controllers\SupportController::class, 'show'])
+        ->middleware('permission:view-support-tickets')
         ->name('support.show');
     Route::patch('support/{ticket}', [App\Http\Controllers\SupportController::class, 'update'])
+        ->middleware('permission:edit-support-tickets')
         ->name('support.update');
     Route::post('support/{ticket}/messages', [App\Http\Controllers\SupportController::class, 'storeMessage'])
+        ->middleware('permission:view-support-tickets')
         ->name('support.messages.store');
 
     // Assignments (Training Officers create, Residents submit)

@@ -99,7 +99,7 @@ export default function Welcome({
             <div className="min-h-screen bg-background text-foreground">
                 <header className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-6">
                     <div className="text-sm font-semibold tracking-[0.3em] text-muted-foreground uppercase">
-                        PSP-LMS
+                        UNIFIED-LMS
                     </div>
                     <nav className="flex items-center gap-3 text-sm">
                         {auth.user ? (
@@ -142,7 +142,7 @@ export default function Welcome({
                                     one workspace.
                                 </h1>
                                 <p className="mt-4 text-lg text-muted-foreground">
-                                    PSP-LMS unifies institution exams, daily LMS
+                                    UNIFIED-LMS unifies institution exams, daily LMS
                                     operations, and in-service readiness
                                     tracking. Coordinate national cohorts,
                                     manage assignments, and prove competency
@@ -293,7 +293,7 @@ export default function Welcome({
                                     Ready to modernize residency?
                                 </p>
                                 <h2 className="text-3xl font-semibold">
-                                    PSP-LMS brings institution exams, LMS tasks,
+                                    UNIFIED-LMS brings institution exams, LMS tasks,
                                     and in-service standards together so every
                                     resident can prove mastery.
                                 </h2>

@@ -79,6 +79,16 @@ Route::middleware('auth')->group(function () {
         ->middleware('permission:manage-permissions')
         ->name('permissions.delete');
 
+    Route::post('settings/permission-modules', [RolesPermissionsController::class, 'storePermissionModule'])
+        ->middleware('permission:manage-permissions')
+        ->name('permission-modules.store');
+    Route::patch('settings/permission-modules', [RolesPermissionsController::class, 'renamePermissionModule'])
+        ->middleware('permission:manage-permissions')
+        ->name('permission-modules.rename');
+    Route::delete('settings/permission-modules', [RolesPermissionsController::class, 'deletePermissionModule'])
+        ->middleware('permission:manage-permissions')
+        ->name('permission-modules.delete');
+
     // Assign permissions to role
     Route::post('settings/roles/{role}/permissions', [RolesPermissionsController::class, 'syncRolePermissions'])
         ->middleware('permission:manage-permissions')

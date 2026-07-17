@@ -22,7 +22,7 @@ class UpdateOrganizationRequest extends FormRequest
                 Rule::unique('organizations', 'name')->ignore($this->route('organization')->id),
             ],
             'description' => ['nullable', 'string'],
-            'type' => ['required', 'string', Rule::in(['chapter', 'institution', 'main', 'national'])],
+            'type' => ['required', 'string', Rule::in(['chapter', 'institution', 'national'])],
             'is_active' => ['boolean'],
             'training_officers' => ['nullable', 'json'],
         ];

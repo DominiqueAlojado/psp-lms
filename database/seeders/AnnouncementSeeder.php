@@ -16,9 +16,11 @@ class AnnouncementSeeder extends Seeder
     {
         $this->command->info('🔔 Seeding announcements...');
 
-        // Get a sample organization and user (prefer PSP main, or any organization)
-        $organization = Organization::where('slug', 'psp-main')
-            ->orWhereNotNull('id')
+        // Prefer an active organization without requiring a legacy PSP main record.
+        $organization = Organization::query()
+            ->where('is_active', true)
+            ->orderByRaw("CASE WHEN type = 'national' THEN 0 ELSE 1 END")
+            ->orderBy('name')
             ->first();
 
         if (! $organization) {

@@ -8,7 +8,7 @@ export default function AppLogo() {
             </div>
             <div className="ml-2 grid flex-1 text-left text-sm">
                 <span className="mb-0.5 truncate leading-tight font-semibold tracking-[0.01em] text-sidebar-foreground">
-                    PSP LMS
+                    UNIFIED LMS
                 </span>
                 <span className="truncate text-[0.72rem] font-medium text-sidebar-foreground/55">
                     Learning workspace

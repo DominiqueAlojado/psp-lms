@@ -16,7 +16,7 @@ class SystemAdminSeeder extends Seeder
     {
         // Create System Admin user
         $admin = User::firstOrCreate(
-            ['email' => 'admin@psp.ph'],
+            ['email' => 'admin@unified-lms.test'],
             [
                 'name' => 'System Administrator',
                 'password' => 'password',
@@ -35,13 +35,18 @@ class SystemAdminSeeder extends Seeder
             ]);
         }
 
-        // Set PSP Main as default organization
-        $pspMain = Organization::where('slug', 'psp-main')->first();
-        if ($pspMain) {
-            $admin->update(['current_organization_id' => $pspMain->id]);
+        // Keep a real organization fallback for org-scoped write actions.
+        $fallbackOrganization = Organization::query()
+            ->where('is_active', true)
+            ->orderByRaw("CASE WHEN type = 'national' THEN 0 ELSE 1 END")
+            ->orderBy('name')
+            ->first();
 
-            // Assign System Admin role with PSP Main context
-            setPermissionsTeamId($pspMain->id);
+        if ($fallbackOrganization) {
+            $admin->update(['current_organization_id' => $fallbackOrganization->id]);
+
+            // Assign System Admin role within the fallback real organization context.
+            setPermissionsTeamId($fallbackOrganization->id);
             $systemAdminRole = Role::where('name', 'System Admin')->first();
             if ($systemAdminRole && ! $admin->hasRole('System Admin')) {
                 $admin->assignRole($systemAdminRole);
@@ -57,8 +62,9 @@ class SystemAdminSeeder extends Seeder
                 ['Password', 'password'],
                 ['Name', $admin->name],
                 ['Role', 'System Admin'],
-                ['Organizations', $organizations->count().' (All)'],
-                ['Current Org', $pspMain?->name ?? 'N/A'],
+                ['Organizations', $organizations->count() . ' (All)'],
+                ['Current Org Fallback', $fallbackOrganization?->name ?? 'N/A'],
+                ['Default View Context', 'All Organizations'],
             ]
         );
     }

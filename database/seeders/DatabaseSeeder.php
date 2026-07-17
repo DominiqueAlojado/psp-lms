@@ -40,6 +40,7 @@ class DatabaseSeeder extends Seeder
             LearningResourceSeeder::class, // Create sample learning resources
             EventSeeder::class,          // Create sample events and registrations
             AssignmentSeeder::class,     // Create sample assignments and submissions
+            FeedbackSeeder::class,       // Create sample feedback entries
             SupportTicketSeeder::class,  // Create sample support tickets and messages
         ]);
 

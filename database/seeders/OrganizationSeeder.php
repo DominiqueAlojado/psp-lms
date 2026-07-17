@@ -12,15 +12,8 @@ class OrganizationSeeder extends Seeder
      */
     public function run(): void
     {
-        // PSP Main and Chapters
+        // National org and chapters
         $organizations = [
-            [
-                'name' => 'Philippine Society of Pathology',
-                'slug' => 'psp-main',
-                'description' => 'Main Philippine Society of Pathology organization',
-                'type' => 'main',
-                'is_active' => true,
-            ],
             [
                 'name' => 'In-Service Exams',
                 'slug' => 'in-service-exams',

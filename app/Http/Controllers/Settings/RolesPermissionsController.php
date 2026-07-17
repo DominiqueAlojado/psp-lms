@@ -80,7 +80,7 @@ class RolesPermissionsController extends Controller
     {
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255', 'unique:permissions,name'],
-            'category' => ['required', 'string', 'max:255'],
+            'module' => ['required', 'string', 'max:255'],
         ]);
 
         $this->managementService->createPermission($validated);
@@ -95,7 +95,7 @@ class RolesPermissionsController extends Controller
     {
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255', 'unique:permissions,name,'.$permission->id],
-            'category' => ['required', 'string', 'max:255'],
+            'module' => ['required', 'string', 'max:255'],
         ]);
 
         $this->managementService->updatePermission($permission, $validated);
@@ -111,6 +111,67 @@ class RolesPermissionsController extends Controller
         $this->managementService->deletePermission($permission);
 
         return back()->with('success', 'Permission deleted successfully');
+    }
+
+    public function storePermissionModule(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+        ]);
+
+        try {
+            $this->managementService->createPermissionModule($validated['name']);
+        } catch (\Symfony\Component\HttpKernel\Exception\HttpException $exception) {
+            if ($exception->getStatusCode() === 422) {
+                return back()->with('error', $exception->getMessage());
+            }
+
+            throw $exception;
+        }
+
+        return back()->with('success', 'Permission module created successfully');
+    }
+
+    public function renamePermissionModule(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'current_name' => ['required', 'string', 'max:255'],
+            'name' => ['required', 'string', 'max:255'],
+        ]);
+
+        try {
+            $this->managementService->renamePermissionModule(
+                $validated['current_name'],
+                $validated['name'],
+            );
+        } catch (\Symfony\Component\HttpKernel\Exception\HttpException $exception) {
+            if (in_array($exception->getStatusCode(), [404, 422], true)) {
+                return back()->with('error', $exception->getMessage());
+            }
+
+            throw $exception;
+        }
+
+        return back()->with('success', 'Permission module updated successfully');
+    }
+
+    public function deletePermissionModule(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+        ]);
+
+        try {
+            $this->managementService->deletePermissionModule($validated['name']);
+        } catch (\Symfony\Component\HttpKernel\Exception\HttpException $exception) {
+            if (in_array($exception->getStatusCode(), [404, 422], true)) {
+                return back()->with('error', $exception->getMessage());
+            }
+
+            throw $exception;
+        }
+
+        return back()->with('success', 'Permission module deleted successfully');
     }
 
     /**

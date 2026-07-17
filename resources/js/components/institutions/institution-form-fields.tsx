@@ -40,7 +40,6 @@ export function InstitutionFormFields({
                     <option value="">Select type...</option>
                     <option value="chapter">Chapter</option>
                     <option value="institution">Institution</option>
-                    <option value="main">Main</option>
                     <option value="national">National</option>
                 </select>
                 {validationErrors.type && (
@@ -86,4 +85,3 @@ export function InstitutionFormFields({
         </>
     );
 }
-

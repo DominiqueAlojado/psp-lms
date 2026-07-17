@@ -36,22 +36,93 @@ class RolesPermissionsManagementService
 
     public function createPermission(array $validated): void
     {
+        $this->rolesPermissionsRepository->ensurePermissionModuleExists($validated['module']);
+
         $this->rolesPermissionsRepository->createPermission([
             'name' => $validated['name'],
             'guard_name' => 'web',
-            'category' => $validated['category'],
+            'module' => $validated['module'],
             'display_order' => 999,
         ]);
     }
 
     public function updatePermission(Permission $permission, array $validated): void
     {
+        $this->rolesPermissionsRepository->ensurePermissionModuleExists($validated['module']);
+
         $this->rolesPermissionsRepository->updatePermission($permission, $validated);
     }
 
     public function deletePermission(Permission $permission): void
     {
         $this->rolesPermissionsRepository->deletePermission($permission);
+    }
+
+    public function createPermissionModule(string $name): void
+    {
+        $trimmedName = trim($name);
+
+        if ($trimmedName === '') {
+            abort(422, 'Permission module name is required.');
+        }
+
+        if ($this->rolesPermissionsRepository->permissionModuleExists($trimmedName)) {
+            abort(422, 'Permission module already exists.');
+        }
+
+        $nextOrder = $this->rolesPermissionsRepository->getPermissionModuleOptions()->count() + 1000;
+
+        $this->rolesPermissionsRepository->createPermissionModuleOption([
+            'name' => $trimmedName,
+            'display_order' => $nextOrder,
+        ]);
+    }
+
+    public function renamePermissionModule(string $fromModule, string $toModule): void
+    {
+        if ($fromModule === $toModule) {
+            return;
+        }
+
+        $trimmedName = trim($toModule);
+
+        if ($trimmedName === '') {
+            abort(422, 'Permission module name is required.');
+        }
+
+        if ($fromModule !== $trimmedName && $this->rolesPermissionsRepository->permissionModuleExists($trimmedName)) {
+            abort(422, 'Permission module already exists.');
+        }
+
+        $updated = $this->rolesPermissionsRepository->renamePermissionModule(
+            $fromModule,
+            $trimmedName,
+        );
+
+        if ($updated === 0 && ! $this->rolesPermissionsRepository->permissionModuleExists($fromModule)) {
+            abort(404, 'Permission module not found.');
+        }
+    }
+
+    public function deletePermissionModule(string $module): void
+    {
+        if ($module === 'Other') {
+            abort(422, 'The Other module cannot be deleted.');
+        }
+
+        $updated = $this->rolesPermissionsRepository->movePermissionsToModule(
+            $module,
+            'Other',
+        );
+
+        if ($updated === 0) {
+            abort(404, 'Permission module not found.');
+        }
+    }
+
+    public function syncPermissionModulesFromPermissions(): int
+    {
+        return $this->rolesPermissionsRepository->syncPermissionModuleOptionsFromPermissions();
     }
 
     public function syncRolePermissions(Role $role, array $permissionIds): void

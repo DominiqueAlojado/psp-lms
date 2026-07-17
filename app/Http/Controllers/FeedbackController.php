@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreFeedbackRequest;
+use App\Models\FeedbackEntry;
 use App\Services\FeedbackManagementService;
 use App\Services\FeedbackReadService;
 use Illuminate\Http\RedirectResponse;
@@ -22,6 +23,14 @@ class FeedbackController extends Controller
         return Inertia::render('feedback/index', $this->feedbackReadService->indexPayload($request->user()));
     }
 
+    public function manage(Request $request): Response
+    {
+        return Inertia::render('feedback/manage', $this->feedbackReadService->managePayload(
+            $request->user(),
+            $request->only(['search', 'module_name', 'would_recommend'])
+        ));
+    }
+
     public function store(StoreFeedbackRequest $request): RedirectResponse
     {
         $this->feedbackManagementService->create($request->user(), $request->validated());
@@ -34,5 +43,12 @@ class FeedbackController extends Controller
         }
 
         return redirect($target)->with('success', 'Feedback submitted successfully.');
+    }
+
+    public function destroy(Request $request, FeedbackEntry $feedbackEntry): RedirectResponse
+    {
+        $this->feedbackManagementService->delete($request->user(), $feedbackEntry);
+
+        return back()->with('success', 'Feedback entry deleted successfully.');
     }
 }

@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Repositories\Contracts\SupportTicketRepositoryInterface;
 use App\Services\ActivityLog\SupportTicketActivityLogService;
 use Illuminate\Support\Collection;
+use Spatie\Permission\Exceptions\PermissionDoesNotExist;
 
 class SupportReadService
 {
@@ -21,6 +22,7 @@ class SupportReadService
     public function indexPayload(User $user, array $filters): array
     {
         $canManage = $this->supportManagementService->canManage($user);
+        $canCreateTicket = $this->canCreateTicket($user);
 
         if ($this->isAllOrganizationsContext($user)) {
             $organizationIds = $this->organizationIdsForAllContext($user);
@@ -58,7 +60,7 @@ class SupportReadService
                 'organizations' => [],
                 'canManage' => true,
                 'isAllOrganizationsContext' => false,
-                'canCreateTicket' => true,
+                'canCreateTicket' => $canCreateTicket,
                 'showsManagedTickets' => true,
             ];
         }
@@ -74,7 +76,7 @@ class SupportReadService
             'organizations' => [],
             'canManage' => false,
             'isAllOrganizationsContext' => false,
-            'canCreateTicket' => true,
+            'canCreateTicket' => $canCreateTicket,
             'showsManagedTickets' => false,
         ];
     }
@@ -247,5 +249,18 @@ class SupportReadService
                 'label' => $organization->name,
             ])
             ->values();
+    }
+
+    private function canCreateTicket(User $user): bool
+    {
+        if ($user->current_organization_id === null || $this->isAllOrganizationsContext($user)) {
+            return false;
+        }
+
+        try {
+            return $user->hasPermissionTo('create-support-tickets');
+        } catch (PermissionDoesNotExist) {
+            return false;
+        }
     }
 }

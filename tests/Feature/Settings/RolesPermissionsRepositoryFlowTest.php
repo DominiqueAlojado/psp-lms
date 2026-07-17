@@ -22,7 +22,7 @@ class RolesPermissionsRepositoryFlowTest extends TestCase
         $permission = $repository->createPermission([
             'name' => 'review-submissions',
             'guard_name' => 'web',
-            'category' => 'Assessments',
+            'module' => 'Assessments',
             'display_order' => 10,
         ]);
 
@@ -34,11 +34,16 @@ class RolesPermissionsRepositoryFlowTest extends TestCase
 
         $repository->updateRole($role, ['name' => 'Senior Reviewer']);
         $repository->updatePermission($permission, ['name' => 'review-submissions-advanced']);
+        $repository->renamePermissionModule('Assessments', 'Exam Tools');
 
         $this->assertDatabaseHas('roles', ['name' => 'Senior Reviewer']);
-        $this->assertDatabaseHas('permissions', ['name' => 'review-submissions-advanced']);
+        $this->assertDatabaseHas('permissions', [
+            'name' => 'review-submissions-advanced',
+            'module' => 'Exam Tools',
+        ]);
 
-        $repository->deletePermission($permission);
+        $repository->movePermissionsToModule('Exam Tools', 'Other');
+        $repository->deletePermission($permission->fresh());
         $repository->deleteRole($role);
 
         $this->assertDatabaseMissing('permissions', ['name' => 'review-submissions-advanced']);

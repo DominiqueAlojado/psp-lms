@@ -33,7 +33,7 @@ class EventSeeder extends Seeder
         }
 
         $creator = $organization->users()
-            ->whereDoesntHave('roles', fn ($query) => $query->where('name', 'Resident'))
+            ->whereDoesntHave('roles', fn($query) => $query->where('name', 'Resident'))
             ->first() ?? User::query()->first();
 
         if (! $creator) {
@@ -98,7 +98,7 @@ class EventSeeder extends Seeder
                     'is_free' => true,
                     'cme_credits' => 3,
                     'target_year_levels' => self::YEAR_LEVELS,
-                    'requirements' => 'Stable internet connection and active PSP LMS account.',
+                    'requirements' => 'Stable internet connection and active UNIFIED LMS account.',
                     'requires_approval' => false,
                     'is_published' => true,
                     'speakers' => [

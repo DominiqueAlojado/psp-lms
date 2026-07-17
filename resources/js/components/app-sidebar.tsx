@@ -81,11 +81,13 @@ const mainNavItems: NavItem[] = [
         title: 'Feedback',
         href: '/feedback',
         icon: MessageSquareText,
+        permission: 'view-feedback',
     },
     {
         title: 'Notifications',
         href: '/notifications',
         icon: Bell,
+        permission: 'view-notifications',
     },
     {
         title: 'Events',
@@ -164,6 +166,7 @@ const footerNavItems: NavItem[] = [
         title: 'Support',
         href: '/support',
         icon: LifeBuoy,
+        permission: 'view-support-tickets',
     },
 ];
 

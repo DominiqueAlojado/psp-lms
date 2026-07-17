@@ -12,8 +12,8 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('permissions', function (Blueprint $table) {
-            $table->string('category')->nullable()->after('guard_name');
-            $table->integer('display_order')->default(0)->after('category');
+            $table->string('module')->nullable()->after('guard_name');
+            $table->integer('display_order')->default(0)->after('module');
         });
     }
 
@@ -23,7 +23,7 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('permissions', function (Blueprint $table) {
-            $table->dropColumn(['category', 'display_order']);
+            $table->dropColumn(['module', 'display_order']);
         });
     }
 };

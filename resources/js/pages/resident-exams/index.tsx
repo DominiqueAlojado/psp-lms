@@ -10,6 +10,7 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -509,6 +510,31 @@ export default function ResidentExams() {
                                             {selectedExam?.title}
                                         </span>
                                     </p>
+
+                                    {(actionType === 'start' ||
+                                        actionType === 'retake') && (
+                                        <Alert className="border-amber-200 bg-amber-50/80 text-amber-950 dark:border-amber-900/50 dark:bg-amber-950/25 dark:text-amber-100">
+                                            <AlertTriangle className="h-4 w-4" />
+                                            <AlertTitle>
+                                                Monitoring and academic integrity notice
+                                            </AlertTitle>
+                                            <AlertDescription className="text-amber-800 dark:text-amber-200/90">
+                                                <p>
+                                                    This exam is closely monitored.
+                                                    Browser activity, session changes,
+                                                    and suspicious behavior may be
+                                                    reviewed by administrators.
+                                                </p>
+                                                <p>
+                                                    Cheating, leaving the exam without
+                                                    authorization, or attempting to
+                                                    bypass monitoring is not allowed and
+                                                    may result in invalidation of your
+                                                    attempt.
+                                                </p>
+                                            </AlertDescription>
+                                        </Alert>
+                                    )}
 
                                     {selectedExam?.duration_minutes && (
                                         <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-900/50 dark:bg-amber-900/20">

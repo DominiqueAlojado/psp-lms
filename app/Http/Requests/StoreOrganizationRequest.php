@@ -17,7 +17,7 @@ class StoreOrganizationRequest extends FormRequest
         return [
             'name' => ['required', 'string', 'max:255', 'unique:organizations,name'],
             'description' => ['nullable', 'string'],
-            'type' => ['required', 'string', Rule::in(['chapter', 'institution', 'main', 'national'])],
+            'type' => ['required', 'string', Rule::in(['chapter', 'institution', 'national'])],
             'is_active' => ['boolean'],
             'training_officers' => ['nullable', 'json'],
         ];
