@@ -1,5 +1,7 @@
+import { RechartsShell } from '@/components/charts/recharts-shell';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { HelpTooltip } from '@/components/ui/help-tooltip';
 import { Progress } from '@/components/ui/progress';
 import {
@@ -23,10 +25,21 @@ import { Head, router, usePage } from '@inertiajs/react';
 import {
     Award,
     CheckCircle2,
+    Sparkles,
     TrendingDown,
     TrendingUp,
     XCircle,
 } from 'lucide-react';
+import {
+    Area,
+    Bar,
+    CartesianGrid,
+    ComposedChart,
+    Line,
+    Scatter,
+    XAxis,
+    YAxis,
+} from 'recharts';
 
 interface Stats {
     total_exams: number;
@@ -127,6 +140,58 @@ interface Props {
     performanceTrend: PerformanceTrend[];
 }
 
+function formatYearLevelList(yearLevels: string[]) {
+    if (yearLevels.length === 0) {
+        return '';
+    }
+
+    if (yearLevels.length === 1) {
+        return yearLevels[0];
+    }
+
+    if (yearLevels.length === 2) {
+        return `${yearLevels[0]} and ${yearLevels[1]}`;
+    }
+
+    return `${yearLevels.slice(0, -1).join(', ')}, and ${yearLevels[yearLevels.length - 1]}`;
+}
+
+function buildCohortComparisonSummary(
+    breakdown: Comparison['year_level_breakdown'],
+) {
+    const above = breakdown
+        .filter((row) => row.resident_gap > 0)
+        .map((row) => row.year_level);
+    const below = breakdown
+        .filter((row) => row.resident_gap < 0)
+        .map((row) => row.year_level);
+    const equal = breakdown
+        .filter((row) => row.resident_gap === 0)
+        .map((row) => row.year_level);
+
+    const summaryParts: string[] = [];
+
+    if (above.length > 0) {
+        summaryParts.push(
+            `You performed better than the ${formatYearLevelList(above)} cohort${above.length > 1 ? 's' : ''}.`,
+        );
+    }
+
+    if (below.length > 0) {
+        summaryParts.push(
+            `You were below the ${formatYearLevelList(below)} cohort${below.length > 1 ? 's' : ''}.`,
+        );
+    }
+
+    if (equal.length > 0) {
+        summaryParts.push(
+            `You matched the ${formatYearLevelList(equal)} cohort${equal.length > 1 ? 's' : ''}.`,
+        );
+    }
+
+    return summaryParts.join(' ');
+}
+
 export default function MyGrades({
     stats,
     comparison,
@@ -174,6 +239,25 @@ export default function MyGrades({
                 preserveScroll: true,
             },
         );
+    };
+
+    const cohortChartConfig = {
+        total_residents: {
+            label: 'Residents',
+            color: 'hsl(239 55% 54%)',
+        },
+        top_average_percentage: {
+            label: 'Top Avg',
+            color: 'hsla(248 78% 66% / 0.28)',
+        },
+        average_percentage: {
+            label: 'Cohort Avg',
+            color: 'hsl(28 95% 56%)',
+        },
+        resident_gap: {
+            label: 'Your Gap',
+            color: 'hsl(0 90% 59%)',
+        },
     };
 
     return (
@@ -462,6 +546,108 @@ export default function MyGrades({
                                         <p className="text-sm text-muted-foreground">
                                             Compare your average against each year-level group from first year to graduate.
                                         </p>
+                                    </div>
+                                    <RechartsShell
+                                        title="Cohort Comparison Chart"
+                                        description="See year-level resident volume, cohort averages, top averages, and your point gap in one combined view."
+                                        config={cohortChartConfig}
+                                        className="border-border/70 bg-[linear-gradient(180deg,color-mix(in_oklab,var(--color-card)_98%,white),color-mix(in_oklab,var(--color-card)_95%,var(--color-accent)))]"
+                                        contentClassName="pt-0"
+                                        chartClassName="h-72 w-full"
+                                    >
+                                        <ComposedChart
+                                            data={comparison.year_level_breakdown}
+                                            margin={{ top: 12, right: 12, left: 12 }}
+                                        >
+                                            <CartesianGrid vertical={false} />
+                                            <XAxis
+                                                dataKey="year_level"
+                                                tickLine={false}
+                                                axisLine={false}
+                                                tickMargin={10}
+                                            />
+                                            <YAxis
+                                                yAxisId="score"
+                                                tickLine={false}
+                                                axisLine={false}
+                                                tickMargin={8}
+                                                domain={[0, 100]}
+                                            />
+                                            <YAxis
+                                                yAxisId="residents"
+                                                orientation="right"
+                                                tickLine={false}
+                                                axisLine={false}
+                                                tickMargin={8}
+                                                allowDecimals={false}
+                                            />
+                                            <ChartTooltip
+                                                content={
+                                                    <ChartTooltipContent
+                                                        formatter={(value, name) => {
+                                                            if (name === 'Residents') {
+                                                                return String(value ?? '');
+                                                            }
+
+                                                            if (name === 'Your Gap') {
+                                                                const gapValue = Number(value ?? 0);
+                                                                return `${gapValue >= 0 ? '+' : ''}${gapValue.toFixed(1)} pts`;
+                                                            }
+
+                                                            return `${Number(value ?? 0).toFixed(1)}%`;
+                                                        }}
+                                                    />
+                                                }
+                                            />
+                                            <Area
+                                                yAxisId="score"
+                                                type="monotone"
+                                                dataKey="top_average_percentage"
+                                                stroke="var(--color-top_average_percentage)"
+                                                fill="var(--color-top_average_percentage)"
+                                                strokeWidth={1.5}
+                                            />
+                                            <Bar
+                                                yAxisId="residents"
+                                                dataKey="total_residents"
+                                                fill="var(--color-total_residents)"
+                                                radius={[7, 7, 0, 0]}
+                                                barSize={24}
+                                            />
+                                            <Line
+                                                yAxisId="score"
+                                                type="monotone"
+                                                dataKey="average_percentage"
+                                                stroke="var(--color-average_percentage)"
+                                                strokeWidth={2.25}
+                                                dot={{
+                                                    fill: 'var(--color-average_percentage)',
+                                                }}
+                                                activeDot={{ r: 5 }}
+                                            />
+                                            <Scatter
+                                                yAxisId="score"
+                                                dataKey="resident_gap"
+                                                fill="var(--color-resident_gap)"
+                                            />
+                                        </ComposedChart>
+                                    </RechartsShell>
+                                    <div className="rounded-2xl border border-primary/15 bg-[linear-gradient(135deg,color-mix(in_oklab,var(--color-accent)_84%,white)_0%,color-mix(in_oklab,var(--color-card)_96%,var(--color-accent))_100%)] px-4 py-4 dark:bg-[linear-gradient(135deg,color-mix(in_oklab,var(--color-accent)_62%,black)_0%,color-mix(in_oklab,var(--color-card)_92%,var(--color-accent))_100%)]">
+                                        <div className="flex items-start gap-3">
+                                            <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/12 text-primary">
+                                                <Sparkles className="size-5" />
+                                            </div>
+                                            <div className="space-y-1">
+                                                <p className="text-xs font-semibold tracking-[0.14em] text-muted-foreground uppercase">
+                                                    Quick insight
+                                                </p>
+                                                <p className="text-sm leading-6 text-foreground">
+                                                    {buildCohortComparisonSummary(
+                                                        comparison.year_level_breakdown,
+                                                    )}
+                                                </p>
+                                            </div>
+                                        </div>
                                     </div>
                                     <Table>
                                         <TableHeader>
