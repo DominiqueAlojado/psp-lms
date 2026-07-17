@@ -3,6 +3,11 @@ import { StatCard } from '@/components/stat-card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+    ChartContainer,
+    ChartTooltip,
+    ChartTooltipContent,
+} from '@/components/ui/chart';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -28,12 +33,22 @@ import { Head, router, usePage } from '@inertiajs/react';
 import {
     BarChart3,
     BookOpenText,
+    ChartColumnBig,
     CheckCircle2,
     CircleAlert,
     FolderKanban,
     X,
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import {
+    Bar,
+    BarChart,
+    CartesianGrid,
+    Line,
+    LineChart,
+    XAxis,
+    YAxis,
+} from 'recharts';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -137,6 +152,31 @@ export default function TopicPerformance() {
 
         return exams.find((exam) => exam.id === examFilter)?.title ?? 'Selected exam';
     }, [examFilter, exams]);
+    const topicRateChartConfig = {
+        success_rate: {
+            label: 'Success Rate',
+            color: 'hsl(262 83% 58%)',
+        },
+        correct_answers: {
+            label: 'Correct Answers',
+            color: 'hsl(142 71% 45%)',
+        },
+    };
+    const topicVolumeChartConfig = {
+        total_answers: {
+            label: 'Total Answers',
+            color: 'hsl(217 91% 60%)',
+        },
+        question_count: {
+            label: 'Questions',
+            color: 'hsl(35 92% 55%)',
+        },
+    };
+    const chartTopics = useMemo(() => {
+        return [...topicPerformance.topics]
+            .sort((first, second) => second.success_rate - first.success_rate)
+            .slice(0, 8);
+    }, [topicPerformance.topics]);
 
     const pageContent = (
         <div
@@ -264,13 +304,132 @@ export default function TopicPerformance() {
                     title="Average Success Rate"
                     value={`${topicPerformance.summary.average_success_rate}%`}
                     description="Across all displayed topics"
-                    icon={BarChart3}
+                    icon={ChartColumnBig}
                     iconColor="text-primary"
                 />
             </div>
 
             {topicPerformance.topics.length > 0 ? (
                 <div className="space-y-6">
+                    <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+                        <Card className="overflow-hidden border-border/80 bg-[linear-gradient(180deg,color-mix(in_oklab,var(--color-card)_97%,white),color-mix(in_oklab,var(--color-card)_94%,var(--color-accent)))]">
+                            <CardHeader className="pb-3">
+                                <CardTitle>Success Rate by Topic</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <ChartContainer
+                                    config={topicRateChartConfig}
+                                    className="h-80 w-full"
+                                >
+                                    <LineChart
+                                        data={chartTopics}
+                                        margin={{ left: 12, right: 12 }}
+                                    >
+                                        <CartesianGrid vertical={false} />
+                                        <XAxis
+                                            dataKey="topic"
+                                            tickLine={false}
+                                            axisLine={false}
+                                            tickMargin={8}
+                                            interval={0}
+                                            angle={-18}
+                                            textAnchor="end"
+                                            height={56}
+                                        />
+                                        <YAxis
+                                            yAxisId="rate"
+                                            tickLine={false}
+                                            axisLine={false}
+                                            tickMargin={8}
+                                            domain={[0, 100]}
+                                        />
+                                        <YAxis
+                                            yAxisId="count"
+                                            orientation="right"
+                                            tickLine={false}
+                                            axisLine={false}
+                                            tickMargin={8}
+                                            allowDecimals={false}
+                                        />
+                                        <ChartTooltip
+                                            content={<ChartTooltipContent />}
+                                        />
+                                        <Line
+                                            yAxisId="rate"
+                                            type="monotone"
+                                            dataKey="success_rate"
+                                            stroke="var(--color-success_rate)"
+                                            strokeWidth={2}
+                                            dot={{
+                                                fill: 'var(--color-success_rate)',
+                                            }}
+                                            activeDot={{ r: 5 }}
+                                        />
+                                        <Line
+                                            yAxisId="count"
+                                            type="monotone"
+                                            dataKey="correct_answers"
+                                            stroke="var(--color-correct_answers)"
+                                            strokeWidth={2}
+                                            dot={{
+                                                fill: 'var(--color-correct_answers)',
+                                            }}
+                                            activeDot={{ r: 5 }}
+                                        />
+                                    </LineChart>
+                                </ChartContainer>
+                            </CardContent>
+                        </Card>
+
+                        <Card className="overflow-hidden border-border/80 bg-[linear-gradient(180deg,color-mix(in_oklab,var(--color-card)_97%,white),color-mix(in_oklab,var(--color-card)_94%,var(--color-accent)))]">
+                            <CardHeader className="pb-3">
+                                <CardTitle>Response Volume by Topic</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <ChartContainer
+                                    config={topicVolumeChartConfig}
+                                    className="h-80 w-full"
+                                >
+                                    <BarChart
+                                        data={chartTopics}
+                                        margin={{ left: 12, right: 12 }}
+                                    >
+                                        <CartesianGrid vertical={false} />
+                                        <XAxis
+                                            dataKey="topic"
+                                            tickLine={false}
+                                            axisLine={false}
+                                            tickMargin={8}
+                                            interval={0}
+                                            angle={-18}
+                                            textAnchor="end"
+                                            height={56}
+                                        />
+                                        <YAxis
+                                            tickLine={false}
+                                            axisLine={false}
+                                            tickMargin={8}
+                                            allowDecimals={false}
+                                        />
+                                        <ChartTooltip
+                                            content={<ChartTooltipContent />}
+                                        />
+                                        <Bar
+                                            dataKey="total_answers"
+                                            fill="var(--color-total_answers)"
+                                            radius={[6, 6, 0, 0]}
+                                        />
+                                        <Bar
+                                            dataKey="question_count"
+                                            fill="var(--color-question_count)"
+                                            radius={[6, 6, 0, 0]}
+                                        />
+                                    </BarChart>
+                                </ChartContainer>
+                            </CardContent>
+                        </Card>
+                    </div>
+
                     <Card className="overflow-hidden border-primary/12 bg-[linear-gradient(135deg,color-mix(in_oklab,var(--color-accent)_88%,white)_0%,color-mix(in_oklab,var(--color-card)_96%,var(--color-accent))_100%)] dark:bg-[linear-gradient(135deg,color-mix(in_oklab,var(--color-accent)_72%,black)_0%,color-mix(in_oklab,var(--color-card)_92%,var(--color-accent))_100%)]">
                         <CardContent className="flex flex-col gap-4 p-6 lg:flex-row lg:items-center lg:justify-between">
                             <div className="space-y-1">
