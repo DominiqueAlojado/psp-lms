@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Services\NotificationReadService;
+use App\Services\SystemConfigReadService;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
@@ -77,6 +78,7 @@ class HandleInertiaRequests extends Middleware
                     'unreadCount' => 0,
                     'latest' => [],
                 ],
+            'appConfig' => app(SystemConfigReadService::class)->publicPayload(),
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
             'flash' => [
                 'success' => session('success'),

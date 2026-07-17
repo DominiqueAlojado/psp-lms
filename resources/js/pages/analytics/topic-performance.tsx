@@ -34,6 +34,7 @@ import {
     CheckCircle2,
     CircleAlert,
     FolderKanban,
+    Sparkles,
     X,
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
@@ -107,6 +108,68 @@ function getSuccessBadgeVariant(rate: number) {
     }
 
     return 'destructive';
+}
+
+function buildTopicPerformanceInsight(topics: TopicRow[]) {
+    if (topics.length === 0) {
+        return [];
+    }
+
+    const highestSuccessRate = Math.max(
+        ...topics.map((topic) => topic.success_rate),
+    );
+    const lowestSuccessRate = Math.min(
+        ...topics.map((topic) => topic.success_rate),
+    );
+    const highestResponseVolume = Math.max(
+        ...topics.map((topic) => topic.total_answers),
+    );
+
+    const strongestTopics = topics.filter(
+        (topic) => topic.success_rate === highestSuccessRate,
+    );
+    const weakestTopics = topics.filter(
+        (topic) => topic.success_rate === lowestSuccessRate,
+    );
+    const mostAnsweredTopics = topics.filter(
+        (topic) => topic.total_answers === highestResponseVolume,
+    );
+
+    const insightItems = [
+        {
+            label: 'Strongest',
+            topics: strongestTopics.map((topic) => topic.topic),
+            value: `${highestSuccessRate.toFixed(1)}% success`,
+        },
+    ];
+
+    const strongestTopicNames = new Set(
+        strongestTopics.map((topic) => topic.topic),
+    );
+    const weakestTopicNames = new Set(weakestTopics.map((topic) => topic.topic));
+    const hasDistinctWeakestTopic = [...weakestTopicNames].some(
+        (topic) => !strongestTopicNames.has(topic),
+    );
+
+    if (hasDistinctWeakestTopic) {
+        insightItems.push({
+            label: 'Needs Focus',
+            topics: weakestTopics.map((topic) => topic.topic),
+            value: `${lowestSuccessRate.toFixed(1)}% success`,
+        });
+    }
+
+    if (mostAnsweredTopics.length > 0) {
+        insightItems.push({
+            label: 'Most Answered',
+            topics: mostAnsweredTopics.map((topic) => topic.topic),
+            value: `${highestResponseVolume} recorded ${
+                highestResponseVolume === 1 ? 'answer' : 'answers'
+            }`,
+        });
+    }
+
+    return insightItems;
 }
 
 export default function TopicPerformance() {
@@ -379,6 +442,47 @@ export default function TopicPerformance() {
                                 />
                             </ComposedChart>
                         </RechartsShell>
+                        <div className="rounded-2xl border border-primary/15 bg-[linear-gradient(135deg,color-mix(in_oklab,var(--color-accent)_84%,white)_0%,color-mix(in_oklab,var(--color-card)_96%,var(--color-accent))_100%)] px-4 py-4 dark:bg-[linear-gradient(135deg,color-mix(in_oklab,var(--color-accent)_62%,black)_0%,color-mix(in_oklab,var(--color-card)_92%,var(--color-accent))_100%)]">
+                            <div className="flex items-start gap-3">
+                                <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/12 text-primary">
+                                    <Sparkles className="size-5" />
+                                </div>
+                                <div className="space-y-1">
+                                    <p className="text-xs font-semibold tracking-[0.14em] text-muted-foreground uppercase">
+                                        Quick insight
+                                    </p>
+                                    <div className="flex flex-wrap gap-2 pt-1">
+                                        {buildTopicPerformanceInsight(chartTopics).map((insight) => (
+                                            <div
+                                                key={`${insight.label}-${insight.value}`}
+                                                className="flex max-w-full flex-wrap items-center gap-2 rounded-2xl border border-primary/10 bg-background/80 px-3 py-2 shadow-sm"
+                                            >
+                                                <Badge
+                                                    variant="secondary"
+                                                    className="rounded-full border border-primary/10 bg-primary/10 px-2.5 py-1 text-[0.68rem] font-semibold tracking-[0.08em] text-primary uppercase"
+                                                >
+                                                    {insight.label}
+                                                </Badge>
+                                                <div className="flex flex-wrap gap-1.5">
+                                                    {insight.topics.map((topic) => (
+                                                        <Badge
+                                                            key={`${insight.label}-${topic}`}
+                                                            variant="secondary"
+                                                            className="rounded-full border border-border/70 bg-background px-2.5 py-1 text-xs font-medium text-foreground"
+                                                        >
+                                                            {topic}
+                                                        </Badge>
+                                                    ))}
+                                                </div>
+                                                <span className="text-xs font-medium text-muted-foreground">
+                                                    {insight.value}
+                                                </span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     <Card className="overflow-hidden border-primary/12 bg-[linear-gradient(135deg,color-mix(in_oklab,var(--color-accent)_88%,white)_0%,color-mix(in_oklab,var(--color-card)_96%,var(--color-accent))_100%)] dark:bg-[linear-gradient(135deg,color-mix(in_oklab,var(--color-accent)_72%,black)_0%,color-mix(in_oklab,var(--color-card)_92%,var(--color-accent))_100%)]">

@@ -133,6 +133,9 @@ class PermissionSeeder extends Seeder
             // Activity Logs
             ['name' => 'view-activity-logs', 'module' => 'Activity Logs', 'display_order' => 1],
 
+            // System Configuration
+            ['name' => 'manage-system-configurations', 'module' => 'System Configuration', 'display_order' => 1],
+
             // Organization
             ['name' => 'manage-organization', 'module' => 'Organization', 'display_order' => 1],
             ['name' => 'manage-organization-settings', 'module' => 'Organization', 'display_order' => 2],

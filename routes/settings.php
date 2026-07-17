@@ -4,6 +4,7 @@ use App\Http\Controllers\Settings\OrganizationSettingsController;
 use App\Http\Controllers\Settings\PasswordController;
 use App\Http\Controllers\Settings\ProfileController;
 use App\Http\Controllers\Settings\RolesPermissionsController;
+use App\Http\Controllers\Settings\SystemConfigController;
 use App\Http\Controllers\Settings\TwoFactorAuthenticationController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -32,6 +33,13 @@ Route::middleware('auth')->group(function () {
     Route::get('settings/appearance', function () {
         return Inertia::render('settings/appearance');
     })->name('appearance.edit');
+
+    Route::get('settings/configurations', [SystemConfigController::class, 'index'])
+        ->middleware('permission:manage-system-configurations')
+        ->name('configurations.index');
+    Route::patch('settings/configurations', [SystemConfigController::class, 'update'])
+        ->middleware('permission:manage-system-configurations')
+        ->name('configurations.update');
 
     Route::get('settings/two-factor', [TwoFactorAuthenticationController::class, 'show'])
         ->name('two-factor.show');

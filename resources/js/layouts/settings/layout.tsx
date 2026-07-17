@@ -42,6 +42,12 @@ const sidebarNavItems: NavItem[] = [
         permission: 'manage-permissions',
     },
     {
+        title: 'System Configuration',
+        href: { url: '/settings/configurations', method: 'get' },
+        icon: null,
+        permission: 'manage-system-configurations',
+    },
+    {
         title: 'Appearance',
         href: editAppearance(),
         icon: null,
@@ -62,7 +68,11 @@ export default function SettingsLayout({ children }: PropsWithChildren) {
     const isRolesPermissionsPage = currentPath.includes(
         '/settings/roles-permissions',
     );
-    const isWidePage = isOrganizationPage || isRolesPermissionsPage;
+    const isConfigurationsPage = currentPath.includes(
+        '/settings/configurations',
+    );
+    const isWidePage =
+        isOrganizationPage || isRolesPermissionsPage || isConfigurationsPage;
 
     // Filter sidebar nav items based on permissions and excluded roles
     const filteredSidebarNavItems = sidebarNavItems.filter((item) => {

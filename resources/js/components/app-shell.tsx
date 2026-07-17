@@ -24,9 +24,9 @@ export function AppShell({ children, variant = 'header' }: AppShellProps) {
     const page = usePage<SharedData>();
     const isOpen = page.props.sidebarOpen;
     const auth = page.props.auth;
+    const residentDemoNoticeEnabled =
+        page.props.appConfig?.ui?.residentDemoNoticeEnabled ?? false;
     const [showResidentDemoDialog, setShowResidentDemoDialog] = useState(false);
-    const residentDemoNotice =
-        'Demo notice: the data shown in this resident portal is for demonstration purposes only and may include dummy sample content.';
     const residentDemoNoticeVersion = 'v2-modal';
 
     // Handle flash messages from Laravel
@@ -66,6 +66,10 @@ export function AppShell({ children, variant = 'header' }: AppShellProps) {
             return;
         }
 
+        if (!residentDemoNoticeEnabled) {
+            return;
+        }
+
         const storageKey = `resident-demo-notice:${residentDemoNoticeVersion}:${auth.user.id}`;
 
         if (window.sessionStorage.getItem(storageKey)) {
@@ -77,7 +81,7 @@ export function AppShell({ children, variant = 'header' }: AppShellProps) {
         }, 0);
 
         return () => window.clearTimeout(openTimer);
-    }, [auth, residentDemoNotice, residentDemoNoticeVersion]);
+    }, [auth, residentDemoNoticeEnabled, residentDemoNoticeVersion]);
 
     const handleResidentDemoAcknowledge = () => {
         if (auth?.user) {
@@ -92,38 +96,11 @@ export function AppShell({ children, variant = 'header' }: AppShellProps) {
         return (
             <div className="flex min-h-screen w-full flex-col">
                 {children}
-                <Dialog
+                <ResidentDemoNoticeDialog
                     open={showResidentDemoDialog}
                     onOpenChange={setShowResidentDemoDialog}
-                >
-                    <DialogContent className="max-w-md rounded-2xl p-0 overflow-hidden">
-                        <div className="bg-[linear-gradient(135deg,color-mix(in_oklab,var(--color-primary)_18%,white),color-mix(in_oklab,var(--color-primary)_8%,var(--color-background)))] px-6 py-5 dark:bg-[linear-gradient(135deg,color-mix(in_oklab,var(--color-primary)_26%,black),color-mix(in_oklab,var(--color-primary)_12%,var(--color-background)))]">
-                            <DialogHeader className="text-left">
-                                <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/12 text-primary">
-                                    <Info className="h-5 w-5" />
-                                </div>
-                                <DialogTitle>Demo Environment Notice</DialogTitle>
-                                <DialogDescription className="text-sm leading-6">
-                                    This resident portal is currently using demo data for presentation purposes.
-                                </DialogDescription>
-                            </DialogHeader>
-                        </div>
-                        <div className="px-6 py-5">
-                            <div className="rounded-xl border border-primary/10 bg-primary/5 px-4 py-3 text-sm text-muted-foreground">
-                                Sample exams, grades, and related records may be dummy content and should not be treated as live production data.
-                            </div>
-                            <DialogFooter className="mt-5">
-                                <Button
-                                    type="button"
-                                    className="w-full sm:w-auto"
-                                    onClick={handleResidentDemoAcknowledge}
-                                >
-                                    I Understand
-                                </Button>
-                            </DialogFooter>
-                        </div>
-                    </DialogContent>
-                </Dialog>
+                    onAcknowledge={handleResidentDemoAcknowledge}
+                />
                 <Toaster />
             </div>
         );
@@ -132,39 +109,59 @@ export function AppShell({ children, variant = 'header' }: AppShellProps) {
     return (
         <SidebarProvider defaultOpen={isOpen}>
             {children}
-            <Dialog
+            <ResidentDemoNoticeDialog
                 open={showResidentDemoDialog}
                 onOpenChange={setShowResidentDemoDialog}
-            >
-                <DialogContent className="max-w-md overflow-hidden rounded-2xl p-0">
-                    <div className="bg-[linear-gradient(135deg,color-mix(in_oklab,var(--color-primary)_18%,white),color-mix(in_oklab,var(--color-primary)_8%,var(--color-background)))] px-6 py-5 dark:bg-[linear-gradient(135deg,color-mix(in_oklab,var(--color-primary)_26%,black),color-mix(in_oklab,var(--color-primary)_12%,var(--color-background)))]">
-                        <DialogHeader className="text-left">
-                            <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/12 text-primary">
-                                <Info className="h-5 w-5" />
-                            </div>
-                            <DialogTitle>Demo Environment Notice</DialogTitle>
-                            <DialogDescription className="text-sm leading-6">
-                                This resident portal is currently using demo data for presentation purposes.
-                            </DialogDescription>
-                        </DialogHeader>
-                    </div>
-                    <div className="px-6 py-5">
-                        <div className="rounded-xl border border-primary/10 bg-primary/5 px-4 py-3 text-sm text-muted-foreground">
-                            Sample exams, grades, and related records may be dummy content and should not be treated as live production data.
-                        </div>
-                        <DialogFooter className="mt-5">
-                            <Button
-                                type="button"
-                                className="w-full sm:w-auto"
-                                onClick={handleResidentDemoAcknowledge}
-                            >
-                                I Understand
-                            </Button>
-                        </DialogFooter>
-                    </div>
-                </DialogContent>
-            </Dialog>
+                onAcknowledge={handleResidentDemoAcknowledge}
+            />
             <Toaster />
         </SidebarProvider>
+    );
+}
+
+interface ResidentDemoNoticeDialogProps {
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+    onAcknowledge: () => void;
+}
+
+function ResidentDemoNoticeDialog({
+    open,
+    onOpenChange,
+    onAcknowledge,
+}: ResidentDemoNoticeDialogProps) {
+    return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent className="max-w-md overflow-hidden rounded-2xl p-0">
+                <div className="bg-[linear-gradient(135deg,color-mix(in_oklab,var(--color-primary)_18%,white),color-mix(in_oklab,var(--color-primary)_8%,var(--color-background)))] px-6 py-5 dark:bg-[linear-gradient(135deg,color-mix(in_oklab,var(--color-primary)_26%,black),color-mix(in_oklab,var(--color-primary)_12%,var(--color-background)))]">
+                    <DialogHeader className="text-left">
+                        <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/12 text-primary">
+                            <Info className="h-5 w-5" />
+                        </div>
+                        <DialogTitle>Demo Environment Notice</DialogTitle>
+                        <DialogDescription className="text-sm leading-6">
+                            This resident portal is currently using demo data
+                            for presentation purposes.
+                        </DialogDescription>
+                    </DialogHeader>
+                </div>
+                <div className="px-6 py-5">
+                    <div className="rounded-xl border border-primary/10 bg-primary/5 px-4 py-3 text-sm text-muted-foreground">
+                        Sample exams, grades, and related records may be dummy
+                        content and should not be treated as live production
+                        data.
+                    </div>
+                    <DialogFooter className="mt-5">
+                        <Button
+                            type="button"
+                            className="w-full sm:w-auto"
+                            onClick={onAcknowledge}
+                        >
+                            I Understand
+                        </Button>
+                    </DialogFooter>
+                </div>
+            </DialogContent>
+        </Dialog>
     );
 }

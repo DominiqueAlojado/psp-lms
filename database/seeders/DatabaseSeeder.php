@@ -22,6 +22,7 @@ class DatabaseSeeder extends Seeder
             EventPermissionSeeder::class, // Create event-specific permissions
             AnnouncementPermissionSeeder::class, // Create announcement-specific permissions
             RolePermissionSeeder::class, // Assign permissions to roles
+            SystemConfigSeeder::class,   // Seed editable system-wide configuration flags
             SystemAdminSeeder::class,    // Create system admin user
             StaffSeeder::class,          // Create staff members
             ResidentSeeder::class,       // Seed residents with user accounts

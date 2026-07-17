@@ -43,6 +43,12 @@ export interface SharedData {
     name: string;
     quote: { message: string; author: string };
     auth: Auth;
+    appConfig?: {
+        ui?: {
+            residentDemoNoticeEnabled?: boolean;
+        };
+        [key: string]: unknown;
+    };
     notifications: {
         unreadCount: number;
         latest: Array<{
