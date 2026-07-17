@@ -48,7 +48,7 @@ function ChartContainer({
                 data-slot="chart"
                 data-chart={chartId}
                 className={cn(
-                    '[&_.recharts-cartesian-axis-tick_text]:fill-muted-foreground [&_.recharts-cartesian-grid_line[stroke=\"#ccc\"]]:stroke-border [&_.recharts-curve.recharts-tooltip-cursor]:stroke-border [&_.recharts-dot[stroke=\"#fff\"]]:stroke-transparent [&_.recharts-layer]:outline-none [&_.recharts-polar-grid_[stroke=\"#ccc\"]]:stroke-border [&_.recharts-radial-bar-background-sector]:fill-muted [&_.recharts-rectangle.recharts-tooltip-cursor]:fill-muted [&_.recharts-reference-line_[stroke=\"#ccc\"]]:stroke-border flex aspect-video justify-center text-xs',
+                    '[&_.recharts-cartesian-axis-tick_text]:fill-muted-foreground [&_.recharts-cartesian-grid_line[stroke="#ccc"]]:stroke-border [&_.recharts-curve.recharts-tooltip-cursor]:stroke-border [&_.recharts-dot[stroke="#fff"]]:stroke-transparent [&_.recharts-layer]:outline-none [&_.recharts-polar-grid_[stroke="#ccc"]]:stroke-border [&_.recharts-radial-bar-background-sector]:fill-muted [&_.recharts-rectangle.recharts-tooltip-cursor]:fill-muted [&_.recharts-reference-line_[stroke="#ccc"]]:stroke-border flex aspect-video justify-center text-xs',
                     className,
                 )}
                 {...props}
@@ -111,7 +111,13 @@ function ChartTooltipContent({
         return null;
     }
 
-    const tooltipLabel = labelFormatter ? labelFormatter(label, payload) : label;
+    const configuredPayload = payload.filter((item) => {
+        const key = String(item.dataKey ?? item.name ?? '');
+        return Boolean(config[key]);
+    });
+    const visiblePayload = configuredPayload.length ? configuredPayload : payload;
+
+    const tooltipLabel = labelFormatter ? labelFormatter(label, visiblePayload) : label;
 
     return (
         <div
@@ -124,7 +130,7 @@ function ChartTooltipContent({
                 <div className="font-medium text-foreground">{String(tooltipLabel)}</div>
             ) : null}
             <div className="grid gap-1.5">
-                {payload.map((item) => {
+                {visiblePayload.map((item) => {
                     const key = String(item.dataKey ?? item.name ?? '');
                     const itemConfig = config[key];
 
