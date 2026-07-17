@@ -18,15 +18,14 @@ class ResidentReadService
 
     public function indexPayload(array $filters, User $user): array
     {
-        $isAllOrganizationsContext = $this->includeAllOrganizations($user);
-        $organizationId = $isAllOrganizationsContext ? null : $user->current_organization_id;
+        $scope = $this->resolveResidentScope($user);
 
         return [
-            'residents' => $this->list($filters, $organizationId),
-            'organizations' => $this->organizationOptions($user),
-            'yearLevelStats' => $this->residentRepository->getYearLevelStats($organizationId),
-            'courses' => $this->residentRepository->getDistinctCourses($organizationId),
-            'isAllOrganizationsContext' => $isAllOrganizationsContext,
+            'residents' => $this->list($filters, $scope['organizationId'], $scope['membershipOrganizationId']),
+            'organizations' => $this->organizationOptions($user, $scope['isAggregateScope'] || $scope['membershipOrganizationId'] !== null),
+            'yearLevelStats' => $this->residentRepository->getYearLevelStats($scope['organizationId'], $scope['membershipOrganizationId']),
+            'courses' => $this->residentRepository->getDistinctCourses($scope['organizationId'], $scope['membershipOrganizationId']),
+            'isAllOrganizationsContext' => $scope['isAggregateScope'],
         ];
     }
 
@@ -108,10 +107,10 @@ class ResidentReadService
         ];
     }
 
-    private function list(array $filters, ?int $organizationId = null): LengthAwarePaginator
+    private function list(array $filters, ?int $organizationId = null, ?int $membershipOrganizationId = null): LengthAwarePaginator
     {
         return $this->residentRepository
-            ->paginate($filters, $organizationId)
+            ->paginate($filters, $organizationId, $membershipOrganizationId)
             ->through(fn ($resident) => [
                 'id' => $resident->id,
                 'uuid' => $resident->uuid,
@@ -142,9 +141,36 @@ class ResidentReadService
             && $user->hasAnyRole(['System Admin', 'BOP']);
     }
 
-    private function organizationOptions(User $user): Collection
+    private function resolveResidentScope(User $user): array
     {
         if ($this->includeAllOrganizations($user)) {
+            return [
+                'organizationId' => null,
+                'membershipOrganizationId' => null,
+                'isAggregateScope' => true,
+            ];
+        }
+
+        $organizationType = strtolower((string) $user->currentOrganization?->type);
+
+        if (in_array($organizationType, ['national', 'inservice'], true)) {
+            return [
+                'organizationId' => null,
+                'membershipOrganizationId' => $user->current_organization_id,
+                'isAggregateScope' => false,
+            ];
+        }
+
+        return [
+            'organizationId' => $user->current_organization_id,
+            'membershipOrganizationId' => null,
+            'isAggregateScope' => false,
+        ];
+    }
+
+    private function organizationOptions(User $user, bool $isAggregateScope): Collection
+    {
+        if ($isAggregateScope) {
             return $this->residentRepository->getOrganizations();
         }
 

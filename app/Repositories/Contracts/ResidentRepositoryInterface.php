@@ -10,7 +10,7 @@ use Illuminate\Support\Collection;
 
 interface ResidentRepositoryInterface
 {
-    public function paginate(array $filters, ?int $organizationId = null, int $perPage = 15): LengthAwarePaginator;
+    public function paginate(array $filters, ?int $organizationId = null, ?int $membershipOrganizationId = null, int $perPage = 15): LengthAwarePaginator;
 
     public function getOrganizations(): Collection;
 
@@ -18,9 +18,9 @@ interface ResidentRepositoryInterface
 
     public function getActiveOrganizationsExcluding(array $excludedIds): Collection;
 
-    public function getYearLevelStats(?int $organizationId = null): array;
+    public function getYearLevelStats(?int $organizationId = null, ?int $membershipOrganizationId = null): array;
 
-    public function getDistinctCourses(?int $organizationId = null): Collection;
+    public function getDistinctCourses(?int $organizationId = null, ?int $membershipOrganizationId = null): Collection;
 
     public function create(array $attributes): Resident;
 
@@ -32,5 +32,5 @@ interface ResidentRepositoryInterface
 
     public function findForOrganization(int $organizationId, int $residentId): Resident;
 
-    public function scopeToOrganization(Builder $query, ?int $organizationId = null): Builder;
+    public function scopeToOrganization(Builder $query, ?int $organizationId = null, ?int $membershipOrganizationId = null): Builder;
 }

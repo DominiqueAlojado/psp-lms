@@ -11,9 +11,9 @@ use Illuminate\Support\Collection;
 
 class ResidentRepository implements ResidentRepositoryInterface
 {
-    public function paginate(array $filters, ?int $organizationId = null, int $perPage = 15): LengthAwarePaginator
+    public function paginate(array $filters, ?int $organizationId = null, ?int $membershipOrganizationId = null, int $perPage = 15): LengthAwarePaginator
     {
-        return $this->scopeToOrganization(Resident::query(), $organizationId)
+        return $this->scopeToOrganization(Resident::query(), $organizationId, $membershipOrganizationId)
             ->with(['organization', 'user.organizations'])
             ->when($filters['search'] ?? null, function (Builder $query, string $search) {
                 $query->search($search);
@@ -64,18 +64,18 @@ class ResidentRepository implements ResidentRepositoryInterface
             ->get(['id', 'name', 'slug', 'type']);
     }
 
-    public function getYearLevelStats(?int $organizationId = null): array
+    public function getYearLevelStats(?int $organizationId = null, ?int $membershipOrganizationId = null): array
     {
-        return $this->scopeToOrganization(Resident::query(), $organizationId)
+        return $this->scopeToOrganization(Resident::query(), $organizationId, $membershipOrganizationId)
             ->selectRaw('year_level, COUNT(*) as count')
             ->groupBy('year_level')
             ->pluck('count', 'year_level')
             ->toArray();
     }
 
-    public function getDistinctCourses(?int $organizationId = null): Collection
+    public function getDistinctCourses(?int $organizationId = null, ?int $membershipOrganizationId = null): Collection
     {
-        return $this->scopeToOrganization(Resident::query(), $organizationId)
+        return $this->scopeToOrganization(Resident::query(), $organizationId, $membershipOrganizationId)
             ->distinct()
             ->pluck('course')
             ->filter()
@@ -109,11 +109,20 @@ class ResidentRepository implements ResidentRepositoryInterface
             ->findOrFail($residentId);
     }
 
-    public function scopeToOrganization(Builder $query, ?int $organizationId = null): Builder
+    public function scopeToOrganization(Builder $query, ?int $organizationId = null, ?int $membershipOrganizationId = null): Builder
     {
-        return $query->when(
-            $organizationId !== null,
-            fn (Builder $builder) => $builder->where('organization_id', $organizationId),
-        );
+        return $query
+            ->when(
+                $organizationId !== null,
+                fn (Builder $builder) => $builder->where('organization_id', $organizationId),
+            )
+            ->when(
+                $membershipOrganizationId !== null,
+                fn (Builder $builder) => $builder->whereHas('user.organizations', function (Builder $organizationQuery) use ($membershipOrganizationId) {
+                    $organizationQuery
+                        ->where('organizations.id', $membershipOrganizationId)
+                        ->where('organization_user.is_active', true);
+                }),
+            );
     }
 }

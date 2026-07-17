@@ -24,7 +24,13 @@ class ResidentReadServiceTest extends TestCase
             'is_active' => true,
         ]);
 
-        $user = User::factory()->create();
+        $user = User::factory()->create([
+            'current_organization_id' => $organization->id,
+        ]);
+        $user->organizations()->attach($organization->id, [
+            'joined_at' => now(),
+            'is_active' => true,
+        ]);
 
         Resident::factory()->create([
             'organization_id' => $organization->id,
@@ -37,7 +43,7 @@ class ResidentReadServiceTest extends TestCase
             'status' => 'active',
         ]);
 
-        $payload = $service->indexPayload([]);
+        $payload = $service->indexPayload([], $user);
         $resident = $payload['residents']->items()[0];
 
         $this->assertSame('Jane Santos Doe', $resident['full_name']);
@@ -94,5 +100,71 @@ class ResidentReadServiceTest extends TestCase
         $this->assertCount(2, $payload['currentOrganizations']);
         $this->assertTrue(collect($payload['availableOrganizations'])->contains('id', $availableOrganization->id));
         $this->assertFalse(collect($payload['availableOrganizations'])->contains('id', $homeOrganization->id));
+    }
+
+    public function test_it_limits_national_context_to_residents_bound_to_the_national_organization(): void
+    {
+        $service = app(ResidentReadService::class);
+
+        $nationalOrganization = Organization::create([
+            'name' => 'In-Service Exams',
+            'slug' => 'in-service-exams',
+            'type' => 'national',
+            'is_active' => true,
+        ]);
+
+        $institutionA = Organization::create([
+            'name' => 'Alpha Medical Center',
+            'slug' => 'alpha-medical-center',
+            'type' => 'institution',
+            'is_active' => true,
+        ]);
+
+        $institutionB = Organization::create([
+            'name' => 'Beta Medical Center',
+            'slug' => 'beta-medical-center',
+            'type' => 'institution',
+            'is_active' => true,
+        ]);
+
+        $user = User::factory()->create([
+            'current_organization_id' => $nationalOrganization->id,
+        ]);
+        $user->organizations()->attach($nationalOrganization->id, [
+            'joined_at' => now(),
+            'is_active' => true,
+        ]);
+
+        $boundUser = User::factory()->create();
+        $boundUser->organizations()->attach($nationalOrganization->id, [
+            'joined_at' => now(),
+            'is_active' => true,
+        ]);
+
+        Resident::factory()->create([
+            'organization_id' => $institutionA->id,
+            'user_id' => $boundUser->id,
+            'email' => 'resident-a@example.com',
+            'first_name' => 'Alice',
+            'middle_name' => null,
+            'last_name' => 'Alpha',
+        ]);
+
+        $unboundUser = User::factory()->create();
+        Resident::factory()->create([
+            'organization_id' => $institutionB->id,
+            'user_id' => $unboundUser->id,
+            'email' => 'resident-b@example.com',
+            'first_name' => 'Bob',
+            'middle_name' => null,
+            'last_name' => 'Beta',
+        ]);
+
+        $payload = $service->indexPayload([], $user);
+
+        $this->assertFalse($payload['isAllOrganizationsContext']);
+        $this->assertCount(1, $payload['residents']);
+        $this->assertSame('Alice Alpha', $payload['residents']->items()[0]['full_name']);
+        $this->assertCount(3, $payload['organizations']);
     }
 }
