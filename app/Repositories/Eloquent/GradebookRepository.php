@@ -18,7 +18,7 @@ class GradebookRepository implements GradebookRepositoryInterface
             ->where('status', 'completed');
 
         if ($withAssessment) {
-            $query->with(['assessment']);
+            $query->with(['assessment.questions.topic', 'answers']);
         }
 
         return $query->orderBy('submitted_at', 'desc')->get();
@@ -31,7 +31,7 @@ class GradebookRepository implements GradebookRepositoryInterface
             ->where('status', 'completed');
 
         if ($withAssessment) {
-            $query->with(['assessment']);
+            $query->with(['assessment.questions.topicRecord', 'answers']);
         }
 
         return $query->orderBy('submitted_at', 'desc')->get();

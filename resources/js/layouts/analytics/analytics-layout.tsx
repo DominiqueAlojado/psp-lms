@@ -146,13 +146,15 @@ export default function AnalyticsLayout({ children }: PropsWithChildren) {
             <Separator className="my-6 lg:hidden" />
 
             <div className="flex min-w-0 flex-1 flex-col">
-                <div className="mb-0 p-4">
+                <div className="px-5 pt-5 pb-4 sm:px-6 lg:px-8 lg:pt-6">
                     <Heading
                         title="Analytics"
                         description="Deep insights and analysis of exam performance and trends"
                     />
                 </div>
-                <div className="w-full p-4">{children}</div>
+                <div className="w-full px-5 pb-5 sm:px-6 lg:px-8 lg:pb-8">
+                    {children}
+                </div>
             </div>
         </div>
     );

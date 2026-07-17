@@ -5,9 +5,11 @@ namespace App\Services;
 use App\Models\Institution\InstitutionAssessment;
 use App\Models\National\NationalAssessment;
 use App\Repositories\Contracts\AnalyticsRepositoryInterface;
+use App\Repositories\Contracts\GradebookRepositoryInterface;
 use Carbon\CarbonInterface;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Spatie\Permission\Exceptions\PermissionDoesNotExist;
 
 class AnalyticsReadService
 {
@@ -15,6 +17,7 @@ class AnalyticsReadService
 
     public function __construct(
         private readonly AnalyticsRepositoryInterface $analyticsRepository,
+        private readonly ?GradebookRepositoryInterface $gradebookRepository = null,
     ) {}
 
     public function examAnalyticsPayload(Request $request): array
@@ -90,6 +93,11 @@ class AnalyticsReadService
     public function topicPerformancePayload(Request $request): array
     {
         $user = $request->user();
+
+        if ($this->isResidentSelfTopicPerformanceView($user)) {
+            return $this->residentTopicPerformancePayload($request);
+        }
+
         $currentOrganization = $user->currentOrganization;
         $organizationId = $user->current_organization_id;
         $canViewAllOrganizations = $user->hasPermissionTo('view-all-assessment-reports');
@@ -115,6 +123,53 @@ class AnalyticsReadService
                 'date_from' => $request->input('date_from'),
                 'date_to' => $request->input('date_to'),
             ],
+            'isResidentView' => false,
+        ];
+    }
+
+    private function residentTopicPerformancePayload(Request $request): array
+    {
+        $user = $request->user();
+        $isNational = $user->currentOrganization?->type === 'national';
+        $examFilter = $this->normalizeExamFilter($request->input('exam'));
+        $attempts = $isNational
+            ? $this->gradebookRepository()->getCompletedNationalAttemptsForUser($user->id, true)
+            : $this->gradebookRepository()->getCompletedInstitutionAttemptsForUser($user->id, true);
+
+        $exams = $attempts
+            ->filter(fn ($attempt) => $attempt->assessment !== null)
+            ->unique(fn ($attempt) => (int) ($attempt->assessment_id ?? $attempt->assessment?->id))
+            ->map(function ($attempt) use ($isNational) {
+                $assessmentId = (int) ($attempt->assessment_id ?? $attempt->assessment?->id);
+
+                return [
+                    'id' => ($isNational ? 'national_' : 'institution_') . $assessmentId,
+                    'title' => $attempt->assessment->title,
+                    'category' => $isNational
+                        ? ($attempt->assessment->category ?? null)
+                        : ($attempt->assessment->exam_category ?? null),
+                    'type' => $isNational ? 'national' : 'institution',
+                ];
+            })
+            ->sortBy('title')
+            ->values();
+
+        return [
+            'exams' => $exams,
+            'organizations' => collect(),
+            'topicPerformance' => $this->calculateResidentTopicPerformance(
+                $attempts,
+                $examFilter,
+                $isNational,
+                $request
+            ),
+            'filters' => [
+                'exam' => $examFilter,
+                'organization' => null,
+                'date_from' => $request->input('date_from'),
+                'date_to' => $request->input('date_to'),
+            ],
+            'isResidentView' => true,
         ];
     }
 
@@ -1166,5 +1221,160 @@ class AnalyticsReadService
         }
 
         return $examFilter;
+    }
+
+    private function isResidentSelfTopicPerformanceView($user): bool
+    {
+        try {
+            $canViewAnalytics = $user->hasPermissionTo('view-analytics');
+        } catch (PermissionDoesNotExist) {
+            $canViewAnalytics = false;
+        }
+
+        try {
+            $canViewResidentGrades = $user->hasPermissionTo('view-resident-grades');
+        } catch (PermissionDoesNotExist) {
+            $canViewResidentGrades = false;
+        }
+
+        return ! $canViewAnalytics && $canViewResidentGrades;
+    }
+
+    private function gradebookRepository(): GradebookRepositoryInterface
+    {
+        return $this->gradebookRepository ?? app(GradebookRepositoryInterface::class);
+    }
+
+    private function calculateResidentTopicPerformance(
+        Collection $attempts,
+        ?string $examFilter,
+        bool $isNational,
+        Request $request
+    ): array {
+        $selectedAttempts = $attempts
+            ->filter(function ($attempt) use ($examFilter, $isNational, $request) {
+                if (! $attempt->assessment || ! $attempt->submitted_at) {
+                    return false;
+                }
+
+                if (! empty($request->input('date_from')) && $attempt->submitted_at->toDateString() < $request->input('date_from')) {
+                    return false;
+                }
+
+                if (! empty($request->input('date_to')) && $attempt->submitted_at->toDateString() > $request->input('date_to')) {
+                    return false;
+                }
+
+                if ($examFilter === null) {
+                    return true;
+                }
+
+                $expectedPrefix = $isNational ? 'national_' : 'institution_';
+                if (! str_starts_with($examFilter, $expectedPrefix)) {
+                    return false;
+                }
+
+                return (int) str_replace($expectedPrefix, '', $examFilter) === (int) ($attempt->assessment_id ?? $attempt->assessment?->id);
+            })
+            ->values();
+
+        if ($selectedAttempts->isEmpty()) {
+            return $this->emptyTopicPerformancePayload(0);
+        }
+
+        $topics = [];
+        $examIdsCovered = [];
+
+        foreach ($selectedAttempts as $attempt) {
+            $assessment = $attempt->assessment;
+            $examIdsCovered[] = (int) ($attempt->assessment_id ?? $assessment?->id);
+
+            $questionMap = $assessment->questions->keyBy('id');
+
+            foreach ($attempt->answers as $answer) {
+                $question = $questionMap->get($answer->question_id);
+
+                if (! $question) {
+                    continue;
+                }
+
+                $topicName = $this->resolveResidentTopicName($question, $isNational);
+
+                if (! isset($topics[$topicName])) {
+                    $topics[$topicName] = [
+                        'topic' => $topicName,
+                        'question_count' => 0,
+                        'total_points' => 0,
+                        'correct_answers' => 0,
+                        'total_answers' => 0,
+                        'exam_ids' => [],
+                    ];
+                }
+
+                $topics[$topicName]['question_count']++;
+                $topics[$topicName]['total_points'] += (int) ($question->points ?? 0);
+                $topics[$topicName]['total_answers']++;
+                $topics[$topicName]['exam_ids'][$assessment->id] = true;
+
+                if ($answer->is_correct) {
+                    $topics[$topicName]['correct_answers']++;
+                }
+            }
+        }
+
+        $rows = collect($topics)
+            ->map(function (array $topic) {
+                $topic['exams_covered'] = count($topic['exam_ids']);
+                $topic['success_rate'] = $topic['total_answers'] > 0
+                    ? round(($topic['correct_answers'] / $topic['total_answers']) * 100, 2)
+                    : 0;
+
+                unset($topic['exam_ids']);
+
+                return $topic;
+            })
+            ->sortBy([
+                ['success_rate', 'desc'],
+                ['total_answers', 'desc'],
+                ['topic', 'asc'],
+            ])
+            ->values();
+
+        return [
+            'summary' => [
+                'topics_count' => $rows->count(),
+                'exams_covered' => count(array_unique($examIdsCovered)),
+                'total_questions' => $rows->sum('question_count'),
+                'total_responses' => $rows->sum('total_answers'),
+                'average_success_rate' => $rows->isNotEmpty() ? round($rows->avg('success_rate'), 2) : 0,
+            ],
+            'topics' => $rows->all(),
+            'top_topics' => $rows
+                ->filter(fn (array $row) => $row['total_answers'] > 0)
+                ->take(3)
+                ->values()
+                ->all(),
+            'needs_attention_topics' => $rows
+                ->filter(fn (array $row) => $row['total_answers'] > 0)
+                ->sortBy([
+                    ['success_rate', 'asc'],
+                    ['total_answers', 'desc'],
+                    ['topic', 'asc'],
+                ])
+                ->take(3)
+                ->values()
+                ->all(),
+        ];
+    }
+
+    private function resolveResidentTopicName(object $question, bool $isNational): string
+    {
+        if ($isNational) {
+            return $question->topicRecord?->name
+                ?? $question->topic
+                ?? 'No Topic';
+        }
+
+        return $question->topic?->name ?? 'No Topic';
     }
 }

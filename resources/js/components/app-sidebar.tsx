@@ -58,6 +58,13 @@ const mainNavItems: NavItem[] = [
         permission: 'view-resident-grades',
     },
     {
+        title: 'My Topic Performance',
+        href: '/analytics/topic-performance',
+        icon: LineChart,
+        permission: 'view-resident-grades',
+        excludeRoles: ['System Admin', 'BOP', 'Admin', 'Training Officer'],
+    },
+    {
         title: 'My Assignments',
         href: '/my-assignments',
         icon: Pencil,
@@ -113,6 +120,7 @@ const mainNavItems: NavItem[] = [
         href: '/analytics',
         icon: LineChart,
         permission: 'view-analytics',
+        excludeRoles: ['Resident'],
     },
     {
         title: 'Activity',

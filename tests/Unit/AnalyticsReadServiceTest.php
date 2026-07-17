@@ -6,6 +6,7 @@ use App\Models\Institution\InstitutionAssessment;
 use App\Models\Organization;
 use App\Models\User;
 use App\Repositories\Contracts\AnalyticsRepositoryInterface;
+use App\Repositories\Contracts\GradebookRepositoryInterface;
 use App\Services\AnalyticsReadService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -447,5 +448,92 @@ class AnalyticsReadServiceTest extends TestCase
         $this->assertSame('national', $payload['exams'][1]['type']);
         $this->assertCount(1, $payload['organizations']);
         $this->assertNull($payload['analytics']);
+    }
+
+    public function test_it_builds_resident_safe_topic_performance_payload_for_national_context(): void
+    {
+        $user = Mockery::mock(User::class)->makePartial();
+        $user->id = 55;
+        $user->currentOrganization = (object) ['id' => 99, 'type' => 'national', 'slug' => 'in-service-exams'];
+        $user->shouldReceive('hasPermissionTo')->with('view-analytics')->andReturn(false);
+        $user->shouldReceive('hasPermissionTo')->with('view-resident-grades')->andReturn(true);
+
+        $assessment = new class
+        {
+            public int $id = 1;
+            public string $title = 'National Assessment 1';
+            public string $category = 'In-Service';
+            public Collection $questions;
+
+            public function __construct()
+            {
+                $questionA = new class
+                {
+                    public int $id = 11;
+                    public int $points = 2;
+                    public ?string $topic = null;
+                    public object $topicRecord;
+
+                    public function __construct()
+                    {
+                        $this->topicRecord = (object) ['name' => 'Anatomy'];
+                    }
+                };
+
+                $questionB = new class
+                {
+                    public int $id = 12;
+                    public int $points = 3;
+                    public ?string $topic = null;
+                    public object $topicRecord;
+
+                    public function __construct()
+                    {
+                        $this->topicRecord = (object) ['name' => 'Pharmacology'];
+                    }
+                };
+
+                $this->questions = collect([$questionA, $questionB]);
+            }
+        };
+
+        $attempt = new class($assessment)
+        {
+            public int $assessment_id = 1;
+            public object $assessment;
+            public Collection $answers;
+            public object $submitted_at;
+
+            public function __construct($assessment)
+            {
+                $this->assessment = $assessment;
+                $this->submitted_at = Carbon::parse('2026-07-01');
+                $this->answers = collect([
+                    (object) ['question_id' => 11, 'is_correct' => true],
+                    (object) ['question_id' => 12, 'is_correct' => false],
+                ]);
+            }
+        };
+
+        $analyticsRepo = Mockery::mock(AnalyticsRepositoryInterface::class);
+        $gradebookRepo = Mockery::mock(GradebookRepositoryInterface::class);
+        $gradebookRepo->shouldReceive('getCompletedNationalAttemptsForUser')
+            ->once()
+            ->with(55, true)
+            ->andReturn(collect([$attempt]));
+
+        $service = new AnalyticsReadService($analyticsRepo, $gradebookRepo);
+        $request = Request::create('/analytics/topic-performance', 'GET', ['exam' => 'national_1']);
+        $request->setUserResolver(fn () => $user);
+
+        $payload = $service->topicPerformancePayload($request);
+
+        $this->assertTrue($payload['isResidentView']);
+        $this->assertCount(1, $payload['exams']);
+        $this->assertSame('National Assessment 1', $payload['exams'][0]['title']);
+        $this->assertSame(2, $payload['topicPerformance']['summary']['topics_count']);
+        $this->assertSame(1, $payload['topicPerformance']['summary']['exams_covered']);
+        $this->assertSame('Anatomy', $payload['topicPerformance']['topics'][0]['topic']);
+        $this->assertSame(100.0, $payload['topicPerformance']['topics'][0]['success_rate']);
     }
 }

@@ -352,7 +352,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->middleware('permission:view-analytics')
         ->name('analytics.item-analysis');
     Route::get('analytics/topic-performance', [App\Http\Controllers\AnalyticsController::class, 'topicPerformance'])
-        ->middleware('permission:view-analytics')
+        ->middleware('permission:view-analytics|view-resident-grades')
         ->name('analytics.topic-performance');
     Route::get('analytics/question-bank', [App\Http\Controllers\AnalyticsController::class, 'questionBank'])
         ->middleware('permission:view-analytics')
